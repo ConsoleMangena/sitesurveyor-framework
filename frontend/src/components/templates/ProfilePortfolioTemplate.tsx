@@ -17,11 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -336,38 +332,38 @@ export function ProfilePortfolioTemplate({
         )}
       </CardContent>
 
-      <Dialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
-        <DialogContent className="max-w-lg gap-0 overflow-hidden p-0 sm:max-w-2xl">
-          {preview?.imageUrl ? (
-            <div className="relative bg-black">
-              <img
-                src={preview.imageUrl}
-                alt={preview.title}
-                className="max-h-[70vh] w-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="flex h-40 items-center justify-center text-muted-foreground">
-              <Images size={32} />
-            </div>
-          )}
-          <div className="space-y-1.5 p-4">
-            <DialogTitle className="text-base font-semibold">
-              {preview?.title}
-              {preview?.year ? (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  <CalendarDays size={11} /> {preview.year}
-                </span>
-              ) : null}
-            </DialogTitle>
-            {preview?.description ? (
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {preview.description}
-              </p>
+      <DialogTemplate
+        open={preview !== null}
+        onOpenChange={(open) => !open && setPreview(null)}
+        title={
+          <>
+            {preview?.title}
+            {preview?.year ? (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <CalendarDays size={11} /> {preview.year}
+              </span>
             ) : null}
+          </>
+        }
+        description={preview?.description}
+        size="2xl"
+        className="sm:rounded-none"
+        contentClassName="p-0 gap-0"
+      >
+        {preview?.imageUrl ? (
+          <div className="relative bg-black">
+            <img
+              src={preview.imageUrl}
+              alt={preview.title}
+              className="max-h-[70vh] w-full object-contain"
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : (
+          <div className="flex h-40 items-center justify-center text-muted-foreground">
+            <Images size={32} />
+          </div>
+        )}
+      </DialogTemplate>
     </Card>
   );
 }

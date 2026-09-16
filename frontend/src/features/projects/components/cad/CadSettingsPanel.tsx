@@ -20,11 +20,7 @@ import {
   Tag,
   Type,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog.tsx";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -119,37 +115,23 @@ export function CadSettingsPopover({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-2xl gap-0 p-0 sm:rounded-xl"
-        disableAnimation
-      >
-        <DialogTitle className="sr-only">Drawing settings</DialogTitle>
-
-        <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/[0.07] via-background to-background px-5 py-4 sm:px-6 sm:py-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Settings2 className="size-4" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                  Drawing settings
-                </h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Units, precision, snap and display preferences for this device.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className="gap-1 text-[10px] font-medium">
-                <Lock size={10} /> Project controls the units
-              </Badge>
-            </div>
-          </div>
+    <DialogTemplate
+      open={open}
+      onOpenChange={onOpenChange}
+      title={
+        <div className="flex items-center gap-2">
+          <span>Drawing settings</span>
+          <Badge variant="outline" className="gap-1 text-[10px] font-medium hidden sm:flex ml-auto">
+            <Lock size={10} /> Project controls the units
+          </Badge>
         </div>
-
-        <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+      }
+      description="Units, precision, snap and display preferences for this device."
+      icon={<Settings2 className="size-4" />}
+      size="2xl"
+      className="sm:rounded-none"
+    >
+      <div className="space-y-5">
           <SettingsSection
             icon={Compass}
             title="Units & precision"
@@ -338,8 +320,7 @@ export function CadSettingsPopover({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </DialogTemplate>
   );
 }
 

@@ -31,7 +31,16 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "../ui/sheet.tsx";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "../ui/command.tsx";
 import { DialogTemplate } from "../templates/DialogTemplate.tsx";
 
 interface WorkspaceShellProps {
@@ -701,10 +710,6 @@ function WorkspaceSearch({
   onChangeView,
 }: WorkspaceSearchProps) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [highlight, setHighlight] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
 
   const allItems = useMemo<SearchResult[]>(
     () =>
@@ -719,41 +724,12 @@ function WorkspaceSearch({
     [navGroups],
   );
 
-  const isSearching = query.trim().length > 0;
-
-  const results = useMemo<SearchResult[]>(() => {
-    const term = query.trim().toLowerCase();
-    if (!term) return allItems;
-    return allItems.filter(
-      (item) =>
-        item.label.toLowerCase().includes(term) ||
-        (item.group?.toLowerCase().includes(term) ?? false),
-    );
-  }, [allItems, query]);
-
-  // When idle (no query), show recently visited views as quick jumps.
   const recentResults = useMemo<SearchResult[]>(() => {
-    if (isSearching) return [];
     return recentViews
       .map((view) => allItems.find((item) => item.view === view))
       .filter((item): item is SearchResult => Boolean(item))
       .slice(0, 4);
-  }, [allItems, recentViews, isSearching]);
-
-  // Flat list used for keyboard navigation (recents first, then all pages).
-  const navigableResults = useMemo<SearchResult[]>(() => {
-    if (isSearching) return results;
-    const recentViewSet = new Set(recentResults.map((r) => r.view));
-    return [
-      ...recentResults,
-      ...allItems.filter((item) => !recentViewSet.has(item.view)),
-    ];
-  }, [isSearching, results, recentResults, allItems]);
-
-  const updateQuery = (value: string) => {
-    setQuery(value);
-    setHighlight(0);
-  };
+  }, [allItems, recentViews]);
 
   // Global keyboard shortcut: Ctrl/Cmd+K or "/" to focus search.
   useEffect(() => {
@@ -765,76 +741,19 @@ function WorkspaceSearch({
           !(event.target instanceof HTMLTextAreaElement));
       if (isShortcut) {
         event.preventDefault();
-        setOpen(true);
-        window.requestAnimationFrame(() => inputRef.current?.focus());
+        setOpen((open) => !open);
       }
-      if (event.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Close on outside click.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (event: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  const selectResult = (result: SearchResult) => {
-    onChangeView(result.view);
-    setOpen(false);
-    setQuery("");
-  };
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setHighlight((h) => Math.min(h + 1, navigableResults.length - 1));
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setHighlight((h) => Math.max(h - 1, 0));
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      const result = navigableResults[highlight];
-      if (result) selectResult(result);
-    } else if (event.key === "Escape") {
-      setOpen(false);
-    }
-  };
-
-  const renderItem = (result: SearchResult, index: number) => (
-    <button
-      key={result.view}
-      type="button"
-      className={`hub-search-item ${index === highlight ? "active" : ""} ${
-        result.view === activeView ? "current" : ""
-      }`}
-      onMouseEnter={() => setHighlight(index)}
-      onClick={() => selectResult(result)}
-    >
-      <span className="hub-search-item-icon">{getNavIcon(result.icon)}</span>
-      <span className="hub-search-item-label">{result.label}</span>
-      {result.group ? (
-        <span className="hub-search-item-group">{result.group}</span>
-      ) : null}
-    </button>
-  );
-
   return (
-    <div className="hub-search" ref={wrapRef}>
+    <>
       <button
         type="button"
         className="hub-search-trigger"
-        onClick={() => {
-          setOpen(true);
-          window.requestAnimationFrame(() => inputRef.current?.focus());
-        }}
+        onClick={() => setOpen(true)}
         title="Search (Ctrl + K)"
       >
         <SearchIcon />
@@ -842,83 +761,50 @@ function WorkspaceSearch({
         <kbd className="hub-search-kbd">Ctrl K</kbd>
       </button>
 
-      {open && (
-        <div className="hub-search-panel" role="dialog" aria-label="Search">
-          <div className="hub-search-input-row">
-            <SearchIcon />
-            <input
-              ref={inputRef}
-              id="workspace-search-input"
-              name="workspace-search-input"
-              className="hub-search-input"
-              type="text"
-              value={query}
-              placeholder="Search pages..."
-              autoComplete="off"
-              spellCheck={false}
-              aria-label="Search workspace"
-              onChange={(event) => updateQuery(event.target.value)}
-              onKeyDown={onKeyDown}
-            />
-            {query && (
-              <button
-                type="button"
-                className="hub-search-clear"
-                onClick={() => {
-                  updateQuery("");
-                  inputRef.current?.focus();
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandInput placeholder="Search pages..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+
+          {recentResults.length > 0 && (
+            <CommandGroup heading="Recent">
+              {recentResults.map((result) => (
+                <CommandItem
+                  key={`recent-${result.view}`}
+                  onSelect={() => {
+                    onChangeView(result.view);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="mr-2 opacity-50 flex items-center justify-center w-4 h-4">{getNavIcon(result.icon)}</span>
+                  <span>{result.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+
+          <CommandGroup heading="All pages">
+            {allItems.map((result) => (
+              <CommandItem
+                key={`all-${result.view}`}
+                onSelect={() => {
+                  onChangeView(result.view);
+                  setOpen(false);
                 }}
-                aria-label="Clear search"
               >
-                ×
-              </button>
-            )}
-          </div>
-
-          <div className="hub-search-results">
-            {isSearching ? (
-              results.length === 0 ? (
-                <div className="hub-search-empty">
-                  No results for "{query.trim()}"
-                </div>
-              ) : (
-                results.map((result, index) => renderItem(result, index))
-              )
-            ) : (
-              <>
-                {recentResults.length > 0 && (
-                  <>
-                    <div className="hub-search-section">Recent</div>
-                    {recentResults.map((result, index) =>
-                      renderItem(result, index),
-                    )}
-                  </>
-                )}
-                <div className="hub-search-section">All pages</div>
-                {navigableResults
-                  .slice(recentResults.length)
-                  .map((result, index) =>
-                    renderItem(result, recentResults.length + index),
-                  )}
-              </>
-            )}
-          </div>
-
-          <div className="hub-search-footer">
-            <span>
-              <kbd>↑</kbd>
-              <kbd>↓</kbd> to navigate
-            </span>
-            <span>
-              <kbd>↵</kbd> to open
-            </span>
-            <span>
-              <kbd>esc</kbd> to close
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
+                <span className="mr-2 opacity-50 flex items-center justify-center w-4 h-4">{getNavIcon(result.icon)}</span>
+                <span>{result.label}</span>
+                {result.group ? (
+                  <span className="ml-auto text-muted-foreground text-xs">
+                    {result.group}
+                  </span>
+                ) : null}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+    </>
   );
 }
 
@@ -950,20 +836,8 @@ function getNotificationTargetView(notification: NotificationRow): WorkspaceView
 
 function WorkspaceNotifications({ workspaceId, onChangeView }: WorkspaceNotificationsProps) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, loading, error, markRead, markAllRead } =
     useNotifications(workspaceId);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (event: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
 
   const onItemClick = (notification: NotificationRow) => {
     if (notification.status === "unread") void markRead(notification.id);
@@ -978,92 +852,93 @@ function WorkspaceNotifications({ workspaceId, onChangeView }: WorkspaceNotifica
   };
 
   return (
-    <div className="hub-notif-wrap" ref={wrapRef}>
-      <button
-        type="button"
-        className="hub-notif-btn"
-        onClick={() => setOpen((value) => !value)}
-        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
-        aria-haspopup="true"
-        aria-expanded={open}
-      >
-        <BellIcon />
-        {unreadCount > 0 && (
-          <span className="hub-notif-badge">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="hub-notif-btn"
+          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        >
+          <BellIcon />
+          {unreadCount > 0 && (
+            <span className="hub-notif-badge">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </SheetTrigger>
 
-      {open && (
-        <div className="hub-notif-dropdown" role="dialog" aria-label="Notifications">
-          <div className="hub-notif-header">
+      <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0 flex flex-col gap-0">
+        <SheetHeader className="p-4 border-b flex-row justify-between items-center space-y-0">
+          <SheetTitle
+            className="text-base cursor-pointer hover:underline"
+            onClick={openNotificationsPage}
+          >
+            Notifications
+          </SheetTitle>
+          {unreadCount > 0 && (
             <button
               type="button"
-              className="hub-notif-title hub-notif-title-btn"
-              onClick={openNotificationsPage}
+              className="text-xs text-primary hover:underline font-medium"
+              onClick={() => void markAllRead()}
             >
-              Notifications
+              Mark all read
             </button>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                className="hub-notif-mark-all"
-                onClick={() => void markAllRead()}
-              >
-                Mark all read
-              </button>
-            )}
-          </div>
+          )}
+        </SheetHeader>
 
-          <div className="hub-notif-list">
-            {loading && notifications.length === 0 ? (
-              <div className="hub-notif-empty">Loading...</div>
-            ) : error ? (
-              <div className="hub-notif-empty">{error}</div>
-            ) : notifications.length === 0 ? (
-              <div className="hub-notif-empty">
-                <BellIcon />
-                <span>You're all caught up</span>
-              </div>
-            ) : (
-              notifications.map((notification) => (
+        <div className="flex-1 overflow-y-auto">
+          {loading && notifications.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
+          ) : error ? (
+            <div className="p-4 text-center text-destructive text-sm">{error}</div>
+          ) : notifications.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-2 text-sm">
+              <BellIcon />
+              <span>You're all caught up</span>
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {notifications.map((notification) => (
                 <button
                   key={notification.id}
                   type="button"
-                  className={`hub-notif-item ${
-                    notification.status === "unread" ? "unread" : ""
+                  className={`flex flex-col text-left p-4 border-b hover:bg-accent transition-colors ${
+                    notification.status === "unread" ? "bg-muted/30" : ""
                   }`}
                   onClick={() => onItemClick(notification)}
                 >
-                  {notification.status === "unread" && (
-                    <span className="hub-notif-dot" aria-hidden="true" />
-                  )}
-                  <span className="hub-notif-item-body">
-                    <span className="hub-notif-item-title">
-                      {notification.title}
-                    </span>
-                    {notification.body ? (
-                      <span className="hub-notif-item-text">
-                        {notification.body}
+                  <div className="flex items-start gap-3 w-full">
+                    {notification.status === "unread" && (
+                      <span
+                        className="mt-1.5 size-2 rounded-full bg-primary shrink-0"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <div className="flex flex-col gap-1 flex-1 overflow-hidden">
+                      <span className="font-medium text-sm leading-tight text-foreground">{notification.title}</span>
+                      {notification.body && (
+                        <span className="text-sm text-muted-foreground line-clamp-2 leading-snug">
+                          {notification.body}
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground mt-1">
+                        {formatRelativeTime(notification.created_at)}
                       </span>
-                    ) : null}
-                    <span className="hub-notif-item-time">
-                      {formatRelativeTime(notification.created_at)}
-                    </span>
-                  </span>
+                    </div>
+                  </div>
                 </button>
-              ))
-            )}
-          </div>
-          <div className="hub-notif-footer">
-            <button type="button" onClick={openNotificationsPage}>
-              View all notifications
-            </button>
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </div>
+        <div className="p-4 border-t bg-muted/10">
+          <Button variant="outline" className="w-full" onClick={openNotificationsPage}>
+            View all notifications
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

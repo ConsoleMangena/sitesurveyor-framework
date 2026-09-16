@@ -38,6 +38,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import SolanaLogo from "./SolanaLogo.tsx";
 import QrCodeScanner from "../../../components/QrCodeScanner.tsx";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 
 const RECENT_RECIPIENTS_KEY = "sitesurveyor:wallet:recent-recipients";
 
@@ -953,16 +954,68 @@ export default function EmbeddedWalletCard() {
         {wallet.walletAddress && <NetworkDetails />}
       </div>
 
-      {showDeleteConfirm && (
-        <div className="wallet-delete-modal-overlay">
-          <div className="wallet-delete-modal" role="dialog" aria-modal="true">
-            <h4>Delete Embedded Wallet?</h4>
-            <p className="wallet-delete-modal-text">
-              This permanently removes the encrypted wallet from your account.
-              If you have not backed up the seed phrase, this wallet and any
-              funds it holds will be lost forever.
-            </p>
-            <p className="wallet-delete-modal-label">
+      <DialogTemplate
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Embedded Wallet?"
+        description={
+          <>
+            This permanently removes the encrypted wallet from your account.
+            If you have not backed up the seed phrase, this wallet and any
+            funds it holds will be lost forever.
+          </>
+        }
+        icon={<Trash2 className="size-4" />}
+        footer={
+          <div className="flex w-full gap-2 justify-end">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeleteConfirmText("");
+                setDeletePin("");
+              }}
+              disabled={wallet.verifyingDelete || wallet.deleting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() =>
+                void wallet
+                  .verifyPinForDelete(deletePin)
+                  .then(() => wallet.deleteWallet())
+                  .then(() => {
+                    setPin("");
+                    setDeletePin("");
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText("");
+                    setMode("unlock");
+                  })
+                  .catch(() => {})
+              }
+              disabled={
+                wallet.verifyingDelete ||
+                wallet.deleting ||
+                !deletePin ||
+                deleteConfirmText !== wallet.walletAddress
+              }
+              aria-busy={wallet.verifyingDelete || wallet.deleting}
+            >
+              {wallet.verifyingDelete
+                ? "Verifying PIN…"
+                : wallet.deleting
+                  ? "Deleting…"
+                  : "Permanently Delete Wallet"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="wallet-delete-modal-label mb-1">
               Enter your wallet PIN to authorize deletion:
             </p>
             <input
@@ -973,7 +1026,9 @@ export default function EmbeddedWalletCard() {
               onChange={(e) => setDeletePin(e.target.value)}
               disabled={wallet.verifyingDelete || wallet.deleting}
             />
-            <p className="wallet-delete-modal-label">
+          </div>
+          <div>
+            <p className="wallet-delete-modal-label mb-1">
               Type your wallet address below to confirm:
             </p>
             <input
@@ -984,146 +1039,118 @@ export default function EmbeddedWalletCard() {
               placeholder={wallet.walletAddress ?? ""}
               disabled={wallet.verifyingDelete || wallet.deleting}
             />
-            <div className="wallet-delete-modal-actions">
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteConfirmText("");
-                  setDeletePin("");
-                }}
-                disabled={wallet.verifyingDelete || wallet.deleting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() =>
-                  void wallet
-                    .verifyPinForDelete(deletePin)
-                    .then(() => wallet.deleteWallet())
-                    .then(() => {
-                      setPin("");
-                      setDeletePin("");
-                      setShowDeleteConfirm(false);
-                      setDeleteConfirmText("");
-                      setMode("unlock");
-                    })
-                    .catch(() => {})
-                }
-                disabled={
-                  wallet.verifyingDelete ||
-                  wallet.deleting ||
-                  !deletePin ||
-                  deleteConfirmText !== wallet.walletAddress
-                }
-                aria-busy={wallet.verifyingDelete || wallet.deleting}
-              >
-                {wallet.verifyingDelete
-                  ? "Verifying PIN…"
-                  : wallet.deleting
-                    ? "Deleting…"
-                    : "Permanently Delete Wallet"}
-              </button>
-            </div>
           </div>
         </div>
-      )}
+      </DialogTemplate>
 
-      {showReceive && wallet.walletAddress && (
-        <div className="wallet-delete-modal-overlay">
-          <div className="wallet-delete-modal" role="dialog" aria-modal="true">
-            <h4>Receive funds</h4>
-            <p className="wallet-delete-modal-text">
-              Send SOL or SPL tokens to this address on the{" "}
-              {SOLANA_CLUSTER === "mainnet-beta" ? "Solana" : SOLANA_CLUSTER}{" "}
-              network.
-            </p>
-            <div className="wallet-qr-code">
-              <QRCodeSVG
-                value={`solana:${wallet.walletAddress}${SOLANA_CLUSTER === "mainnet-beta" ? "" : `?cluster=${SOLANA_CLUSTER}`}`}
-                size={200}
-                bgColor="transparent"
-                fgColor="var(--text-h)"
-                level="M"
-              />
-            </div>
-            <div className="wallet-address-row">
-              <span className="wallet-address" title={wallet.walletAddress}>
-                <span className="wallet-address-truncated">
-                  {wallet.shortAddress}
-                </span>
+      <DialogTemplate
+        open={showReceive && !!wallet.walletAddress}
+        onOpenChange={setShowReceive}
+        title="Receive funds"
+        description={`Send SOL or SPL tokens to this address on the ${SOLANA_CLUSTER === "mainnet-beta" ? "Solana" : SOLANA_CLUSTER} network.`}
+        icon={<Download className="size-4" />}
+        footer={
+          <div className="flex justify-end w-full">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowReceive(false)}
+            >
+              Done
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center justify-center space-y-6 py-4">
+          <div className="wallet-qr-code">
+            <QRCodeSVG
+              value={`solana:${wallet.walletAddress}${SOLANA_CLUSTER === "mainnet-beta" ? "" : `?cluster=${SOLANA_CLUSTER}`}`}
+              size={200}
+              bgColor="transparent"
+              fgColor="var(--text-h)"
+              level="M"
+            />
+          </div>
+          <div className="wallet-address-row">
+            <span className="wallet-address" title={wallet.walletAddress ?? undefined}>
+              <span className="wallet-address-truncated">
+                {wallet.shortAddress}
               </span>
-              <button
-                type="button"
-                className={`wallet-copy-btn ${copied ? "copied" : ""}`}
-                onClick={() => void copyAddress()}
-                aria-label={copied ? "Address copied" : "Copy wallet address"}
-                title={copied ? "Copied" : "Copy address"}
-              >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-            </div>
-            <div className="wallet-delete-modal-actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setShowReceive(false)}
-              >
-                Done
-              </button>
-            </div>
+            </span>
+            <button
+              type="button"
+              className={`wallet-copy-btn ${copied ? "copied" : ""}`}
+              onClick={() => void copyAddress()}
+              aria-label={copied ? "Address copied" : "Copy wallet address"}
+              title={copied ? "Copied" : "Copy address"}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+            </button>
           </div>
         </div>
-      )}
+      </DialogTemplate>
 
-      {showSend && wallet.unlockedWallet && (
-        <div className="wallet-delete-modal-overlay">
-          <div className="wallet-delete-modal" role="dialog" aria-modal="true">
-            <div className="wallet-delete-modal-header">
-              <h4>Send tokens</h4>
-              <button
-                type="button"
-                className="wallet-modal-close"
-                onClick={resetSend}
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="wallet-delete-modal-text">
-              Send SOL or USDC from your embedded wallet to another Solana
-              address.
-            </p>
+      <DialogTemplate
+        open={showSend && !!wallet.unlockedWallet}
+        onOpenChange={(open) => !open && resetSend()}
+        title="Send tokens"
+        description="Send SOL or USDC from your embedded wallet to another Solana address."
+        icon={<Send className="size-4" />}
+        footer={
+          <div className="flex w-full gap-2 justify-end">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={resetSend}
+              disabled={wallet.sending}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSend}
+              disabled={
+                wallet.sending ||
+                !sendRecipient.trim() ||
+                !sendAmount ||
+                Number(sendAmount) <= 0
+              }
+              aria-busy={wallet.sending}
+            >
+              {wallet.sending ? "Sending…" : `Send ${sendToken}`}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="wallet-send-token-row">
+            <button
+              type="button"
+              className={`wallet-send-token ${sendToken === "USDC" ? "active" : ""}`}
+              onClick={() => {
+                setSendToken("USDC");
+                setSendError(null);
+                setSendSignature(null);
+              }}
+            >
+              USDC
+            </button>
+            <button
+              type="button"
+              className={`wallet-send-token ${sendToken === "SOL" ? "active" : ""}`}
+              onClick={() => {
+                setSendToken("SOL");
+                setSendError(null);
+                setSendSignature(null);
+              }}
+            >
+              SOL
+            </button>
+          </div>
 
-            <div className="wallet-send-token-row">
-              <button
-                type="button"
-                className={`wallet-send-token ${sendToken === "USDC" ? "active" : ""}`}
-                onClick={() => {
-                  setSendToken("USDC");
-                  setSendError(null);
-                  setSendSignature(null);
-                }}
-              >
-                USDC
-              </button>
-              <button
-                type="button"
-                className={`wallet-send-token ${sendToken === "SOL" ? "active" : ""}`}
-                onClick={() => {
-                  setSendToken("SOL");
-                  setSendError(null);
-                  setSendSignature(null);
-                }}
-              >
-                SOL
-              </button>
-            </div>
-
-            <label className="wallet-form-label">Recipient address</label>
+          <div>
+            <label className="wallet-form-label mb-1 block">Recipient address</label>
             <div className="wallet-input-with-scan">
               <input
                 type="text"
@@ -1145,7 +1172,7 @@ export default function EmbeddedWalletCard() {
               </button>
             </div>
             {recentRecipients.length > 0 && (
-              <div className="wallet-recent-recipients">
+              <div className="wallet-recent-recipients mt-2">
                 <span className="wallet-recent-recipients-label">Recent</span>
                 <div className="wallet-recent-recipients-list">
                   {recentRecipients.map((address) => (
@@ -1163,8 +1190,10 @@ export default function EmbeddedWalletCard() {
                 </div>
               </div>
             )}
+          </div>
 
-            <label className="wallet-form-label">Amount</label>
+          <div>
+            <label className="wallet-form-label mb-1 block">Amount</label>
             <input
               type="number"
               className="input-field"
@@ -1176,7 +1205,7 @@ export default function EmbeddedWalletCard() {
               disabled={wallet.sending}
             />
 
-            <div className="wallet-send-balance-hint">
+            <div className="wallet-send-balance-hint mt-2">
               Available: {" "}
               {sendToken === "SOL"
                 ? wallet.balances.solLoading
@@ -1186,116 +1215,92 @@ export default function EmbeddedWalletCard() {
                   ? "—"
                   : `${wallet.balances.usdc.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`}
             </div>
-
-            {sendSignature && (
-              <div className="wallet-send-success">
-                <Check size={16} />
-                <span>Sent!</span>
-                <a
-                  href={`https://explorer.solana.com/tx/${sendSignature}${SOLANA_CLUSTER === "mainnet-beta" ? "" : `?cluster=${SOLANA_CLUSTER}`}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="wallet-tx-link"
-                >
-                  View on Explorer
-                  <ArrowUpRight size={12} />
-                </a>
-              </div>
-            )}
-
-            {sendError && (
-              <div className="wallet-error">{sendError}</div>
-            )}
-
-            <div className="wallet-delete-modal-actions">
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={resetSend}
-                disabled={wallet.sending}
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSend}
-                disabled={
-                  wallet.sending ||
-                  !sendRecipient.trim() ||
-                  !sendAmount ||
-                  Number(sendAmount) <= 0
-                }
-                aria-busy={wallet.sending}
-              >
-                {wallet.sending ? "Sending…" : `Send ${sendToken}`}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
 
-      {showChangePin && (
-        <div className="wallet-delete-modal-overlay">
-          <div className="wallet-delete-modal" role="dialog" aria-modal="true">
-            <h4>Change Wallet PIN</h4>
-            <p className="wallet-delete-modal-text">
-              Re-encrypt your wallet with a new PIN. Your wallet address and
-              seed phrase stay the same.
-            </p>
-            <input
-              type="password"
-              className="input-field"
-              placeholder="Current PIN"
-              value={oldPin}
-              onChange={(e) => setOldPin(e.target.value)}
-            />
-            <input
-              type="password"
-              className="input-field"
-              placeholder="New PIN"
-              value={newPin}
-              onChange={(e) => setNewPin(e.target.value)}
-            />
-            <input
-              type="password"
-              className="input-field"
-              placeholder="Confirm new PIN"
-              value={confirmNewPin}
-              onChange={(e) => setConfirmNewPin(e.target.value)}
-            />
-            <p className="wallet-delete-modal-label">
-              Use at least 8 characters with letters, numbers, and a special
-              character.
-            </p>
-            <div className="wallet-delete-modal-actions">
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => {
-                  setShowChangePin(false);
-                  setOldPin("");
-                  setNewPin("");
-                  setConfirmNewPin("");
-                }}
+          {sendSignature && (
+            <div className="wallet-send-success">
+              <Check size={16} />
+              <span>Sent!</span>
+              <a
+                href={`https://explorer.solana.com/tx/${sendSignature}${SOLANA_CLUSTER === "mainnet-beta" ? "" : `?cluster=${SOLANA_CLUSTER}`}`}
+                target="_blank"
+                rel="noreferrer"
+                className="wallet-tx-link"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleChangePin}
-                disabled={
-                  wallet.changingPin || !oldPin || !newPin || !confirmNewPin
-                }
-                aria-busy={wallet.changingPin}
-              >
-                {wallet.changingPin ? "Updating…" : "Update PIN"}
-              </button>
+                View on Explorer
+                <ArrowUpRight size={12} />
+              </a>
             </div>
-          </div>
+          )}
+
+          {sendError && (
+            <div className="wallet-error">{sendError}</div>
+          )}
         </div>
-      )}
+      </DialogTemplate>
+
+      <DialogTemplate
+        open={showChangePin}
+        onOpenChange={setShowChangePin}
+        title="Change Wallet PIN"
+        description="Re-encrypt your wallet with a new PIN. Your wallet address and seed phrase stay the same."
+        icon={<KeyRound className="size-4" />}
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => {
+                setShowChangePin(false);
+                setOldPin("");
+                setNewPin("");
+                setConfirmNewPin("");
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleChangePin}
+              disabled={
+                wallet.changingPin || !oldPin || !newPin || !confirmNewPin
+              }
+              aria-busy={wallet.changingPin}
+            >
+              {wallet.changingPin ? "Updating…" : "Update PIN"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <input
+            type="password"
+            className="input-field"
+            placeholder="Current PIN"
+            value={oldPin}
+            onChange={(e) => setOldPin(e.target.value)}
+          />
+          <input
+            type="password"
+            className="input-field"
+            placeholder="New PIN"
+            value={newPin}
+            onChange={(e) => setNewPin(e.target.value)}
+          />
+          <input
+            type="password"
+            className="input-field"
+            placeholder="Confirm new PIN"
+            value={confirmNewPin}
+            onChange={(e) => setConfirmNewPin(e.target.value)}
+          />
+          <p className="wallet-delete-modal-label">
+            Use at least 8 characters with letters, numbers, and a special
+            character.
+          </p>
+        </div>
+      </DialogTemplate>
 
       {showScanner && (
         <QrCodeScanner

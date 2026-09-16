@@ -29,6 +29,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import {
   Select,
   SelectContent,
@@ -1151,43 +1152,63 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         </div>
       </div>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent
-          className="max-w-3xl gap-0 p-0 sm:max-w-3xl rounded-none max-h-[calc(100dvh-2rem)]"
-          disableAnimation
-        >
-          <DialogTitle className="sr-only">Quote details</DialogTitle>
-          {activeQuote && (
-            <QuoteDetail
-              quote={activeQuote}
-              items={localItems}
-              saving={saving}
-              savingNotes={savingNotes}
-              notes={draftNotes}
-              terms={defaults.terms}
-              editing={editingDetails}
-              editDraft={editDraft}
-              savingDetails={savingDetails}
-              organizations={organizations}
-              projectOptions={projectOptions}
-              onChange={updateItem}
-              onAdd={handleAddLineItem}
-              onRemove={handleRemoveLineItem}
-              onSave={handleSaveItems}
-              onExport={handleExportPdf}
-              onSend={openSendPreview}
-              onNotesChange={setDraftNotes}
-              onSaveNotes={handleSaveNotes}
-              onTermsChange={setTerms}
-              onStartEdit={handleStartEditDetails}
-              onCancelEdit={handleCancelEditDetails}
-              onEditDraftChange={handleEditDraftChange}
-              onSaveDetails={handleSaveDetails}
-              onDelete={() => confirmDeleteQuote(activeQuote)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <DialogTemplate
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title={
+          <div className="flex items-center gap-2">
+            <span>Quote {activeQuote?.id}</span>
+            {activeQuote && (
+              <Badge
+                variant={
+                  activeQuote.status === "Accepted"
+                    ? "default"
+                    : activeQuote.status === "Declined"
+                      ? "destructive"
+                      : activeQuote.status === "Sent"
+                        ? "secondary"
+                        : "outline"
+                }
+              >
+                {activeQuote.status}
+              </Badge>
+            )}
+          </div>
+        }
+        size="full"
+        className="sm:rounded-none max-w-3xl"
+        contentClassName="p-0"
+      >
+        {activeQuote && (
+          <QuoteDetail
+            quote={activeQuote}
+            items={localItems}
+            saving={saving}
+            savingNotes={savingNotes}
+            notes={draftNotes}
+            terms={defaults.terms}
+            editing={editingDetails}
+            editDraft={editDraft}
+            savingDetails={savingDetails}
+            organizations={organizations}
+            projectOptions={projectOptions}
+            onChange={updateItem}
+            onAdd={handleAddLineItem}
+            onRemove={handleRemoveLineItem}
+            onSave={handleSaveItems}
+            onExport={handleExportPdf}
+            onSend={openSendPreview}
+            onNotesChange={setDraftNotes}
+            onSaveNotes={handleSaveNotes}
+            onTermsChange={setTerms}
+            onStartEdit={handleStartEditDetails}
+            onCancelEdit={handleCancelEditDetails}
+            onEditDraftChange={handleEditDraftChange}
+            onSaveDetails={handleSaveDetails}
+            onDelete={() => confirmDeleteQuote(activeQuote)}
+          />
+        )}
+      </DialogTemplate>
 
       <BusinessProfileDialog
         open={businessDialogOpen}

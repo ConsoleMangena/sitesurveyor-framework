@@ -32,6 +32,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import {
   Select,
   SelectContent,
@@ -1430,46 +1431,66 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
         </div>
       </div>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent
-          className="max-w-3xl gap-0 p-0 sm:max-w-3xl rounded-none max-h-[calc(100dvh-2rem)]"
-          disableAnimation
-        >
-          <DialogTitle className="sr-only">Invoice details</DialogTitle>
-          {activeInvoice && (
-            <InvoiceDetail
-              key={activeInvoice.dbId}
-              invoice={activeInvoice}
-              items={localItems}
-              savingItems={savingItems}
-              business={profile}
-              theme={defaults.theme}
-              terms={defaults.terms}
-              editing={editingDetails}
-              editDraft={editDraft}
-              savingDetails={savingDetails}
-              organizations={organizations}
-              projectOptions={projectOptions}
-              onChange={updateItem}
-              onAdd={handleAddLineItem}
-              onRemove={handleRemoveLineItem}
-              onSaveItems={handleSaveItems}
-              onMarkPaid={markInvoicePaid}
-              onDelete={() => confirmDeleteInvoice(activeInvoice)}
-              onNotesChange={() => {
-                /* Notes are owned by InvoiceDetail's local state. */
-              }}
-              onSaveNotes={handleSaveNotes}
-              onTermsChange={setTerms}
-              onStartEdit={handleStartEditDetails}
-              onCancelEdit={handleCancelEditDetails}
-              onEditDraftChange={handleEditDraftChange}
-              onSaveDetails={handleSaveDetails}
-              onSend={sendInvoice}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <DialogTemplate
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title={
+          <div className="flex items-center gap-2">
+            <span>Invoice {activeInvoice?.id}</span>
+            {activeInvoice && (
+              <Badge
+                variant={
+                  activeInvoice.status === "Paid"
+                    ? "default"
+                    : activeInvoice.status === "Overdue"
+                      ? "destructive"
+                      : activeInvoice.status === "Sent"
+                        ? "secondary"
+                        : "outline"
+                }
+              >
+                {activeInvoice.status}
+              </Badge>
+            )}
+          </div>
+        }
+        size="full"
+        className="sm:rounded-none max-w-3xl"
+        contentClassName="p-0"
+      >
+        {activeInvoice && (
+          <InvoiceDetail
+            key={activeInvoice.dbId}
+            invoice={activeInvoice}
+            items={localItems}
+            savingItems={savingItems}
+            business={profile}
+            theme={defaults.theme}
+            terms={defaults.terms}
+            editing={editingDetails}
+            editDraft={editDraft}
+            savingDetails={savingDetails}
+            organizations={organizations}
+            projectOptions={projectOptions}
+            onChange={updateItem}
+            onAdd={handleAddLineItem}
+            onRemove={handleRemoveLineItem}
+            onSaveItems={handleSaveItems}
+            onMarkPaid={markInvoicePaid}
+            onDelete={() => confirmDeleteInvoice(activeInvoice)}
+            onNotesChange={() => {
+              /* Notes are owned by InvoiceDetail's local state. */
+            }}
+            onSaveNotes={handleSaveNotes}
+            onTermsChange={setTerms}
+            onStartEdit={handleStartEditDetails}
+            onCancelEdit={handleCancelEditDetails}
+            onEditDraftChange={handleEditDraftChange}
+            onSaveDetails={handleSaveDetails}
+            onSend={sendInvoice}
+          />
+        )}
+      </DialogTemplate>
 
       <ConfirmDialog
         open={deleteState.open}

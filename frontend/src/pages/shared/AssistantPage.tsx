@@ -21,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet.tsx";
 import PageLoader from "@/components/PageLoader.tsx";
 import { AiMessageText } from "./AiMessageText.tsx";
 import { messageMeta, showRowMeta } from "./messageMeta.ts";
@@ -477,35 +483,26 @@ export default function AssistantPage({
       )}
 
       {/* Mobile sidebar drawer */}
-        {sidebarOpen && (
-        <div className="fixed inset-0 z-[1300] lg:hidden">
-          <div
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden
-          />
-          <aside
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-border bg-card shadow-xl"
-            role="dialog"
-            aria-label="Chat history"
-          >
-            <div className="flex items-center justify-between px-4 pb-1 pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Chats
-              </p>
-              <button
-                type="button"
-                aria-label="Close chat history"
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-72 max-w-[85vw] p-0 flex flex-col [&>button]:hidden">
+          <SheetHeader className="flex flex-row items-center justify-between px-4 pb-1 pt-4 space-y-0 text-left border-b-0">
+            <SheetTitle className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Chats
+            </SheetTitle>
+            <button
+              type="button"
+              aria-label="Close chat history"
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="size-4" />
+            </button>
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden">
             {conversationList}
-          </aside>
-        </div>
-      )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Chat column */}
       <section className={`flex min-h-0 min-w-0 flex-1 flex-col ${embedded ? "gap-2.5" : "gap-4"}`}>

@@ -32,11 +32,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import {
   Select,
   SelectContent,
@@ -389,45 +385,64 @@ export function CadPlotDialog({
   const tb = opts.titleBlock;
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        className="w-[calc(100vw-1.5rem)]! max-w-none! max-h-none! h-[calc(100dvh-1.5rem)] gap-0 overflow-hidden p-0 sm:rounded-xl"
-        disableAnimation
-      >
-        <DialogTitle className="sr-only">{layoutName ?? "Plot layout"}</DialogTitle>
-
-        <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/[0.07] via-background to-background px-5 py-4 sm:px-6 sm:py-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Printer className="size-4" />
+    <DialogTemplate
+      open
+      onOpenChange={onClose}
+      title={
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="truncate">{layoutName ? `${layoutName} — paper space` : "Plot layout — printed format"}</span>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-auto shrink-0 font-normal">
+            <span className="rounded-full border bg-background/80 px-2.5 py-0.5 font-medium">
+              {result.paperW} × {result.paperH} mm
+            </span>
+            <span className="rounded-full border bg-primary/10 px-2.5 py-0.5 font-semibold text-primary">
+              1:{result.denominator}
+            </span>
+            {result.extentHa != null && (
+              <span className="hidden rounded-full border bg-muted/50 px-2.5 py-0.5 sm:inline">
+                extent {result.extentHa.toFixed(4)} ha
               </span>
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                  {layoutName ? `${layoutName} — paper space` : "Plot layout — printed format"}
-                </h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Configure the sheet and drag or wheel the preview to position the drawing.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="rounded-full border bg-background/80 px-2.5 py-0.5 font-medium">
-                {result.paperW} × {result.paperH} mm
-              </span>
-              <span className="rounded-full border bg-primary/10 px-2.5 py-0.5 font-semibold text-primary">
-                1:{result.denominator}
-              </span>
-              {result.extentHa != null && (
-                <span className="hidden rounded-full border bg-muted/50 px-2.5 py-0.5 sm:inline">
-                  extent {result.extentHa.toFixed(4)} ha
-                </span>
-              )}
-            </div>
+            )}
           </div>
         </div>
-
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+      }
+      description="Configure the sheet and drag or wheel the preview to position the drawing."
+      icon={<Printer className="size-4" />}
+      size="screen"
+      className="sm:rounded-none"
+      contentClassName="p-0 flex flex-1 min-h-0 overflow-hidden"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={handleExportSvg}
+          >
+            <Download size={13} /> Export SVG
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={handlePrint}
+          >
+            <Printer size={14} /> Print / PDF
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={onClose}
+          >
+            <X size={14} /> Close
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* ── Controls ─────────────────────────────────────────────── */}
           <ScrollArea className="w-80 shrink-0 border-r border-border/60 bg-muted/20">
             <div className="space-y-5 p-4">
@@ -712,38 +727,8 @@ export function CadPlotDialog({
               <Hand size={12} /> Drag or scroll to pan · Ctrl+Scroll to zoom
             </div>
           </div>
-        </div>
-
-        <div className="flex flex-col-reverse gap-2 border-t bg-muted/30 px-5 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={handleExportSvg}
-          >
-            <Download size={13} /> Export SVG
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={handlePrint}
-          >
-            <Printer size={14} /> Print / PDF
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={onClose}
-          >
-            <X size={14} /> Close
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </DialogTemplate>
   );
 }
 

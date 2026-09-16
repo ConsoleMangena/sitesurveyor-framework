@@ -9,11 +9,7 @@ import {
 import { FileText, Loader2, Search, Upload, FileInput, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogTemplate } from "@/components/templates/DialogTemplate";
 import { Input } from "@/components/ui/input";
 import { useAsyncAction } from "../../../../hooks/useAsyncAction.ts";
 import type { AttachmentRow } from "../../../../lib/repositories/attachments.ts";
@@ -139,140 +135,123 @@ export function CadImportDxfDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        className="max-w-2xl gap-0 p-0 sm:rounded-xl"
-        disableAnimation
-      >
-        <DialogTitle className="sr-only">Import DXF file</DialogTitle>
-
-        <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/[0.07] via-background to-background px-5 py-4 sm:px-6 sm:py-5">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <FileInput className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                Import DXF file
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Pick a DXF from your device or from workspace files. The drawing is
-                parsed locally and added to the current project.
-              </p>
-            </div>
-          </div>
+    <DialogTemplate
+      open={open}
+      onOpenChange={(v) => !v && onClose()}
+      title="Import DXF file"
+      description="Pick a DXF from your device or from workspace files. The drawing is parsed locally and added to the current project."
+      icon={<FileInput className="size-4" />}
+      size="xl"
+      className="sm:rounded-none"
+      footer={
+        <Button variant="ghost" size="sm" onClick={onClose} className="gap-2 sm:w-auto">
+          <X size={14} /> Close
+        </Button>
+      }
+    >
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search DXF files..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
-        <div className="space-y-4 px-5 py-5 sm:px-6">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search DXF files..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+        {error && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+            <Upload className="size-4 text-muted-foreground" />
+            Import from this device
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={localBusy}
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-2"
+            >
+              {localBusy ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Upload size={14} />
+              )}
+              Choose .dxf file
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".dxf"
+              className="hidden"
+              onChange={handleLocalImport}
             />
-          </div>
-
-          {error && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <div className="rounded-lg border bg-muted/30 p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
-              <Upload className="size-4 text-muted-foreground" />
-              Import from this device
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={localBusy}
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-2"
-              >
-                {localBusy ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Upload size={14} />
-                )}
-                Choose .dxf file
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".dxf"
-                className="hidden"
-                onChange={handleLocalImport}
-              />
-              <span className="text-xs text-muted-foreground">
-                Works offline too.
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Workspace files
+            <span className="text-xs text-muted-foreground">
+              Works offline too.
             </span>
-            <div className="h-px flex-1 bg-border" />
           </div>
+        </div>
 
-          <div className="max-h-72 overflow-auto rounded-lg border bg-card">
-            {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : filteredFiles.length === 0 ? (
-              <div className="px-3 py-10 text-center text-sm text-muted-foreground">
-                {isOffline
-                  ? "Workspace files are unavailable while offline. Import a local .dxf file above."
-                  : "No DXF files found in workspace files. Upload a .dxf file in File Manager first."}
-              </div>
-            ) : (
-              <ul className="divide-y">
-                {filteredFiles.map((file) => {
-                  const name = getFileName(file.storage_path);
-                  const busy = importingId === file.id;
-                  return (
-                    <li
-                      key={file.id}
-                      className="flex items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-muted/40"
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Workspace files
+          </span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <div className="max-h-72 overflow-auto rounded-lg border bg-card">
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredFiles.length === 0 ? (
+            <div className="px-3 py-10 text-center text-sm text-muted-foreground">
+              {isOffline
+                ? "Workspace files are unavailable while offline. Import a local .dxf file above."
+                : "No DXF files found in workspace files. Upload a .dxf file in File Manager first."}
+            </div>
+          ) : (
+            <ul className="divide-y">
+              {filteredFiles.map((file) => {
+                const name = getFileName(file.storage_path);
+                const busy = importingId === file.id;
+                return (
+                  <li
+                    key={file.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-muted/40"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-600">
+                        <FileText size={14} />
+                      </span>
+                      <span className="truncate text-sm" title={name}>
+                        {name}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => handleImport(file)}
+                      className="shrink-0"
                     >
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-600">
-                          <FileText size={14} />
-                        </span>
-                        <span className="truncate text-sm" title={name}>
-                          {name}
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => handleImport(file)}
-                        className="shrink-0"
-                      >
-                        {busy ? <Loader2 className="size-3.5 animate-spin" /> : "Import"}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+                      {busy ? <Loader2 className="size-3.5 animate-spin" /> : "Import"}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
-
-        <div className="flex flex-col-reverse gap-2 border-t bg-muted/30 px-5 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6">
-          <Button variant="ghost" size="sm" onClick={onClose} className="gap-2 sm:w-auto">
-            <X size={14} /> Close
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </DialogTemplate>
   );
 }
