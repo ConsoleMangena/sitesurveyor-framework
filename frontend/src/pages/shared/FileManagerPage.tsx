@@ -67,6 +67,8 @@ import {
 } from "@/components/ui/table";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { DialogTemplate } from "@/components/templates/DialogTemplate";
+import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
+import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -194,6 +196,8 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const versionUploadInputRef = useRef<HTMLInputElement | null>(null);
   const versionTargetRef = useRef<AttachmentRow | null>(null);
+  const deleteFileRef = useRef<AttachmentRow | null>(null);
+  const deleteState = useDialogState();
 
   const fetchFiles = useCallback(async () => {
     try {
@@ -1071,7 +1075,10 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => void handleSingleDelete(file)}
+                                  onClick={() => {
+                                    deleteFileRef.current = file;
+                                    deleteState.setOpen(true);
+                                  }}
                                   className="text-destructive focus:text-destructive"
                                 >
                                   <Trash2 size={14} className="mr-2" /> Move to trash
@@ -1083,7 +1090,10 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                                   <RotateCcw size={14} className="mr-2" /> Restore
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => void handleSingleDelete(file)}
+                                  onClick={() => {
+                                    deleteFileRef.current = file;
+                                    deleteState.setOpen(true);
+                                  }}
                                   className="text-destructive focus:text-destructive"
                                 >
                                   <Trash2 size={14} className="mr-2" /> Delete forever
@@ -1625,6 +1635,21 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           </div>
         </div>
       </DialogTemplate>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={deleteState.open}
+        onOpenChange={deleteState.setOpen}
+        title="Delete file"
+        description="This action cannot be undone."
+        confirmText="Delete"
+        destructive
+        onConfirm={() => {
+          deleteState.setOpen(false);
+          const file = deleteFileRef.current;
+          if (file) void handleSingleDelete(file);
+        }}
+      />
     </DashboardShell>
   );
 }
