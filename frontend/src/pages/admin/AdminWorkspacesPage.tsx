@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
+import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import {
   Table,
@@ -69,6 +71,7 @@ export default function AdminWorkspacesPage({
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const archiveState = useDialogState();
 
   const load = useCallback(async () => {
     if (!isPlatformAdmin) return;
@@ -130,7 +133,6 @@ export default function AdminWorkspacesPage({
     if (!selectedRow) return;
     const isArchived = !!selectedRow.archived_at;
     const verb = isArchived ? "Unarchive" : "Archive";
-    if (!window.confirm(`${verb} workspace "${selectedRow.name}"?`)) return;
 
     setArchiving(true);
     try {
@@ -146,6 +148,7 @@ export default function AdminWorkspacesPage({
       setError(err instanceof Error ? err.message : `Failed to ${verb.toLowerCase()} workspace.`);
     } finally {
       setArchiving(false);
+      archiveState.setOpen(false);
     }
   };
 
@@ -286,7 +289,7 @@ export default function AdminWorkspacesPage({
             {selectedRow && (
               <Button
                 variant={selectedRow.archived_at ? "default" : "outline"}
-                onClick={() => void handleArchiveToggle()}
+                onClick={() => archiveState.setOpen(true)}
                 disabled={archiving}
                 className="gap-2"
               >
@@ -394,6 +397,20 @@ export default function AdminWorkspacesPage({
           </div>
         ) : null}
       </DialogTemplate>
+
+      <ConfirmDialog
+        open={archiveState.open}
+        onOpenChange={archiveState.setOpen}
+        title={selectedRow?.archived_at ? "Unarchive workspace" : "Archive workspace"}
+        description={
+          selectedRow
+            ? `${selectedRow.archived_at ? "Unarchive" : "Archive"} workspace "${selectedRow.name}"?`
+            : undefined
+        }
+        confirmText={selectedRow?.archived_at ? "Unarchive" : "Archive"}
+        loading={archiving}
+        onConfirm={() => void handleArchiveToggle()}
+      />
 
       <SuccessDialog
         open={!!successMessage}

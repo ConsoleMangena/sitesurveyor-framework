@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
+import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import {
   Select,
@@ -65,6 +67,7 @@ export default function AdminUsersPage({
   const [detailLoading, setDetailLoading] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const toggleAdminState = useDialogState();
 
   const load = useCallback(async () => {
     if (!isPlatformAdmin) return;
@@ -118,14 +121,6 @@ export default function AdminUsersPage({
     if (!detailUser) return;
     const newVal = !detailUser.is_platform_admin;
     const action = newVal ? "grant" : "revoke";
-    if (
-      !window.confirm(
-        `${action.charAt(0).toUpperCase() + action.slice(1)} platform admin for ${
-          detailUser.full_name ?? detailUser.email ?? detailUser.id
-        }?`,
-      )
-    )
-      return;
 
     setToggling(true);
     try {
@@ -137,6 +132,7 @@ export default function AdminUsersPage({
       setError(err instanceof Error ? err.message : `Failed to ${action} platform admin.`);
     } finally {
       setToggling(false);
+      toggleAdminState.setOpen(false);
     }
   };
 
@@ -324,7 +320,7 @@ export default function AdminUsersPage({
             {detailUser && (
               <Button
                 variant={detailUser.is_platform_admin ? "outline" : "default"}
-                onClick={() => void handleToggleAdmin()}
+                onClick={() => toggleAdminState.setOpen(true)}
                 disabled={toggling}
                 className="gap-2"
               >
@@ -400,6 +396,24 @@ export default function AdminUsersPage({
           </div>
         )}
       </DialogTemplate>
+
+      <ConfirmDialog
+        open={toggleAdminState.open}
+        onOpenChange={toggleAdminState.setOpen}
+        title={
+          detailUser?.is_platform_admin ? "Revoke platform admin" : "Grant platform admin"
+        }
+        description={
+          detailUser
+            ? `${detailUser.is_platform_admin ? "Revoke" : "Grant"} platform admin for ${
+                detailUser.full_name ?? detailUser.email ?? detailUser.id
+              }?`
+            : undefined
+        }
+        confirmText={detailUser?.is_platform_admin ? "Revoke" : "Grant"}
+        loading={toggling}
+        onConfirm={() => void handleToggleAdmin()}
+      />
 
       <SuccessDialog
         open={!!successMessage}
