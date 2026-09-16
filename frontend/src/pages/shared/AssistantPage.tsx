@@ -8,6 +8,7 @@ import {
   Pencil,
   SendHorizontal,
   Trash2,
+  User,
   X,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select.tsx";
 import PageLoader from "@/components/PageLoader.tsx";
 import { AiMessageText } from "./AiMessageText.tsx";
+import { messageMeta, showRowMeta } from "./messageMeta.ts";
 import { parseAssistantBlocks } from "@/features/ai/assistantBlocks.ts";
 import {
   createAiConversation,
@@ -508,35 +510,30 @@ export default function AssistantPage({
       {/* Chat column */}
       <section className={`flex min-h-0 min-w-0 flex-1 flex-col ${embedded ? "gap-2.5" : "gap-4"}`}>
         {!embedded && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-9 shrink-0 lg:hidden"
-                aria-label="Open chat history"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <PanelLeft className="size-4" />
-              </Button>
-              <img
-                src="/logo.svg"
-                alt=""
-                aria-hidden="true"
-                className="app-logo size-9 shrink-0"
-              />
-              <div>
-                <h1 className="flex items-baseline gap-2 text-lg font-semibold text-foreground">
-                  SiteSurveyor
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    AI agent
-                  </span>
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  Your surveying reference point — reads and acts on workspace
-                  data
-                </p>
-              </div>
+          <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-3 py-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 shrink-0 rounded-none lg:hidden"
+              aria-label="Open chat history"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <PanelLeft className="size-4" />
+            </Button>
+            <div
+              aria-hidden
+              className="flex size-9 shrink-0 items-center justify-center bg-primary/10 text-primary"
+            >
+              <Bot className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold text-foreground">
+                SiteSurveyor AI agent
+              </h1>
+              <p className="text-[11px] text-muted-foreground">
+                Your surveying reference point — reads and acts on workspace
+                data
+              </p>
             </div>
           </div>
         )}
@@ -569,7 +566,7 @@ export default function AssistantPage({
         )}
 
         {error && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+          <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -629,7 +626,7 @@ export default function AssistantPage({
             </div>
           ) : (
             <div className="space-y-3">
-              {messages.map((message) => {
+              {messages.map((message, index) => {
                 const parsed =
                   message.role === "assistant"
                     ? parseAssistantBlocks(message.text)
@@ -661,33 +658,85 @@ export default function AssistantPage({
                 }
                 return (
                   <div key={message.id} className="space-y-1.5">
+                    {showRowMeta(message.role, messages[index - 1]?.role) && (
+                      <div
+                        className={`flex items-baseline gap-2 ${
+                          message.role === "user" ? "flex-row-reverse" : ""
+                        }`}
+                      >
+                        <span
+                          className={`font-semibold text-foreground/80 ${
+                            embedded ? "text-[11px]" : "text-xs"
+                          }`}
+                        >
+                          {messageMeta(message.role, message.created_at).label}
+                        </span>
+                        {messageMeta(message.role, message.created_at)
+                          .timeLabel && (
+                          <span
+                            className={`text-muted-foreground/70 ${
+                              embedded ? "text-[9px]" : "text-[10px]"
+                            }`}
+                          >
+                            {
+                              messageMeta(
+                                message.role,
+                                message.created_at,
+                              ).timeLabel
+                            }
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <div
-                      className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                      className={`flex gap-2.5 ${
+                        message.role === "user"
+                          ? "flex-row-reverse"
+                          : "justify-start"
+                      }`}
                     >
-                      {message.role === "assistant" && (
+                      {message.role === "assistant" ? (
                         <div
                           aria-hidden
-                          className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full self-start"
+                          className={`mt-1 flex shrink-0 items-center justify-center rounded-full border border-border/60 shadow-sm ${
+                            embedded ? "size-6" : "size-8"
+                          }`}
                           style={{
                             background: "var(--cad-accent-bg)",
                             color: "var(--cad-accent)",
                             flex: "0 0 auto",
                           }}
                         >
-                          <Bot className="size-3.5" />
+                          <Bot
+                            className={embedded ? "size-3.5" : "size-4"}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          aria-hidden
+                          className={`mt-1 flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-primary/10 text-primary shadow-sm ${
+                            embedded ? "size-6" : "size-8"
+                          }`}
+                        >
+                          <User
+                            className={embedded ? "size-3.5" : "size-4"}
+                          />
                         </div>
                       )}
                       <div
                         className={`${
-                          embedded ? "max-w-[calc(100%-2rem)] px-3 py-2 text-[13px]" : "max-w-[85%] px-3.5 py-2.5 text-sm"
-                        } leading-relaxed ${
+                          embedded
+                            ? "max-w-[calc(100%-2rem)] px-3 py-2 text-[13px]"
+                            : "max-w-[85%] px-3.5 py-2 text-sm"
+                        } leading-relaxed shadow-sm ${
                           message.role === "user"
-                            ? "whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary text-primary-foreground"
-                            : "rounded-2xl rounded-tl-sm border text-card-foreground"
+                            ? "whitespace-pre-wrap rounded-[16px_16px_0_16px] bg-primary text-primary-foreground"
+                            : "rounded-[16px_16px_16px_0] border text-card-foreground"
                         } ${
                           embedded && message.role === "assistant"
                             ? "border-[var(--cad-border)] bg-[var(--cad-bg)]"
-                            : "border-border/60 bg-muted/60"
+                            : "border-border/60 bg-muted"
                         }`}
                       >
                         {message.role === "assistant" ? (
@@ -696,7 +745,7 @@ export default function AssistantPage({
                           message.text
                         )}
                         {message.streaming && (
-                          <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-current align-middle" />
+                          <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-none bg-current align-middle" />
                         )}
                       </div>
                     </div>
@@ -708,7 +757,7 @@ export default function AssistantPage({
                     {/* Clarifying question with quick-reply options. */}
                     {parsed?.ask && !message.streaming && (
                       <div className={`flex ${embedded ? "justify-start" : "justify-start"}`}>
-                        <div className="max-w-[92%] rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
+                        <div className="max-w-[92%] rounded-none border border-primary/25 bg-primary/5 px-3 py-2">
                           <p className="text-xs font-medium text-card-foreground">
                             {parsed.ask.question}
                           </p>
@@ -719,7 +768,7 @@ export default function AssistantPage({
                                 type="button"
                                 disabled={streaming}
                                 onClick={() => void send(option)}
-                                className="rounded-full border border-border/70 bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground disabled:opacity-50"
+                                className="rounded-none border border-border/70 bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground disabled:opacity-50"
                               >
                                 {option}
                               </button>
@@ -737,20 +786,22 @@ export default function AssistantPage({
                   partial output exists. */}
               {streaming && !hasLiveText && (
                 <div className="flex justify-start gap-2">
-                  {embedded && (
+                  {
                     <div
                       aria-hidden
-                      className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full"
+                      className={`mt-1 flex shrink-0 items-center justify-center rounded-full border border-border/60 shadow-sm ${
+                        embedded ? "size-6" : "size-8"
+                      }`}
                       style={{
                         background: "var(--cad-accent-bg)",
                         color: "var(--cad-accent)",
                         flex: "0 0 auto",
                       }}
                     >
-                      <Bot className="size-3.5" />
+                      <Bot className={embedded ? "size-3.5" : "size-4"} />
                     </div>
-                  )}
-                  <div className={embedded ? "max-w-[calc(100%-2rem)] space-y-2.5 rounded-2xl rounded-tl-sm border border-[var(--cad-border)] bg-[var(--cad-bg)] px-3.5 py-3" : "max-w-[85%] space-y-2.5 rounded-lg border border-border/60 bg-muted/60 px-3.5 py-3"}>
+                  }
+                  <div className={embedded ? "max-w-[calc(100%-2rem)] space-y-2.5 rounded-[16px_16px_16px_0] border border-[var(--cad-border)] bg-[var(--cad-bg)] px-3.5 py-3" : "max-w-[85%] space-y-2.5 rounded-[16px_16px_16px_0] border border-border/60 bg-muted px-3.5 py-3 shadow-sm"}>
                     <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                       <Loader2 className="size-3.5 animate-spin" />
                       {activityLabel(activity)}
@@ -781,7 +832,7 @@ export default function AssistantPage({
             <Bot className={`size-3.5 shrink-0 text-muted-foreground ${embedded ? "text-[var(--cad-text-dim)]" : ""}`} />
             <Select value={selectedModel} onValueChange={handleModelChange}>
               <SelectTrigger
-                className={`w-auto min-w-[140px] gap-1.5 ${
+                className={`w-auto min-w-[140px] gap-1.5 rounded-none ${
                   embedded
                     ? "h-7 border-[var(--cad-border)] bg-[var(--cad-panel)] text-[11px] text-[var(--cad-text)]"
                     : "border-border/50 bg-muted/40 h-8 text-xs"
@@ -806,7 +857,11 @@ export default function AssistantPage({
           </div>
 
           <form
-            className="flex items-center gap-2"
+            className={`flex items-center gap-2 rounded-none border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15 ${
+              embedded
+                ? "border-[var(--cad-border)] bg-[var(--cad-bg)] focus-within:border-[var(--cad-accent)] focus-within:ring-[var(--cad-accent)]/30"
+                : ""
+            }`}
             onSubmit={(e) => {
               e.preventDefault();
               void send();
@@ -823,17 +878,19 @@ export default function AssistantPage({
                     : "Tell SiteSurveyor what to do…"
               }
               disabled={streaming}
-              className={`flex-1 ${
+              className={`flex-1 bg-transparent text-sm focus-visible:outline-hidden ${
                 embedded
-                  ? "h-9 border-[var(--cad-border)] bg-[var(--cad-bg)] text-[var(--cad-text)] placeholder:text-[var(--cad-text-dim)] focus-visible:ring-[var(--cad-accent)]/40"
-                  : "h-11"
+                  ? "h-7 text-[13px] text-[var(--cad-text)] placeholder:text-[var(--cad-text-dim)]"
+                  : "h-8"
               }`}
               aria-label="Message SiteSurveyor"
             />
             <Button
               type="submit"
               size="icon"
-              className={`shrink-0 ${embedded ? "size-9" : "size-11"}`}
+              className={`shrink-0 rounded-none ${
+                embedded ? "size-8" : "size-9"
+              }`}
               disabled={!draft.trim() || streaming}
               aria-label="Send message"
             >
@@ -849,9 +906,9 @@ export default function AssistantPage({
 /** Sidebar item styling: highlight the active chat, reveal actions on hover. */
 function cnSidebarItem(active: boolean): string {
   return [
-    "group flex items-center rounded-md text-sm",
+    "group flex items-center rounded-none text-sm",
     active
-      ? "bg-primary/10 text-foreground ring-1 ring-primary/20"
+      ? "bg-primary/10 text-foreground"
       : "text-muted-foreground hover:bg-muted hover:text-foreground",
   ].join(" ");
 }
