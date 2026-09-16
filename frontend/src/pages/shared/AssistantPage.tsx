@@ -39,6 +39,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   streaming?: boolean;
+  created_at?: string;
 }
 
 const SUGGESTIONS = [
@@ -176,6 +177,7 @@ export default function AssistantPage({
             id: nextId("h"),
             role: m.role,
             text: m.content,
+            created_at: m.created_at,
           })),
         );
         scrollToBottom();
@@ -275,7 +277,7 @@ export default function AssistantPage({
     setError(null);
     setMessages((prev) => [
       ...prev,
-      { id: nextId("u"), role: "user", text },
+      { id: nextId("u"), role: "user", text, created_at: new Date().toISOString() },
     ]);
     scrollToBottom();
 
@@ -300,7 +302,7 @@ export default function AssistantPage({
           if (!existing)
             return [
               ...prev,
-              { id: "live", role: "assistant", text: delta, streaming: true },
+              { id: "live", role: "assistant", text: delta, streaming: true, created_at: new Date().toISOString() },
             ];
           return prev.map((m) =>
             m.id === "live" ? { ...m, text: m.text + delta } : m,
