@@ -42,7 +42,8 @@ import { LineItemsEditor } from "@/components/finance/LineItemsEditor.tsx";
 import { DocumentThemeSelector } from "@/components/finance/DocumentThemeSelector.tsx";
 import { BusinessProfileDialog } from "@/components/finance/BusinessProfileDialog.tsx";
 import { SendPreviewDialog } from "@/components/finance/SendPreviewDialog.tsx";
-import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
+import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import { printDocument } from "@/lib/printDocument.ts";
 import { useBusinessProfile } from "@/lib/businessProfile.ts";
 import { useDocumentDefaults } from "@/lib/documentDefaults.ts";
@@ -481,7 +482,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
     expires_on: "",
   });
   const [savingDetails, setSavingDetails] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const deleteState = useDialogState();
   const [quoteToDelete, setQuoteToDelete] = useState<UiQuote | null>(null);
 
   const fetchQuotes = useCallback(async () => {
@@ -781,7 +782,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
 
   const confirmDeleteQuote = (quote: UiQuote) => {
     setQuoteToDelete(quote);
-    setDeleteConfirmOpen(true);
+    deleteState.setOpen(true);
   };
 
   const handleDeleteQuote = async () => {
@@ -792,12 +793,12 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         setActiveQuote(null);
       }
       setQuoteToDelete(null);
-      setDeleteConfirmOpen(false);
+      deleteState.setOpen(false);
       await fetchQuotes();
       setSuccessMessage("Quote deleted successfully.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete quote");
-      setDeleteConfirmOpen(false);
+      deleteState.setOpen(false);
     }
   };
 
@@ -1152,7 +1153,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent
-          className="max-w-3xl gap-0 p-0 sm:max-w-3xl sm:rounded-xl max-h-[calc(100dvh-2rem)]"
+          className="max-w-3xl gap-0 p-0 sm:max-w-3xl rounded-none max-h-[calc(100dvh-2rem)]"
           disableAnimation
         >
           <DialogTitle className="sr-only">Quote details</DialogTitle>
@@ -1206,25 +1207,15 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         />
       )}
 
-      <DialogTemplate
-        open={deleteConfirmOpen}
-        onOpenChange={setDeleteConfirmOpen}
-        title="Delete Quote?"
-        description={`This will permanently remove ${quoteToDelete?.id ?? "this quote"} and all its line items. This action cannot be undone.`}
-        size="sm"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteQuote}>
-              Delete
-            </Button>
-          </>
-        }
-      >
-        <></>
-      </DialogTemplate>
+      <ConfirmDialog
+        open={deleteState.open}
+        onOpenChange={deleteState.setOpen}
+        title="Delete quote"
+        description="This action cannot be undone."
+        confirmText="Delete"
+        destructive
+        onConfirm={() => void handleDeleteQuote()}
+      />
 
       <SuccessDialog
         open={!!successMessage}

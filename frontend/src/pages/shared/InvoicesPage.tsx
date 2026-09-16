@@ -23,7 +23,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
+import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import { PageForm } from "@/components/templates/PageForm.tsx";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import {
@@ -571,7 +572,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const deleteState = useDialogState();
   const [invoiceToDelete, setInvoiceToDelete] = useState<UiInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -949,7 +950,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
 
   const confirmDeleteInvoice = (invoice: UiInvoice) => {
     setInvoiceToDelete(invoice);
-    setDeleteConfirmOpen(true);
+    deleteState.setOpen(true);
   };
 
   const handleDeleteInvoice = async () => {
@@ -960,12 +961,12 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
         setActiveInvoice(null);
       }
       setInvoiceToDelete(null);
-      setDeleteConfirmOpen(false);
+      deleteState.setOpen(false);
       await fetchInvoices();
       setSuccessMessage("Invoice deleted successfully.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete invoice");
-      setDeleteConfirmOpen(false);
+      deleteState.setOpen(false);
     }
   };
 
@@ -1431,7 +1432,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent
-          className="max-w-3xl gap-0 p-0 sm:max-w-3xl sm:rounded-xl max-h-[calc(100dvh-2rem)]"
+          className="max-w-3xl gap-0 p-0 sm:max-w-3xl rounded-none max-h-[calc(100dvh-2rem)]"
           disableAnimation
         >
           <DialogTitle className="sr-only">Invoice details</DialogTitle>
@@ -1470,25 +1471,15 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
         </DialogContent>
       </Dialog>
 
-      <DialogTemplate
-        open={deleteConfirmOpen}
-        onOpenChange={setDeleteConfirmOpen}
-        title="Delete Invoice?"
-        description={`This will permanently remove ${invoiceToDelete?.id ?? "this invoice"} and all its line items. This action cannot be undone.`}
-        size="sm"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteInvoice}>
-              Delete
-            </Button>
-          </>
-        }
-      >
-        <></>
-      </DialogTemplate>
+      <ConfirmDialog
+        open={deleteState.open}
+        onOpenChange={deleteState.setOpen}
+        title="Delete invoice"
+        description="This action cannot be undone."
+        confirmText="Delete"
+        destructive
+        onConfirm={() => void handleDeleteInvoice()}
+      />
 
       <BusinessProfileDialog
         open={businessDialogOpen}
