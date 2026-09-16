@@ -1,0 +1,33 @@
+[package]
+name = "survey-wasm"
+version = "0.1.0"
+description = "wasm-bindgen wrapper exposing survey-core to the SiteSurveyor frontend."
+authors = ["SiteSurveyor"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+survey-core = { path = "../survey-core" }
+wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+
+# Smaller, faster panic handling in the browser.
+console_error_panic_hook = { version = "0.1", optional = true }
+
+[features]
+default = ["console_error_panic_hook"]
+
+# Note: release profile settings live in the workspace-root Cargo.toml so they
+# apply to all crates consistently (including this one and the main Tauri crate).
+
+[package.metadata.wasm-pack.profile.release]
+# The default `wasm-opt -O` pass on GitHub Actions fails validating the
+# post-MVP WebAssembly features (bulk memory, non-trapping float-to-int) that
+# the Rust wasm32 target now emits by default. Disabling wasm-opt keeps the
+# build green; Rust's release profile (opt-level=s, lto) still optimizes the
+# generated module.
+wasm-opt = false

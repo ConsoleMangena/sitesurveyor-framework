@@ -1,0 +1,537 @@
+name: Build & Release
+
+on:
+  push:
+    branches: ["main"]
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+jobs:
+  cleanup-release:
+    name: Clean old releases
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Delete previous releases
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching existing releases..."
+          tags=$(gh release list --limit 100 --json tagName -q '.[].tagName')
+          if [ -z "$tags" ]; then
+            echo "No existing releases to delete."
+          else
+            for tag in $tags; do
+              echo "Deleting release and tag: $tag"
+              gh release delete "$tag" --yes --cleanup-tag || true
+            done
+          fi
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes
+
+  build:
+    name: Desktop (${{ matrix.target || matrix.platform }})
+    needs: cleanup-release
+    if: ${{ needs.cleanup-release.result == 'success' || needs.cleanup-release.result == 'skipped' }}
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-14
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - platform: macos-14
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - platform: ubuntu-22.04
+            target: ""
+            args: ""
+          - platform: windows-latest
+            target: ""
+            args: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsqlite3-dev
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: npm-${{ matrix.platform }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: npm-${{ matrix.platform }}-
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/target
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ matrix.platform }}-${{ matrix.target || 'default' }}-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: cargo-${{ matrix.platform }}-${{ matrix.target || 'default' }}-
+
+      - name: Cache GDAL SDK download
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: backend/gdal-sdk
+          key: gdal-sdk-${{ runner.os }}-${{ hashFiles('scripts/download-gdal.mjs') }}
+          restore-keys: gdal-sdk-${{ runner.os }}-
+
+      - name: Prepare Windows GDAL SDK
+        if: runner.os == 'Windows'
+        shell: bash
+        run: node scripts/download-gdal.mjs --if-missing
+
+      - name: Install frontend dependencies
+        run: npm ci --legacy-peer-deps
+        working-directory: frontend
+
+      - name: Write frontend .env
+        shell: bash
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          : "${VITE_SUPABASE_URL:?VITE_SUPABASE_URL secret is not set}"
+          : "${VITE_SUPABASE_ANON_KEY:?VITE_SUPABASE_ANON_KEY secret is not set}"
+          {
+            printf 'VITE_SUPABASE_URL=%s\n' "$VITE_SUPABASE_URL"
+            printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_ANON_KEY"
+          } > .env
+
+      - name: Detect Apple signing secrets
+        id: apple
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          if [ -n "$CERT" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          CERT: ${{ secrets.APPLE_CERTIFICATE }}
+
+      - name: Build Tauri app (with Apple signing)
+        if: runner.os == 'macOS' && steps.apple.outputs.enabled == 'true'
+        shell: bash
+        working-directory: backend
+        run: npx --prefix ../frontend tauri build ${{ matrix.args }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Build Tauri app (unsigned)
+        if: steps.apple.outputs.enabled != 'true'
+        shell: bash
+        working-directory: backend
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            npm run tauri:build:win -- ${{ matrix.args }}
+          else
+            node ../frontend/node_modules/@tauri-apps/cli/tauri.js build ${{ matrix.args }}
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GDAL_HOME: ${{ runner.os == 'Windows' && format('{0}/backend/gdal-sdk', github.workspace) || '' }}
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          files=()
+          case "$RUNNER_OS" in
+            macOS)
+              files=(backend/target/${{ matrix.target }}/release/bundle/dmg/*.dmg)
+              ;;
+            Linux)
+              files=(backend/target/release/bundle/deb/*.deb backend/target/release/bundle/appimage/*.AppImage backend/target/release/bundle/rpm/*.rpm)
+              ;;
+            Windows)
+              files=(backend/target/release/bundle/nsis/*.exe backend/target/release/bundle/msi/*.msi)
+              ;;
+          esac
+          if [ ${#files[@]} -gt 0 ]; then
+            echo "Uploading ${#files[@]} asset(s): ${files[*]}"
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          else
+            echo "No release assets found; skipping upload."
+          fi
+
+  build-android:
+    name: Android (APK + AAB)
+    needs: cleanup-release
+    if: ${{ needs.cleanup-release.result == 'success' || needs.cleanup-release.result == 'skipped' }}
+    runs-on: ubuntu-latest
+    env:
+      # Mobile build flags:
+      # - The native Rust backend already includes survey-core geometry commands,
+      #   so the WASM bundle is pure duplication -> disable it.
+      # - CAD / 3D viewport is not usable on phone screens -> hide the Projects view.
+      VITE_DISABLE_WASM: true
+      VITE_MOBILE_BUILD: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK (with retry)
+        run: |
+          set -e
+          NDK_PKG="ndk;27.0.12077973"
+          for i in 1 2 3; do
+            echo "Attempt $i: installing $NDK_PKG ..."
+            rm -rf "$ANDROID_HOME/ndk/27.0.12077973"
+            rm -rf "$ANDROID_HOME/ndk-bundle"
+            rm -rf "$HOME/.android/cache"
+            if sdkmanager --install "$NDK_PKG"; then
+              echo "NDK installed successfully."
+              exit 0
+            fi
+            echo "SDK manager failed; waiting 15s before retry..."
+            sleep 15
+          done
+          echo "ERROR: failed to install $NDK_PKG after 3 attempts."
+          exit 1
+
+      - name: Setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Only build the ABIs we actually ship (drops x86 / x86_64 emulator slices
+          # from the APK/AAB). Most real Android devices use arm64-v8a; armv7 covers
+          # older 32-bit phones.
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: npm-android-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: npm-android-
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/target
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-android-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: cargo-android-
+
+      - name: Install frontend dependencies
+        run: npm ci --legacy-peer-deps
+        working-directory: frontend
+
+      - name: Write frontend .env
+        shell: bash
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          : "${VITE_SUPABASE_URL:?VITE_SUPABASE_URL secret is not set}"
+          : "${VITE_SUPABASE_ANON_KEY:?VITE_SUPABASE_ANON_KEY secret is not set}"
+          {
+            printf 'VITE_SUPABASE_URL=%s\n' "$VITE_SUPABASE_URL"
+            printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_ANON_KEY"
+          } > .env
+
+      - name: Initialize Android project
+        working-directory: backend
+        run: npx --prefix ../frontend tauri android init --ci
+
+      - name: Apply SiteSurveyor Android launcher icons
+        run: cp -rf backend/icons/android/* backend/gen/android/app/src/main/res/ || true
+
+      - name: Bump minSdk to 26
+        working-directory: backend
+        run: |
+          python3 -c "
+          import re, os
+          gradle_file = os.path.join('gen/android', 'app', 'build.gradle.kts')
+          if os.path.exists(gradle_file):
+              with open(gradle_file, 'r') as f:
+                  c = f.read()
+              c = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 26', c)
+              with open(gradle_file, 'w') as f:
+                  f.write(c)
+              print('Updated minSdk to 26 in build.gradle.kts')
+          else:
+              gradle_file = os.path.join('gen/android', 'app', 'build.gradle')
+              if os.path.exists(gradle_file):
+                  with open(gradle_file, 'r') as f:
+                      c = f.read()
+                  c = re.sub(r'minSdk\s+\d+', 'minSdk 26', c)
+                  with open(gradle_file, 'w') as f:
+                      f.write(c)
+                  print('Updated minSdk to 26 in build.gradle')
+          "
+
+      - name: Shrink Android release package
+        working-directory: backend
+        run: |
+          python3 -c "
+          import re, os
+
+          # ── Gradle: enable minification / resource shrinking / ABI filter ─────
+          gradle_file = os.path.join('gen/android', 'app', 'build.gradle.kts')
+          kts = True
+          if not os.path.exists(gradle_file):
+              gradle_file = os.path.join('gen/android', 'app', 'build.gradle')
+              kts = False
+
+          with open(gradle_file, 'r') as f:
+              c = f.read()
+
+          if kts:
+              c = re.sub(
+                  r'isMinifyEnabled\s*=\s*false',
+                  'isMinifyEnabled = true\n            isShrinkResources = true',
+                  c,
+              )
+              if 'abiFilters' not in c:
+                  c = re.sub(
+                      r'^(\s*)defaultConfig\s*\{',
+                      r'\1defaultConfig {\n\1    ndk {\n\1        abiFilters += setOf(\"arm64-v8a\", \"armeabi-v7a\")\n\1    }',
+                      c,
+                      count=1,
+                      flags=re.MULTILINE,
+                  )
+          else:
+              c = re.sub(
+                  r'minifyEnabled\s+false',
+                  'minifyEnabled true\n            shrinkResources true',
+                  c,
+              )
+              if 'abiFilters' not in c:
+                  c = re.sub(
+                      r'^(\s*)defaultConfig\s*\{',
+                      r'\1defaultConfig {\n\1    ndk {\n\1        abiFilters \"arm64-v8a\", \"armeabi-v7a\"\n\1    }',
+                      c,
+                      count=1,
+                      flags=re.MULTILINE,
+                  )
+
+          with open(gradle_file, 'w') as f:
+              f.write(c)
+          print(f'Shrink/ABI config written to {gradle_file}')
+
+          # ── Manifest: keep native libs compressed inside the APK/AAB ──────────
+          manifest_file = os.path.join('gen/android', 'app', 'src', 'main', 'AndroidManifest.xml')
+          if os.path.exists(manifest_file):
+              with open(manifest_file, 'r') as f:
+                  m = f.read()
+              if 'extractNativeLibs' not in m:
+                  m = re.sub(
+                      r'<application\b',
+                      '<application android:extractNativeLibs=\"true\"',
+                      m,
+                      count=1,
+                  )
+                  with open(manifest_file, 'w') as f:
+                      f.write(m)
+                  print(f'extractNativeLibs enabled in {manifest_file}')
+          "
+
+      - name: Prepare signing flag
+        id: signing
+        shell: bash
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Decode release keystore
+        if: steps.signing.outputs.enabled == 'true'
+        shell: bash
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > /tmp/release.keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Configure Android signing
+        if: steps.signing.outputs.enabled == 'true'
+        shell: bash
+        working-directory: backend
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          printf '\nsigning.storeFile=/tmp/release.keystore\nsigning.storePassword=%s\nsigning.keyAlias=%s\nsigning.keyPassword=%s\n' \
+            "$KS_PASS" "$KEY_ALIAS" "$KEY_PASS" >> gen/android/gradle.properties
+
+      - name: Inject signing into build.gradle
+        if: steps.signing.outputs.enabled == 'true'
+        shell: bash
+        working-directory: backend
+        run: |
+          python3 -c "
+          import re, os
+          gradle_file = os.path.join('gen/android', 'app', 'build.gradle.kts')
+          if not os.path.exists(gradle_file):
+              gradle_file = os.path.join('gen/android', 'app', 'build.gradle')
+
+          with open(gradle_file, 'r') as f:
+              c = f.read()
+
+          if 'build.gradle.kts' in gradle_file:
+              if 'signingConfigs' not in c:
+                  c = c.replace(
+                      'buildTypes {',
+                      '''signingConfigs {
+                  create(\"release\") {
+                      storeFile = file(project.property(\"signing.storeFile\") as String)
+                      storePassword = project.property(\"signing.storePassword\") as String
+                      keyAlias = project.property(\"signing.keyAlias\") as String
+                      keyPassword = project.property(\"signing.keyPassword\") as String
+                  }
+              }
+              buildTypes {''',
+                      1,
+                  )
+              c = re.sub(
+                  r'(getByName\(\"release\"\)\s*\{)([^}]*?)(isMinifyEnabled)',
+                  r'\1\n            signingConfig = signingConfigs.getByName(\"release\")\n            \2\3',
+                  c,
+                  count=1,
+              )
+          else:
+              if 'signingConfigs' not in c:
+                  c = c.replace(
+                      'buildTypes {',
+                      'signingConfigs {\n        release {\n            storeFile file(signing.storeFile)\n            storePassword signing.storePassword\n            keyAlias signing.keyAlias\n            keyPassword signing.keyPassword\n        }\n    }\n    buildTypes {',
+                      1,
+                  )
+              c = re.sub(
+                  r'(release\s*\{[^}]*?)(minify)',
+                  r'\1signingConfig signingConfigs.release\n            \2',
+                  c,
+                  count=1,
+              )
+
+          with open(gradle_file, 'w') as f:
+              f.write(c)
+          print(f'Signing config injected into {gradle_file}')
+          "
+
+      - name: Inject debugSymbolLevel into build.gradle
+        shell: bash
+        working-directory: backend
+        run: |
+          python3 -c "
+          import re, os
+          gradle_file = os.path.join('gen/android', 'app', 'build.gradle.kts')
+          if not os.path.exists(gradle_file):
+              gradle_file = os.path.join('gen/android', 'app', 'build.gradle')
+
+          with open(gradle_file, 'r') as f:
+              c = f.read()
+
+          if 'build.gradle.kts' in gradle_file:
+              c = re.sub(
+                  r'(getByName\(\"release\"\)\s*\{)',
+                  r'\1\n            ndk { debugSymbolLevel = \"FULL\" }\n',
+                  c
+              )
+          else:
+              c = re.sub(
+                  r'(release\s*\{)',
+                  r'\1\n            ndk { debugSymbolLevel = \"FULL\" }\n',
+                  c
+              )
+
+          with open(gradle_file, 'w') as f:
+              f.write(c)
+          print(f'debugSymbolLevel injected into {gradle_file}')
+          "
+
+      - name: Build Android artifacts
+        working-directory: backend
+        run: npx --prefix ../frontend tauri android build --apk --aab
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+
+      - name: Package native debug symbols
+        shell: bash
+        working-directory: backend
+        run: |
+          mkdir -p arm64-v8a
+          cp target/aarch64-linux-android/release/lib*.so arm64-v8a/ 2>/dev/null || true
+          zip -r native-debug-symbols.zip arm64-v8a
+
+      - name: Upload Android release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          files=()
+          while IFS= read -r -d '' f; do files+=("$f"); done < <(find backend/gen/android/app/build/outputs/apk -name '*.apk' -print0 2>/dev/null)
+          while IFS= read -r -d '' f; do files+=("$f"); done < <(find backend/gen/android/app/build/outputs/bundle -name '*.aab' -print0 2>/dev/null)
+          [ -f backend/native-debug-symbols.zip ] && files+=("backend/native-debug-symbols.zip")
+          if [ ${#files[@]} -gt 0 ]; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          fi

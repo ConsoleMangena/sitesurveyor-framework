@@ -1,0 +1,50 @@
+{
+  "env": {
+    "vars": {
+      "SITESURVEYOR_SUPABASE_URL": "${SUPABASE_URL}",
+      "SITESURVEYOR_SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}",
+      "SITESURVEYOR_WORKSPACE_ID": "${SITESURVEYOR_WORKSPACE_ID:-}"
+    }
+  },
+  "models": {
+    "providers": {
+      "nararouter": {
+        "baseUrl": "https://router.bynara.id/v1",
+        "apiKey": {
+          "source": "env",
+          "provider": "env",
+          "id": "NARAROUTER_API_KEY"
+        },
+        "auth": "api-key",
+        "api": "openai-completions"
+      }
+    }
+  },
+  "mcp": {
+    "servers": {
+      "sitesurveyor": {
+        "command": "node",
+        "args": ["./sitesurveyor-mcp/dist/index.js"],
+        "cwd": ".",
+        "transport": "stdio",
+        "env": {
+          "SUPABASE_URL": "${SITESURVEYOR_SUPABASE_URL}",
+          "SUPABASE_SERVICE_ROLE_KEY": "${SITESURVEYOR_SUPABASE_SERVICE_ROLE_KEY}",
+          "SITESURVEYOR_WORKSPACE_ID": "${SITESURVEYOR_WORKSPACE_ID}"
+        }
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "."
+    },
+    "entries": {
+      "sitesurveyor": {
+        "name": "SiteSurveyor",
+        "description": "SiteSurveyor surveying project assistant. Reads and writes site data, inspects CAD drawings, runs business workflows, and keeps conversation memory - always under user confirmation for destructive writes. Configured for the OpenClaw Gateway (opens in Control UI); headless turns use agent exec with the same config.",
+        "model": "laguna-s-2.1"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "sitesurveyorsdk",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix frontend run build",
+    "dev": "npm --prefix frontend run dev",
+    "lint": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "test": "npm --prefix frontend run test",
+    "tauri:dev": "npm --prefix backend run tauri:dev",
+    "tauri:dev:win": "npm --prefix backend run tauri:dev:win",
+    "tauri:build:win": "npm --prefix backend run tauri:build:win",
+    "supabase": "cd backend && npx supabase",
+    "db:push": "cd backend && npx supabase db push",
+    "db:reset": "cd backend && npx supabase db reset",
+    "functions:deploy": "cd backend && npx supabase functions deploy",
+    "ai:eval": "node scripts/ai-eval/run.ts",
+    "ai:skills-check": "node scripts/ai-eval/skills-check.ts",
+    "ai:memory-check": "node scripts/ai-eval/memory-check.ts",
+    "ai:models-check": "node scripts/ai-eval/models-check.ts"
+  },
+  "devDependencies": {
+    "supabase": "^2.98.0"
+  }
+}

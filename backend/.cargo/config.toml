@@ -1,0 +1,10 @@
+# Pin the GDAL prebuilt bindings version for gdal-sys.
+#
+# The project may be built against a newer GDAL runtime (e.g. OSGeo4W ships
+# GDAL 3.13.x) than the prebuilt bindings bundled in gdal-sys. The GDAL C API
+# is backward-compatible, so compiling against the 3.12 bindings and running
+# against a newer runtime is safe for the subset of GDAL used by this app.
+#
+# Environment variables override this value if a different pin is needed.
+[env]
+GDAL_VERSION = "3.12.0"

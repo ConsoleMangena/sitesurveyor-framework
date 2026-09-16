@@ -1,0 +1,487 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   SiteSurveyor — Supabase-style design tokens
+   Light (default) + dark (`.dark`, `[data-theme="dark"]`)  console.
+   ───────────────────────────────────────────────────────────── */
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text-h);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-h);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text-h);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-contrast);
+  --color-secondary: var(--surface-muted);
+  --color-secondary-foreground: var(--text-h);
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--text);
+  --color-accent: var(--surface-muted);
+  --color-accent-foreground: var(--text-h);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+  --color-chart-1: var(--accent);
+  --color-chart-2: #0ea5e9;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #8b5cf6;
+  --color-chart-5: #f2555a;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+:root {
+  /* Base text / bg */
+  --text: #4c5350;
+  --text-h: #10130f;
+  --bg: #fbfbfa;
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-muted: #f3f4f3;
+
+  /* Borders */
+  --border: #e2e4e2;
+  --border-heavy: #cdd1cd;
+
+  /* Brand — surveyor red (matches the logo) */
+  --code-bg: #f6f1f0;
+  --accent: #d92d20;
+  --accent-contrast: #ffffff;
+  --accent-bg: rgba(217, 45, 32, 0.1);
+  --accent-border: rgba(217, 45, 32, 0.42);
+  --accent-purple: #8b5cf6;
+  --accent-purple-bg: rgba(139, 92, 246, 0.1);
+  --social-bg: rgba(246, 241, 240, 0.5);
+
+  /* Semantic status colors */
+  --color-error: #cc2435;
+  --color-error-bg: #fdebec;
+  --color-error-border: #f8c2c7;
+  --color-success: #0c8f5d;
+  --color-success-bg: #e6f6ee;
+  --color-success-border: #b5e4cd;
+  --color-warning: #b25a09;
+  --color-warning-bg: #fdf3e3;
+  --color-warning-border: #f3d9ab;
+  --color-info: #0563c6;
+  --color-info-bg: #e8f0fc;
+  --color-info-border: #bcd5f5;
+
+  /* Text */
+  --placeholder: #8a918c;
+  --text-secondary: #4c5350;
+  --text-muted: #6d7570;
+  --muted-foreground: var(--text-muted);
+
+  /* Monochromatic extras used by charts / CAD */
+  --background: var(--bg);
+  --foreground: var(--text-h);
+  --color-count: var(--accent);
+  --cad-text-dim: #5f6a63;
+
+  /* Radii — Supabase: soft, console-grade curvature */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Spacing */
+  --panel-pad: 16px;
+  --panel-pad-lg: 20px;
+
+  /* Tables */
+  --table-head-bg: var(--surface-muted);
+  --table-row-hover-bg: var(--surface-muted);
+
+  /* Shadows */
+  --shadow:
+    rgba(15, 23, 20, 0.08) 0 10px 15px -3px, rgba(15, 23, 20, 0.04) 0 4px 6px -2px;
+  --shadow-sm: rgba(15, 23, 20, 0.04) 0 1px 2px;
+  --shadow-hover: rgba(15, 23, 20, 0.08) 0 8px 24px;
+  --focus-ring: 0 0 0 4px var(--accent-bg);
+
+  /* Motion */
+  --motion-fast: 160ms;
+  --motion-base: 240ms;
+  --motion-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --lift-sm: translateY(-1px) scale(1.01);
+  --lift-md: translateY(-3px) scale(1.015);
+
+  /* Typography — Inter */
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, Arial, sans-serif;
+  --heading: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  font: 14px/150% var(--sans);
+  letter-spacing: 0.01em;
+  color-scheme: light;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 15px;
+  }
+}
+
+/* ── Dark console theme ── */
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --text: #9aa39c;
+  --text-h: #eef0ee;
+  --bg: #0d0f0e;
+
+  --surface: #15171a;
+  --surface-muted: #1d2023;
+
+  --border: #262a28;
+  --border-heavy: #33383a;
+
+  --code-bg: #201a1a;
+  --accent: #ff6b6b;
+  --accent-contrast: #1f0a0a;
+  --accent-bg: rgba(255, 107, 107, 0.12);
+  --accent-border: rgba(255, 107, 107, 0.4);
+  --accent-purple: #a78bfa;
+  --accent-purple-bg: rgba(167, 139, 250, 0.12);
+  --social-bg: rgba(32, 26, 26, 0.6);
+
+  --color-error: #f2555a;
+  --color-error-bg: #2a1416;
+  --color-error-border: #5a2327;
+  --color-success: #55d79e;
+  --color-success-bg: #12241b;
+  --color-success-border: #1f5237;
+  --color-warning: #f0a25c;
+  --color-warning-bg: #291d12;
+  --color-warning-border: #5a3c1c;
+  --color-info: #63a6f0;
+  --color-info-bg: #12202f;
+  --color-info-border: #1f3a5c;
+
+  --placeholder: #5f6762;
+  --text-secondary: #9aa39c;
+  --text-muted: #707a73;
+  --muted-foreground: var(--text-muted);
+
+  --background: var(--bg);
+  --foreground: var(--text-h);
+  --color-count: var(--accent);
+  --cad-text-dim: #8a948d;
+
+  --table-head-bg: var(--surface-muted);
+  --table-row-hover-bg: #22262a;
+
+  --shadow:
+    rgba(0, 0, 0, 0.5) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
+  --shadow-sm: rgba(0, 0, 0, 0.35) 0 1px 2px;
+  --shadow-hover: rgba(0, 0, 0, 0.55) 0 8px 24px;
+  --focus-ring: 0 0 0 4px var(--accent-bg);
+}
+
+#root {
+  max-width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+@keyframes ui-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-fade-in-scale {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ui-pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 42%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 6px color-mix(in oklab, var(--accent) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 0%, transparent);
+  }
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: 23px;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+h2 {
+  font-size: 18px;
+  line-height: 118%;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 6px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 14px;
+  line-height: 135%;
+  padding: 2px 6px;
+  background: var(--code-bg);
+}
+
+/* ── Global Form Elements ── */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.form-label-optional {
+  font-weight: 400;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.input-field {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text-h);
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+}
+
+/* Add custom select chevron */
+select.input-field {
+  padding-right: 36px;
+  background-image: url('data:image/svg+xml;utf8,<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%236d7570" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.input-field::placeholder {
+  color: var(--placeholder);
+}
+
+textarea.input-field {
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── App Logo Utilities ── */
+.app-logo {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* Ensure splash logo looks great on all screens */
+.splash-screen .splash-logo-wrap {
+  --splash-logo-size: clamp(56px, 12vw, 84px);
+}
+
+.splash-screen .splash-logo {
+  width: var(--splash-logo-size);
+  height: var(--splash-logo-size);
+  max-width: 84px;
+  max-height: 84px;
+  object-fit: contain;
+  display: block;
+}
+
+/* ── Professional UI polish layer ── */
+html {
+  background: var(--bg);
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 7%, transparent), transparent 34rem),
+    var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 24%, transparent);
+  color: var(--text-h);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+.input-field:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.input-field {
+  min-height: 40px;
+  border-color: var(--border);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--text-h) 0.04, transparent);
+}
+
+.input-field:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
+}
+
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.input-field:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+h1,
+h2 {
+  font-weight: 650;
+}
+
+h1 {
+  font-size: clamp(22px, 2vw, 28px);
+  letter-spacing: -0.04em;
+}
+
+h2 {
+  letter-spacing: -0.03em;
+}
+
+/* ── Browser surfaces come from the palette, not the browser ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-heavy) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-heavy);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+  background-clip: content-box;
+}
+
+/* mapcn: maplibre chrome themed via shadcn tokens */
+@layer base {
+  .maplibregl-popup-content {
+    @apply bg-transparent! shadow-none! p-0! rounded-none!;
+  }
+  .maplibregl-popup-tip {
+    @apply hidden!;
+  }
+  .maplibregl-ctrl-attrib {
+    @apply bg-background! text-muted-foreground! border-border! rounded-md! border! shadow-sm!;
+  }
+  .maplibregl-ctrl-attrib a {
+    @apply text-muted-foreground!;
+  }
+  .maplibregl-ctrl-attrib a:hover {
+    @apply text-foreground!;
+  }
+  .maplibregl-ctrl-attrib-button {
+    @apply bg-transparent! dark:invert;
+  }
+}

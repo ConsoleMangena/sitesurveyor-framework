@@ -1,0 +1,24 @@
+{
+  "name": "sitesurveyor-mcp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SiteSurveyor MCP server — exposes the SiteSurveyor AI agent's data, CAD, memory and workflow tools to OpenClaw and any MCP-capable agent runtime via stdio.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -1,0 +1,277 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Admin-template theme tokens scoped to the CAD workspace.
+   These override the app's default shadcn colour variables so that dialogs,
+   sidebars, cards and form controls inside the CAD use a coherent light
+   palette while the drawing canvas keeps its own CAD styles.
+
+   ✔ LIGHT MODE ONLY — the CAD workspace is always light for drawing contrast.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.cad-admin-scope {
+  /* Light theme for CAD readability */
+  --background: #f3f5f7;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #1473e6;
+  --primary-hover: #0f66d1;
+  --primary-active: #0d56b8;
+  --primary-foreground: #ffffff;
+  --secondary: #e9edf1;
+  --secondary-foreground: #0f172a;
+  --muted: #e9edf1;
+  --muted-foreground: #64748b;
+  /* shadcn accent utilities map to the CAD blue */
+  --accent: #1473e6;
+  --accent-bg: rgba(20, 115, 230, 0.1);
+  --accent-foreground: #ffffff;
+  --destructive: #d32f2f;
+  --destructive-foreground: #ffffff;
+  --border: rgba(15, 23, 42, 0.1);
+  --input: rgba(15, 23, 42, 0.07);
+  --ring: 0 0 0 2px rgba(20, 115, 230, 0.3);
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.375rem;
+
+  /* Elevation + motion */
+  --cad-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --cad-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.1), 0 1px 2px rgba(15, 23, 42, 0.06);
+  --cad-shadow-lg: 0 20px 40px -12px rgba(15, 23, 42, 0.22), 0 8px 16px -8px rgba(15, 23, 42, 0.12);
+  --cad-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* CAD chrome surfaces (also used by CAD dialogs portaled outside the shell) */
+  --cad-bg: #f3f5f7;
+  --cad-bg-2: #ffffff;
+  --cad-panel: #e9edf1;
+  --cad-panel-2: #dde3e9;
+  --cad-border: rgba(15, 23, 42, 0.1);
+  --cad-border-2: rgba(15, 23, 42, 0.18);
+  --cad-text: #2f3a45;
+  --cad-text-dim: #64748b;
+  --cad-text-hi: #0f172a;
+  --cad-accent: #1473e6;
+  --cad-accent-bg: rgba(20, 115, 230, 0.1);
+  --cad-canvas: #ffffff;
+
+  /* Reference existing app fonts */
+  --font-sans: Manrope, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-heading: Manrope, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/**
+ * CAD declares many of its own surface tokens on .cad-workspace-shell.
+ * Rebind them here so the whole workspace (top bar, right panel, canvas grid)
+ * follows the scoped light palette.
+ */
+.cad-admin-scope .cad-workspace-shell {
+  --cad-bg: #f3f5f7;
+  --cad-bg-2: #ffffff;
+  --cad-panel: #e9edf1;
+  --cad-panel-2: #dde3e9;
+  --cad-border: rgba(15, 23, 42, 0.1);
+  --cad-border-2: rgba(15, 23, 42, 0.18);
+  --cad-text: #2f3a45;
+  --cad-text-dim: #64748b;
+  --cad-text-hi: #0f172a;
+  --cad-accent: #1473e6;
+  --cad-accent-bg: rgba(20, 115, 230, 0.1);
+  --cad-canvas: #ffffff;
+  --cad-grid: #dde3ea;
+  --cad-grid-major: #c9d2dc;
+  --cad-error: #d32f2f;
+  --cad-ok: #2e7d32;
+}
+
+/* ── Dialog chrome (prompt/confirm/select/alert, plot, settings, import) ─── */
+
+.cad-admin-scope [data-slot="dialog-content"] {
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.11);
+  box-shadow: var(--cad-shadow-lg);
+  background: var(--card);
+  outline: none;
+}
+
+/* Soft entrance: the shadcn dialog animates translate already — add fade-in
+   of backdrop for a cleaner feel. */
+.cad-admin-scope [data-slot="dialog-overlay"] {
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(3px);
+}
+
+.cad-admin-scope [data-slot="dialog-header"] {
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.cad-admin-scope [data-slot="dialog-title"] {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--cad-text-hi);
+}
+
+.cad-admin-scope [data-slot="dialog-footer"] {
+  background: var(--cad-bg);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  margin: 1.25rem -1.5rem -1.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom-left-radius: 0.875rem;
+  border-bottom-right-radius: 0.875rem;
+}
+
+/* Buttons inside CAD dialogs — consistent heights + focus rings */
+.cad-admin-scope [data-slot="dialog-content"] button:not(:disabled) {
+  border-radius: 4px;
+  transition:
+    background 120ms var(--cad-ease),
+    border-color 120ms var(--cad-ease),
+    color 120ms var(--cad-ease),
+    box-shadow 150ms var(--cad-ease),
+    filter 120ms var(--cad-ease);
+}
+
+.cad-admin-scope [data-slot="dialog-content"] button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* Inputs inside CAD dialogs */
+.cad-admin-scope [data-slot="dialog-content"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.cad-admin-scope [data-slot="dialog-content"] select,
+.cad-admin-scope [data-slot="dialog-content"] textarea {
+  border-radius: 4px;
+  border-color: var(--input);
+  background: #fff;
+  transition: box-shadow 140ms var(--cad-ease), border-color 140ms var(--cad-ease);
+}
+
+.cad-admin-scope [data-slot="dialog-content"] input:focus-visible,
+.cad-admin-scope [data-slot="dialog-content"] select:focus-visible,
+.cad-admin-scope [data-slot="dialog-content"] textarea:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+
+/* ── Tabs, cards, scrollbars inside the scoped CAD chrome ──────────────────── */
+
+.cad-admin-scope [data-slot="tabs-list"] {
+  background: rgba(15, 23, 42, 0.05);
+  border-radius: 4px;
+  padding: 0.25rem;
+}
+
+.cad-admin-scope [data-slot="tabs-trigger"][data-state="active"] {
+  background: var(--cad-bg-2);
+  color: var(--cad-text-hi);
+  box-shadow: var(--cad-shadow-xs);
+}
+
+.cad-admin-scope [data-slot="card"] {
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  background: var(--card);
+  box-shadow: var(--cad-shadow-sm);
+  border-radius: var(--radius-lg);
+}
+
+.cad-admin-scope [data-slot="scroll-area-thumb"] {
+  background: rgba(15, 23, 42, 0.22);
+  border-radius: 999px;
+}
+
+/* ── CAD-specific controls that aren't shadcn components ───────────────────── */
+
+.cad-admin-scope .cad-panel-tabs {
+  background: rgba(15, 23, 42, 0.04);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.09);
+  padding: 4px;
+  gap: 2px;
+}
+
+.cad-admin-scope .cad-panel-tab {
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: var(--cad-text-dim);
+}
+
+.cad-admin-scope .cad-panel-tab:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--cad-text);
+}
+
+.cad-admin-scope .cad-panel-tab.active {
+  background: var(--cad-bg-2);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: var(--cad-text-hi);
+  box-shadow: var(--cad-shadow-xs);
+}
+
+.cad-admin-scope .cad-settings-popover {
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.11);
+  box-shadow: var(--cad-shadow-lg);
+}
+
+.cad-admin-scope .cad-settings-popover-header {
+  padding: 14px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.cad-admin-scope .cad-settings-group-title {
+  font-size: 10px;
+  letter-spacing: 0.9px;
+  color: var(--cad-text-dim);
+}
+
+.cad-admin-scope .cad-settings-toggle input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ── Command-line / status bar chrome ──────────────────────────────────────── */
+
+.cad-admin-scope .cad-command-bar {
+  background: var(--cad-bg-2);
+  border-top-color: var(--cad-border);
+}
+
+.cad-admin-scope .cad-command-input-row {
+  background: var(--cad-bg);
+  border-color: var(--cad-border);
+  border-radius: 4px;
+}
+
+.cad-admin-scope .cad-command-input-row:focus-within {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+
+.cad-admin-scope .cad-command-log-expanded {
+  background: var(--cad-bg);
+  border-bottom-color: var(--cad-border);
+}
+
+.cad-admin-scope .cad-command-line-entry { color: var(--cad-text); }
+.cad-admin-scope .cad-command-line-entry.info { color: var(--cad-text-dim); }
+.cad-admin-scope .cad-command-line-entry.prompt,
+.cad-admin-scope .cad-command-inline-prompt,
+.cad-admin-scope .cad-command-line-entry.input::before { color: var(--cad-ok); }
+.cad-admin-scope .cad-command-line-entry.error { color: var(--cad-error); }
+.cad-admin-scope .cad-command-line-entry.input { color: var(--cad-text-hi); }
+
+.cad-admin-scope .cad-command-expand-btn:hover {
+  background: var(--cad-panel);
+  color: var(--cad-text-hi);
+}
+
+.cad-admin-scope .cad-status-bar {
+  background: var(--cad-bg-2);
+  border-top-color: var(--cad-border);
+  color: var(--cad-text-dim);
+}

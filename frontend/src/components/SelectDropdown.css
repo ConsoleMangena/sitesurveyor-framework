@@ -1,0 +1,105 @@
+.select-dropdown-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Base trigger mimics our input-field styling closely */
+.select-dropdown-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+}
+
+.select-dropdown-icon {
+  flex-shrink: 0;
+  color: var(--text);
+  transition: transform 0.2s ease;
+}
+
+.select-dropdown-trigger.open .select-dropdown-icon {
+  transform: rotate(180deg);
+}
+
+.select-dropdown-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The Animated Menu */
+.select-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px;
+  
+  /* Animations */
+  animation: slide-fade-down 0.15s ease-out forwards;
+  transform-origin: top;
+}
+
+@keyframes slide-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+.select-dropdown-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-h);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .select-dropdown-menu {
+    max-height: min(240px, 45vh);
+  }
+
+  .select-dropdown-item {
+    padding: 11px 14px;
+    min-height: 44px;
+    box-sizing: border-box;
+    align-items: center;
+  }
+}
+
+.select-dropdown-item:hover {
+  background: var(--surface-muted, #f8fafc);
+  color: var(--text-h);
+}
+
+.select-dropdown-item.selected {
+  background: var(--accent-bg, rgba(37, 99, 235, 0.1));
+  color: var(--accent, #2563eb);
+  font-weight: 500;
+}
+
+.select-item-check {
+  flex-shrink: 0;
+  color: var(--accent, #2563eb);
+}

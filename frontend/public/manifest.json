@@ -1,0 +1,24 @@
+{
+  "name": "SiteSurveyor",
+  "short_name": "SiteSurveyor",
+  "description": "Offline-first survey workspace for CAD, marketplace, and survey operations.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d92d20",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

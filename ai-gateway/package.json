@@ -1,0 +1,13 @@
+{
+  "name": "sitesurveyor-ai-host",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Serves the built SiteSurveyor frontend and tunnels /openclaw WebSocket traffic to the loopback OpenClaw gateway.",
+  "scripts": {
+    "start": "node ai-gateway-server.ts"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
+}

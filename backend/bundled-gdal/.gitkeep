@@ -1,0 +1,3 @@
+# This directory is auto-populated by `scripts/bundle-gdal.mjs` before a release build.
+# It must exist so that Tauri's resource bundling config resolves during development,
+# but its contents are gitignored and should not be committed.

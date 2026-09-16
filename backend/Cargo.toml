@@ -1,0 +1,77 @@
+[workspace]
+members = ["crates/survey-core", "crates/survey-wasm"]
+
+[package]
+name = "sitesurveyor"
+version = "0.1.0"
+description = "SiteSurveyor desktop app"
+authors = ["SiteSurveyor"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "tauri_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+survey-core = { path = "crates/survey-core" }
+
+# Native-only GeoRust datum/CRS transforms. `proj` wraps the system PROJ C
+# library (https://georust.org), which CANNOT compile to WASM — hence it lives
+# here in the desktop crate, never in `survey-wasm`. Gated behind the `proj`
+# feature so the app still builds on machines without PROJ installed; the
+# frontend falls back to the hand-rolled Karney projection in `projection.ts`.
+proj = { version = "0.27", optional = true }
+
+# Native-only raster/vector I/O. `gdal` (https://georust.org) wraps the system
+# GDAL C library and CANNOT compile to WASM — desktop crate only, feature-gated.
+# Reads/writes GeoTIFF, DEM, and most GIS/CAD vector & raster formats. Pin the
+# crate version to the GDAL installed on the build host.
+gdal = { version = "0.19", optional = true }
+
+# Native ESRI Shapefile read/write. Pure Rust, but kept in the desktop crate by
+# convention since it's a file-format importer used by the native shell only.
+shapefile = { version = "0.6", optional = true }
+
+# Native LiDAR point-cloud reader for .las/.laz survey data.
+las = { version = "0.8", features = ["laz"], optional = true }
+
+[features]
+default = []
+# Enable real PROJ-backed datum transforms. Requires PROJ >= 9 on the build
+# host (e.g. `apt install libproj-dev` / `brew install proj`).
+proj = ["dep:proj"]
+# Enable GDAL-backed raster/vector I/O. Requires GDAL >= 3 on the build host
+# (e.g. `apt install libgdal-dev` / `brew install gdal`).
+gdal = ["dep:gdal"]
+# Same as `gdal`, but generate bindings at build time via bindgen instead of
+# using gdal-sys's bundled prebuilt bindings. Required when the system GDAL is
+# newer than the bundled bindings (e.g. Ubuntu/WSL ships GDAL 3.12). Needs
+# libclang-dev / LLVM installed on the build host.
+gdal-bindgen = ["gdal", "gdal?/bindgen"]
+# Enable ESRI Shapefile import/export.
+shapefile = ["dep:shapefile"]
+# Enable LiDAR .las/.laz point-cloud import.
+las = ["dep:las"]
+
+# ─── Release profile (applies to the whole workspace) ─────────────────────────
+# Shrinks the compiled Rust libraries that ship inside the Android APK /
+# desktop bundles. These settings trade build speed for binary size.
+[profile.release]
+opt-level = "s"     # Optimize for size instead of speed
+lto = true          # Link-time optimization across crates
+codegen-units = 1   # Whole-crate optimization (slower build, smaller output)
+strip = true        # Strip symbols and debug info from the final artifact
+
