@@ -18,8 +18,9 @@ import PageLoader from "@/components/PageLoader.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
@@ -31,13 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
 import { KpiCard } from "@/components/dashboard/KpiCard.tsx";
 import { AssetStatusChart } from "@/components/dashboard/AssetStatusChart.tsx";
 import { CalibrationDuePanel } from "@/components/dashboard/CalibrationDuePanel.tsx";
-import { cn } from "@/lib/utils";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 
 import {
@@ -507,102 +507,261 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
           </>
         }
       >
-        <form id="asset-create-form" onSubmit={handleCreate} className="space-y-6">
-          {/* ── Identity ─────────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <ClipboardList size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Instrument Identity</h3>
-                <p className="text-[11px] text-muted-foreground">Give your asset a recognisable name and classification.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="create-name">Name <span className="text-destructive">*</span></Label>
-                <Input id="create-name" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Leica TS16" required autoFocus />
-                <p className="text-[11px] text-muted-foreground">A friendly label like "Leica TS16 #2" or "DJI Phantom Fleet".</p>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Kind</Label>
-                  <Select value={createForm.kind} onValueChange={(v) => setCreateForm((f) => ({ ...f, kind: v as typeof createForm.kind }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="instrument">Instrument</SelectItem>
-                      <SelectItem value="vehicle">Vehicle</SelectItem>
-                      <SelectItem value="equipment">Equipment</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Category</Label>
-                  <Select value={createForm.category} onValueChange={(v) => setCreateForm((f) => ({ ...f, category: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>
-                      {ASSET_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </div>
+        <form id="asset-create-form" onSubmit={handleCreate} className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Identity ─────────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardList size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Instrument identity
+                      </CardTitle>
+                      <CardDescription>
+                        Give your asset a recognisable name and classification.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-name">
+                        Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="create-name"
+                        value={createForm.name}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({ ...f, name: e.target.value }))
+                        }
+                        placeholder="e.g. Leica TS16"
+                        required
+                        autoFocus
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        A friendly label like "Leica TS16 #2" or "DJI Phantom
+                        Fleet".
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Kind</Label>
+                        <Select
+                          value={createForm.kind}
+                          onValueChange={(v) =>
+                            setCreateForm((f) => ({
+                              ...f,
+                              kind: v as typeof createForm.kind,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="instrument">
+                              Instrument
+                            </SelectItem>
+                            <SelectItem value="vehicle">Vehicle</SelectItem>
+                            <SelectItem value="equipment">
+                              Equipment
+                            </SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Category</Label>
+                        <Select
+                          value={createForm.category}
+                          onValueChange={(v) =>
+                            setCreateForm((f) => ({ ...f, category: v }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ASSET_CATEGORIES.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* ── Manufacturer & Serial ────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
-                <Wrench size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Manufacturer Details</h3>
-                <p className="text-[11px] text-muted-foreground">Make, model and serial for identification and calibration records.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-make">Make</Label>
-                  <Input id="create-make" value={createForm.make} onChange={(e) => setCreateForm((f) => ({ ...f, make: e.target.value }))} placeholder="e.g. Leica, Trimble" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-model">Model</Label>
-                  <Input id="create-model" value={createForm.model} onChange={(e) => setCreateForm((f) => ({ ...f, model: e.target.value }))} placeholder="e.g. TS16, R12i" />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="create-serial">Serial Number</Label>
-                  <Input id="create-serial" value={createForm.serial_number} onChange={(e) => setCreateForm((f) => ({ ...f, serial_number: e.target.value }))} placeholder="e.g. SN-123456789" className="font-mono text-xs" />
-                </div>
-              </div>
-            </div>
-          </div>
+              {/* ── Manufacturer & Serial ────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Wrench size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Manufacturer details
+                      </CardTitle>
+                      <CardDescription>
+                        Make, model and serial for identification and
+                        calibration records.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-make">Make</Label>
+                      <Input
+                        id="create-make"
+                        value={createForm.make}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({ ...f, make: e.target.value }))
+                        }
+                        placeholder="e.g. Leica, Trimble"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-model">Model</Label>
+                      <Input
+                        id="create-model"
+                        value={createForm.model}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            model: e.target.value,
+                          }))
+                        }
+                        placeholder="e.g. TS16, R12i"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor="create-serial">Serial Number</Label>
+                      <Input
+                        id="create-serial"
+                        value={createForm.serial_number}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            serial_number: e.target.value,
+                          }))
+                        }
+                        placeholder="e.g. SN-123456789"
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* ── Purchase Info ────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600">
-                <DollarSign size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Purchase Information</h3>
-                <p className="text-[11px] text-muted-foreground">Optional — helps track asset value and depreciation.</p>
-              </div>
+              {/* ── Purchase Info ────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <DollarSign size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Purchase information
+                      </CardTitle>
+                      <CardDescription>
+                        Optional — helps track asset value and depreciation.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-purchase-date">
+                        Purchase Date
+                      </Label>
+                      <Input
+                        id="create-purchase-date"
+                        type="date"
+                        value={createForm.purchase_date}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            purchase_date: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-purchase-cost">
+                        Purchase Cost ($)
+                      </Label>
+                      <Input
+                        id="create-purchase-cost"
+                        type="number"
+                        value={createForm.purchase_cost}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            purchase_cost: e.target.value,
+                          }))
+                        }
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-purchase-date">Purchase Date</Label>
-                  <Input id="create-purchase-date" type="date" value={createForm.purchase_date} onChange={(e) => setCreateForm((f) => ({ ...f, purchase_date: e.target.value }))} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-purchase-cost">Purchase Cost ($)</Label>
-                  <Input id="create-purchase-cost" type="number" value={createForm.purchase_cost} onChange={(e) => setCreateForm((f) => ({ ...f, purchase_cost: e.target.value }))} placeholder="0.00" />
-                </div>
-              </div>
-            </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Asset details</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Kind</dt>
+                      <dd className="truncate font-medium capitalize">
+                        {createForm.kind}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Category</dt>
+                      <dd className="truncate font-medium">
+                        {createForm.category
+                          ? ASSET_CATEGORIES.find(
+                              (c) => c.value === createForm.category
+                            )?.label || createForm.category
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Model</dt>
+                      <dd className="truncate font-medium">
+                        {createForm.model || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Serial</dt>
+                      <dd className="truncate font-mono text-xs">
+                        {createForm.serial_number || "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </form>
       </PageForm>
@@ -622,181 +781,419 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
           </>
         }
       >
-        <form id="asset-edit-form" onSubmit={handleSaveEdit} className="space-y-6">
-          {/* ── Identity ─────────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <ClipboardList size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Instrument Identity</h3>
-                <p className="text-[11px] text-muted-foreground">Name and classification of this asset.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-name">Name <span className="text-destructive">*</span></Label>
-                <Input id="edit-name" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} required autoFocus />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Kind</Label>
-                  <Select value={editForm.kind} onValueChange={(v) => setEditForm((f) => ({ ...f, kind: v as typeof editForm.kind }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="instrument">Instrument</SelectItem>
-                      <SelectItem value="vehicle">Vehicle</SelectItem>
-                      <SelectItem value="equipment">Equipment</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Category</Label>
-                  <Select value={editForm.category} onValueChange={(v) => setEditForm((f) => ({ ...f, category: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>
-                      {ASSET_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Manufacturer & Serial ────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
-                <Wrench size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Manufacturer Details</h3>
-                <p className="text-[11px] text-muted-foreground">Make, model and serial for identification.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-make">Make</Label>
-                  <Input id="edit-make" value={editForm.make} onChange={(e) => setEditForm((f) => ({ ...f, make: e.target.value }))} placeholder="e.g. Leica, Trimble" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-model">Model</Label>
-                  <Input id="edit-model" value={editForm.model} onChange={(e) => setEditForm((f) => ({ ...f, model: e.target.value }))} placeholder="e.g. TS16, R12i" />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="edit-serial">Serial Number</Label>
-                  <Input id="edit-serial" value={editForm.serial_number} onChange={(e) => setEditForm((f) => ({ ...f, serial_number: e.target.value }))} placeholder="e.g. SN-123456789" className="font-mono text-xs" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Purchase Info ────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600">
-                <DollarSign size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Purchase Information</h3>
-                <p className="text-[11px] text-muted-foreground">Optional — helps track asset value and depreciation.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-purchase-date">Purchase Date</Label>
-                  <Input id="edit-purchase-date" type="date" value={editForm.purchase_date} onChange={(e) => setEditForm((f) => ({ ...f, purchase_date: e.target.value }))} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-purchase-cost">Purchase Cost ($)</Label>
-                  <Input id="edit-purchase-cost" type="number" value={editForm.purchase_cost} onChange={(e) => setEditForm((f) => ({ ...f, purchase_cost: e.target.value }))} placeholder="0.00" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* ── Marketplace ──────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-600">
-                <LayoutGrid size={14} />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold">Marketplace Listing</h3>
-                <p className="text-[11px] text-muted-foreground">Optionally list this asset for sale or hire.</p>
-              </div>
-              <Switch id="marketplace" checked={listOnMarketplace} onCheckedChange={setListOnMarketplace} />
-            </div>
-            {listOnMarketplace && (
-              <div className="rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/30 dark:bg-amber-900/10 p-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>Listing Type</Label>
-                    <Select value={listingForm.listing_type} onValueChange={(v) => setListingForm((f) => ({ ...f, listing_type: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hire">Available for Hire</SelectItem>
-                        <SelectItem value="sale">Available for Sale</SelectItem>
-                      </SelectContent>
-                    </Select>
+        <form id="asset-edit-form" onSubmit={handleSaveEdit} className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Identity ─────────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardList size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Instrument identity
+                      </CardTitle>
+                      <CardDescription>
+                        Name and classification of this asset.
+                      </CardDescription>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="listing-price">Price ($) <span className="text-destructive">*</span></Label>
-                    <Input id="listing-price" type="number" value={listingForm.price} onChange={(e) => setListingForm((f) => ({ ...f, price: e.target.value }))} placeholder="0.00" required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Condition</Label>
-                    <Select value={listingForm.condition} onValueChange={(v) => setListingForm((f) => ({ ...f, condition: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {["New", "Like New", "Good", "Fair"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="listing-location">Location</Label>
-                    <Input id="listing-location" value={listingForm.location} onChange={(e) => setListingForm((f) => ({ ...f, location: e.target.value }))} placeholder="e.g. Johannesburg, HQ" />
-                  </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="listing-seller">Seller Name / Company</Label>
-                    <Input id="listing-seller" value={listingForm.seller} onChange={(e) => setListingForm((f) => ({ ...f, seller: e.target.value }))} />
-                  </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label>Receiving Wallet</Label>
-                    {workspaceMarketplaceWallet ? (
-                      <div className="rounded-md border border-border/40 bg-muted/30 px-3 py-2">
-                        <p className="text-xs break-all font-mono text-muted-foreground">
-                          {workspaceMarketplaceWallet}
-                        </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-name">
+                        Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="edit-name"
+                        value={editForm.name}
+                        onChange={(e) =>
+                          setEditForm((f) => ({ ...f, name: e.target.value }))
+                        }
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Kind</Label>
+                        <Select
+                          value={editForm.kind}
+                          onValueChange={(v) =>
+                            setEditForm((f) => ({
+                              ...f,
+                              kind: v as typeof editForm.kind,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="instrument">
+                              Instrument
+                            </SelectItem>
+                            <SelectItem value="vehicle">Vehicle</SelectItem>
+                            <SelectItem value="equipment">
+                              Equipment
+                            </SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    ) : (
-                      <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20 px-3 py-2">
-                        <p className="text-xs text-amber-700 dark:text-amber-400">
-                          No marketplace wallet selected. Buyers will see "Seller has no wallet." Set one in Billing.
-                        </p>
+                      <div className="space-y-1.5">
+                        <Label>Category</Label>
+                        <Select
+                          value={editForm.category}
+                          onValueChange={(v) =>
+                            setEditForm((f) => ({ ...f, category: v }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ASSET_CATEGORIES.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
+                    </div>
                   </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="listing-description">Listing Description</Label>
-                    <textarea
-                      id="listing-description"
-                      rows={3}
-                      value={listingForm.description}
-                      onChange={(e) => setListingForm((f) => ({ ...f, description: e.target.value }))}
-                      placeholder="Describe the asset condition, included accessories, etc."
-                      className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                </CardContent>
+              </Card>
+
+              {/* ── Manufacturer & Serial ────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Wrench size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Manufacturer details
+                      </CardTitle>
+                      <CardDescription>
+                        Make, model and serial for identification.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-make">Make</Label>
+                      <Input
+                        id="edit-make"
+                        value={editForm.make}
+                        onChange={(e) =>
+                          setEditForm((f) => ({ ...f, make: e.target.value }))
+                        }
+                        placeholder="e.g. Leica, Trimble"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-model">Model</Label>
+                      <Input
+                        id="edit-model"
+                        value={editForm.model}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            model: e.target.value,
+                          }))
+                        }
+                        placeholder="e.g. TS16, R12i"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor="edit-serial">Serial Number</Label>
+                      <Input
+                        id="edit-serial"
+                        value={editForm.serial_number}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            serial_number: e.target.value,
+                          }))
+                        }
+                        placeholder="e.g. SN-123456789"
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Purchase Info ────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <DollarSign size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Purchase information
+                      </CardTitle>
+                      <CardDescription>
+                        Optional — helps track asset value and depreciation.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-purchase-date">
+                        Purchase Date
+                      </Label>
+                      <Input
+                        id="edit-purchase-date"
+                        type="date"
+                        value={editForm.purchase_date}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            purchase_date: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-purchase-cost">
+                        Purchase Cost ($)
+                      </Label>
+                      <Input
+                        id="edit-purchase-cost"
+                        type="number"
+                        value={editForm.purchase_cost}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            purchase_cost: e.target.value,
+                          }))
+                        }
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Marketplace ──────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <LayoutGrid size={15} />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-base">
+                        Marketplace listing
+                      </CardTitle>
+                      <CardDescription>
+                        Optionally list this asset for sale or hire.
+                      </CardDescription>
+                    </div>
+                    <Switch
+                      id="marketplace"
+                      checked={listOnMarketplace}
+                      onCheckedChange={setListOnMarketplace}
                     />
                   </div>
-                </div>
-              </div>
-            )}
+                </CardHeader>
+                {listOnMarketplace && (
+                  <CardContent>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>Listing Type</Label>
+                        <Select
+                          value={listingForm.listing_type}
+                          onValueChange={(v) =>
+                            setListingForm((f) => ({
+                              ...f,
+                              listing_type: v,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="hire">
+                              Available for Hire
+                            </SelectItem>
+                            <SelectItem value="sale">
+                              Available for Sale
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="listing-price">
+                          Price ($) <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="listing-price"
+                          type="number"
+                          value={listingForm.price}
+                          onChange={(e) =>
+                            setListingForm((f) => ({
+                              ...f,
+                              price: e.target.value,
+                            }))
+                          }
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Condition</Label>
+                        <Select
+                          value={listingForm.condition}
+                          onValueChange={(v) =>
+                            setListingForm((f) => ({
+                              ...f,
+                              condition: v,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {["New", "Like New", "Good", "Fair"].map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="listing-location">Location</Label>
+                        <Input
+                          id="listing-location"
+                          value={listingForm.location}
+                          onChange={(e) =>
+                            setListingForm((f) => ({
+                              ...f,
+                              location: e.target.value,
+                            }))
+                          }
+                          placeholder="e.g. Johannesburg, HQ"
+                        />
+                      </div>
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label htmlFor="listing-seller">
+                          Seller Name / Company
+                        </Label>
+                        <Input
+                          id="listing-seller"
+                          value={listingForm.seller}
+                          onChange={(e) =>
+                            setListingForm((f) => ({
+                              ...f,
+                              seller: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label>Receiving Wallet</Label>
+                        {workspaceMarketplaceWallet ? (
+                          <div className="rounded-none border border-border/40 bg-muted/30 px-3 py-2">
+                            <p className="text-xs break-all font-mono text-muted-foreground">
+                              {workspaceMarketplaceWallet}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="rounded-none border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20 px-3 py-2">
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                              No marketplace wallet selected. Buyers will see
+                              "Seller has no wallet." Set one in Billing.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label htmlFor="listing-description">
+                          Listing Description
+                        </Label>
+                        <Textarea
+                          id="listing-description"
+                          rows={3}
+                          value={listingForm.description}
+                          onChange={(e) =>
+                            setListingForm((f) => ({
+                              ...f,
+                              description: e.target.value,
+                            }))
+                          }
+                          placeholder="Describe the asset condition, included accessories, etc."
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Asset details</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Kind</dt>
+                      <dd className="truncate font-medium capitalize">
+                        {editForm.kind}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Category</dt>
+                      <dd className="truncate font-medium">
+                        {editForm.category
+                          ? ASSET_CATEGORIES.find(
+                              (c) => c.value === editForm.category
+                            )?.label || editForm.category
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Model</dt>
+                      <dd className="truncate font-medium">
+                        {editForm.model || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Serial</dt>
+                      <dd className="truncate font-mono text-xs">
+                        {editForm.serial_number || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Listed</dt>
+                      <dd className="font-medium">
+                        {listOnMarketplace ? "Yes" : "No"}
+                      </dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </form>
       </PageForm>

@@ -32,14 +32,16 @@ import '../../styles/pages.css'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card'
+import { ComboboxField } from '@/components/templates/ComboboxField.tsx'
 import {
   Table,
   TableBody,
@@ -932,84 +934,180 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
           <Button type="submit" form="new-project-form" className="w-full sm:w-auto rounded-none" disabled={saving}>{saving ? 'Creating...' : 'Launch Environment'}</Button>
         }
       >
-        <form id="new-project-form" className="space-y-6" onSubmit={handleCreateProject}>
-          {/* ── Project Details ────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <ClipboardList size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Project Details</h3>
-                <p className="text-[11px] text-muted-foreground">Basic information and client association.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="new-name">Project Name <span className="text-destructive">*</span></Label>
-                <Input id="new-name" value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Downtown Highrise Survey" required autoFocus />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Client (Organization)</Label>
-                <Select
-                  value={newOrgId || '__create_new__'}
-                  onValueChange={(val) => {
-                    const id = val === '__create_new__' ? '' : val;
-                    setNewOrgId(id);
-                    if (id) setNewOrgName('');
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select or create new..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__create_new__">Create new...</SelectItem>
-                    {organizations.map(org => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {!newOrgId && (
-                  <Input id="new-org-name" name="new-org-name" placeholder="Or type a new organization name..." value={newOrgName} onChange={e => setNewOrgName(e.target.value)} className="mt-2" />
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="new-desc">Description</Label>
-                <textarea id="new-desc" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Project notes, scope, and deliverables..." rows={3} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 min-h-[84px] resize-y" />
-              </div>
-            </div>
-          </div>
+        <form id="new-project-form" className="mx-auto w-full max-w-6xl" onSubmit={handleCreateProject}>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Project Details ────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardList size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Project details
+                      </CardTitle>
+                      <CardDescription>
+                        Basic information and client association.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-name">
+                        Project Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="new-name"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="e.g. Downtown Highrise Survey"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <ComboboxField
+                        label="Client (Organization)"
+                        value={newOrgId}
+                        onChange={(val) => {
+                          setNewOrgId(val);
+                          if (val) setNewOrgName('');
+                        }}
+                        options={organizations.map((org) => ({
+                          value: org.id,
+                          label: org.name,
+                        }))}
+                        placeholder="Select or create new..."
+                        emptyText="No organizations found."
+                        optional
+                        optionalLabel="Create new..."
+                      />
+                      {!newOrgId && (
+                        <Input
+                          id="new-org-name"
+                          name="new-org-name"
+                          placeholder="Or type a new organization name..."
+                          value={newOrgName}
+                          onChange={(e) => setNewOrgName(e.target.value)}
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-desc">Description</Label>
+                      <Textarea
+                        id="new-desc"
+                        value={newDesc}
+                        onChange={(e) => setNewDesc(e.target.value)}
+                        placeholder="Project notes, scope, and deliverables..."
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* ── Spatial Settings ─────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600">
-                <MapPin size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Spatial & Tracking Settings</h3>
-                <p className="text-[11px] text-muted-foreground">Define the coordinate system and project phase.</p>
-              </div>
+              {/* ── Spatial Settings ─────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <MapPin size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Spatial & tracking settings
+                      </CardTitle>
+                      <CardDescription>
+                        Define the coordinate system and project phase.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-phase">Phase</Label>
+                      <Input
+                        id="new-phase"
+                        value={newPhase}
+                        onChange={(e) => setNewPhase(e.target.value)}
+                        placeholder="e.g. Planning, Execution"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <ComboboxField
+                        label="Datum"
+                        value={newDatum}
+                        onChange={(v) => setNewDatum(v)}
+                        options={[
+                          { value: "WGS84 / UTM 36S", label: "WGS84 / UTM 36S" },
+                          { value: "WGS84 / UTM 35S", label: "WGS84 / UTM 35S" },
+                          { value: "Arc 1950", label: "Arc 1950" },
+                          { value: "custom", label: "Custom EPSG..." },
+                        ]}
+                        placeholder="Select datum"
+                        emptyText="No datums found."
+                      />
+                      {newDatum === "custom" && (
+                        <Input
+                          id="custom-datum"
+                          name="custom-datum"
+                          value={customDatum}
+                          onChange={(e) => setCustomDatum(e.target.value)}
+                          placeholder="e.g. EPSG:4326"
+                          className="mt-2"
+                          autoFocus
+                        />
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="new-phase">Phase</Label>
-                  <Input id="new-phase" value={newPhase} onChange={e => setNewPhase(e.target.value)} placeholder="e.g. Planning, Execution" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Datum</Label>
-                  <Select value={newDatum} onValueChange={setNewDatum}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="WGS84 / UTM 36S">WGS84 / UTM 36S</SelectItem>
-                      <SelectItem value="WGS84 / UTM 35S">WGS84 / UTM 35S</SelectItem>
-                      <SelectItem value="Arc 1950">Arc 1950</SelectItem>
-                      <SelectItem value="custom">Custom EPSG...</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {newDatum === 'custom' && (
-                    <Input id="custom-datum" name="custom-datum" value={customDatum} onChange={e => setCustomDatum(e.target.value)} placeholder="e.g. EPSG:4326" className="mt-2" autoFocus />
-                  )}
-                </div>
-              </div>
-            </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">New project</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Client</dt>
+                      <dd className="truncate font-medium">
+                        {newOrgId
+                          ? organizations.find((org) => org.id === newOrgId)
+                              ?.name || newOrgId
+                          : newOrgName.trim()
+                            ? `Create: ${newOrgName.trim()}`
+                            : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Phase</dt>
+                      <dd className="truncate font-medium">
+                        {newPhase || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Datum</dt>
+                      <dd className="truncate font-medium">
+                        {newDatum === "custom"
+                          ? customDatum || "Custom EPSG..."
+                          : newDatum || "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </form>
       </PageForm>

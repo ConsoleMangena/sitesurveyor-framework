@@ -18,8 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { PageForm } from "@/components/templates/PageForm.tsx";
 import {
   Select,
   SelectContent,
@@ -186,6 +192,120 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
       <div className="hub-body ast-body team-page p-6">
         <PageLoader />
       </div>
+    );
+  }
+
+  if (showInviteModal) {
+    return (
+      <PageForm
+        title="Invite Team Member"
+        description="Send an invitation to join this workspace."
+        onBack={() => setShowInviteModal(false)}
+        footer={
+          <>
+            <Button type="button" variant="outline" onClick={() => setShowInviteModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="team-invite-form" disabled={inviting}>
+              {inviting && <Loader2 size={14} className="animate-spin mr-2" />}
+              {inviting ? "Sending..." : "Send Invite"}
+            </Button>
+          </>
+        }
+      >
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Mail size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Member details</CardTitle>
+                      <CardDescription>
+                        Add a colleague to your workspace.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <form id="team-invite-form" onSubmit={handleInvite} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="invite-email">Email</Label>
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        value={inviteForm.email}
+                        onChange={(e) =>
+                          setInviteForm((prev) => ({ ...prev, email: e.target.value }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="invite-role">Role</Label>
+                      <Select
+                        value={inviteForm.role}
+                        onValueChange={(val) =>
+                          setInviteForm((prev) => ({
+                            ...prev,
+                            role: val as typeof inviteForm.role,
+                          }))
+                        }
+                      >
+                        <SelectTrigger id="invite-role" className="w-full">
+                          <SelectValue placeholder="Select a role…" />
+                        </SelectTrigger>
+                        <SelectContent position="popper" sideOffset={4}>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="technician">Technician</SelectItem>
+                          <SelectItem value="sales">Sales</SelectItem>
+                          <SelectItem value="finance">Finance</SelectItem>
+                          <SelectItem value="ops_manager">Ops Manager</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Invite summary</CardTitle>
+                  <CardDescription>Details at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Email</dt>
+                      <dd className="truncate font-medium">
+                        {inviteForm.email || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Role</dt>
+                      <dd className="truncate font-medium">
+                        {roleLabels[inviteForm.role] ?? inviteForm.role}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Access</dt>
+                      <dd className="font-medium">
+                        {canManageTeam(inviteForm.role) ? "Manager" : "Standard"}
+                      </dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
+        </div>
+      </PageForm>
     );
   }
 
@@ -431,64 +551,6 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
           </CardContent>
         </Card>
       )}
-
-      <DialogTemplate
-        open={showInviteModal}
-        onOpenChange={(open) => !open && setShowInviteModal(false)}
-        title="Invite Team Member"
-        description="Send an invitation to join this workspace."
-        size="md"
-        footer={
-          <>
-            <Button type="button" variant="outline" onClick={() => setShowInviteModal(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" form="team-invite-form" disabled={inviting}>
-              {inviting && <Loader2 size={14} className="animate-spin mr-2" />}
-              {inviting ? "Sending..." : "Send Invite"}
-            </Button>
-          </>
-        }
-      >
-        <form id="team-invite-form" onSubmit={handleInvite} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-email">Email</Label>
-            <Input
-              id="invite-email"
-              type="email"
-              value={inviteForm.email}
-              onChange={(e) =>
-                setInviteForm((prev) => ({ ...prev, email: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-role">Role</Label>
-            <Select
-              value={inviteForm.role}
-              onValueChange={(val) =>
-                setInviteForm((prev) => ({
-                  ...prev,
-                  role: val as typeof inviteForm.role,
-                }))
-              }
-            >
-              <SelectTrigger id="invite-role" className="w-full">
-                <SelectValue placeholder="Select a role…" />
-              </SelectTrigger>
-              <SelectContent position="popper" sideOffset={4}>
-                <SelectItem value="viewer">Viewer</SelectItem>
-                <SelectItem value="technician">Technician</SelectItem>
-                <SelectItem value="sales">Sales</SelectItem>
-                <SelectItem value="finance">Finance</SelectItem>
-                <SelectItem value="ops_manager">Ops Manager</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </form>
-      </DialogTemplate>
     </DashboardShell>
   );
 }

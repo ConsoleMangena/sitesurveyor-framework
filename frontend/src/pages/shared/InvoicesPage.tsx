@@ -13,7 +13,11 @@ import {
   X,
   Send,
   ClipboardList,
+  ListChecks,
+  ScrollText,
 } from "lucide-react";
+
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
 
 import PageLoader from "@/components/PageLoader.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
@@ -26,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
 import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import { PageForm } from "@/components/templates/PageForm.tsx";
+import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import {
   Dialog,
@@ -1048,6 +1053,10 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
   }
 
   if (isCreateOpen) {
+    const invoiceSubtotal = calcTotal(draftInvoice.items);
+    const invoiceVat = invoiceSubtotal * 0.15;
+    const invoiceTotal = invoiceSubtotal + invoiceVat;
+
     return (
       <PageForm
         title={isEditing ? "Edit Invoice" : "Create Invoice"}
@@ -1061,203 +1070,271 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
           setEditingInvoiceId(null);
         }}
         footer={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateOpen(false);
-                setEditingInvoiceId(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={submitCreateInvoice}>
-              {isEditing ? "Save Changes" : "Create Invoice"}
-            </Button>
-          </>
+          <div className="flex w-full items-center gap-4">
+            <div className="min-w-0 flex-1">
+              {createError && (
+                <div role="alert" className="text-sm text-destructive">
+                  {createError}
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreateOpen(false);
+                  setEditingInvoiceId(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={submitCreateInvoice} className="gap-1.5">
+                {isEditing ? "Save Changes" : "Create Invoice"}
+              </Button>
+            </div>
+          </div>
         }
       >
-        <div className="space-y-6">
-          {/* ── Invoice Details ──────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <ClipboardList size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Invoice Details</h3>
-                <p className="text-[11px] text-muted-foreground">Basic information and scheduling.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="inv-number">Invoice number</Label>
-                  <Input
-                    id="inv-number"
-                    placeholder="e.g. INV-2026-020"
-                    value={draftInvoice.invoice_number}
-                    onChange={(e) =>
-                      setDraftInvoice((prev) => ({ ...prev, invoice_number: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Client</Label>
-                  <Select
-                    value={draftInvoice.organization_id}
-                    onValueChange={(v) =>
-                      setDraftInvoice((prev) => ({ ...prev, organization_id: v }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Select Client</SelectItem>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Project</Label>
-                  <Select
-                    value={draftInvoice.project_id}
-                    onValueChange={(v) =>
-                      setDraftInvoice((prev) => ({ ...prev, project_id: v }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Select Project (optional)</SelectItem>
-                      {projectOptions.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="inv-issue">Issue date</Label>
-                  <Input
-                    id="inv-issue"
-                    type="date"
-                    value={draftInvoice.issue_date}
-                    onChange={(e) =>
-                      setDraftInvoice((prev) => ({ ...prev, issue_date: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="inv-due">Due date</Label>
-                  <Input
-                    id="inv-due"
-                    type="date"
-                    value={draftInvoice.due_date}
-                    onChange={(e) =>
-                      setDraftInvoice((prev) => ({ ...prev, due_date: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select
-                    value={draftInvoice.status}
-                    onValueChange={(v) =>
-                      setDraftInvoice((prev) => ({ ...prev, status: v as InvoiceDraft["status"] }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="sent">Sent</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="overdue">Overdue</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Invoice Details ──────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardList size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Invoice details</CardTitle>
+                      <CardDescription>
+                        Number, client, scheduling and status.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="inv-number">Invoice number</Label>
+                      <Input
+                        id="inv-number"
+                        placeholder="e.g. INV-2026-020"
+                        value={draftInvoice.invoice_number}
+                        onChange={(e) =>
+                          setDraftInvoice((prev) => ({
+                            ...prev,
+                            invoice_number: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <ComboboxField
+                      label="Client"
+                      value={draftInvoice.organization_id}
+                      onChange={(v) =>
+                        setDraftInvoice((prev) => ({ ...prev, organization_id: v }))
+                      }
+                      options={organizations.map((org) => ({
+                        value: org.id,
+                        label: org.name,
+                      }))}
+                      placeholder="Select client"
+                      emptyText="No clients found."
+                    />
+                    <ComboboxField
+                      label="Project"
+                      value={draftInvoice.project_id}
+                      onChange={(v) =>
+                        setDraftInvoice((prev) => ({ ...prev, project_id: v }))
+                      }
+                      options={projectOptions.map((p) => ({
+                        value: p.id,
+                        label: p.name,
+                      }))}
+                      placeholder="Select project"
+                      emptyText="No projects found."
+                      optional
+                      optionalLabel="No project"
+                    />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="inv-issue">Issue date</Label>
+                      <Input
+                        id="inv-issue"
+                        type="date"
+                        value={draftInvoice.issue_date}
+                        onChange={(e) =>
+                          setDraftInvoice((prev) => ({ ...prev, issue_date: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="inv-due">Due date</Label>
+                      <Input
+                        id="inv-due"
+                        type="date"
+                        value={draftInvoice.due_date}
+                        onChange={(e) =>
+                          setDraftInvoice((prev) => ({ ...prev, due_date: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Status</Label>
+                      <Select
+                        value={draftInvoice.status}
+                        onValueChange={(v) =>
+                          setDraftInvoice((prev) => ({
+                            ...prev,
+                            status: v as InvoiceDraft["status"],
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="sent">Sent</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* ── Line Items ───────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
-                <FileText size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Line items</h3>
-                <p className="text-[11px] text-muted-foreground">Services and products included in this invoice.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <LineItemsEditor
-                items={draftInvoice.items}
-                onChange={updateDraftItem}
-                onAdd={addDraftItem}
-                onRemove={removeDraftItem}
-              />
-            </div>
-          </div>
-
-          {/* ── Additional Info ──────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600">
-                <FileText size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Additional Information</h3>
-                <p className="text-[11px] text-muted-foreground">Notes and terms visible to the client.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-inv-notes">Notes</Label>
-                  <Textarea
-                    id="create-inv-notes"
-                    rows={3}
-                    value={formNotes}
-                    onChange={(e) => setFormNotes(e.target.value)}
-                    placeholder="Notes visible to the client"
+              {/* ── Line Items ───────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ListChecks size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Line items</CardTitle>
+                      <CardDescription>
+                        Services and products included in this invoice.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <CardAction>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addDraftItem}
+                      className="h-8 gap-1"
+                    >
+                      <Plus size={14} />
+                      Add item
+                    </Button>
+                  </CardAction>
+                </CardHeader>
+                <CardContent>
+                  <LineItemsEditor
+                    items={draftInvoice.items}
+                    onChange={updateDraftItem}
+                    onAdd={addDraftItem}
+                    onRemove={removeDraftItem}
+                    bare
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-inv-terms">Terms & Conditions</Label>
-                  <Textarea
-                    id="create-inv-terms"
-                    rows={3}
-                    value={defaults.terms}
-                    onChange={(e) => setTerms(e.target.value)}
-                    placeholder="Payment terms, late fees, etc."
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                </CardContent>
+              </Card>
 
-        <div className="flex items-center justify-between border-t pt-4">
-          <div className="text-sm">
-            <span className="text-muted-foreground">Total:</span>{" "}
-            <strong>{formatCurrency(calcTotal(draftInvoice.items) * 1.15)}</strong>
-          </div>
-          {createError && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {createError}
+              {/* ── Additional Info ──────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ScrollText size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Additional information</CardTitle>
+                      <CardDescription>
+                        Notes and terms visible to the client.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-inv-notes">Notes</Label>
+                      <Textarea
+                        id="create-inv-notes"
+                        rows={3}
+                        value={formNotes}
+                        onChange={(e) => setFormNotes(e.target.value)}
+                        placeholder="Notes visible to the client"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-inv-terms">Terms & Conditions</Label>
+                      <Textarea
+                        id="create-inv-terms"
+                        rows={3}
+                        value={defaults.terms}
+                        onChange={(e) => setTerms(e.target.value)}
+                        placeholder="Payment terms, late fees, etc."
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          )}
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Amount due</CardTitle>
+                  <CardDescription>Includes 15% VAT.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <dt className="text-muted-foreground">Subtotal</dt>
+                      <dd className="font-medium tabular-nums">
+                        {formatCurrency(invoiceSubtotal)}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-muted-foreground">VAT (15%)</dt>
+                      <dd className="font-medium tabular-nums">
+                        {formatCurrency(invoiceVat)}
+                      </dd>
+                    </div>
+                  </dl>
+                  <Separator className="my-3" />
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-medium">Total</span>
+                    <span className="text-2xl font-semibold tabular-nums">
+                      {formatCurrency(invoiceTotal)}
+                    </span>
+                  </div>
+                  <div className="mt-4 border-t pt-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Billed from
+                    </p>
+                    <p
+                      className="mt-0.5 truncate text-sm font-medium"
+                      title={profile.name}
+                    >
+                      {profile.name || "Your business profile"}
+                    </p>
+                    <p
+                      className="truncate text-xs text-muted-foreground"
+                      title={profile.email}
+                    >
+                      {profile.email || "Set your details under Business settings"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
         </div>
       </PageForm>
     );

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
 import { PageForm } from "@/components/templates/PageForm.tsx";
 import {
   Select,
@@ -419,104 +420,201 @@ export default function BillingPage({
           </>
         }
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2 space-y-1.5">
-            <Label>Invoice</Label>
-            <Select value={paymentInvoiceId} onValueChange={setPaymentInvoiceId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select invoice" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Select invoice</SelectItem>
-                {invoices.map((inv) => (
-                  <SelectItem key={inv.id} value={inv.id}>
-                    {inv.invoice_number} - {formatCurrency(inv.total)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="payment-date">Date</Label>
-            <Input
-              id="payment-date"
-              type="date"
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="payment-amount">Amount</Label>
-            <Input
-              id="payment-amount"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Amount"
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="payment-method">Method</Label>
-            <Input
-              id="payment-method"
-              placeholder="Payment method (optional)"
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="payment-reference">Reference</Label>
-            <Input
-              id="payment-reference"
-              placeholder="Reference (optional)"
-              value={paymentReference}
-              onChange={(e) => setPaymentReference(e.target.value)}
-            />
-          </div>
-          <div className="sm:col-span-2 space-y-1.5">
-            <Label htmlFor="payment-notes">Notes</Label>
-            <Input
-              id="payment-notes"
-              placeholder="Notes (optional)"
-              value={paymentNotes}
-              onChange={(e) => setPaymentNotes(e.target.value)}
-            />
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Payment Details ──────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Banknote size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Payment details
+                      </CardTitle>
+                      <CardDescription>
+                        Record an offline payment or pay on-chain with Solana.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <ComboboxField
+                        label="Invoice"
+                        value={paymentInvoiceId}
+                        onChange={(val) => setPaymentInvoiceId(val)}
+                        options={invoices.map((inv) => ({
+                          value: inv.id,
+                          label: `${inv.invoice_number} - ${formatCurrency(inv.total)}`,
+                        }))}
+                        placeholder="Select invoice"
+                        emptyText="No invoices found."
+                        optional
+                        optionalLabel="Select invoice"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="payment-date">Date</Label>
+                      <Input
+                        id="payment-date"
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="payment-amount">Amount</Label>
+                      <Input
+                        id="payment-amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Amount"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="payment-method">Method</Label>
+                      <Input
+                        id="payment-method"
+                        placeholder="Payment method (optional)"
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="payment-reference">Reference</Label>
+                      <Input
+                        id="payment-reference"
+                        placeholder="Reference (optional)"
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor="payment-notes">Notes</Label>
+                      <Input
+                        id="payment-notes"
+                        placeholder="Notes (optional)"
+                        value={paymentNotes}
+                        onChange={(e) => setPaymentNotes(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {recordPaymentError && (
+                <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {recordPaymentError}
+                </div>
+              )}
+
+              {solanaConfigured && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <Wallet size={15} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">
+                          Pay on-chain
+                        </CardTitle>
+                        <CardDescription>
+                          Pay the invoice directly with a Solana wallet.
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={payWithSolana}
+                        disabled={
+                          solanaBusy ||
+                          recordingPayment ||
+                          !selectedInvoice ||
+                          !embeddedWallet.unlocked
+                        }
+                        aria-busy={solanaBusy}
+                      >
+                        {solanaBusy && <Loader2 size={16} className="animate-spin" />}
+                        <SolanaLogo size={18} />
+                        {solanaButtonLabel}
+                      </Button>
+                      <p className="text-center text-xs text-muted-foreground">
+                        {!embeddedWallet.unlocked
+                          ? "Unlock your embedded wallet to pay invoices on-chain."
+                          : selectedInvoice
+                            ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC to the workspace treasury. Verified on-chain before recording.${
+                                solanaFeeEstimate
+                                  ? ` Estimated network cost: ${solanaFeeEstimate}.`
+                                  : ""
+                              }`
+                            : "Select an invoice to pay it directly with a Solana wallet."}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Payment</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Invoice</dt>
+                      <dd className="truncate font-medium">
+                        {selectedInvoice
+                          ? selectedInvoice.invoice_number
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Amount</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {formatCurrency(paymentAmount || "0")}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Date</dt>
+                      <dd className="truncate font-medium">
+                        {paymentDate || "—"}
+                      </dd>
+                    </div>
+                    {selectedInvoice && (
+                      <>
+                        <div className="border-t pt-3">
+                          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                            Invoice total
+                          </p>
+                          <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                            {formatCurrency(selectedInvoice.total)}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </div>
-
-        {recordPaymentError && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {recordPaymentError}
-          </div>
-        )}
-
-        {solanaConfigured && (
-          <div className="space-y-2 rounded-none border bg-muted/40 p-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              onClick={payWithSolana}
-              disabled={solanaBusy || recordingPayment || !selectedInvoice || !embeddedWallet.unlocked}
-              aria-busy={solanaBusy}
-            >
-              {solanaBusy && <Loader2 size={16} className="animate-spin" />}
-              <SolanaLogo size={18} />
-              {solanaButtonLabel}
-            </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              {!embeddedWallet.unlocked
-                ? "Unlock your embedded wallet to pay invoices on-chain."
-                : selectedInvoice
-                  ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC to the workspace treasury. Verified on-chain before recording.${
-                      solanaFeeEstimate ? ` Estimated network cost: ${solanaFeeEstimate}.` : ""
-                    }`
-                  : "Select an invoice to pay it directly with a Solana wallet."}
-            </p>
-          </div>
-        )}
       </PageForm>
     );
   }

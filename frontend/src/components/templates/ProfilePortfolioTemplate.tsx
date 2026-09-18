@@ -119,7 +119,7 @@ export function ProfilePortfolioTemplate({
         className
       )}
     >
-      <div className="relative h-32 sm:h-40 bg-gradient-to-br from-primary/85 via-primary/55 to-primary/25">
+      <div className="relative h-32 sm:h-40 bg-gradient-to-br from-primary/90 via-primary/55 to-primary/25">
         {bannerUrl ? (
           <img
             src={bannerUrl}
@@ -144,7 +144,10 @@ export function ProfilePortfolioTemplate({
       <CardContent className="relative px-5 pb-5 pt-0 sm:px-6">
         <div className="-mt-12 mb-4 flex items-end justify-between gap-3">
           <div className="relative">
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/40 to-primary/10 blur-md" aria-hidden />
+            <div
+              className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/40 to-primary/10 blur-md"
+              aria-hidden
+            />
             <Avatar className="relative h-24 w-24 border-4 border-background shadow-md">
               <AvatarImage src={avatarUrl ?? undefined} alt={name} />
               <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
@@ -164,11 +167,9 @@ export function ProfilePortfolioTemplate({
           </Badge>
         </div>
 
-        <div className="space-y-1">
-          <h3 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <span className="truncate">
-              {name.trim() || "Your Name"}
-            </span>
+        <div className="space-y-0.5">
+          <h3 className="text-2xl font-bold tracking-tight">
+            {name.trim() || "Your Name"}
           </h3>
           <p className="text-sm text-muted-foreground">
             {[title, discipline].filter(Boolean).join(" · ") || "Professional title"}
@@ -176,44 +177,73 @@ export function ProfilePortfolioTemplate({
         </div>
 
         {bio ? (
-          <p className="mt-4 text-sm leading-relaxed text-foreground/90 line-clamp-4">
+          <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-foreground/90">
             {bio}
           </p>
         ) : (
-          <p className="mt-4 text-sm italic text-muted-foreground">
+          <p className="mt-3 text-sm italic text-muted-foreground">
             Add a short bio to tell clients what you do.
           </p>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-1.5 text-xs">
-          {location && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-foreground/80">
-              <MapPin size={12} className="text-muted-foreground" /> {location}
+        <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-none border border-border/60 bg-border/60 sm:grid-cols-4">
+          <div className="bg-card p-3">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <MapPin size={11} /> Location
             </span>
-          )}
-          {experience && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-foreground/80">
-              <Clock size={12} className="text-muted-foreground" /> {experience}
+            <p className="mt-1 truncate text-sm font-medium" title={location ?? undefined}>
+              {location || "—"}
+            </p>
+          </div>
+          <div className="bg-card p-3">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Clock size={11} /> Experience
             </span>
-          )}
-          {Number(rate) > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-foreground/80">
-              <DollarSign size={12} className="text-muted-foreground" />
-              <span className="font-semibold tabular-nums">
-                {Number(rate).toLocaleString()} {currency}
-              </span>
-              <span className="text-muted-foreground">/ {ratePer}</span>
+            <p className="mt-1 truncate text-sm font-medium" title={experience ?? undefined}>
+              {experience || "—"}
+            </p>
+          </div>
+          <div className="bg-card p-3">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <DollarSign size={11} /> Rate
             </span>
-          )}
-          {rating != null && rating > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-400">
-              <Star size={12} fill="currentColor" />
-              <span className="font-semibold tabular-nums">{rating.toFixed(1)}</span>
-              <span className="text-amber-700/70 dark:text-amber-400/80">
-                ({reviews ?? 0} review{reviews === 1 ? "" : "s"})
-              </span>
+            <p className="mt-1 text-sm font-semibold tabular-nums">
+              {Number(rate) > 0 ? (
+                <>
+                  {Number(rate).toLocaleString()}
+                  {currency && (
+                    <span className="ml-0.5 text-xs font-normal text-muted-foreground">
+                      {currency}
+                    </span>
+                  )}
+                  {ratePer && (
+                    <span className="ml-0.5 text-xs font-normal text-muted-foreground">
+                      / {ratePer}
+                    </span>
+                  )}
+                </>
+              ) : (
+                "—"
+              )}
+            </p>
+          </div>
+          <div className="bg-card p-3">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Star size={11} fill="currentColor" /> Rating
             </span>
-          )}
+            <p className="mt-1 text-sm font-semibold tabular-nums">
+              {rating != null && rating > 0 ? (
+                <>
+                  {rating.toFixed(1)}
+                  <span className="ml-0.5 text-xs font-normal text-muted-foreground">
+                    ({reviews ?? 0} review{reviews === 1 ? "" : "s"})
+                  </span>
+                </>
+              ) : (
+                "—"
+              )}
+            </p>
+          </div>
         </div>
 
         {(skills.length > 0 || certifications.length > 0) && (
@@ -256,13 +286,11 @@ export function ProfilePortfolioTemplate({
 
         {showcase.length > 0 && (
           <div className="mt-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <Images size={12} /> Project Showcase
-                <span className="rounded-full bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground normal-case tracking-normal">
-                  {showcase.length}
-                </span>
-              </div>
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Images size={12} /> Project Showcase
+              <span className="rounded-full bg-muted px-1.5 py-0 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
+                {showcase.length}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {showcase.map((item) => (

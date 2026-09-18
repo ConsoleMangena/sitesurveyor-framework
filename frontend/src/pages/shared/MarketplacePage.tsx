@@ -59,7 +59,14 @@ import { Input } from "../../components/ui/input.tsx";
 import { Label } from "../../components/ui/label.tsx";
 import { Textarea } from "../../components/ui/textarea.tsx";
 import { Badge } from "../../components/ui/badge.tsx";
-import { Card, CardContent } from "../../components/ui/card.tsx";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../../components/ui/card.tsx";
+import { ComboboxField } from "../../components/templates/ComboboxField.tsx";
 import { DialogTemplate } from "../../components/templates/DialogTemplate.tsx";
 import { PageForm } from "../../components/templates/PageForm.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
@@ -602,152 +609,238 @@ export default function MarketplacePage({
           </>
         }
       >
-        <div className="space-y-6">
-          {/* ── Listing Details ──────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <ClipboardList size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Listing Details</h3>
-                <p className="text-[11px] text-muted-foreground">Basic information about the instrument.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label>Name <span className="text-destructive">*</span></Label>
-                <Input
-                  value={mName}
-                  onChange={(e) => setMName(e.target.value)}
-                  placeholder="e.g. Leica TS16"
-                  autoFocus
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Type</Label>
-                  <SelectDropdown options={TYPE_OPTIONS} value={mType} onChange={setMType} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Specs (comma separated)</Label>
-                  <Input
-                    value={mSpecs}
-                    onChange={(e) => setMSpecs(e.target.value)}
-                    placeholder="e.g. 2'' accuracy, 1000m range"
-                  />
-                </div>
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={mDescription}
-                    onChange={(e) => setMDescription(e.target.value)}
-                    placeholder="Optional details about the asset's history or inclusions."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Pricing & Condition ──────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600">
-                <DollarSign size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Pricing & Condition</h3>
-                <p className="text-[11px] text-muted-foreground">Set your price and describe the asset condition.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Condition</Label>
-                  <SelectDropdown options={CONDITION_OPTIONS} value={mCondition} onChange={setMCondition} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Currency</Label>
-                  <Input
-                    value={mCurrency}
-                    onChange={(e) => setMCurrency(e.target.value)}
-                    placeholder="USD"
-                  />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Price <span className="text-destructive">*</span></Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={mPrice}
-                    onChange={(e) => setMPrice(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Location & Seller ────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
-                <MapPin size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Location & Seller</h3>
-                <p className="text-[11px] text-muted-foreground">Where it is and who is selling it.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Location <span className="text-destructive">*</span></Label>
-                  <Input
-                    value={mLocation}
-                    onChange={(e) => setMLocation(e.target.value)}
-                    placeholder="e.g. City, country"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Seller / Provider <span className="text-destructive">*</span></Label>
-                  <Input
-                    value={mSeller}
-                    onChange={(e) => setMSeller(e.target.value)}
-                    placeholder="Your firm or name"
-                  />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Receiving Wallet</Label>
-                  {workspaceMarketplaceWallet ? (
-                    <div className="rounded-md border border-border/40 bg-muted/30 px-3 py-2">
-                      <p className="break-all text-xs font-mono text-muted-foreground">
-                        {workspaceMarketplaceWallet}
-                      </p>
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Listing Details ──────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardList size={15} />
                     </div>
-                  ) : (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-                      <p className="text-xs text-amber-700">
-                        No marketplace wallet selected. Buyers will see "Seller has no wallet." Set one in Billing.
-                      </p>
+                    <div>
+                      <CardTitle className="text-base">
+                        Listing details
+                      </CardTitle>
+                      <CardDescription>
+                        Basic information about the instrument.
+                      </CardDescription>
                     </div>
-                  )}
-                </div>
-                {isPlatformAdmin && (
-                  <div className="sm:col-span-2 mt-2 flex items-center gap-3 rounded-md border p-3 bg-background">
-                    <Switch
-                      id="listing-global"
-                      checked={mIsGlobal}
-                      onCheckedChange={setMIsGlobal}
-                    />
-                    <Label htmlFor="listing-global" className="cursor-pointer">
-                      Publish globally (visible to all workspaces)
-                    </Label>
                   </div>
-                )}
-              </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>
+                        Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={mName}
+                        onChange={(e) => setMName(e.target.value)}
+                        placeholder="e.g. Leica TS16"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <ComboboxField
+                          label="Type"
+                          value={mType}
+                          onChange={(v) => setMType(v)}
+                          options={TYPE_OPTIONS}
+                          placeholder="Select type"
+                          emptyText="No types found."
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Specs (comma separated)</Label>
+                        <Input
+                          value={mSpecs}
+                          onChange={(e) => setMSpecs(e.target.value)}
+                          placeholder="e.g. 2'' accuracy, 1000m range"
+                        />
+                      </div>
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <Label>Description</Label>
+                        <Textarea
+                          value={mDescription}
+                          onChange={(e) => setMDescription(e.target.value)}
+                          placeholder="Optional details about the asset's history or inclusions."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Pricing & Condition ──────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <DollarSign size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Pricing & condition
+                      </CardTitle>
+                      <CardDescription>
+                        Set your price and describe the asset condition.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <ComboboxField
+                        label="Condition"
+                        value={mCondition}
+                        onChange={(v) => setMCondition(v)}
+                        options={CONDITION_OPTIONS}
+                        placeholder="Select condition"
+                        emptyText="No conditions found."
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Currency</Label>
+                      <Input
+                        value={mCurrency}
+                        onChange={(e) => setMCurrency(e.target.value)}
+                        placeholder="USD"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label>
+                        Price <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={mPrice}
+                        onChange={(e) => setMPrice(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Location & Seller ────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <MapPin size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Location & seller
+                      </CardTitle>
+                      <CardDescription>
+                        Where it is and who is selling it.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>
+                        Location <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={mLocation}
+                        onChange={(e) => setMLocation(e.target.value)}
+                        placeholder="e.g. City, country"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>
+                        Seller / Provider{" "}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={mSeller}
+                        onChange={(e) => setMSeller(e.target.value)}
+                        placeholder="Your firm or name"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label>Receiving Wallet</Label>
+                      {workspaceMarketplaceWallet ? (
+                        <div className="rounded-none border border-border/40 bg-muted/30 px-3 py-2">
+                          <p className="break-all font-mono text-xs text-muted-foreground">
+                            {workspaceMarketplaceWallet}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2">
+                          <p className="text-xs text-amber-700">
+                            No marketplace wallet selected. Buyers will see
+                            "Seller has no wallet." Set one in Billing.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {isPlatformAdmin && (
+                      <div className="mt-2 flex items-center gap-3 rounded-none border bg-background p-3 sm:col-span-2">
+                        <Switch
+                          id="listing-global"
+                          checked={mIsGlobal}
+                          onCheckedChange={setMIsGlobal}
+                        />
+                        <Label htmlFor="listing-global" className="cursor-pointer">
+                          Publish globally (visible to all workspaces)
+                        </Label>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Listing summary</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Type</dt>
+                      <dd className="truncate font-medium">{mType || "—"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Condition</dt>
+                      <dd className="truncate font-medium">
+                        {mCondition || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Price</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {mPrice ? `${mCurrency || "USD"} ${mPrice}` : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Location</dt>
+                      <dd className="truncate font-medium">
+                        {mLocation || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Seller</dt>
+                      <dd className="truncate font-medium">{mSeller || "—"}</dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </div>
       </PageForm>

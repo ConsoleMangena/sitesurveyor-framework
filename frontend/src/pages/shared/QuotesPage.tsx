@@ -9,27 +9,25 @@ import {
   Building2,
   Pencil,
   Trash2,
-  X,
   ClipboardList,
-  CalendarDays,
+  ListChecks,
+  ScrollText,
 } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
+import { consumeQuoteCreateRequest } from "../../lib/navigationIntents.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
 import { PageForm } from "@/components/templates/PageForm.tsx";
+import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
+import { composerInput, composerPad } from "@/components/templates/composerStyles.ts";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import {
   Select,
   SelectContent,
@@ -104,7 +102,6 @@ function formatDate(isoDate: string) {
 interface QuoteDetailProps {
   quote: UiQuote;
   items: LineItem[];
-  saving: boolean;
   savingNotes: boolean;
   notes: string;
   terms: string;
@@ -122,23 +119,17 @@ interface QuoteDetailProps {
   onChange: (id: string, field: keyof LineItem, value: string | number) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
-  onSave: () => void;
-  onExport: () => void;
-  onSend: () => void;
   onNotesChange: (value: string) => void;
   onSaveNotes: () => void;
   onTermsChange: (value: string) => void;
-  onStartEdit: () => void;
   onCancelEdit: () => void;
   onEditDraftChange: (patch: Partial<QuoteDetailProps["editDraft"]>) => void;
   onSaveDetails: () => void;
-  onDelete: () => void;
 }
 
 function QuoteDetail({
   quote,
   items,
-  saving,
   savingNotes,
   notes,
   terms,
@@ -150,17 +141,12 @@ function QuoteDetail({
   onChange,
   onAdd,
   onRemove,
-  onSave,
-  onExport,
-  onSend,
   onNotesChange,
   onSaveNotes,
   onTermsChange,
-  onStartEdit,
   onCancelEdit,
   onEditDraftChange,
   onSaveDetails,
-  onDelete,
 }: QuoteDetailProps) {
   const subtotal = calculateTotal(items);
   const vat = subtotal * 0.15;
@@ -169,271 +155,274 @@ function QuoteDetail({
   const isDraft = quote.status === "Draft";
 
   return (
-    <div className="space-y-0">
-      <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/[0.07] via-background to-background px-5 py-4 sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <FileText className="size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                    {quote.id}
-                  </h2>
-                  <Badge variant={statusVariant(quote.status)} className="capitalize">
-                    {quote.status}
-                  </Badge>
+    <div className="mx-auto w-full max-w-6xl">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
+          {/* ── Quote Details ────────────────────────────── */}
+          <Card className="shadow-none border-border/60">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <ClipboardList size={15} />
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Issued {formatDate(quote.date)}
-                  {quote.expiresOn && <> · Expires {formatDate(quote.expiresOn)}</>}
-                </p>
+                <div>
+                  <CardTitle className="text-base">Quote details</CardTitle>
+                  <CardDescription>
+                    {editing && isDraft
+                      ? "Changes apply to this draft only."
+                      : "Number, client and validity."}
+                  </CardDescription>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 print:hidden">
-            {isDraft && !editing && (
-              <Button variant="outline" size="sm" onClick={onStartEdit} className="h-8 gap-1.5">
-                <Pencil size={13} />
-                Edit
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={onSave} disabled={saving} className="h-8 gap-1.5">
-              {saving ? "Saving..." : <Save size={13} />}
-              Save
-            </Button>
-            <Button variant="outline" size="sm" onClick={onExport} className="h-8 gap-1.5">
-              <Printer size={13} />
-              Print
-            </Button>
-            {isDraft && (
-              <Button size="sm" onClick={onSend} className="h-8 gap-1.5">
-                <Send size={13} />
-                Send
-              </Button>
-            )}
-            {isDraft && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onDelete}
-                className="h-8 gap-1.5 text-destructive hover:text-destructive"
-                aria-label="Delete quote"
-              >
-                <Trash2 size={13} />
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
-        {editing && isDraft ? (
-          <div className="rounded-none border bg-card p-4 shadow-sm space-y-4 sm:p-5">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Edit quote details</h3>
-                <p className="text-xs text-muted-foreground">
-                  Changes apply to this draft only. Send to client to lock it.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onCancelEdit}
-                aria-label="Cancel editing"
-                className="h-8 w-8 shrink-0"
-              >
-                <X size={14} />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-quote-number">Quote number</Label>
-                <Input
-                  id="edit-quote-number"
-                  value={editDraft.quote_number}
-                  onChange={(e) => onEditDraftChange({ quote_number: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-quote-client">Client</Label>
-                <Select
-                  value={editDraft.organization_id}
-                  onValueChange={(v) => onEditDraftChange({ organization_id: v })}
-                >
-                  <SelectTrigger id="edit-quote-client">
-                    <SelectValue placeholder="Select Client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Select Client</SelectItem>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-quote-project">Project</Label>
-                <Select
-                  value={editDraft.project_id}
-                  onValueChange={(v) => onEditDraftChange({ project_id: v })}
-                >
-                  <SelectTrigger id="edit-quote-project">
-                    <SelectValue placeholder="Select Project (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No project</SelectItem>
-                    {projectOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-quote-issue">Issue date</Label>
-                <Input
-                  id="edit-quote-issue"
-                  type="date"
-                  value={editDraft.issue_date}
-                  onChange={(e) => onEditDraftChange({ issue_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="edit-quote-expires">Expires on</Label>
-                <Input
-                  id="edit-quote-expires"
-                  type="date"
-                  value={editDraft.expires_on}
-                  onChange={(e) => onEditDraftChange({ expires_on: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={onCancelEdit} disabled={savingDetails}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={onSaveDetails}
-                disabled={savingDetails || !editDraft.quote_number.trim()}
-                className="gap-1.5"
-              >
-                {savingDetails ? "Saving..." : <Save size={14} />}
-                Save Details
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-            <div className="rounded-none border bg-card px-3 py-2.5 shadow-sm">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Bill To
-              </span>
-              <p className="mt-1 truncate text-sm font-medium text-foreground" title={quote.client}>
-                {quote.client}
-              </p>
-            </div>
-            <div className="rounded-none border bg-card px-3 py-2.5 shadow-sm">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Project
-              </span>
-              <p className="mt-1 truncate text-sm font-medium text-foreground" title={quote.project || "—"}>
-                {quote.project || "—"}
-              </p>
-            </div>
-            <div className="rounded-none border bg-card px-3 py-2.5 shadow-sm">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Date Issued
-              </span>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {formatDate(quote.date)}
-              </p>
-              {quote.expiresOn && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Expires {formatDate(quote.expiresOn)}
-                </p>
+            </CardHeader>
+            <CardContent>
+              {editing && isDraft ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-quote-number">Quote number</Label>
+                      <Input
+                        id="edit-quote-number"
+                        value={editDraft.quote_number}
+                        onChange={(e) => onEditDraftChange({ quote_number: e.target.value })}
+                        className={composerInput}
+                      />
+                    </div>
+                    <ComboboxField
+                      label="Client"
+                      value={editDraft.organization_id}
+                      onChange={(v) => onEditDraftChange({ organization_id: v })}
+                      options={organizations.map((org) => ({
+                        value: org.id,
+                        label: org.name,
+                      }))}
+                      placeholder="Select client"
+                      emptyText="No clients found."
+                      optional
+                      optionalLabel="No client"
+                    />
+                    <ComboboxField
+                      label="Project"
+                      value={editDraft.project_id}
+                      onChange={(v) => onEditDraftChange({ project_id: v })}
+                      options={projectOptions.map((p) => ({
+                        value: p.id,
+                        label: p.name,
+                      }))}
+                      placeholder="Select project"
+                      emptyText="No projects found."
+                      optional
+                      optionalLabel="No project"
+                    />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="edit-quote-issue">Issue date</Label>
+                      <Input
+                        id="edit-quote-issue"
+                        type="date"
+                        value={editDraft.issue_date}
+                        onChange={(e) => onEditDraftChange({ issue_date: e.target.value })}
+                        className={composerInput}
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor="edit-quote-expires">Expires on</Label>
+                      <Input
+                        id="edit-quote-expires"
+                        type="date"
+                        value={editDraft.expires_on}
+                        onChange={(e) => onEditDraftChange({ expires_on: e.target.value })}
+                        className={composerInput}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={onCancelEdit} disabled={savingDetails}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={onSaveDetails}
+                      disabled={savingDetails || !editDraft.quote_number.trim()}
+                      className="gap-1.5"
+                    >
+                      {savingDetails ? "Saving..." : <Save size={14} />}
+                      Save Details
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Bill To
+                    </p>
+                    <p className="mt-1 truncate text-sm font-medium text-foreground" title={quote.client}>
+                      {quote.client}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Project
+                    </p>
+                    <p className="mt-1 truncate text-sm font-medium text-foreground" title={quote.project || "—"}>
+                      {quote.project || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Date Issued
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-foreground">
+                      {formatDate(quote.date)}
+                    </p>
+                    {quote.expiresOn && (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Expires {formatDate(quote.expiresOn)}
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
-        )}
+            </CardContent>
+          </Card>
 
-        <LineItemsEditor
-          items={items}
-          onChange={onChange}
-          onAdd={onAdd}
-          onRemove={onRemove}
-          showTotals={false}
-        />
-
-        <div className="space-y-4 print:hidden">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="quote-notes" className="text-xs font-medium">
-                  Notes
-                </Label>
-                {notesChanged && (
-                  <Button size="sm" variant="outline" onClick={onSaveNotes} disabled={savingNotes} className="h-6 text-[11px]">
-                    {savingNotes ? "Saving..." : "Save"}
-                  </Button>
-                )}
+          {/* ── Line Items ───────────────────────────────── */}
+          <Card className="shadow-none border-border/60">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <ListChecks size={15} />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Line items</CardTitle>
+                  <CardDescription>
+                    Services and products included in this quote.
+                  </CardDescription>
+                </div>
               </div>
-              <Textarea
-                id="quote-notes"
-                rows={2}
-                value={notes}
-                onChange={(e) => onNotesChange(e.target.value)}
-                placeholder="Add any notes visible to the client..."
-                className="resize-y"
+              <CardAction>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onAdd}
+                  className="h-8 gap-1"
+                >
+                  <Plus size={14} />
+                  Add item
+                </Button>
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <LineItemsEditor
+                items={items}
+                onChange={onChange}
+                onAdd={onAdd}
+                onRemove={onRemove}
+                showTotals={false}
+                bare
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="quote-terms" className="text-xs font-medium">
-                Terms & Conditions
-              </Label>
-              <Textarea
-                id="quote-terms"
-                rows={2}
-                value={terms}
-                onChange={(e) => onTermsChange(e.target.value)}
-                placeholder="Payment terms, validity, etc."
-                className="resize-y"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <div className="w-full max-w-sm rounded-none border bg-gradient-to-br from-primary/[0.06] via-muted/40 to-muted/20 px-4 py-3.5 shadow-sm sm:px-5 sm:py-4">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Summary
-              </h3>
-              <dl className="mt-2 space-y-1.5 text-sm">
-                <div className="flex justify-between">
+            </CardContent>
+          </Card>
+
+          {/* ── Additional Info ──────────────────────────── */}
+          <Card className="shadow-none border-border/60">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <ScrollText size={15} />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Additional information</CardTitle>
+                  <CardDescription>
+                    Notes and terms visible to the client.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="quote-notes" className="text-xs font-medium">
+                      Notes
+                    </Label>
+                    {notesChanged && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={onSaveNotes}
+                        disabled={savingNotes}
+                        className="h-6 text-[11px]"
+                      >
+                        {savingNotes ? "Saving..." : "Save"}
+                      </Button>
+                    )}
+                  </div>
+                  <div className={composerPad}>
+                    <Textarea
+                      id="quote-notes"
+                      rows={3}
+                      value={notes}
+                      onChange={(e) => onNotesChange(e.target.value)}
+                      placeholder="Add any notes visible to the client..."
+                      className="min-h-0 resize-y border-0 bg-transparent p-1 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
+                  {notesChanged && (
+                    <p className="px-1 text-[10px] text-muted-foreground/60">
+                      Notes are saved for this draft when you click Save.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="quote-terms" className="text-xs font-medium">
+                    Terms & Conditions
+                  </Label>
+                  <div className={composerPad}>
+                    <Textarea
+                      id="quote-terms"
+                      rows={3}
+                      value={terms}
+                      onChange={(e) => onTermsChange(e.target.value)}
+                      placeholder="Payment terms, validity, etc."
+                      className="min-h-0 resize-y border-0 bg-transparent p-1 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Summary ───────────────────────────────────── */}
+        <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+          <Card className="gap-4 shadow-none border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base">Estimate total</CardTitle>
+              <CardDescription>Includes 15% VAT.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Subtotal</dt>
                   <dd className="font-medium tabular-nums">{formatCurrency(subtotal)}</dd>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">VAT (15%)</dt>
                   <dd className="font-medium tabular-nums">{formatCurrency(vat)}</dd>
                 </div>
               </dl>
-              <Separator className="my-2.5" />
+              <Separator className="my-3" />
               <div className="flex items-baseline justify-between">
-                <span className="text-sm font-medium text-foreground">Total</span>
-                <span className="text-xl font-semibold tabular-nums text-foreground sm:text-2xl">
+                <span className="text-sm font-medium">Total</span>
+                <span className="text-2xl font-semibold tabular-nums">
                   {formatCurrency(total)}
                 </span>
               </div>
-            </div>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        </aside>
       </div>
     </div>
   );
@@ -454,7 +443,9 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
   const [organizations, setOrganizations] = useState<OrganizationRow[]>([]);
   const [projectOptions, setProjectOptions] = useState<{ id: string; name: string }[]>([]);
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState<boolean>(() =>
+    consumeQuoteCreateRequest()
+  );
   const [createError, setCreateError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [draft, setDraft] = useState({
@@ -462,7 +453,9 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
     organization_id: "",
     project_id: "",
     issue_date: new Date().toISOString().slice(0, 10),
-    expires_on: "",
+    expires_on: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10),
   });
   const [draftItems, setDraftItems] = useState<LineItem[]>([
     { id: "new-1", description: "", qty: 1, unit: "Hours", rate: 0 },
@@ -524,7 +517,6 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
       setLocalItems(activeQuote ? JSON.parse(JSON.stringify(activeQuote.items)) : []);
       setDraftNotes(activeQuote?.notes ?? "");
       setEditingDetails(false);
-      if (activeQuote) setDetailOpen(true);
     }, 0);
     return () => window.clearTimeout(id);
   }, [activeQuote]);
@@ -812,180 +804,250 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
   }
 
   if (isCreateOpen) {
+    const quoteSubtotal = calculateTotal(draftItems);
+    const quoteVat = quoteSubtotal * 0.15;
+    const quoteTotal = quoteSubtotal + quoteVat;
+
+    const addQuoteItem = () =>
+      setDraftItems((prev) => [
+        ...prev,
+        { id: `new-${Date.now()}`, description: "", qty: 1, unit: "Hours", rate: 0 },
+      ]);
+
+    const removeQuoteItem = (id: string) =>
+      setDraftItems((prev) => (prev.length === 1 ? prev : prev.filter((i) => i.id !== id)));
+
     return (
       <PageForm
         title="Create Quote"
         description="Prepare a new estimate for a client."
         onBack={() => setIsCreateOpen(false)}
         footer={
-          <>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={submitCreateQuote}>Create Quote</Button>
-          </>
+          <div className="flex w-full items-center gap-4">
+            <div className="min-w-0 flex-1">
+              {createError && (
+                <div role="alert" className="text-sm text-destructive">
+                  {createError}
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submitCreateQuote} className="gap-1.5">
+                Create Quote
+              </Button>
+            </div>
+          </div>
         }
       >
-        <div className="space-y-6">
-          {/* ── Quote Details ────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <ClipboardList size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Quote Details</h3>
-                <p className="text-[11px] text-muted-foreground">Basic information and scheduling.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="quote-number">Quote number</Label>
-                  <Input
-                    id="quote-number"
-                    placeholder="e.g. EST-2026-053"
-                    value={draft.quote_number}
-                    onChange={(e) => setDraft({ ...draft, quote_number: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Client</Label>
-                  <Select
-                    value={draft.organization_id}
-                    onValueChange={(v) => setDraft({ ...draft, organization_id: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Select Client</SelectItem>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Project</Label>
-                  <Select
-                    value={draft.project_id}
-                    onValueChange={(v) => setDraft({ ...draft, project_id: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Select Project (optional)</SelectItem>
-                      {projectOptions.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="quote-issue">Issue date</Label>
-                  <Input
-                    id="quote-issue"
-                    type="date"
-                    value={draft.issue_date}
-                    onChange={(e) => setDraft({ ...draft, issue_date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="quote-expires">Expires on</Label>
-                  <Input
-                    id="quote-expires"
-                    type="date"
-                    placeholder="Expires on"
-                    value={draft.expires_on}
-                    onChange={(e) => setDraft({ ...draft, expires_on: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Quote Details ────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardList size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Quote details</CardTitle>
+                      <CardDescription>
+                        Number, client and validity.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="quote-number">Quote number</Label>
+                      <Input
+                        id="quote-number"
+                        placeholder="e.g. EST-2026-053"
+                        value={draft.quote_number}
+                        onChange={(e) => setDraft({ ...draft, quote_number: e.target.value })}
+                      />
+                    </div>
+                    <ComboboxField
+                      label="Client"
+                      value={draft.organization_id}
+                      onChange={(v) => setDraft({ ...draft, organization_id: v })}
+                      options={organizations.map((org) => ({
+                        value: org.id,
+                        label: org.name,
+                      }))}
+                      placeholder="Select client"
+                      emptyText="No clients found."
+                    />
+                    <ComboboxField
+                      label="Project"
+                      value={draft.project_id}
+                      onChange={(v) => setDraft({ ...draft, project_id: v })}
+                      options={projectOptions.map((p) => ({
+                        value: p.id,
+                        label: p.name,
+                      }))}
+                      placeholder="Select project"
+                      emptyText="No projects found."
+                      optional
+                      optionalLabel="No project"
+                    />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="quote-issue">Issue date</Label>
+                      <Input
+                        id="quote-issue"
+                        type="date"
+                        value={draft.issue_date}
+                        onChange={(e) => setDraft({ ...draft, issue_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor="quote-expires">Expires on</Label>
+                      <Input
+                        id="quote-expires"
+                        type="date"
+                        placeholder="Expires on"
+                        value={draft.expires_on}
+                        onChange={(e) => setDraft({ ...draft, expires_on: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* ── Line Items ───────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
-                <FileText size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Line items</h3>
-                <p className="text-[11px] text-muted-foreground">Services and products included in this quote.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <LineItemsEditor
-                items={draftItems}
-                onChange={updateDraftItem}
-                onAdd={() =>
-                  setDraftItems((prev) => [
-                    ...prev,
-                    { id: `new-${Date.now()}`, description: "", qty: 1, unit: "Hours", rate: 0 },
-                  ])
-                }
-                onRemove={(id) =>
-                  setDraftItems((prev) => (prev.length === 1 ? prev : prev.filter((i) => i.id !== id)))
-                }
-              />
-            </div>
-          </div>
-
-          {/* ── Additional Info ──────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600">
-                <FileText size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Additional Information</h3>
-                <p className="text-[11px] text-muted-foreground">Notes and terms visible to the client.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-notes">Notes</Label>
-                  <Textarea
-                    id="create-notes"
-                    rows={3}
-                    value={draftNotes}
-                    onChange={(e) => setDraftNotes(e.target.value)}
-                    placeholder="Notes visible to the client"
+              {/* ── Line Items ───────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ListChecks size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Line items</CardTitle>
+                      <CardDescription>
+                        Services and products included in this quote.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <CardAction>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addQuoteItem}
+                      className="h-8 gap-1"
+                    >
+                      <Plus size={14} />
+                      Add item
+                    </Button>
+                  </CardAction>
+                </CardHeader>
+                <CardContent>
+                  <LineItemsEditor
+                    items={draftItems}
+                    onChange={updateDraftItem}
+                    onAdd={addQuoteItem}
+                    onRemove={removeQuoteItem}
+                    bare
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-terms">Terms & Conditions</Label>
-                  <Textarea
-                    id="create-terms"
-                    rows={3}
-                    value={defaults.terms}
-                    onChange={(e) => setTerms(e.target.value)}
-                    placeholder="Payment terms, validity, etc."
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                </CardContent>
+              </Card>
 
-        <div className="flex items-center justify-between border-t pt-4">
-          <div className="text-sm">
-            <span className="text-muted-foreground">Total:</span>{" "}
-            <strong>{formatCurrency(calculateTotal(draftItems) * 1.15)}</strong>
-          </div>
-          {createError && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {createError}
+              {/* ── Additional Info ──────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ScrollText size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Additional information</CardTitle>
+                      <CardDescription>
+                        Notes and terms visible to the client.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-notes">Notes</Label>
+                      <Textarea
+                        id="create-notes"
+                        rows={3}
+                        value={draftNotes}
+                        onChange={(e) => setDraftNotes(e.target.value)}
+                        placeholder="Notes visible to the client"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="create-terms">Terms & Conditions</Label>
+                      <Textarea
+                        id="create-terms"
+                        rows={3}
+                        value={defaults.terms}
+                        onChange={(e) => setTerms(e.target.value)}
+                        placeholder="Payment terms, validity, etc."
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          )}
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Estimate total</CardTitle>
+                  <CardDescription>Includes 15% VAT.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <dt className="text-muted-foreground">Subtotal</dt>
+                      <dd className="font-medium tabular-nums">
+                        {formatCurrency(quoteSubtotal)}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-muted-foreground">VAT (15%)</dt>
+                      <dd className="font-medium tabular-nums">
+                        {formatCurrency(quoteVat)}
+                      </dd>
+                    </div>
+                  </dl>
+                  <Separator className="my-3" />
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-medium">Total</span>
+                    <span className="text-2xl font-semibold tabular-nums">
+                      {formatCurrency(quoteTotal)}
+                    </span>
+                  </div>
+                  <div className="mt-4 border-t pt-4">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Prepared by
+                    </p>
+                    <p
+                      className="mt-0.5 truncate text-sm font-medium"
+                      title={profile.name}
+                    >
+                      {profile.name || "Your business profile"}
+                    </p>
+                    <p
+                      className="truncate text-xs text-muted-foreground"
+                      title={profile.email}
+                    >
+                      {profile.email || "Set your details under Business settings"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
         </div>
       </PageForm>
     );
@@ -999,6 +1061,95 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         profile={profile}
         onSave={setProfile}
       />
+    );
+  }
+
+  if (detailOpen && activeQuote) {
+    const isDraft = activeQuote.status === "Draft";
+    return (
+      <PageForm
+        title={
+          <span className="inline-flex items-center gap-2">
+            Quote {activeQuote.id}
+            <Badge variant={statusVariant(activeQuote.status)} className="capitalize">
+              {activeQuote.status}
+            </Badge>
+          </span>
+        }
+        description={
+          <>
+            Issued {formatDate(activeQuote.date)}
+            {activeQuote.expiresOn && <> · Expires {formatDate(activeQuote.expiresOn)}</>}
+          </>
+        }
+        onBack={() => setDetailOpen(false)}
+        footer={
+          <div className="flex w-full items-center gap-2">
+            <div className="min-w-0 flex-1">
+              {error && (
+                <div role="alert" className="text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {isDraft && !editingDetails && (
+                <Button variant="outline" onClick={handleStartEditDetails} className="gap-1.5">
+                  <Pencil size={14} />
+                  Edit
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSaveItems} disabled={saving} className="gap-1.5">
+                {saving ? "Saving..." : <Save size={14} />}
+                Save
+              </Button>
+              <Button variant="outline" onClick={handleExportPdf} className="gap-1.5">
+                <Printer size={14} />
+                Print
+              </Button>
+              {isDraft && (
+                <Button onClick={openSendPreview} className="gap-1.5">
+                  <Send size={14} />
+                  Send
+                </Button>
+              )}
+              {isDraft && (
+                <Button
+                  variant="outline"
+                  onClick={() => confirmDeleteQuote(activeQuote)}
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                  aria-label="Delete quote"
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </Button>
+              )}
+            </div>
+          </div>
+        }
+      >
+        <QuoteDetail
+          quote={activeQuote}
+          items={localItems}
+          savingNotes={savingNotes}
+          notes={draftNotes}
+          terms={defaults.terms}
+          editing={editingDetails}
+          editDraft={editDraft}
+          savingDetails={savingDetails}
+          organizations={organizations}
+          projectOptions={projectOptions}
+          onChange={updateItem}
+          onAdd={handleAddLineItem}
+          onRemove={handleRemoveLineItem}
+          onNotesChange={setDraftNotes}
+          onSaveNotes={handleSaveNotes}
+          onTermsChange={setTerms}
+          onCancelEdit={handleCancelEditDetails}
+          onEditDraftChange={handleEditDraftChange}
+          onSaveDetails={handleSaveDetails}
+        />
+      </PageForm>
     );
   }
 
@@ -1113,7 +1264,10 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
               <button
                 key={quote.dbId}
                 type="button"
-                onClick={() => setActiveQuote(quote)}
+                onClick={() => {
+                  setActiveQuote(quote);
+                  setDetailOpen(true);
+                }}
                 className={cn(
                   "w-full text-left px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-muted/50",
                   activeQuote?.dbId === quote.dbId && "bg-muted",
@@ -1151,64 +1305,6 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
           )}
         </div>
       </div>
-
-      <DialogTemplate
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        title={
-          <div className="flex items-center gap-2">
-            <span>Quote {activeQuote?.id}</span>
-            {activeQuote && (
-              <Badge
-                variant={
-                  activeQuote.status === "Accepted"
-                    ? "default"
-                    : activeQuote.status === "Declined"
-                      ? "destructive"
-                      : activeQuote.status === "Sent"
-                        ? "secondary"
-                        : "outline"
-                }
-              >
-                {activeQuote.status}
-              </Badge>
-            )}
-          </div>
-        }
-        size="full"
-        className="sm:rounded-none max-w-3xl"
-        contentClassName="p-0"
-      >
-        {activeQuote && (
-          <QuoteDetail
-            quote={activeQuote}
-            items={localItems}
-            saving={saving}
-            savingNotes={savingNotes}
-            notes={draftNotes}
-            terms={defaults.terms}
-            editing={editingDetails}
-            editDraft={editDraft}
-            savingDetails={savingDetails}
-            organizations={organizations}
-            projectOptions={projectOptions}
-            onChange={updateItem}
-            onAdd={handleAddLineItem}
-            onRemove={handleRemoveLineItem}
-            onSave={handleSaveItems}
-            onExport={handleExportPdf}
-            onSend={openSendPreview}
-            onNotesChange={setDraftNotes}
-            onSaveNotes={handleSaveNotes}
-            onTermsChange={setTerms}
-            onStartEdit={handleStartEditDetails}
-            onCancelEdit={handleCancelEditDetails}
-            onEditDraftChange={handleEditDraftChange}
-            onSaveDetails={handleSaveDetails}
-            onDelete={() => confirmDeleteQuote(activeQuote)}
-          />
-        )}
-      </DialogTemplate>
 
       <BusinessProfileDialog
         open={businessDialogOpen}

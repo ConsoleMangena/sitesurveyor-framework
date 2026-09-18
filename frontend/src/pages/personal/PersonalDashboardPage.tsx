@@ -30,6 +30,7 @@ import { listInvoices, type InvoiceWithDetails } from "../../lib/repositories/in
 import { listCalibrations, listAssets } from "../../lib/repositories/assets.ts";
 import { listJobEvents, type JobEventRow } from "../../lib/repositories/jobEvents.ts";
 import { listQuotes } from "../../lib/repositories/quotes.ts";
+import { requestQuoteCreate } from "../../lib/navigationIntents.ts";
 
 interface PersonalDashboardPageProps {
   userName?: string;
@@ -171,7 +172,13 @@ export default function PersonalDashboardPage({
         subtitle={currentDate}
         description="Your personal dashboard is focused on your own schedule, projects, invoices, contacts, and field equipment so you can manage solo work efficiently."
         actions={
-          <Button className="gap-2">
+          <Button
+            className="gap-2"
+            onClick={() => {
+              requestQuoteCreate();
+              onNavigate?.("quotes");
+            }}
+          >
             <Plus size={16} />
             Create Quote
           </Button>
@@ -181,37 +188,6 @@ export default function PersonalDashboardPage({
       <ProfessionalPortfolioCard workspaceId={workspaceId} userName={userName} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-12">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:col-span-12">
-          <KpiCard
-            title="Open Projects"
-            value={activeProjectsCount.toString()}
-            subtext={`${projects.length} total projects`}
-            icon={<Briefcase className="size-4" />}
-            tone="primary"
-          />
-          <KpiCard
-            title="Pending Invoices"
-            value={`$${pendingInvoicesTotal.toLocaleString()}`}
-            subtext={`${pendingInvoices.length} invoices awaiting payment`}
-            icon={<FileText className="size-4" />}
-            tone="warning"
-          />
-          <KpiCard
-            title="Quotes Pending"
-            value={pendingQuotesCount.toString()}
-            subtext="awaiting client decision"
-            icon={<FileCheck className="size-4" />}
-            tone="info"
-          />
-          <KpiCard
-            title="Next Calibration"
-            value={nextCalibrationDays == null ? "--" : `${nextCalibrationDays}d`}
-            subtext={nextCalibrationDays == null ? "No schedule found" : "until next calibration"}
-            icon={<Clock className="size-4" />}
-            tone="purple"
-          />
-        </div>
-
         <div className="xl:col-span-12">
           <MarketGlobeCard />
         </div>
@@ -256,18 +232,18 @@ export default function PersonalDashboardPage({
           </DashboardCard>
         </div>
 
-        <div className="xl:col-span-3">
+        <div className="xl:col-span-4">
           <DatabaseStorageCard
             workspaceId={workspaceId}
             onNavigate={onNavigate}
           />
         </div>
 
-        <div className="xl:col-span-7">
+        <div className="xl:col-span-8">
           <RecentProjectsTable projects={projects} />
         </div>
 
-        <div className="xl:col-span-5">
+        <div className="xl:col-span-6">
           <DashboardCard
             title="Today's Schedule"
             icon={<CalendarDays size={16} />}
@@ -305,7 +281,9 @@ export default function PersonalDashboardPage({
               )}
             </div>
           </DashboardCard>
+        </div>
 
+        <div className="xl:col-span-6">
           <DashboardCard title="Priority Tasks" icon={<ListTodo size={16} />}>
             <div className="flex flex-col gap-3">
               {taskItems.map((task) => (
@@ -322,6 +300,37 @@ export default function PersonalDashboardPage({
             </div>
           </DashboardCard>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          title="Open Projects"
+          value={activeProjectsCount.toString()}
+          subtext={`${projects.length} total projects`}
+          icon={<Briefcase className="size-4" />}
+          tone="primary"
+        />
+        <KpiCard
+          title="Pending Invoices"
+          value={`$${pendingInvoicesTotal.toLocaleString()}`}
+          subtext={`${pendingInvoices.length} invoices awaiting payment`}
+          icon={<FileText className="size-4" />}
+          tone="warning"
+        />
+        <KpiCard
+          title="Quotes Pending"
+          value={pendingQuotesCount.toString()}
+          subtext="awaiting client decision"
+          icon={<FileCheck className="size-4" />}
+          tone="info"
+        />
+        <KpiCard
+          title="Next Calibration"
+          value={nextCalibrationDays == null ? "--" : `${nextCalibrationDays}d`}
+          subtext={nextCalibrationDays == null ? "No schedule found" : "until next calibration"}
+          icon={<Clock className="size-4" />}
+          tone="purple"
+        />
       </div>
     </DashboardShell>
   );

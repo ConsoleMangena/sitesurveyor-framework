@@ -15,8 +15,23 @@ import { listProjects, type ProjectWithOrg } from "../../lib/repositories/projec
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import { Label } from "../../components/ui/label.tsx";
+import { Textarea } from "../../components/ui/textarea.tsx";
 import { Badge } from "../../components/ui/badge.tsx";
-import { Card, CardContent, CardHeader } from "../../components/ui/card.tsx";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../../components/ui/card.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.tsx";
+import { ComboboxField } from "../../components/templates/ComboboxField.tsx";
 import { PageForm } from "../../components/templates/PageForm.tsx";
 import { SuccessDialog } from "../../components/SuccessDialog.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
@@ -276,200 +291,362 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
           </>
         }
       >
-        <form id="time-expense-form" onSubmit={handleCreate} className="space-y-6">
-          {/* ── Basic Details ────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <CalendarDays size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Basic Details</h3>
-                <p className="text-[11px] text-muted-foreground">Date and project association.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Date <span className="text-destructive">*</span></Label>
-                  <Input
-                    type="date"
-                    value={activeTab === "time" ? timeForm.entry_date : expenseForm.entry_date}
-                    onChange={(e) =>
-                      activeTab === "time"
-                        ? setTimeForm((prev) => ({ ...prev, entry_date: e.target.value }))
-                        : setExpenseForm((prev) => ({ ...prev, entry_date: e.target.value }))
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Project</Label>
-                  <select
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-[color,box-shadow] focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1"
-                    value={activeTab === "time" ? timeForm.project_id : expenseForm.project_id}
-                    onChange={(e) =>
-                      activeTab === "time"
-                        ? setTimeForm((prev) => ({ ...prev, project_id: e.target.value }))
-                        : setExpenseForm((prev) => ({ ...prev, project_id: e.target.value }))
-                    }
-                  >
-                    <option value="">Internal / Not linked</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Entry Details ────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md", activeTab === "time" ? "bg-blue-500/10 text-blue-600" : "bg-emerald-500/10 text-emerald-600")}>
-                {activeTab === "time" ? <Clock size={14} /> : <DollarSign size={14} />}
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">{activeTab === "time" ? "Time Details" : "Expense Details"}</h3>
-                <p className="text-[11px] text-muted-foreground">{activeTab === "time" ? "Task and hours." : "Category, amount, and vendor."}</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-4">
-              {activeTab === "time" ? (
-                <>
-                  <div className="space-y-1.5">
-                    <Label>Task <span className="text-destructive">*</span></Label>
-                    <Input
-                      placeholder="e.g. Field Survey"
-                      value={timeForm.task}
-                      onChange={(e) =>
-                        setTimeForm((prev) => ({ ...prev, task: e.target.value }))
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
-                    <div className="space-y-1.5">
-                      <Label>Hours <span className="text-destructive">*</span></Label>
-                      <Input
-                        type="number"
-                        min="0.25"
-                        step="0.25"
-                        placeholder="0.00"
-                        value={timeForm.hours}
-                        onChange={(e) =>
-                          setTimeForm((prev) => ({ ...prev, hours: e.target.value }))
-                        }
-                        required
-                      />
+        <form id="time-expense-form" onSubmit={handleCreate} className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Basic Details ────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <CalendarDays size={15} />
                     </div>
-                    <div className="flex items-end pb-2">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Switch
-                          checked={timeForm.billable}
-                          onCheckedChange={(checked) =>
-                            setTimeForm((prev) => ({ ...prev, billable: checked }))
-                          }
-                        />
-                        Billable
-                      </label>
+                    <div>
+                      <CardTitle className="text-base">
+                        Basic details
+                      </CardTitle>
+                      <CardDescription>
+                        Date and project association.
+                      </CardDescription>
                     </div>
                   </div>
-                </>
-              ) : (
-                <>
+                </CardHeader>
+                <CardContent>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label>Category</Label>
-                      <select
-                        className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-[color,box-shadow] focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1"
-                        value={expenseForm.category}
-                        onChange={(e) =>
-                          setExpenseForm((prev) => ({
-                            ...prev,
-                            category: e.target.value as ExpenseCategory,
-                          }))
-                        }
-                      >
-                        {expenseCategories.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Amount <span className="text-destructive">*</span></Label>
+                      <Label>
+                        Date <span className="text-destructive">*</span>
+                      </Label>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={expenseForm.amount}
+                        type="date"
+                        value={
+                          activeTab === "time"
+                            ? timeForm.entry_date
+                            : expenseForm.entry_date
+                        }
                         onChange={(e) =>
-                          setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))
+                          activeTab === "time"
+                            ? setTimeForm((prev) => ({
+                                ...prev,
+                                entry_date: e.target.value,
+                              }))
+                            : setExpenseForm((prev) => ({
+                                ...prev,
+                                entry_date: e.target.value,
+                              }))
                         }
                         required
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
                     <div className="space-y-1.5">
-                      <Label>Vendor</Label>
-                      <Input
-                        placeholder="e.g. Hardware Store"
-                        value={expenseForm.vendor}
-                        onChange={(e) =>
-                          setExpenseForm((prev) => ({ ...prev, vendor: e.target.value }))
+                      <ComboboxField
+                        label="Project"
+                        value={
+                          activeTab === "time"
+                            ? timeForm.project_id
+                            : expenseForm.project_id
                         }
+                        onChange={(val) =>
+                          activeTab === "time"
+                            ? setTimeForm((prev) => ({
+                                ...prev,
+                                project_id: val,
+                              }))
+                            : setExpenseForm((prev) => ({
+                                ...prev,
+                                project_id: val,
+                              }))
+                        }
+                        options={projects.map((project) => ({
+                          value: project.id,
+                          label: project.name,
+                        }))}
+                        placeholder="Internal / Not linked"
+                        emptyText="No projects found."
+                        optional
+                        optionalLabel="Internal / Not linked"
                       />
                     </div>
-                    <div className="flex items-end pb-2">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Switch
-                          checked={expenseForm.reimbursable}
-                          onCheckedChange={(checked) =>
-                            setExpenseForm((prev) => ({ ...prev, reimbursable: checked }))
-                          }
-                        />
-                        Reimbursable
-                      </label>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Entry Details ────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      {activeTab === "time" ? (
+                        <Clock size={15} />
+                      ) : (
+                        <DollarSign size={15} />
+                      )}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        {activeTab === "time" ? "Time details" : "Expense details"}
+                      </CardTitle>
+                      <CardDescription>
+                        {activeTab === "time"
+                          ? "Task and hours."
+                          : "Category, amount, and vendor."}
+                      </CardDescription>
                     </div>
                   </div>
-                </>
-              )}
-            </div>
-          </div>
+                </CardHeader>
+                <CardContent>
+                  {activeTab === "time" ? (
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label>
+                          Task <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          placeholder="e.g. Field Survey"
+                          value={timeForm.task}
+                          onChange={(e) =>
+                            setTimeForm((prev) => ({
+                              ...prev,
+                              task: e.target.value,
+                            }))
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
+                        <div className="space-y-1.5">
+                          <Label>
+                            Hours <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0.25"
+                            step="0.25"
+                            placeholder="0.00"
+                            value={timeForm.hours}
+                            onChange={(e) =>
+                              setTimeForm((prev) => ({
+                                ...prev,
+                                hours: e.target.value,
+                              }))
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="flex items-end pb-2">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <Switch
+                              checked={timeForm.billable}
+                              onCheckedChange={(checked) =>
+                                setTimeForm((prev) => ({
+                                  ...prev,
+                                  billable: checked,
+                                }))
+                              }
+                            />
+                            Billable
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label>Category</Label>
+                          <Select
+                            value={expenseForm.category}
+                            onValueChange={(v) =>
+                              setExpenseForm((prev) => ({
+                                ...prev,
+                                category: v as ExpenseCategory,
+                              }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {expenseCategories.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>
+                            Amount{" "}
+                            <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={expenseForm.amount}
+                            onChange={(e) =>
+                              setExpenseForm((prev) => ({
+                                ...prev,
+                                amount: e.target.value,
+                              }))
+                            }
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
+                        <div className="space-y-1.5">
+                          <Label>Vendor</Label>
+                          <Input
+                            placeholder="e.g. Hardware Store"
+                            value={expenseForm.vendor}
+                            onChange={(e) =>
+                              setExpenseForm((prev) => ({
+                                ...prev,
+                                vendor: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-end pb-2">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm">
+                            <Switch
+                              checked={expenseForm.reimbursable}
+                              onCheckedChange={(checked) =>
+                                setExpenseForm((prev) => ({
+                                  ...prev,
+                                  reimbursable: checked,
+                                }))
+                              }
+                            />
+                            Reimbursable
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* ── Additional Notes ─────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-amber-600">
-                <FileText size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Notes</h3>
-                <p className="text-[11px] text-muted-foreground">Optional details or descriptions.</p>
-              </div>
+              {/* ── Additional Notes ─────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <FileText size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Notes</CardTitle>
+                      <CardDescription>
+                        Optional details or descriptions.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1.5">
+                    <Label>Notes</Label>
+                    <Textarea
+                      rows={3}
+                      placeholder="Additional information..."
+                      value={
+                        activeTab === "time"
+                          ? timeForm.notes
+                          : expenseForm.notes
+                      }
+                      onChange={(e) =>
+                        activeTab === "time"
+                          ? setTimeForm((prev) => ({
+                              ...prev,
+                              notes: e.target.value,
+                            }))
+                          : setExpenseForm((prev) => ({
+                              ...prev,
+                              notes: e.target.value,
+                            }))
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <textarea
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1"
-                  placeholder="Additional information..."
-                  value={activeTab === "time" ? timeForm.notes : expenseForm.notes}
-                  onChange={(e) =>
-                    activeTab === "time"
-                      ? setTimeForm((prev) => ({ ...prev, notes: e.target.value }))
-                      : setExpenseForm((prev) => ({ ...prev, notes: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {activeTab === "time" ? "Time entry" : "Expense entry"}
+                  </CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Date</dt>
+                      <dd className="truncate font-medium">
+                        {(activeTab === "time"
+                          ? timeForm.entry_date
+                          : expenseForm.entry_date) || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Project</dt>
+                      <dd className="truncate font-medium">
+                        {projects.find(
+                          (p) =>
+                            p.id ===
+                            (activeTab === "time"
+                              ? timeForm.project_id
+                              : expenseForm.project_id)
+                        )?.name || "Internal / Not linked"}
+                      </dd>
+                    </div>
+                    {activeTab === "time" ? (
+                      <>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-muted-foreground">Hours</dt>
+                          <dd className="truncate font-medium">
+                            {timeForm.hours || "0.00"}
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-muted-foreground">Billable</dt>
+                          <dd className="font-medium">
+                            {timeForm.billable ? "Yes" : "No"}
+                          </dd>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-muted-foreground">Category</dt>
+                          <dd className="truncate font-medium">
+                            {expenseForm.category || "—"}
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-muted-foreground">Amount</dt>
+                          <dd className="font-medium tabular-nums">
+                            ${expenseForm.amount || "0.00"}
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-muted-foreground">
+                            Reimbursable
+                          </dt>
+                          <dd className="font-medium">
+                            {expenseForm.reimbursable ? "Yes" : "No"}
+                          </dd>
+                        </div>
+                      </>
+                    )}
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </form>
       </PageForm>

@@ -11,6 +11,7 @@
   cursor: pointer;
   text-align: left;
   user-select: none;
+  border-radius: 0;
 }
 
 .select-dropdown-icon {

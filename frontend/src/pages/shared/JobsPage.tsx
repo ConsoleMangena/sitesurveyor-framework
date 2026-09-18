@@ -29,14 +29,28 @@ import { type ProjectWithOrg } from "../../lib/repositories/projects.ts";
 import { listAllJobs, listAllProjects } from "../../lib/repositories/adminPlatform.ts";
 import { mapStatus } from "../../lib/mappers.ts";
 import type { Database } from "../../lib/supabase/types.ts";
-import SelectDropdown from "../../components/SelectDropdown.tsx";
 import PageLoader from "../../components/PageLoader.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import { Label } from "../../components/ui/label.tsx";
+import { Textarea } from "../../components/ui/textarea.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.tsx";
 import { Badge } from "../../components/ui/badge.tsx";
-import { Card, CardContent } from "../../components/ui/card.tsx";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../../components/ui/card.tsx";
+import { ComboboxField } from "../../components/templates/ComboboxField.tsx";
 import { DialogTemplate } from "../../components/templates/DialogTemplate.tsx";
 import { PageForm } from "../../components/templates/PageForm.tsx";
 import { SuccessDialog } from "../../components/SuccessDialog.tsx";
@@ -84,6 +98,14 @@ const jobTypeIcons: Record<string, LucideIcon> = {
   Monitoring: Activity,
 };
 
+const JOB_TYPE_OPTIONS = [
+  { value: "Topographical", label: "Topographical" },
+  { value: "Cadastral", label: "Cadastral" },
+  { value: "Engineering", label: "Engineering" },
+  { value: "Mining", label: "Mining" },
+  { value: "Monitoring", label: "Monitoring" },
+];
+
 const jobTypeColors: Record<string, string> = {
   Topographical: "bg-blue-100 text-blue-700",
   Cadastral: "bg-emerald-100 text-emerald-700",
@@ -118,6 +140,10 @@ export default function JobsPage({
 }: JobsPageProps) {
   const [jobs, setJobs] = useState<JobWithProject[]>([]);
   const [projects, setProjects] = useState<ProjectWithOrg[]>([]);
+  const projectOptions = projects.map((p) => ({
+    id: p.id,
+    name: p.name || "Untitled project",
+  }));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [jobEditorOpen, setJobEditorOpen] = useState(false);
@@ -309,150 +335,209 @@ export default function JobsPage({
           </>
         }
       >
-        <div className="space-y-6">
-          {/* ── Job Details ──────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Briefcase size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Job Details</h3>
-                <p className="text-[11px] text-muted-foreground">Basic information about the work to be done.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="job-editor-title">Title <span className="text-destructive">*</span></Label>
-                <Input
-                  id="job-editor-title"
-                  value={jobTitle}
-                  onChange={(e) => setJobTitle(e.target.value)}
-                  placeholder="e.g. Site Boundary Survey"
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="job-editor-desc">Description</Label>
-                <textarea
-                  id="job-editor-desc"
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1"
-                  value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  placeholder="Briefly describe the scope of work"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Job type</Label>
-                  <SelectDropdown
-                    className="input-field w-full"
-                    value={jobType}
-                    onChange={setJobType}
-                    placeholder="Type"
-                    options={[
-                      { value: "", label: "—" },
-                      { value: "Topographical", label: "Topographical" },
-                      { value: "Cadastral", label: "Cadastral" },
-                      { value: "Engineering", label: "Engineering" },
-                      { value: "Mining", label: "Mining" },
-                      { value: "Monitoring", label: "Monitoring" },
-                    ]}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Project</Label>
-                  <SelectDropdown
-                    className="input-field w-full"
-                    value={jobProjectId}
-                    onChange={setJobProjectId}
-                    options={[
-                      { value: "", label: "No project" },
-                      ...projects.map((p) => ({
-                        value: p.id,
-                        label: p.name || "Untitled project",
-                      })),
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Job Details ──────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Briefcase size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Job details</CardTitle>
+                      <CardDescription>
+                        Basic information about the work to be done.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="job-editor-title">
+                        Title <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="job-editor-title"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        placeholder="e.g. Site Boundary Survey"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="job-editor-desc">Description</Label>
+                      <Textarea
+                        id="job-editor-desc"
+                        rows={3}
+                        value={jobDescription}
+                        onChange={(e) => setJobDescription(e.target.value)}
+                        placeholder="Briefly describe the scope of work"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <ComboboxField
+                        label="Job type"
+                        value={jobType}
+                        onChange={(v) => setJobType(v)}
+                        options={JOB_TYPE_OPTIONS}
+                        placeholder="Select type"
+                        emptyText="No types found."
+                        optional
+                        optionalLabel="No type"
+                      />
+                      <ComboboxField
+                        label="Project"
+                        value={jobProjectId}
+                        onChange={(v) => setJobProjectId(v)}
+                        options={projectOptions.map((p) => ({
+                          value: p.id,
+                          label: p.name || "Untitled project",
+                        }))}
+                        placeholder="Select project"
+                        emptyText="No projects found."
+                        optional
+                        optionalLabel="No project"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* ── Status & Location ────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
-                <MapPin size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Status & Location</h3>
-                <p className="text-[11px] text-muted-foreground">Where this job takes place and its current state.</p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="job-editor-location">Location</Label>
-                  <Input
-                    id="job-editor-location"
-                    value={jobLocation}
-                    onChange={(e) => setJobLocation(e.target.value)}
-                    placeholder="e.g. 123 North St"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <SelectDropdown
-                    className="input-field w-full"
-                    value={jobStatus}
-                    onChange={(v) => setJobStatus(v as JobStatus)}
-                    options={[
-                      { value: "planned", label: "Planned" },
-                      { value: "scheduled", label: "Scheduled" },
-                      { value: "in_progress", label: "In progress" },
-                      { value: "completed", label: "Completed" },
-                      { value: "cancelled", label: "Cancelled" },
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+              {/* ── Status & Location ────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <MapPin size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Status & Location
+                      </CardTitle>
+                      <CardDescription>
+                        Where this job takes place and its current state.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="job-editor-location">Location</Label>
+                      <Input
+                        id="job-editor-location"
+                        value={jobLocation}
+                        onChange={(e) => setJobLocation(e.target.value)}
+                        placeholder="e.g. 123 North St"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Status</Label>
+                      <Select
+                        value={jobStatus}
+                        onValueChange={(v) => setJobStatus(v as JobStatus)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="planned">Planned</SelectItem>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                          <SelectItem value="in_progress">
+                            In progress
+                          </SelectItem>
+                          <SelectItem value="completed">
+                            Completed
+                          </SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* ── Schedule ─────────────────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600">
-                <CalendarDays size={14} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold">Schedule</h3>
-                <p className="text-[11px] text-muted-foreground">Planned start and completion times.</p>
-              </div>
+              {/* ── Schedule ─────────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <CalendarDays size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Schedule</CardTitle>
+                      <CardDescription>
+                        Planned start and completion times.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="job-editor-start">
+                        Scheduled start
+                      </Label>
+                      <Input
+                        id="job-editor-start"
+                        type="datetime-local"
+                        value={jobScheduledStart}
+                        onChange={(e) => setJobScheduledStart(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="job-editor-end">Scheduled end</Label>
+                      <Input
+                        id="job-editor-end"
+                        type="datetime-local"
+                        value={jobScheduledEnd}
+                        onChange={(e) => setJobScheduledEnd(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="job-editor-start">Scheduled start</Label>
-                  <Input
-                    id="job-editor-start"
-                    type="datetime-local"
-                    value={jobScheduledStart}
-                    onChange={(e) => setJobScheduledStart(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="job-editor-end">Scheduled end</Label>
-                  <Input
-                    id="job-editor-end"
-                    type="datetime-local"
-                    value={jobScheduledEnd}
-                    onChange={(e) => setJobScheduledEnd(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Job details</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Type</dt>
+                      <dd className="truncate font-medium capitalize">
+                        {jobType || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Status</dt>
+                      <dd className="font-medium">{mapStatus(jobStatus)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Project</dt>
+                      <dd className="truncate font-medium">
+                        {projectOptions.find((p) => p.id === jobProjectId)
+                          ?.name || "None"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Location</dt>
+                      <dd className="truncate font-medium">
+                        {jobLocation || "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
           </div>
         </div>
       </PageForm>

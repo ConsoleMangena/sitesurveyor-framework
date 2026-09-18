@@ -11,9 +11,19 @@ import PageLoader from "@/components/PageLoader.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
+import { PageForm } from "@/components/templates/PageForm.tsx";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import {
   Select,
@@ -250,6 +260,343 @@ export default function ProfessionalsPage({
     );
   }
 
+  if (editorOpen) {
+    return (
+      <PageForm
+        title={editingId ? "Edit professional" : "Add professional"}
+        description="Update the professional profile details."
+        onBack={() => setEditorOpen(false)}
+        footer={
+          <>
+            <Button variant="outline" disabled={savingPro} onClick={() => setEditorOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={savingPro} onClick={() => void savePro()}>
+              {savingPro && <Loader2 size={14} className="mr-2 animate-spin" />}
+              {savingPro ? "Saving…" : "Save"}
+            </Button>
+          </>
+        }
+      >
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {/* ── Profile ──────────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Briefcase size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Profile</CardTitle>
+                      <CardDescription>
+                        Identity, discipline and experience.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-name">Name</Label>
+                      <Input
+                        id="pro-editor-name"
+                        value={pName}
+                        onChange={(e) => setPName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-title">Title</Label>
+                      <Input
+                        id="pro-editor-title"
+                        value={pTitle}
+                        onChange={(e) => setPTitle(e.target.value)}
+                        placeholder="e.g. Principal Surveyor"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <ComboboxField
+                        label="Discipline"
+                        value={pDiscipline}
+                        onChange={(v) => setPDiscipline(v)}
+                        options={DISCIPLINES.map((d) => ({
+                          value: d,
+                          label: d,
+                        }))}
+                        placeholder="Select discipline"
+                        emptyText="No disciplines found."
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-exp">Experience</Label>
+                      <Input
+                        id="pro-editor-exp"
+                        value={pExperience}
+                        onChange={(e) => setPExperience(e.target.value)}
+                        placeholder="e.g. 12 years"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor="pro-editor-location">Location</Label>
+                      <Input
+                        id="pro-editor-location"
+                        value={pLocation}
+                        onChange={(e) => setPLocation(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Rate & Availability ──────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Star size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        Rate & availability
+                      </CardTitle>
+                      <CardDescription>
+                        Pricing, availability and reputation.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-rate">Rate</Label>
+                      <Input
+                        id="pro-editor-rate"
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={pRate}
+                        onChange={(e) => setPRate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-rate-per">Rate unit</Label>
+                      <Input
+                        id="pro-editor-rate-per"
+                        value={pRatePer}
+                        onChange={(e) => setPRatePer(e.target.value)}
+                        placeholder="hour, day, project…"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-currency">Currency</Label>
+                      <Input
+                        id="pro-editor-currency"
+                        value={pCurrency}
+                        onChange={(e) => setPCurrency(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Availability</Label>
+                      <Select
+                        value={pAvailability}
+                        onValueChange={setPAvailability}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Available">Available</SelectItem>
+                          <SelectItem value="Busy">Busy</SelectItem>
+                          <SelectItem value="Available Soon">
+                            Available Soon
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-rating">Rating (0–5)</Label>
+                      <Input
+                        id="pro-editor-rating"
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        value={pRating}
+                        onChange={(e) => setPRating(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-reviews">Review count</Label>
+                      <Input
+                        id="pro-editor-reviews"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={pReviews}
+                        onChange={(e) => setPReviews(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── About ─────────────────────────────────────── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <MapPin size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">About</CardTitle>
+                      <CardDescription>
+                        Bio, skills and certifications.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pro-editor-bio">Bio</Label>
+                      <Textarea
+                        id="pro-editor-bio"
+                        rows={3}
+                        value={pBio}
+                        onChange={(e) => setPBio(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="pro-editor-skills">
+                          Skills (comma-separated)
+                        </Label>
+                        <Input
+                          id="pro-editor-skills"
+                          value={pSkills}
+                          onChange={(e) => setPSkills(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="pro-editor-certs">
+                          Certifications (comma-separated)
+                        </Label>
+                        <Input
+                          id="pro-editor-certs"
+                          value={pCerts}
+                          onChange={(e) => setPCerts(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {isPlatformAdmin && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <BadgeCheck size={15} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Visibility</CardTitle>
+                        <CardDescription>
+                          How this profile appears across the platform.
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                        <Switch
+                          checked={pIsGlobal}
+                          onCheckedChange={setPIsGlobal}
+                        />
+                        <span>
+                          <span className="block font-medium text-foreground">
+                            Visible to all accounts
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            Profile appears in the global Hire directory.
+                          </span>
+                        </span>
+                      </label>
+                      <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                        <Switch
+                          checked={pIsVerified}
+                          onCheckedChange={setPIsVerified}
+                        />
+                        <span>
+                          <span className="block font-medium text-foreground">
+                            Platform verified
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            Shows a green Verified badge on the public portfolio.
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* ── Summary ───────────────────────────────────── */}
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Profile summary</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Name</dt>
+                      <dd className="truncate font-medium">{pName || "—"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Title</dt>
+                      <dd className="truncate font-medium">
+                        {pTitle || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Discipline</dt>
+                      <dd className="truncate font-medium">
+                        {pDiscipline || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Location</dt>
+                      <dd className="truncate font-medium">
+                        {pLocation || "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Rate</dt>
+                      <dd className="font-medium tabular-nums">
+                        {pRate
+                          ? `${pCurrency || "USD"} ${pRate}/${pRatePer || "hour"}`
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Availability</dt>
+                      <dd className="font-medium">{pAvailability}</dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
+        </div>
+      </PageForm>
+    );
+  }
+
   return (
     <DashboardShell className="hub-body pro-body">
       <DashboardHeader
@@ -460,248 +807,6 @@ export default function ProfessionalsPage({
             )}
           </div>
         )}
-      </DialogTemplate>
-
-      {/* Editor Dialog */}
-      <DialogTemplate
-        open={editorOpen}
-        onOpenChange={(open) => !open && !savingPro && setEditorOpen(false)}
-        title={editingId ? "Edit professional" : "Add professional"}
-        description="Update the professional profile details."
-        size="full"
-        footer={
-          <>
-            <Button variant="outline" disabled={savingPro} onClick={() => setEditorOpen(false)}>
-              Cancel
-            </Button>
-            <Button disabled={savingPro} onClick={() => void savePro()}>
-              {savingPro && <Loader2 size={14} className="animate-spin mr-2" />}
-              {savingPro ? "Saving…" : "Save"}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-5">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <span className="inline-flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Briefcase size={11} />
-              </span>
-              Profile
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-name">Name</Label>
-                <Input
-                  id="pro-editor-name"
-                  value={pName}
-                  onChange={(e) => setPName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-title">Title</Label>
-                <Input
-                  id="pro-editor-title"
-                  value={pTitle}
-                  onChange={(e) => setPTitle(e.target.value)}
-                  placeholder="e.g. Principal Surveyor"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Discipline</Label>
-                <Select value={pDiscipline} onValueChange={setPDiscipline}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DISCIPLINES.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-exp">Experience</Label>
-                <Input
-                  id="pro-editor-exp"
-                  value={pExperience}
-                  onChange={(e) => setPExperience(e.target.value)}
-                  placeholder="e.g. 12 years"
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="pro-editor-location">Location</Label>
-                <Input
-                  id="pro-editor-location"
-                  value={pLocation}
-                  onChange={(e) => setPLocation(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <span className="inline-flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Star size={11} />
-              </span>
-              Rate & Availability
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-rate">Rate</Label>
-                <Input
-                  id="pro-editor-rate"
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={pRate}
-                  onChange={(e) => setPRate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-rate-per">Rate unit</Label>
-                <Input
-                  id="pro-editor-rate-per"
-                  value={pRatePer}
-                  onChange={(e) => setPRatePer(e.target.value)}
-                  placeholder="hour, day, project…"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-currency">Currency</Label>
-                <Input
-                  id="pro-editor-currency"
-                  value={pCurrency}
-                  onChange={(e) => setPCurrency(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Availability</Label>
-                <Select value={pAvailability} onValueChange={setPAvailability}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Available">Available</SelectItem>
-                    <SelectItem value="Busy">Busy</SelectItem>
-                    <SelectItem value="Available Soon">Available Soon</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-rating">Rating (0–5)</Label>
-                <Input
-                  id="pro-editor-rating"
-                  type="number"
-                  min={0}
-                  max={5}
-                  step={0.1}
-                  value={pRating}
-                  onChange={(e) => setPRating(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-reviews">Review count</Label>
-                <Input
-                  id="pro-editor-reviews"
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={pReviews}
-                  onChange={(e) => setPReviews(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <span className="inline-flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <MapPin size={11} />
-              </span>
-              About
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-bio">Bio</Label>
-                <textarea
-                  id="pro-editor-bio"
-                  rows={3}
-                  value={pBio}
-                  onChange={(e) => setPBio(e.target.value)}
-                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-skills">Skills (comma-separated)</Label>
-                <Input
-                  id="pro-editor-skills"
-                  value={pSkills}
-                  onChange={(e) => setPSkills(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pro-editor-certs">Certifications (comma-separated)</Label>
-                <Input
-                  id="pro-editor-certs"
-                  value={pCerts}
-                  onChange={(e) => setPCerts(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {isPlatformAdmin && (
-            <>
-              <Separator />
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span className="inline-flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <BadgeCheck size={11} />
-                  </span>
-                  Visibility
-                </div>
-                <div className="space-y-2 rounded-none border bg-muted/20 p-3">
-                  <label className="flex items-start gap-2.5 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pIsGlobal}
-                      onChange={(e) => setPIsGlobal(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-border text-primary accent-primary"
-                    />
-                    <span>
-                      <span className="font-medium text-foreground">Visible to all accounts</span>
-                      <span className="block text-xs text-muted-foreground">
-                        Profile appears in the global Hire directory.
-                      </span>
-                    </span>
-                  </label>
-                  <label className="flex items-start gap-2.5 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pIsVerified}
-                      onChange={(e) => setPIsVerified(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-border text-primary accent-primary"
-                    />
-                    <span>
-                      <span className="font-medium text-foreground">Platform verified</span>
-                      <span className="block text-xs text-muted-foreground">
-                        Shows a green Verified badge on the public portfolio.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
       </DialogTemplate>
 
       {filtered.length === 0 ? (
