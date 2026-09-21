@@ -5,11 +5,11 @@
 // `ai-chat` Supabase Edge Function). Both speak identical NDJSON events:
 // {"type":"delta"|"final"|"error"|"status", ...}.
 //
-// Agent engine: the inline streaming NaraRouter core (shared with the cloud
+// Agent engine: the inline streaming NVIDIA NIM core (shared with the cloud
 // `ai-chat` Edge Function) so replies stream token-by-token. An opt-in
 // OpenClaw Gateway path (openclaw agent --agent sitesurveyor) is available via
 // USE_OPENCLAW=1; it is buffered. Configuration via ai-gateway/.env:
-//   NARAROUTER_API_KEY=sk-nry-...    provider key used for model auth
+//   NVIDIA_API_KEY=nvapi-...      provider key (from build.nvidia.com/settings)
 //   SUPABASE_URL=https://<project>.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY=<service role key>
 //
@@ -37,7 +37,7 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const NARAROUTER_API_KEY = process.env.NARAROUTER_API_KEY ?? "";
+const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY ?? "";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
@@ -61,14 +61,14 @@ if (!fs.existsSync(MCP_DIST)) {
   process.exit(1);
 }
 for (const [name, value] of Object.entries({
-  NARAROUTER_API_KEY,
+  NVIDIA_API_KEY,
   SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
 })) {
   if (!value) console.warn(`[host] warning: ${name} is not set — /api/chat disabled.`);
 }
 
-// OpenClaw is now the agent engine. The NaraRouter/OpenClaw model key is
+// OpenClaw is now the agent engine. The NVIDIA/OpenClaw model key is
 // resolved from models.ts (single source of truth) so both serve paths agree,
 // then delegated to `openclaw agent exec --auth-env-only`.
 const { resolveModel, scoreComplexity } = await import(
@@ -79,7 +79,7 @@ const { execOpenClawAgent, openClawEvents, buildOpenClawEnv } = await import(
   pathToFileURL(path.resolve(here, "openclaw-runner.ts")).href
 ) as typeof import("./openclaw-runner.ts");
 
-// Agent engine. Default is the inline NaraRouter streaming core (shared with
+// Agent engine. Default is the inline streaming NVIDIA NIM core (shared with
 // the cloud `ai-chat` Edge Function) so replies stream token-by-token exactly
 // like the cloud path. The buffered OpenClaw Gateway path (openclaw agent
 // --agent sitesurveyor) remains available via USE_OPENCLAW=1.
@@ -153,7 +153,7 @@ interface ConversationRow {
 }
 
 async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
-  if (!NARAROUTER_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!NVIDIA_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return json(res, 503, {
       error: "AI fallback not configured on this host.",
     });
@@ -275,7 +275,7 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
         SUPABASE_URL,
         SUPABASE_SERVICE_ROLE_KEY,
         WORKSPACE_ID: workspaceId ?? "",
-        NARAROUTER_API_KEY,
+        NVIDIA_API_KEY,
       });
       const memoryNote = conversation.summary?.trim();
       const messageForAgent = memoryNote
@@ -292,11 +292,11 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
         send(event);
       }
     } else if (streamRunAgent) {
-      // Default: shared streaming NaraRouter core — deltas stream live.
+      // Default: shared streaming NVIDIA NIM core — deltas stream live.
       for await (const event of streamRunAgent.runAgent({
         history,
         userMessage: message,
-        nararouterKey: NARAROUTER_API_KEY,
+        nvidiaKey: NVIDIA_API_KEY,
         supabaseUrl: SUPABASE_URL,
         serviceKey: SUPABASE_SERVICE_ROLE_KEY,
         workspaceId: workspaceId ?? undefined,
@@ -381,7 +381,7 @@ server.headersTimeout = 125_000;
 server.listen(PORT, HOST, () => {
   console.log(`[host] SiteSurveyor app   : http://${HOST}:${PORT}`);
   console.log(
-    `[host] AI fallback ready : POST /api/chat ${NARAROUTER_API_KEY ? "(configured)" : "(NOT configured — set server/.env)"}`,
+    `[host] AI fallback ready : POST /api/chat ${NVIDIA_API_KEY ? "(configured)" : "(NOT configured — set server/.env)"}`,
   );
   console.log(
     `[host] Other devices: open http://<this-machine-ip>:${PORT} — nothing to install.`,

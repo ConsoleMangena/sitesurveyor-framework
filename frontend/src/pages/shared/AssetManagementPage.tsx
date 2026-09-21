@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import { EntityFilesCard } from "@/components/files/EntityFilesCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1604,6 +1605,18 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                 </div>
               </div>
             )}
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Documents</h4>
+              <EntityFilesCard
+                workspaceId={workspaceId}
+                entityTable="assets"
+                entityId={selectedAsset.dbId}
+                title="Asset Files"
+                description="Certificates, calibration documents, photos and other files for this asset."
+                accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.tif,.tiff,.csv,.txt,.geojson,.dxf,.dwg,.xlsx,.xls"
+              />
+            </div>
           </>
         )}
       </DialogTemplate>

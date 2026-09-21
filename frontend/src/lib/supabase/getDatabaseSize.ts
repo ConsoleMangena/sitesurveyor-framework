@@ -69,7 +69,7 @@ export async function getTablesSize(): Promise<number | null> {
  */
 export async function getWorkspaceStorageSize(workspaceId: string): Promise<number | null> {
   try {
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from("project-files")
       .list(`${workspaceId}`, {
         limit: 1000,

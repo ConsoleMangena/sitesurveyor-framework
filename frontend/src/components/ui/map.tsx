@@ -262,7 +262,6 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   const [mapInstance, setMapInstance] = useState<MapLibreGL.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
-  const [pendingStyle, setPendingStyle] = useState<MapStyleOption | null>(null);
   const currentStyleRef = useRef<MapStyleOption | null>(null);
   const styleSwapInFlightRef = useRef(false);
   const internalUpdateRef = useRef(false);
@@ -370,7 +369,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   }, [mapInstance, isControlled, viewport]);
 
   // Handle style change: close the gate (so layer children tear down and
-  // re-add on the incoming style) - the swap itself is staged to the effect below.
+  // re-add on the incoming style) and swap the style.
   useEffect(() => {
     if (!mapInstance || !resolvedTheme) return;
 
@@ -381,18 +380,11 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
 
     currentStyleRef.current = newStyle;
     setIsStyleLoaded(false);
-    setPendingStyle(newStyle);
-  }, [mapInstance, resolvedTheme, mapStyles]);
-
-  useEffect(() => {
-    if (!mapInstance || !pendingStyle) return;
-
-    setPendingStyle(null);
     styleSwapInFlightRef.current = true;
     // Full reload (no diff) so `style.load` fires deterministically. A
     // successful diff would never fire it, leaving isStyleLoaded stuck false.
-    mapInstance.setStyle(pendingStyle, { diff: false });
-  }, [mapInstance, pendingStyle]);
+    mapInstance.setStyle(newStyle, { diff: false });
+  }, [mapInstance, resolvedTheme, mapStyles]);
 
   // Sync projection when the prop changes after mount.
   useEffect(() => {

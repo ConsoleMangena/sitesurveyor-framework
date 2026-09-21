@@ -185,10 +185,18 @@ export function CadPlotDialog({
   const [draggingElement, setDraggingElement] = useState(false);
 
   // Recenter paper sheet view whenever sheet paper size or orientation changes.
-  useEffect(() => {
+  const [sheetConfig, setSheetConfig] = useState({
+    paper: opts.paper,
+    orientation: opts.orientation,
+  });
+  if (
+    sheetConfig.paper !== opts.paper ||
+    sheetConfig.orientation !== opts.orientation
+  ) {
+    setSheetConfig({ paper: opts.paper, orientation: opts.orientation });
     setSheetPan({ x: 0, y: 0 });
     setSheetZoom(1);
-  }, [opts.paper, opts.orientation]);
+  }
 
   // Measure the preview pane so the sheet can be sized to the largest fit.
   const [paneSize, setPaneSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -318,7 +326,6 @@ export function CadPlotDialog({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draggingElement]);
 
   const endPreviewDrag = () => {

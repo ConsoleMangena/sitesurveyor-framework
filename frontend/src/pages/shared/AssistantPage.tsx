@@ -70,13 +70,13 @@ function nextId(prefix: string): string {
   return `${prefix}${Date.now()}-${idCounter}`;
 }
 
-/** Available AI models the user may choose from. */
+/** Available AI models the user may choose from (NVIDIA NIM at build.nvidia.com). */
 const AI_MODELS: { id: string; label: string; free: boolean }[] = [
-  { id: "laguna-s-2.1", label: "Laguna S 2.1", free: true },
-  { id: "agnes-2.5-flash", label: "Agnes 2.5 Flash", free: true },
-  { id: "agnes-3-flash", label: "Agnes 3 Flash", free: true },
-  { id: "stepfun-3.7-flash", label: "StepFun 3.7 Flash", free: true },
-  { id: "tencent-hy3-free", label: "Tencent Hy3 Free", free: true },
+  { id: "nvidia/llama-3.1-nemotron-70b-instruct", label: "Nemotron 70B", free: false },
+  { id: "nvidia/llama-3.1-nemotron-51b-instruct", label: "Nemotron 51B", free: false },
+  { id: "nvidia/llama-3.1-nemotron-ultra-253b-v1", label: "Nemotron Ultra 253B", free: false },
+  { id: "mistralai/mistral-large-2-instruct", label: "Mistral Large 2", free: false },
+  { id: "z-ai/glm-5.3-flash", label: "GLM 5.3 Flash", free: false },
 ];
 const MODEL_STORAGE_KEY = "sitesurveyor-ai-model";
 const DEFAULT_MODEL_ID = AI_MODELS[0].id;
@@ -351,6 +351,7 @@ export default function AssistantPage({
     scrollToBottom,
     contextProjectId,
     onAssistantFinal,
+    selectedModel,
   ]);
 
   const startRename = useCallback((conversation: AiConversation) => {

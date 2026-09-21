@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   Plus,
   CalendarDays,
@@ -9,6 +9,7 @@ import {
   Calendar as CalendarIcon,
   Search,
   X,
+  FileText,
 } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
@@ -17,8 +18,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PageForm } from "@/components/templates/PageForm.tsx";
+import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import {
   Sheet,
   SheetContent,
@@ -203,6 +213,8 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [monthDate, setMonthDate] = useState(() => new Date(today));
   const [draft, setDraft] = useState({
@@ -229,14 +241,6 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
   }, [workspaceId]);
 
   useAsyncAction(fetchEvents, [fetchEvents]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isModalOpen) setIsModalOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isModalOpen]);
 
   const weekStart = useMemo(
     () => addDays(startOfWeekMonday(today), weekOffset * 7),
@@ -302,7 +306,8 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
     setIsModalOpen(true);
   };
 
-  const saveDraft = async () => {
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!draft.title.trim()) {
       setFormError("Title is required.");
       return;
@@ -312,6 +317,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
       return;
     }
     setFormError(null);
+    setSubmitting(true);
 
     try {
       if (modalMode === "edit" && draft.id) {
@@ -339,8 +345,11 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
       }
       setIsModalOpen(false);
       await fetchEvents();
+      setSuccessMessage(modalMode === "edit" ? "Event updated successfully." : "Event created successfully.");
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Failed to save event");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -388,6 +397,223 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
       <div className="hub-body p-6">
         <PageLoader />
       </div>
+    );
+  }
+
+  if (isModalOpen) {
+    return (
+      <PageForm
+        title={modalMode === "edit" ? "Edit Event" : "New Event"}
+        description="Plan a site visit or appointment."
+        onBack={() => setIsModalOpen(false)}
+        footer={
+          <>
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="schedule-event-form" disabled={submitting}>
+              {submitting ? "Saving..." : "Save"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="schedule-event-form"
+          onSubmit={handleSubmit}
+          className="mx-auto w-full max-w-6xl"
+        >
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-6">
+              {formError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <MapPin size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Basic details</CardTitle>
+                      <CardDescription>Title and location.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="event-title">
+                        Title <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="event-title"
+                        placeholder="Event title"
+                        value={draft.title}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="event-location">Location</Label>
+                      <div className="relative">
+                        <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="event-location"
+                          placeholder="Site or address"
+                          value={draft.location}
+                          onChange={(e) => setDraft((prev) => ({ ...prev, location: e.target.value }))}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Clock size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Schedule</CardTitle>
+                      <CardDescription>Type, date, and time.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="event-type">Type</Label>
+                      <Select
+                        value={draft.event_type}
+                        onValueChange={(val) => setDraft((prev) => ({ ...prev, event_type: val }))}
+                      >
+                        <SelectTrigger id="event-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="boundary">{TYPE_LABELS.boundary}</SelectItem>
+                          <SelectItem value="topo">{TYPE_LABELS.topo}</SelectItem>
+                          <SelectItem value="construction">{TYPE_LABELS.construction}</SelectItem>
+                          <SelectItem value="pegging">{TYPE_LABELS.pegging}</SelectItem>
+                          <SelectItem value="other">{TYPE_LABELS.other}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="event-date">
+                        Date <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="event-date"
+                        type="date"
+                        value={draft.event_date}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, event_date: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="event-start">
+                        Start <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="event-start"
+                        type="time"
+                        value={draft.start_time}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, start_time: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="event-end">End</Label>
+                      <Input
+                        id="event-end"
+                        type="time"
+                        placeholder="End time"
+                        value={draft.end_time}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, end_time: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <FileText size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Notes</CardTitle>
+                      <CardDescription>Optional details or descriptions.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="event-notes">Notes</Label>
+                    <Textarea
+                      id="event-notes"
+                      rows={3}
+                      placeholder="Add any extra details..."
+                      value={draft.notes}
+                      onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <aside className="h-fit space-y-6 lg:sticky lg:top-0">
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Event summary</CardTitle>
+                  <CardDescription>Summary at a glance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Type</dt>
+                      <dd className="truncate font-medium">
+                        {TYPE_LABELS[draft.event_type] ?? draft.event_type}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Date</dt>
+                      <dd className="truncate font-medium">
+                        {draft.event_date ? formatDate(draft.event_date) : "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Start</dt>
+                      <dd className="truncate font-medium">{draft.start_time || "—"}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">End</dt>
+                      <dd className="truncate font-medium">
+                        {draft.end_time || "—"}
+                        {formatDuration(draft.start_time, draft.end_time)
+                          ? ` (${formatDuration(draft.start_time, draft.end_time)})`
+                          : ""}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Location</dt>
+                      <dd className="truncate font-medium">{draft.location || "—"}</dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
+        </form>
+      </PageForm>
     );
   }
 
@@ -772,111 +998,11 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
       </Card>
     )}
 
-      <DialogTemplate
-        open={isModalOpen}
-        onOpenChange={(open) => !open && setIsModalOpen(false)}
-        title={modalMode === "edit" ? "Edit Event" : "New Event"}
-        description="Plan a site visit or appointment."
-        size="md"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveDraft}>Save</Button>
-          </>
-        }
-      >
-        <div className="grid grid-cols-1 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="event-title">Title</Label>
-            <Input
-              id="event-title"
-              placeholder="Event title"
-              value={draft.title}
-              onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="event-location">Location</Label>
-            <div className="relative">
-              <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="event-location"
-                placeholder="Site or address"
-                value={draft.location}
-                onChange={(e) => setDraft((prev) => ({ ...prev, location: e.target.value }))}
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Type</Label>
-            <Select
-              value={draft.event_type}
-              onValueChange={(val) => setDraft((prev) => ({ ...prev, event_type: val }))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="boundary">{TYPE_LABELS.boundary}</SelectItem>
-                <SelectItem value="topo">{TYPE_LABELS.topo}</SelectItem>
-                <SelectItem value="construction">{TYPE_LABELS.construction}</SelectItem>
-                <SelectItem value="pegging">{TYPE_LABELS.pegging}</SelectItem>
-                <SelectItem value="other">{TYPE_LABELS.other}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="event-date">Date</Label>
-              <Input
-                id="event-date"
-                type="date"
-                value={draft.event_date}
-                onChange={(e) => setDraft((prev) => ({ ...prev, event_date: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="event-start">Start</Label>
-              <Input
-                id="event-start"
-                type="time"
-                value={draft.start_time}
-                onChange={(e) => setDraft((prev) => ({ ...prev, start_time: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="event-end">End</Label>
-              <Input
-                id="event-end"
-                type="time"
-                placeholder="End time"
-                value={draft.end_time}
-                onChange={(e) => setDraft((prev) => ({ ...prev, end_time: e.target.value }))}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="event-notes">Notes</Label>
-            <textarea
-              id="event-notes"
-              placeholder="Add any extra details..."
-              value={draft.notes}
-              onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
-              rows={3}
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-        </div>
-
-        {formError && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {formError}
-          </div>
-        )}
-      </DialogTemplate>
+      <SuccessDialog
+        open={!!successMessage}
+        onOpenChange={() => setSuccessMessage(null)}
+        message={successMessage ?? ""}
+      />
     </DashboardShell>
   );
 }

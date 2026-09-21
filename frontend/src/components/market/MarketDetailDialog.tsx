@@ -5,6 +5,7 @@ import { BadgeCheck } from "lucide-react";
 
 import { supabase } from "../../lib/supabase/client.ts";
 import type { Database } from "../../lib/supabase/types.ts";
+import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { portfolioMediaUrl } from "../../lib/repositories/portfolioMedia.ts";
 import { MARKET_DOT_COLORS } from "./marketDots.ts";
 import type { MarketDot } from "./marketDots.ts";
@@ -50,6 +51,7 @@ export function MarketDetailDialog({
   firm,
   event,
   onClose,
+  onOpenInApp,
 }: {
   dot: MarketDot | null;
   listing: ListingRow | null;
@@ -58,9 +60,13 @@ export function MarketDetailDialog({
   firm: FirmRow | null;
   event: EventRow | null;
   onClose: () => void;
+  /** When set, dialog is embedded in the signed-in dashboard; the action
+   *  navigates to the matching workspace view instead of the login page. */
+  onOpenInApp?: (view: string) => void;
 }) {
   const [showcase, setShowcase] = useState<ShowcaseItemRow[]>([]);
   const professionalId = professional?.id ?? null;
+  const signedIn = useAuthStore((s) => s.user !== null);
 
   // Lazy-load showcase projects only while a professional detail is open.
   useEffect(() => {
@@ -276,22 +282,44 @@ export function MarketDetailDialog({
                 </DetailRow>
               ) : null}
             </dl>
-            <Button asChild className="mt-2 w-full">
-              <Link to="/login">
-                {dot.kind === "job"
-                  ? "Sign in to apply"
-                  : dot.kind === "event"
-                    ? "Sign in to register"
-                    : dot.kind === "firm"
-                      ? "Sign in to request services"
-                      : "Sign in to contact the publisher"}
-              </Link>
-            </Button>
+            {onOpenInApp ? (
+              <Button className="mt-2 w-full" onClick={() => onOpenInApp(inAppView(dot.kind))}>
+                {inAppLabel(dot.kind)}
+              </Button>
+            ) : signedIn ? (
+              <Button asChild className="mt-2 w-full">
+                <Link to="/">Open your workspace</Link>
+              </Button>
+            ) : (
+              <Button asChild className="mt-2 w-full">
+                <Link to="/login">
+                  {dot.kind === "job"
+                    ? "Sign in to apply"
+                    : dot.kind === "event"
+                      ? "Sign in to register"
+                      : dot.kind === "firm"
+                        ? "Sign in to request services"
+                        : "Sign in to contact the publisher"}
+                </Link>
+              </Button>
+            )}
           </>
         ) : null}
       </DialogContent>
     </Dialog>
   );
+}
+
+function inAppView(kind: MarketDot["kind"]): string {
+  return kind === "job" ? "jobs" : kind === "professional" ? "professionals" : "marketplace";
+}
+
+function inAppLabel(kind: MarketDot["kind"]): string {
+  return kind === "job"
+    ? "Open in jobs"
+    : kind === "professional"
+      ? "Open in professionals"
+      : "Open in marketplace";
 }
 
 function DetailRow({

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { truncatePreview, filterMembers, deriveMemberPreviews } from "./chat-utils.ts";
+import type { WorkspaceMemberWithProfile } from "@/lib/repositories/workspaceMembers";
 
 describe("truncatePreview", () => {
   it("returns text unchanged when under 40 chars", () => {
@@ -16,8 +17,15 @@ describe("truncatePreview", () => {
   });
 });
 
-function m(id: string, name: string) {
-  return { user_id: id, full_name: name } as any;
+type ChatPreviewMessage = {
+  id: string;
+  user_id: string;
+  text: string;
+  sent_at: string;
+};
+
+function m(id: string, name: string): WorkspaceMemberWithProfile {
+  return { user_id: id, full_name: name } as WorkspaceMemberWithProfile;
 }
 
 describe("filterMembers", () => {
@@ -45,7 +53,7 @@ describe("deriveMemberPreviews", () => {
   const members = [
     { user_id: "a", full_name: "Alice", role: "manager" },
     { user_id: "b", full_name: "Bob", role: "member" },
-  ] as any[];
+  ] as WorkspaceMemberWithProfile[];
 
   it("returns null messageId for members with no messages", () => {
     const previews = deriveMemberPreviews(members, []);
@@ -57,7 +65,7 @@ describe("deriveMemberPreviews", () => {
       { id: "m1", user_id: "a", text: "first", sent_at: "2026-01-01T09:00:00Z" },
       { id: "m2", user_id: "a", text: "second message from Alice", sent_at: "2026-01-01T10:00:00Z" },
       { id: "m3", user_id: "b", text: "hey there", sent_at: "2026-01-01T09:30:00Z" },
-    ] as any[];
+    ] as ChatPreviewMessage[];
     const previews = deriveMemberPreviews(members, messages);
     expect(previews.get("a")?.messageId).toBe("m2");
     expect(previews.get("a")?.text).toBe("second message from Alice");
@@ -65,7 +73,7 @@ describe("deriveMemberPreviews", () => {
   });
 
   it("ignores messages from unknown members", () => {
-    const messages = [{ id: "x", user_id: "z", text: "ghost", sent_at: "2026-01-01T08:00:00Z" }] as any[];
+    const messages = [{ id: "x", user_id: "z", text: "ghost", sent_at: "2026-01-01T08:00:00Z" }] as ChatPreviewMessage[];
     const previews = deriveMemberPreviews(members, messages);
     expect(previews.size).toBe(2);
     expect(previews.get("a")?.messageId).toBeNull();

@@ -16,6 +16,9 @@ import {
   DollarSign,
   MapPin,
   ClipboardList,
+  LayoutGrid,
+  LayoutList,
+  Columns2,
 } from "lucide-react";
 import { DashboardHeader, DashboardShell } from "../../components/dashboard/DashboardShell.tsx";
 import { DashboardCard } from "../../components/dashboard/DashboardCard.tsx";
@@ -233,6 +236,7 @@ export default function MarketplacePage({
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [layoutMode, setLayoutMode] = useState<"tiles" | "grid" | "list">("grid");
 
   const [myRequests, setMyRequests] = useState<RequestWithListing[]>([]);
   const [myRequestsLoading, setMyRequestsLoading] = useState(false);
@@ -925,16 +929,53 @@ export default function MarketplacePage({
                 title="Available Listings"
                 icon={<Package size={16} />}
                 titleAction={
-              <div className="relative w-full sm:w-[260px]">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search instruments & services..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            }
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    <div className="relative w-full sm:w-[260px]">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search instruments & services..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="inline-flex items-center gap-0.5 rounded-lg border bg-background p-0.5 shrink-0">
+                      <Button
+                        type="button"
+                        variant={layoutMode === "tiles" ? "default" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Big tiles"
+                        aria-label="Big tiles layout"
+                        onClick={() => setLayoutMode("tiles")}
+                      >
+                        <Columns2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={layoutMode === "grid" ? "default" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Grid"
+                        aria-label="Grid layout"
+                        onClick={() => setLayoutMode("grid")}
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={layoutMode === "list" ? "default" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        title="List"
+                        aria-label="List layout"
+                        onClick={() => setLayoutMode("list")}
+                      >
+                        <LayoutList className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                }
           >
             <div className="mb-4">
               <Tabs value={typeFilter} onValueChange={(value) => setTypeFilter(value as FilterType)}>
@@ -1268,61 +1309,195 @@ export default function MarketplacePage({
             </Card>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {paginated.map((l) => (
-                  <Card
-                    key={l.id}
-                    className={cn(
-                      "cursor-pointer transition-all hover:border-primary hover:shadow-md",
-                      l.assets?.status === "deployed" && "opacity-70",
-                    )}
-                    onClick={() => openListingDetail(l)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openListingDetail(l);
-                      }
-                    }}
-                  >
-                    <CardContent className="flex flex-col gap-3 p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted text-primary">
-                          <ListingIcon type={l.type} />
+              {layoutMode === "list" ? (
+                <div className="space-y-3">
+                  {paginated.map((l, index) => (
+                    <Card
+                      key={l.id}
+                      className={cn(
+                        "cursor-pointer transition-all hover:border-primary hover:shadow-md",
+                        l.assets?.status === "deployed" && "opacity-70",
+                      )}
+                      onClick={() => openListingDetail(l)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openListingDetail(l);
+                        }
+                      }}
+                    >
+                      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                            {(effectivePage - 1) * pageSize + index + 1}
+                          </span>
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted text-primary">
+                            <ListingIcon type={l.type} />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="truncate font-semibold text-foreground">{l.name}</h3>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {l.type} · {l.seller} · {l.location}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap justify-end gap-1">
-                          <Badge variant={conditionVariant[l.condition] as never}>{l.condition}</Badge>
-                          {l.assets?.status === "deployed" && (
-                            <Badge variant="secondary">In Use</Badge>
-                          )}
-                          <Badge variant={l.listing_type === "hire" ? "purple" : "outline"}>
-                            {l.listing_type === "hire" ? "Hire" : "Sale"}
-                          </Badge>
+                        <div className="flex items-center justify-between gap-4 sm:justify-end">
+                          <div className="hidden flex-wrap justify-end gap-1 md:flex">
+                            <Badge variant={conditionVariant[l.condition] as never}>{l.condition}</Badge>
+                            {l.assets?.status === "deployed" && (
+                              <Badge variant="secondary">In Use</Badge>
+                            )}
+                            <Badge variant={l.listing_type === "hire" ? "purple" : "outline"}>
+                              {l.listing_type === "hire" ? "Hire" : "Sale"}
+                            </Badge>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-foreground">
+                              ${l.price.toLocaleString()}{" "}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {l.currency} {l.listing_type === "hire" ? "/ day" : "one-time"}
+                              </span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Posted {new Date(l.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{l.name}</h3>
-                        <p className="text-sm text-muted-foreground">{l.type}</p>
-                      </div>
-                      <p className="text-lg font-semibold text-foreground">
-                        ${l.price.toLocaleString()}{" "}
-                        <span className="text-xs font-normal text-muted-foreground">
-                          {l.currency} {l.listing_type === "hire" ? "/ day" : "one-time"}
-                        </span>
-                      </p>
-                      <div className="text-xs text-muted-foreground">
-                        <span>{l.seller}</span>
-                        <span className="mx-1">·</span>
-                        <span>{l.location}</span>
-                      </div>
-                      <p className="mt-auto text-xs text-muted-foreground">
-                        Posted {new Date(l.created_at).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    "grid grid-cols-1 gap-4",
+                    layoutMode === "tiles"
+                      ? "md:grid-cols-2 xl:grid-cols-2"
+                      : "sm:grid-cols-2 lg:grid-cols-3",
+                  )}
+                >
+                  {paginated.map((l, index) => {
+                    const itemNumber = (effectivePage - 1) * pageSize + index + 1;
+                    return layoutMode === "tiles" ? (
+                      <Card
+                        key={l.id}
+                        className={cn(
+                          "cursor-pointer transition-all hover:border-primary hover:shadow-md",
+                          l.assets?.status === "deployed" && "opacity-70",
+                        )}
+                        onClick={() => openListingDetail(l)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openListingDetail(l);
+                          }
+                        }}
+                      >
+                        <CardContent className="flex flex-col gap-3 p-6">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                              {itemNumber}
+                            </span>
+                            <div className="flex flex-wrap justify-end gap-1">
+                              <Badge variant={conditionVariant[l.condition] as never}>{l.condition}</Badge>
+                              {l.assets?.status === "deployed" && (
+                                <Badge variant="secondary">In Use</Badge>
+                              )}
+                              <Badge variant={l.listing_type === "hire" ? "purple" : "outline"}>
+                                {l.listing_type === "hire" ? "Hire" : "Sale"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-center gap-2 py-3">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-muted text-primary">
+                              <ListingIcon type={l.type} />
+                            </div>
+                            <h3 className="text-center text-lg font-semibold text-foreground">{l.name}</h3>
+                            <p className="text-sm text-muted-foreground">{l.type}</p>
+                          </div>
+                          <div className="flex flex-col items-center gap-2 border-t pt-3">
+                            <p className="text-xl font-semibold text-foreground">
+                              ${l.price.toLocaleString()}{" "}
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {l.currency} {l.listing_type === "hire" ? "/ day" : "one-time"}
+                              </span>
+                            </p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <span>{l.seller}</span>
+                              <span className="mx-0.5">·</span>
+                              <span>{l.location}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Posted {new Date(l.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Card
+                        key={l.id}
+                        className={cn(
+                          "cursor-pointer transition-all hover:border-primary hover:shadow-md",
+                          l.assets?.status === "deployed" && "opacity-70",
+                        )}
+                        onClick={() => openListingDetail(l)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openListingDetail(l);
+                          }
+                        }}
+                      >
+                        <CardContent className="flex flex-col gap-3 p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                                {itemNumber}
+                              </span>
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted text-primary">
+                                <ListingIcon type={l.type} />
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-1">
+                              <Badge variant={conditionVariant[l.condition] as never}>{l.condition}</Badge>
+                              {l.assets?.status === "deployed" && (
+                                <Badge variant="secondary">In Use</Badge>
+                              )}
+                              <Badge variant={l.listing_type === "hire" ? "purple" : "outline"}>
+                                {l.listing_type === "hire" ? "Hire" : "Sale"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">{l.name}</h3>
+                            <p className="text-sm text-muted-foreground">{l.type}</p>
+                          </div>
+                          <p className="text-lg font-semibold text-foreground">
+                            ${l.price.toLocaleString()}{" "}
+                            <span className="text-xs font-normal text-muted-foreground">
+                              {l.currency} {l.listing_type === "hire" ? "/ day" : "one-time"}
+                            </span>
+                          </p>
+                          <div className="text-xs text-muted-foreground">
+                            <span>{l.seller}</span>
+                            <span className="mx-1">·</span>
+                            <span>{l.location}</span>
+                          </div>
+                          <p className="mt-auto text-xs text-muted-foreground">
+                            Posted {new Date(l.created_at).toLocaleDateString()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
 
               {filtered.length > pageSize && (
                 <div className="flex items-center justify-center gap-3">

@@ -41,6 +41,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
+import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import {
   buildMarketDots,
   MARKET_DOT_COLORS,
@@ -110,6 +111,7 @@ function formatDate(value: string): string {
 }
 
 export default function PublicMarketPage() {
+  const user = useAuthStore((s) => s.user);
   const [data, setData] = useState<MarketData | null>(null);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -485,9 +487,27 @@ export default function PublicMarketPage() {
             </span>
             <span className="text-sm text-muted-foreground">/ Market</span>
           </span>
-          <Button size="sm" asChild>
-            <Link to="/login">Sign in</Link>
-          </Button>
+          {user ? (
+            <Link
+              to="/"
+              className="flex max-w-full items-center gap-2 rounded-none border border-border/60 bg-background/85 px-2 py-1 text-sm transition-colors hover:bg-muted/60"
+              title={`Open your workspace (${user.name})`}
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+                {user.name
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </span>
+              <span className="max-w-[140px] truncate text-foreground">{user.name}</span>
+            </Link>
+          ) : (
+            <Button size="sm" asChild>
+              <Link to="/login">Sign in</Link>
+            </Button>
+          )}
         </div>
       </header>
 

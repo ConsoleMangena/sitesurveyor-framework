@@ -20,7 +20,7 @@ import PublicMarketGlobe from "./PublicMarketGlobe.tsx";
 
 /** Dashboard embed of the public-market globe: live pins, tap for details,
  *  full registry one click away. */
-export default function MarketGlobeCard() {
+export default function MarketGlobeCard({ onNavigate }: { onNavigate?: (view: string) => void }) {
   const { data, failure, loading, retry } = useMarketFeed();
   const [selectedId, setSelectedId] = useState<{
     kind: MarketDotKind;
@@ -102,6 +102,7 @@ export default function MarketGlobeCard() {
         firm={selectedFirm as FirmRow | null}
         event={selectedEvent as EventRow | null}
         onClose={() => setSelectedId(null)}
+        onOpenInApp={onNavigate}
       />
     </section>
   );

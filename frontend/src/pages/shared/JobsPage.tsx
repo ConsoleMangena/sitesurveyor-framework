@@ -30,6 +30,7 @@ import { listAllJobs, listAllProjects } from "../../lib/repositories/adminPlatfo
 import { mapStatus } from "../../lib/mappers.ts";
 import type { Database } from "../../lib/supabase/types.ts";
 import PageLoader from "../../components/PageLoader.tsx";
+import { EntityFilesCard } from "../../components/files/EntityFilesCard";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
@@ -686,6 +687,13 @@ export default function JobsPage({
                 </div>
               </CardContent>
             </Card>
+            <EntityFilesCard
+              workspaceId={workspaceId}
+              entityTable="jobs"
+              entityId={selectedJob.id}
+              title="Job Files"
+              description="Drawings, point files, PDFs and reference documents for this job."
+            />
           </div>
         )}
       </DialogTemplate>

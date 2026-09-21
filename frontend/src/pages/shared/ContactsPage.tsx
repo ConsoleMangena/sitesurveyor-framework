@@ -29,7 +29,9 @@ import {
   CardContent,
 } from "../../components/ui/card.tsx";
 import { ComboboxField } from "../../components/templates/ComboboxField.tsx";
+import { DialogTemplate } from "../../components/templates/DialogTemplate.tsx";
 import { PageForm } from "../../components/templates/PageForm.tsx";
+import { EntityFilesCard } from "../../components/files/EntityFilesCard";
 import { SuccessDialog } from "../../components/SuccessDialog.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
@@ -62,6 +64,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "Client" | "Subcontractor" | "Vendor" | "Government">("All");
+  const [selectedContact, setSelectedContact] = useState<UiContact | null>(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -511,7 +514,11 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
               .toUpperCase();
             const avatarColor = getAvatarColor(c.name);
             return (
-              <Card key={c.id} className="flex flex-col transition-shadow hover:shadow-md">
+              <Card
+                key={c.id}
+                className="flex flex-col transition-shadow hover:shadow-md cursor-pointer"
+                onClick={() => setSelectedContact(c)}
+              >
                 <CardContent className="flex flex-1 flex-col gap-4 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div
@@ -555,7 +562,10 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    onClick={() => handleArchive(c.dbId)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleArchive(c.dbId);
+                    }}
                   >
                     Archive
                   </Button>
@@ -565,6 +575,76 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
           })}
         </div>
       )}
+
+      <DialogTemplate
+        open={!!selectedContact}
+        onOpenChange={(open) => { if (!open) setSelectedContact(null); }}
+        title={selectedContact?.name ?? "Contact Details"}
+        description={selectedContact ? `${selectedContact.type} · ${[selectedContact.title, selectedContact.company].filter(Boolean).join(" · ")}` : undefined}
+        icon={
+          selectedContact ? (
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white"
+              style={{ background: getAvatarColor(selectedContact.name) }}
+            >
+              {selectedContact.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase()}
+            </div>
+          ) : null
+        }
+        size="2xl"
+      >
+        {selectedContact && (
+          <div className="space-y-4">
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <Badge variant={typeVariant[selectedContact.type] ?? "secondary"}>{selectedContact.type}</Badge>
+              </div>
+              {selectedContact.email && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Email</span>
+                  <a href={`mailto:${selectedContact.email}`} className="text-primary hover:underline break-all">{selectedContact.email}</a>
+                </div>
+              )}
+              {selectedContact.phone && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Phone</span>
+                  <a href={`tel:${selectedContact.phone}`} className="text-primary hover:underline">{selectedContact.phone}</a>
+                </div>
+              )}
+              {selectedContact.title && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Title</span>
+                  <span>{selectedContact.title}</span>
+                </div>
+              )}
+              {selectedContact.company && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Company</span>
+                  <span>{selectedContact.company}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Last Contact</span>
+                <span>{selectedContact.lastContact}</span>
+              </div>
+            </div>
+
+            <EntityFilesCard
+              workspaceId={workspaceId}
+              entityTable="contacts"
+              entityId={selectedContact.dbId}
+              title="Contact Files"
+              description="Documents, agreements and reference files for this contact."
+            />
+          </div>
+        )}
+      </DialogTemplate>
 
       <SuccessDialog
         open={!!successMessage}

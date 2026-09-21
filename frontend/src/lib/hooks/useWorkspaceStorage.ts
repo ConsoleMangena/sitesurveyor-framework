@@ -12,21 +12,18 @@ interface WorkspaceStorage {
 }
 
 export function useWorkspaceStorage(workspaceId: string | null): WorkspaceStorage {
-  const [storage, setStorage] = useState<WorkspaceStorage>({
+  const [storage, setStorage] = useState<WorkspaceStorage>(() => ({
     usedBytes: 0,
     fileCount: 0,
     limitMb: 500,
     usedMb: 0,
     percent: 0,
-    loading: true,
+    loading: workspaceId !== null,
     error: null,
-  });
+  }));
 
   useEffect(() => {
-    if (!workspaceId) {
-      setStorage((prev) => ({ ...prev, loading: false }));
-      return;
-    }
+    if (!workspaceId) return;
 
     const wid: string = workspaceId;
     let cancelled = false;

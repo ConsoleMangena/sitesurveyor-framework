@@ -2,15 +2,17 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChatRoster } from "./ChatRoster.tsx";
+import type { WorkspaceMemberWithProfile } from "@/lib/repositories/workspaceMembers";
+import type { ChatMessage } from "@/lib/repositories/chat";
 
 const members = [
   { user_id: "a", full_name: "Alice", role: "manager", email: "a@test.com" },
   { user_id: "b", full_name: "Bob", role: "member", email: "b@test.com" },
-] as any[];
+] as WorkspaceMemberWithProfile[];
 
 const messages = [
   { id: "m1", user_id: "a", content: "Hello team", created_at: "2026-09-16T10:00:00Z" },
-] as any[];
+] as ChatMessage[];
 
 function roster(props: Partial<React.ComponentProps<typeof ChatRoster>> = {}) {
   return (

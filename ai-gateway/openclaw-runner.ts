@@ -46,21 +46,21 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 /**
  * Map the concrete SiteSurveyor Supabase credentials / workspace onto the
  * SITESURVEYOR_* names used by the ambient OpenClaw config's MCP server env
- * block (mcp.servers.sitesurveyor.env). The NaraRouter key is passed through
+ * block (mcp.servers.sitesurveyor.env). The NVIDIA key is passed through
  * unchanged for model auth.
  */
 export function buildOpenClawEnv(bindings: {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   WORKSPACE_ID?: string;
-  NARAROUTER_API_KEY?: string;
+  NVIDIA_API_KEY?: string;
 }): NodeJS.ProcessEnv {
   const superset: NodeJS.ProcessEnv = { ...process.env };
   if (bindings.SUPABASE_URL) superset.SITESURVEYOR_SUPABASE_URL = bindings.SUPABASE_URL;
   if (bindings.SUPABASE_SERVICE_ROLE_KEY)
     superset.SITESURVEYOR_SUPABASE_SERVICE_ROLE_KEY = bindings.SUPABASE_SERVICE_ROLE_KEY;
   if (bindings.WORKSPACE_ID) superset.SITESURVEYOR_WORKSPACE_ID = bindings.WORKSPACE_ID;
-  if (bindings.NARAROUTER_API_KEY) superset.NARAROUTER_API_KEY = bindings.NARAROUTER_API_KEY;
+  if (bindings.NVIDIA_API_KEY) superset.NVIDIA_API_KEY = bindings.NVIDIA_API_KEY;
   return superset;
 }
 

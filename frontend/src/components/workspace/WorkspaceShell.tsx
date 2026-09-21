@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/project-hub.css";
 import { ChevronDown, Menu } from "lucide-react";
 import { useServerStatus } from "../../lib/serverStatus.ts";
@@ -705,7 +705,6 @@ interface WorkspaceSearchProps {
 
 function WorkspaceSearch({
   navGroups = [],
-  activeView,
   recentViews = [],
   onChangeView,
 }: WorkspaceSearchProps) {

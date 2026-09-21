@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   Trash2,
   Wallet as WalletIcon,
-  X,
 } from "lucide-react";
 import { useEmbeddedWallet } from "../hooks/useEmbeddedWallet.ts";
 import {

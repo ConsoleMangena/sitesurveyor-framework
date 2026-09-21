@@ -3,10 +3,7 @@ import {
   HardDrive,
   Crown,
   Users,
-  FileText,
-  Shield,
   Bell,
-  Palette,
   Server,
   Loader2,
 } from "lucide-react";

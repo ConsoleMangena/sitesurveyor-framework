@@ -2,22 +2,25 @@
 //
 // Single source of truth shared by both serve paths (ai-chat Edge Function
 // and ai-gateway-server Node host). The allowlist is the hard boundary — any
-// value not in it falls back to the default. The router escalates to a
-// larger (still free) model for tasks the keyword signal marks as complex
-// multi-step work, keeping routine tasks on the default model.
+// value not in it falls back to the default. Model ids are NVIDIA NIM ids
+// served at build.nvidia.com (OpenAI-compatible endpoint
+// https://integrate.api.nvidia.com/v1) and are selected for tool/function
+// calling support. The router escalates to a larger model for tasks the
+// keyword signal marks as complex multi-step work, keeping routine tasks on
+// the default model.
 
 /** Models users may select. Anything outside silently falls back to DEFAULT_MODEL. */
 export const ALLOWED_MODELS: ReadonlySet<string> = new Set([
-  "laguna-s-2.1",
-  "agnes-2.5-flash",
-  "agnes-3-flash",
-  "stepfun-3.7-flash",
-  "tencent-hy3-free",
+  "nvidia/llama-3.1-nemotron-70b-instruct",
+  "nvidia/llama-3.1-nemotron-51b-instruct",
+  "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+  "mistralai/mistral-large-2-instruct",
+  "z-ai/glm-5.3-flash",
 ]);
 
-export const DEFAULT_MODEL = "laguna-s-2.1";
+export const DEFAULT_MODEL = "nvidia/llama-3.1-nemotron-70b-instruct";
 /** A larger model used to escalate complex multi-step tasks. */
-export const STRONG_MODEL = "agnes-3-flash";
+export const STRONG_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1";
 
 export type Complexity = "simple" | "complex";
 

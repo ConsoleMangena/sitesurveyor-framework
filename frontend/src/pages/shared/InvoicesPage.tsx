@@ -20,6 +20,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import { EntityFilesCard } from "@/components/files/EntityFilesCard";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,11 +33,6 @@ import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import { PageForm } from "@/components/templates/PageForm.tsx";
 import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import {
   Select,
@@ -78,6 +74,7 @@ interface InvoiceLineItem {
 }
 
 interface InvoiceDetailProps {
+  workspaceId: string;
   invoice: UiInvoice;
   items: InvoiceLineItem[];
   savingItems: boolean;
@@ -113,6 +110,7 @@ interface InvoiceDetailProps {
 }
 
 function InvoiceDetail({
+  workspaceId,
   invoice,
   items,
   savingItems,
@@ -450,6 +448,17 @@ function InvoiceDetail({
           onRemove={onRemove}
           showTotals={false}
         />
+
+        <div className="print:hidden">
+          <EntityFilesCard
+            workspaceId={workspaceId}
+            entityTable="invoices"
+            entityId={invoice.dbId}
+            title="Invoice Files"
+            description="PDFs, receipts and supporting documents for this invoice."
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.csv,.txt,.xlsx,.xls"
+          />
+        </div>
 
         <div className="space-y-4 print:hidden">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1538,6 +1547,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
         {activeInvoice && (
           <InvoiceDetail
             key={activeInvoice.dbId}
+            workspaceId={workspaceId}
             invoice={activeInvoice}
             items={localItems}
             savingItems={savingItems}

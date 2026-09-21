@@ -1,7 +1,7 @@
 -- Per-workspace AI provider registry.
 --
 -- Each row is an OpenAI-compatible chat-completions endpoint the user can
--- point the AI agent at. The "built-in" NaraRouter provider stays in code
+-- point the AI agent at. The "built-in" NVIDIA provider stays in code
 -- (backend/supabase/functions/_shared/ai-agent.ts) and is the default;
 -- rows here extend the allowlist with the user's own keys + base URLs —
 -- e.g. OpenAI, Anthropic (via the OpenAI-compat proxy), Azure OpenAI,
@@ -9,9 +9,10 @@
 --
 -- The selected model id is encoded as "<provider-id>:<model>" so the agent
 -- can look the provider up by id, hit the right base_url with the right
--- api_key, and forward the model name verbatim. Built-in NaraRouter keeps
--- using its current shape ("laguna-s-2.1", "agnes-2.5-flash") for backward
--- compat.
+-- api_key, and forward the model name verbatim. Built-in NVIDIA keeping
+-- its current shape ("nvidia/llama-3.1-nemotron-70b-instruct",
+-- "nvidia/llama-3.1-nemotron-ultra-253b-v1")
+-- for backward compat.
 
 create table public.workspace_ai_providers (
   id uuid primary key default gen_random_uuid(),
@@ -115,7 +116,7 @@ create trigger trg_workspace_ai_providers_updated_at
 --    non-admin workspace members via the policy above, but admins on the
 --    workspace CAN see it. That is intentional for v1 — the settings UI is
 --    gated to admins and the key never leaves the trust boundary.
--- 2. Built-in NaraRouter continues to work without a row. The agent
---    resolves "laguna-s-2.1" (and free model names) to the
---    env-supplied key. Custom providers only kick in when the selected model
---    id starts with one of the registered tags.
+-- 2. Built-in NVIDIA continues to work without a row. The agent
+--    resolves "nvidia/llama-3.1-nemotron-70b-instruct" (and the other NVIDIA NIM
+--    model names) to the env-supplied key. Custom providers only kick in
+--    when the selected model id starts with one of the registered tags.

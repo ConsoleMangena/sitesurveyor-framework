@@ -197,7 +197,7 @@ export default function BusinessDashboardPage({
         </div>
 
         <div className="xl:col-span-12">
-          <MarketGlobeCard />
+          <MarketGlobeCard onNavigate={onNavigate} />
         </div>
 
         <div className="xl:col-span-5">

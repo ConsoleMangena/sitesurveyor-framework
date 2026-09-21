@@ -30,11 +30,11 @@ check("allowlist-size", ALLOWED_MODELS.size >= 4);
 // isAllowedModel + resolveModel: explicit allowed value wins.
 check(
   "resolve-explicit-allowed-simple",
-  resolveModel("laguna-s-2.1", "simple") === "laguna-s-2.1",
+  resolveModel("nvidia/llama-3.1-nemotron-70b-instruct", "simple") === "nvidia/llama-3.1-nemotron-70b-instruct",
 );
 check(
   "resolve-explicit-allowed-complex",
-  resolveModel("agnes-2.5-flash", "complex") === "agnes-2.5-flash",
+  resolveModel("nvidia/llama-3.1-nemotron-ultra-253b-v1", "complex") === "nvidia/llama-3.1-nemotron-ultra-253b-v1",
 );
 
 // resolveModel: empty / unknown falls back to default or strong by complexity.
@@ -52,7 +52,7 @@ check(
 // isAllowedModel: blanks are allowed (no model == default), unknowns are not.
 check("is-allowed-blank", isAllowedModel(undefined));
 check("is-allowed-empty", isAllowedModel(""));
-check("is-allowed-known", isAllowedModel("laguna-s-2.1"));
+check("is-allowed-known", isAllowedModel("nvidia/llama-3.1-nemotron-70b-instruct"));
 check("is-denied-unknown", !isAllowedModel("gpt-4-turbo"));
 check("is-denied-typo", !isAllowedModel("openrouter/auto"));
 
@@ -99,7 +99,7 @@ async function firstEvent(model: string) {
   const gen = runAgent({
     history: [],
     userMessage: "hi",
-    nararouterKey: "test-key",
+    nvidiaKey: "test-key",
     supabaseUrl: "https://x.invalid",
     serviceKey: "k",
     model,
