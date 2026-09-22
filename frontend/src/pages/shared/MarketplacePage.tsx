@@ -76,6 +76,7 @@ import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import { Switch } from "../../components/ui/switch.tsx";
 import { cn } from "../../lib/utils.ts";
+import { assetMediaUrl } from "../../lib/repositories/assetMedia.ts";
 import "../../styles/pages.css";
 
 /* ── SVG Icon Components ── */
@@ -1003,7 +1004,7 @@ export default function MarketplacePage({
                 </>
               ) : null
             }
-            size="md"
+            size="screen"
             footer={
               selectedListing ? (
                 <>
@@ -1082,8 +1083,9 @@ export default function MarketplacePage({
             }
           >
             {selectedListing && (
-              <div className="space-y-4">
-                <p className="text-2xl font-semibold text-foreground">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+                <div className="min-w-0 space-y-4">
+                  <p className="text-2xl font-semibold text-foreground">
                   ${selectedListing.price.toLocaleString()}{" "}
                   <span className="text-sm font-normal text-muted-foreground">
                     {selectedListing.currency}{" "}
@@ -1124,6 +1126,9 @@ export default function MarketplacePage({
                     </div>
                   </CardContent>
                 </Card>
+                  </div>
+
+                <div className="min-w-0 space-y-4">
 
                 {showRequestForm && (
                   <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
@@ -1288,6 +1293,7 @@ export default function MarketplacePage({
                     </AlertDescription>
                   </Alert>
                 )}
+                  </div>
               </div>
             )}
           </DialogTemplate>
@@ -1413,8 +1419,16 @@ export default function MarketplacePage({
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-2 py-3">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-muted text-primary">
-                              <ListingIcon type={l.type} />
+                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-muted">
+                              {l.assets?.photos?.[0] ? (
+                                <img
+                                  src={assetMediaUrl(l.assets.photos[0]) ?? undefined}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <ListingIcon type={l.type} />
+                              )}
                             </div>
                             <h3 className="text-center text-lg font-semibold text-foreground">{l.name}</h3>
                             <p className="text-sm text-muted-foreground">{l.type}</p>
@@ -1460,8 +1474,16 @@ export default function MarketplacePage({
                               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                                 {itemNumber}
                               </span>
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted text-primary">
-                                <ListingIcon type={l.type} />
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                                {l.assets?.photos?.[0] ? (
+                                  <img
+                                    src={assetMediaUrl(l.assets.photos[0]) ?? undefined}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <ListingIcon type={l.type} />
+                                )}
                               </div>
                             </div>
                             <div className="flex flex-wrap justify-end gap-1">

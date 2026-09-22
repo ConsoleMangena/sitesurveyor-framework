@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   createProfessional,
   deleteProfessional,
@@ -81,6 +82,8 @@ export default function ProfessionalsPage({
   workspaceId,
   isPlatformAdmin = false,
 }: ProfessionalsPageProps) {
+  const [searchParams] = useSearchParams();
+  const deepLinkHandled = useRef(false);
   const [search, setSearch] = useState("");
   const [discFilter, setDiscFilter] = useState<DisciplineFilter>("all");
   const [selectedPro, setSelectedPro] = useState<ProfessionalRow | null>(null);
@@ -123,6 +126,19 @@ export default function ProfessionalsPage({
   }, [isPlatformAdmin, workspaceId]);
 
   useAsyncAction(fetchPros, [fetchPros]);
+
+  // Deep link from the public market ("Open in Hire Directory"): once the
+  // roster is loaded, auto-open the profile the visitor selected.
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const targetId = searchParams.get("professional");
+    if (!targetId || professionals.length === 0) return;
+    deepLinkHandled.current = true;
+    const match = professionals.find((p) => p.id === targetId);
+    if (match) {
+      void Promise.resolve().then(() => setSelectedPro(match));
+    }
+  }, [professionals, searchParams]);
 
   const openCreatePro = () => {
     setEditingId(null);
@@ -657,7 +673,7 @@ export default function ProfessionalsPage({
         onOpenChange={(open) => !open && setSelectedPro(null)}
         title={selectedPro?.name ?? "Professional Details"}
         description={selectedPro?.title}
-        size="lg"
+        size="screen"
         footer={selectedPro ? (
           <>
             <Button variant="outline" onClick={() => setSelectedPro(null)}>
@@ -679,7 +695,8 @@ export default function ProfessionalsPage({
         ) : undefined}
       >
         {selectedPro && (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-5 lg:gap-5">
+            <div className="min-w-0 space-y-4 lg:col-span-3">
             <div className="relative -mx-1 -mt-1 h-20 overflow-hidden rounded-none bg-gradient-to-br from-primary/30 via-primary/15 to-primary/5">
               {selectedPro.is_verified && (
                 <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-500/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
@@ -732,8 +749,10 @@ export default function ProfessionalsPage({
             )}
 
             <Separator />
+            </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="min-w-0 space-y-4 lg:col-span-2">
+            <div className="grid grid-cols-2 gap-2">
               <div className="rounded-none border bg-muted/30 px-3 py-2.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Rate
@@ -805,6 +824,7 @@ export default function ProfessionalsPage({
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
       </DialogTemplate>

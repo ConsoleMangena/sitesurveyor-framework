@@ -22,7 +22,7 @@ review, the verdict, and DESIGN.md.
 */
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowDownWideNarrow,
   BadgeCheck,
@@ -35,13 +35,32 @@ import {
   Globe2,
   GraduationCap,
   HardHat,
+  LayoutGrid,
+  LogOut,
   MapPin,
+  PackageSearch,
   RefreshCw,
   Search,
   UserRound,
 } from "lucide-react";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
+import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
+import { signOut } from "../../lib/auth/session.ts";
+import { getWorkspaceShellAccountLabel } from "../../features/workspace/account.ts";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "../../components/ui/avatar.tsx";
+import { Badge } from "../../components/ui/badge.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu.tsx";
 import {
   buildMarketDots,
   MARKET_DOT_COLORS,
@@ -110,8 +129,20 @@ function formatDate(value: string): string {
   });
 }
 
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export default function PublicMarketPage() {
   const user = useAuthStore((s) => s.user);
+  const avatarUrl = useMyAvatar();
+  const navigate = useNavigate();
+  const [marketUserMenuOpen, setMarketUserMenuOpen] = useState(false);
   const [data, setData] = useState<MarketData | null>(null);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -159,6 +190,11 @@ export default function PublicMarketPage() {
 
   const failed = failure !== null;
   const loading = data === null;
+
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+    navigate("/market");
+  }, [navigate]);
 
   // ── Derived: registry rows (search [+ category]) ──
 
@@ -488,21 +524,78 @@ export default function PublicMarketPage() {
             <span className="text-sm text-muted-foreground">/ Market</span>
           </span>
           {user ? (
-            <Link
-              to="/"
-              className="flex max-w-full items-center gap-2 rounded-none border border-border/60 bg-background/85 px-2 py-1 text-sm transition-colors hover:bg-muted/60"
-              title={`Open your workspace (${user.name})`}
+            <DropdownMenu
+              open={marketUserMenuOpen}
+              onOpenChange={setMarketUserMenuOpen}
             >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
-                {user.name
-                  .split(" ")
-                  .map((part) => part[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </span>
-              <span className="max-w-[140px] truncate text-foreground">{user.name}</span>
-            </Link>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`hub-avatar-btn ${marketUserMenuOpen ? "open" : ""}`}
+                  aria-label={`Open account menu (${user.name})`}
+                >
+                  <Avatar className="hub-avatar-btn-avatar">
+                    {avatarUrl && (
+                      <AvatarImage
+                        src={avatarUrl}
+                        alt={user.name}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
+                      {initialsOf(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hub-avatar-name">{user.name}</span>
+                  <ChevronDown className="hub-avatar-chevron" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" forceMount className="hub-profile-dropdown">
+                <div className="hub-profile-menu-header">
+                  <Avatar className="hub-profile-menu-avatar">
+                    {avatarUrl && (
+                      <AvatarImage
+                        src={avatarUrl}
+                        alt={user.name}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    <AvatarFallback className="bg-muted text-foreground text-base font-semibold">
+                      {initialsOf(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hub-profile-menu-identity">
+                    <span className="hub-profile-menu-name">{user.name}</span>
+                    <span className="hub-profile-menu-email">{user.email}</span>
+                    <Badge
+                      variant={user.accountType === "business" ? "default" : "secondary"}
+                      className="hub-profile-menu-badge"
+                    >
+                      {getWorkspaceShellAccountLabel(user)}
+                    </Badge>
+                  </div>
+                </div>
+                <DropdownMenuSeparator className="hub-profile-menu-divider" />
+                <DropdownMenuItem className="hub-profile-menu-item" asChild>
+                  <Link to="/">
+                    <LayoutGrid /> Open your workspace
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="hub-profile-menu-divider" />
+                <DropdownMenuItem className="hub-profile-menu-item" asChild>
+                  <Link to="/?view=marketplace">
+                    <PackageSearch /> My marketplace requests
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="hub-profile-menu-divider" />
+                <DropdownMenuItem
+                  className="hub-profile-menu-item hub-profile-menu-item-danger"
+                  onClick={handleSignOut}
+                >
+                  <LogOut /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button size="sm" asChild>
               <Link to="/login">Sign in</Link>
@@ -869,6 +962,18 @@ export default function PublicMarketPage() {
         firm={selectedFirm}
         event={selectedEvent}
         onClose={() => setSelectedId(null)}
+        allowRequest
+        onOpenInApp={
+          user
+            ? (view, id) => {
+                const query =
+                  view === "professionals" && id
+                    ? `?view=professionals&professional=${encodeURIComponent(id)}`
+                    : `?view=${view}`;
+                navigate(`/${query}`);
+              }
+            : undefined
+        }
       />
     </div>
   );

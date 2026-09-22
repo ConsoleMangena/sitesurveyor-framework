@@ -70,13 +70,14 @@ function nextId(prefix: string): string {
   return `${prefix}${Date.now()}-${idCounter}`;
 }
 
-/** Available AI models the user may choose from (NVIDIA NIM at build.nvidia.com). */
+/** Available AI models the user may choose from (Alibaba Cloud Model Studio Qwen). */
 const AI_MODELS: { id: string; label: string; free: boolean }[] = [
-  { id: "nvidia/llama-3.1-nemotron-70b-instruct", label: "Nemotron 70B", free: false },
-  { id: "nvidia/llama-3.1-nemotron-51b-instruct", label: "Nemotron 51B", free: false },
-  { id: "nvidia/llama-3.1-nemotron-ultra-253b-v1", label: "Nemotron Ultra 253B", free: false },
-  { id: "mistralai/mistral-large-2-instruct", label: "Mistral Large 2", free: false },
-  { id: "z-ai/glm-5.3-flash", label: "GLM 5.3 Flash", free: false },
+  { id: "qwen-plus", label: "Qwen Plus", free: false },
+  { id: "qwen-max", label: "Qwen Max", free: false },
+  { id: "qwen-turbo", label: "Qwen Turbo", free: false },
+  { id: "qwen3.7-max", label: "Qwen3.7 Max (free quota)", free: true },
+  { id: "qwen3.7-plus", label: "Qwen3.7 Plus (free quota)", free: true },
+  { id: "qwen3.7-flash", label: "Qwen3.7 Flash (free quota)", free: true },
 ];
 const MODEL_STORAGE_KEY = "sitesurveyor-ai-model";
 const DEFAULT_MODEL_ID = AI_MODELS[0].id;

@@ -37,6 +37,7 @@ import type {
   JobAssignmentMemberDocType,
   JobAssignmentAssetDocType,
 } from './schemas.ts'
+import { fromDbValue, toDbValue } from './codecs.ts'
 
 // ── Document wrapper shape matching the repository API contract ─────────────
 
@@ -85,33 +86,6 @@ export interface LocalDb {
   job_assignments: WmCollection<JobAssignmentDocType>
   job_assignment_members: WmCollection<JobAssignmentMemberDocType>
   job_assignment_assets: WmCollection<JobAssignmentAssetDocType>
-}
-
-// ── Helpers for metadata / timestamp serialization ─────────────────────────
-
-function toDbValue(key: string, value: unknown): unknown {
-  if ((key === 'created_at' || key === 'updated_at') && typeof value === 'string') {
-    const ms = Date.parse(value)
-    return isNaN(ms) ? Date.now() : ms
-  }
-  if (key === 'metadata' && (typeof value === 'object' || value === null || value === undefined)) {
-    return JSON.stringify(value ?? {})
-  }
-  return value
-}
-
-function fromDbValue(key: string, value: unknown): unknown {
-  if ((key === 'created_at' || key === 'updated_at') && typeof value === 'number') {
-    return new Date(value).toISOString()
-  }
-  if (key === 'metadata' && typeof value === 'string') {
-    try {
-      return JSON.parse(value)
-    } catch {
-      return {}
-    }
-  }
-  return value
 }
 
 function deserializeRaw(raw: Record<string, unknown>): Record<string, unknown> {

@@ -7,12 +7,12 @@ export type MarketplaceListingInsert = TablesInsert<'marketplace_listings'>
 export type MarketplaceListingUpdate = TablesUpdate<'marketplace_listings'>
 type MarketplaceListingCreateInput = Omit<MarketplaceListingInsert, 'workspace_id' | 'id' | 'created_at' | 'updated_at'>
 
-export type MarketplaceListingWithAsset = MarketplaceListingRow & { assets?: { status: string } | null }
+export type MarketplaceListingWithAsset = MarketplaceListingRow & { assets?: { status: string; photos?: string[] | null } | null }
 
 export async function listMarketplaceListings(workspaceId: string): Promise<MarketplaceListingWithAsset[]> {
   const { data, error } = await supabase
     .from('marketplace_listings')
-    .select('*, assets:asset_id(status)')
+    .select('*, assets:asset_id(status, photos)')
     .or(`workspace_id.eq.${workspaceId},is_global.eq.true`)
     .order('created_at', { ascending: false })
 

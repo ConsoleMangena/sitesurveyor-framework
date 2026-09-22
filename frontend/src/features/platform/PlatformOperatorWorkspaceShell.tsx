@@ -12,14 +12,19 @@ import type { UiUser, WorkspaceView } from "../workspace/types";
 interface PlatformOperatorWorkspaceShellProps {
   user: UiUser;
   onLogout: () => Promise<void> | void;
+  /** Validated view to open first (e.g. from a `/?view=professionals` deep
+   *  link out of the public market); overrides the saved last view. */
+  initialView?: WorkspaceView;
 }
 
 export default function PlatformOperatorWorkspaceShell({
   user,
   onLogout,
+  initialView,
 }: PlatformOperatorWorkspaceShellProps) {
   const storageKey = `sitesurveyor:lastView:platform:${user.workspaceId}`;
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
+    if (initialView !== undefined) return initialView;
     const saved = localStorage.getItem(storageKey) as WorkspaceView | null;
     if (saved) return saved;
     return user.isPlatformAdmin ? "admin_overview" : "dashboard";

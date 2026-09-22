@@ -596,11 +596,12 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
             </div>
           ) : null
         }
-        size="2xl"
+        size="screen"
       >
         {selectedContact && (
-          <div className="space-y-4">
-            <div className="space-y-2 text-sm">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+            <div className="min-w-0 space-y-4">
+            <div className="rounded-none border p-4 space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Type</span>
                 <Badge variant={typeVariant[selectedContact.type] ?? "secondary"}>{selectedContact.type}</Badge>
@@ -634,7 +635,9 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
                 <span>{selectedContact.lastContact}</span>
               </div>
             </div>
+            </div>
 
+            <div className="min-w-0 space-y-4">
             <EntityFilesCard
               workspaceId={workspaceId}
               entityTable="contacts"
@@ -642,6 +645,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
               title="Contact Files"
               description="Documents, agreements and reference files for this contact."
             />
+            </div>
           </div>
         )}
       </DialogTemplate>

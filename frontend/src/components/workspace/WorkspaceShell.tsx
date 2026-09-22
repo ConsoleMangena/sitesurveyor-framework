@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "../../styles/project-hub.css";
+import { Link } from "react-router-dom";
 import { ChevronDown, Menu } from "lucide-react";
 import { useServerStatus } from "../../lib/serverStatus.ts";
 import { useOfflineSyncStatus } from "../../lib/hooks/useOfflineSyncStatus.ts";
@@ -586,6 +587,25 @@ function EditIcon() {
   );
 }
 
+function ProfileMarketplaceIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 2L3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-3-5z" />
+      <line x1="3" y1="7" x2="21" y2="7" />
+      <path d="M16 11a4 4 0 0 1-8 0" />
+    </svg>
+  );
+}
+
 function AboutIcon() {
   return (
     <svg
@@ -1069,6 +1089,12 @@ function WorkspaceTopbar({
                   </Badge>
                 </div>
               </div>
+              <DropdownMenuSeparator className="hub-profile-menu-divider" />
+              <DropdownMenuItem className="hub-profile-menu-item" asChild>
+                <Link to="/market">
+                  <ProfileMarketplaceIcon /> Public Market
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator className="hub-profile-menu-divider" />
               <DropdownMenuItem className="hub-profile-menu-item" onClick={onProfile}>
                 <EditIcon /> Edit Profile

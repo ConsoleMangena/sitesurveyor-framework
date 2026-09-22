@@ -80,6 +80,9 @@ function cleanServerRow(tableName: string, row: Record<string, unknown>): DirtyR
   if (tableName === 'assets' && raw.metadata && typeof raw.metadata === 'object') {
     raw.metadata = JSON.stringify(raw.metadata)
   }
+  if (tableName === 'assets' && Array.isArray(raw.photos)) {
+    raw.photos = JSON.stringify(raw.photos)
+  }
   raw._deleted = row._deleted ?? false
   if (typeof raw.created_at === 'string') {
     raw.created_at = Date.parse(raw.created_at)
@@ -115,6 +118,13 @@ function preparePayload(tableName: string, raw: Record<string, unknown>, isCreat
         payload[key] = JSON.parse(value)
       } catch {
         payload[key] = {}
+      }
+    } else if (key === 'photos' && tableName === 'assets' && typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        payload[key] = Array.isArray(parsed) ? parsed : []
+      } catch {
+        payload[key] = []
       }
     } else if (key === 'created_at' || key === 'updated_at') {
       if (typeof value === 'number') {

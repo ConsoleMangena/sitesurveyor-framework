@@ -26,6 +26,7 @@ export type ListingRow = Omit<
   price: number;
   location: string;
   created_at: string;
+  photos: string[];
 };
 export type ProfessionalRow = Omit<
   DbProfessional,
@@ -93,6 +94,7 @@ const toListingRows = (rows: DbListing[]): ListingRow[] =>
     price: r.price ?? 0,
     location: r.location ?? "",
     created_at: r.created_at ?? "",
+    photos: r.photos ?? [],
   }));
 const toProfessionalRows = (rows: DbProfessional[]): ProfessionalRow[] =>
   rows.map((r) => ({

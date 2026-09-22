@@ -2,25 +2,26 @@
 //
 // Single source of truth shared by both serve paths (ai-chat Edge Function
 // and ai-gateway-server Node host). The allowlist is the hard boundary — any
-// value not in it falls back to the default. Model ids are NVIDIA NIM ids
-// served at build.nvidia.com (OpenAI-compatible endpoint
-// https://integrate.api.nvidia.com/v1) and are selected for tool/function
-// calling support. The router escalates to a larger model for tasks the
-// keyword signal marks as complex multi-step work, keeping routine tasks on
-// the default model.
+// value not in it falls back to the default. Model ids are Alibaba Cloud Model
+// Studio (DashScope, Singapore/ap-southeast-1) Qwen ids served at the OpenAI-
+// compatible endpoint https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+// and are selected for tool/function calling support. The router escalates to a
+// larger model for tasks the keyword signal marks as complex multi-step work,
+// keeping routine tasks on the default model.
 
 /** Models users may select. Anything outside silently falls back to DEFAULT_MODEL. */
 export const ALLOWED_MODELS: ReadonlySet<string> = new Set([
-  "nvidia/llama-3.1-nemotron-70b-instruct",
-  "nvidia/llama-3.1-nemotron-51b-instruct",
-  "nvidia/llama-3.1-nemotron-ultra-253b-v1",
-  "mistralai/mistral-large-2-instruct",
-  "z-ai/glm-5.3-flash",
+  "qwen-plus",
+  "qwen-max",
+  "qwen-turbo",
+  "qwen3.7-max",
+  "qwen3.7-plus",
+  "qwen3.7-flash",
 ]);
 
-export const DEFAULT_MODEL = "nvidia/llama-3.1-nemotron-70b-instruct";
+export const DEFAULT_MODEL = "qwen-plus";
 /** A larger model used to escalate complex multi-step tasks. */
-export const STRONG_MODEL = "nvidia/llama-3.1-nemotron-ultra-253b-v1";
+export const STRONG_MODEL = "qwen3.7-max";
 
 export type Complexity = "simple" | "complex";
 

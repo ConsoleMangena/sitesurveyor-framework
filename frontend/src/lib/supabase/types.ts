@@ -341,6 +341,7 @@ export type Database = {
           metadata: Json
           model: string | null
           name: string
+          photos: string[]
           purchase_cost: number | null
           purchase_date: string | null
           serial_number: string | null
@@ -362,6 +363,7 @@ export type Database = {
           metadata?: Json
           model?: string | null
           name: string
+          photos?: string[]
           purchase_cost?: number | null
           purchase_date?: string | null
           serial_number?: string | null
@@ -383,6 +385,7 @@ export type Database = {
           metadata?: Json
           model?: string | null
           name?: string
+          photos?: string[]
           purchase_cost?: number | null
           purchase_date?: string | null
           serial_number?: string | null
@@ -3062,6 +3065,7 @@ export type Database = {
           location: string | null
           longitude: number | null
           name: string | null
+          photos: string[] | null
           price: number | null
           seller: string | null
           specs: string[] | null
@@ -3079,6 +3083,7 @@ export type Database = {
           location?: string | null
           longitude?: number | null
           name?: string | null
+          photos?: string[] | null
           price?: number | null
           seller?: string | null
           specs?: string[] | null
@@ -3096,6 +3101,7 @@ export type Database = {
           location?: string | null
           longitude?: number | null
           name?: string | null
+          photos?: string[] | null
           price?: number | null
           seller?: string | null
           specs?: string[] | null

@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export const wmSchema = appSchema({
-  version: 5,
+  version: 6,
   tables: [
     tableSchema({
       name: 'projects',
@@ -86,6 +86,7 @@ export const wmSchema = appSchema({
         { name: 'purchase_cost', type: 'number', isOptional: true },
         { name: 'current_value', type: 'number', isOptional: true },
         { name: 'metadata', type: 'string' },
+        { name: 'photos', type: 'string', isOptional: true },
         { name: 'created_by', type: 'string', isOptional: true },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },

@@ -1,13 +1,14 @@
 // AI agent evaluation runner.
 //
 // Usage:
-//   NVIDIA_API_KEY=nvapi-... node scripts/ai-eval/run.ts
-//   NVIDIA_API_KEY=... node scripts/ai-eval/run.ts --model=nvidia/llama-3.1-nemotron-70b-instruct --filter=create-contact
+//   DASHSCOPE_API_KEY=sk-... node scripts/ai-eval/run.ts
+//   DASHSCOPE_API_KEY=... node scripts/ai-eval/run.ts --model=qwen-plus --filter=create-contact
 //
-// Runs each labelled case through the REAL agent loop (live model over
-// NVIDIA NIM at build.nvidia.com) against an in-memory copy of the fixture
-// Supabase transport, then applies deterministic assertions. Prints a pass/fail
-// table; exit code 0 only if every case passes.
+// Runs each labelled case through the REAL agent loop (live Qwen model over
+// Alibaba Cloud Model Studio at modelstudio.console.alibabacloud.com) against
+// an in-memory copy of the fixture Supabase transport, then applies
+// deterministic assertions. Prints a pass/fail table; exit code 0 only if
+// every case passes.
 
 import {
   FakePostgrest,
@@ -17,7 +18,7 @@ import {
 import { cases, type EvalFrame, type RunLog } from "./cases.ts";
 import { runAgent, type AgentEvent } from "../../backend/supabase/functions/_shared/ai-agent.ts";
 
-const KEY = process.env.NVIDIA_API_KEY ?? "";
+const KEY = process.env.DASHSCOPE_API_KEY ?? "";
 const CASE_TIMEOUT_MS = 180_000;
 
 function parseArgs(argv: string[]): { model?: string; filter?: string } {
@@ -49,7 +50,7 @@ function reqUrl(input: unknown): string {
 async function main(): Promise<void> {
   if (!KEY) {
     console.error(
-      "Missing NVIDIA_API_KEY. Set it to run the AI eval harness (it calls the real model against fixture data).",
+      "Missing DASHSCOPE_API_KEY. Set it to run the AI eval harness (it calls the real model against fixture data).",
     );
     process.exit(1);
   }
@@ -93,7 +94,7 @@ async function main(): Promise<void> {
       const gen = runAgent({
         history: [],
         userMessage: c.prompt,
-        nvidiaKey: KEY,
+        dashscopeKey: KEY,
         supabaseUrl: FIXTURE_BASE,
         serviceKey: "test",
         model,

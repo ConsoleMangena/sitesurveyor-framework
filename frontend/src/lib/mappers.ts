@@ -212,6 +212,7 @@ export interface UiInstrument {
   calibrationCert: string;
   maintenanceLog: { date: string; description: string; cost: number }[];
   metadata: Record<string, unknown>;
+  photos: string[];
 }
 
 export function mapAssetRowToInstrument(
@@ -246,6 +247,7 @@ export function mapAssetRowToInstrument(
       description: m.description,
       cost: Number(m.cost),
     })),
+    photos: row.photos ?? [],
     metadata,
   };
 }

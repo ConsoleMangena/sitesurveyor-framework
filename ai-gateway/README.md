@@ -6,7 +6,7 @@ phones — just open a browser; **nothing is installed on them**.
 ```
 ┌────────────────────────── host PC ──────────────────────────┐
 │  ai-gateway-server.ts (:8787, LAN)                           │
-│    └─ /api/chat → inline NVIDIA NIM agent core (streaming)     │
+    │    └─ /api/chat → inline DashScope agent core (streaming)     │
 │    └─ opt-in: OpenClaw gateway (:18789, loopback)            │
 │        └─ agent entries: main, sitesurveyor                  │
 │        └─ mcp.servers.sitesurveyor → sitesurveyor-mcp (15 t) │
@@ -19,11 +19,12 @@ phones — just open a browser; **nothing is installed on them**.
 
 ## Agent engine
 
-Chat turns default to the **inline streaming NVIDIA NIM core** — the same
+Chat turns default to the **inline streaming DashScope core** — the same
 `runAgent` loop the cloud `ai-chat` Edge Function uses — so replies stream to
-the UI token-by-token over the same models (build.nvidia.com NIM ids) and
-speak the identical NDJSON events. This keeps the offline host path feeling as
-fast as the cloud path.
+the UI token-by-token over the same Qwen models (Alibaba Cloud Model Studio,
+OpenAI-compatible endpoint `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`)
+and speak the identical NDJSON events. This keeps the offline host path feeling
+as fast as the cloud path.
 
 An **opt-in OpenClaw Gateway** path (`USE_OPENCLAW=1`) delegates turns to
 `openclaw agent --agent sitesurveyor --json`. The gateway is a locally-running
@@ -35,8 +36,8 @@ The `sitesurveyor` agent (used only when `USE_OPENCLAW=1`) is registered in the
 **ambient OpenClaw config** (`~/.openclaw/openclaw.json`), which wires three
 things together:
 
-- `agents.entries.sitesurveyor` — routing + model policy (model
-  `nvidia/llama-3.1-nemotron-70b-instruct`, `modelPolicy.allow: ["nvidia/*", "mistralai/*", "z-ai/*"]`). Multi-agent
+- `agents.entries.sitesurveyor` — routing + model policy (model `qwen-plus`,
+  `modelPolicy.allow: ["qwen-plus", "qwen-max", "qwen-turbo", "qwen3.7-max", "qwen3.7-plus", "qwen3.7-flash"]`). Multi-agent
   configs require `agents.ownership: "explicit"`.
 - `mcp.servers.sitesurveyor` — stdio MCP server launched from
   `ai-gateway/sitesurveyor-mcp/dist/index.js` with the Supabase
@@ -85,7 +86,7 @@ the ambient gateway config above.
 
 ```bash
 # .env (ai-gateway/):
-#   NVIDIA_API_KEY=nvapi-...
+#   DASHSCOPE_API_KEY=sk-...
 #   SUPABASE_URL=https://<project>.supabase.co
 #   SUPABASE_SERVICE_ROLE_KEY=<service role key>
 npm start          # in ai-gateway/ (server reads .env; starts on :8787)

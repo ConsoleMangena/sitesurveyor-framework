@@ -8,12 +8,12 @@
   },
   "models": {
     "providers": {
-      "nvidia": {
-        "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "dashscope": {
+        "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
         "apiKey": {
           "source": "env",
           "provider": "env",
-          "id": "NVIDIA_API_KEY"
+          "id": "DASHSCOPE_API_KEY"
         },
         "auth": "api-key",
         "api": "openai-completions"
@@ -43,7 +43,7 @@
       "sitesurveyor": {
         "name": "SiteSurveyor",
         "description": "SiteSurveyor surveying project assistant. Reads and writes site data, inspects CAD drawings, runs business workflows, and keeps conversation memory - always under user confirmation for destructive writes. Configured for the OpenClaw Gateway (opens in Control UI); headless turns use agent exec with the same config.",
-        "model": "nvidia/llama-3.1-nemotron-70b-instruct"
+        "model": "qwen-plus"
       }
     }
   }

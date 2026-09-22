@@ -625,7 +625,7 @@ export default function JobsPage({
         onOpenChange={() => setSelectedJob(null)}
         title={selectedJob?.title ?? "Job Details"}
         description={selectedJob ? `${selectedJob.project_name ?? "No project"} · ${selectedJob.location ?? "No location"}` : undefined}
-        size="md"
+        size="screen"
         footer={selectedJob ? (
           <>
             <Button variant="outline" onClick={() => setSelectedJob(null)}>
@@ -645,7 +645,8 @@ export default function JobsPage({
         ) : undefined}
       >
         {selectedJob && (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+            <div className="min-w-0 space-y-4">
             <div className="flex items-start gap-4">
               <div
                 className={cn(
@@ -687,6 +688,9 @@ export default function JobsPage({
                 </div>
               </CardContent>
             </Card>
+            </div>
+
+            <div className="min-w-0 space-y-4">
             <EntityFilesCard
               workspaceId={workspaceId}
               entityTable="jobs"
@@ -694,6 +698,7 @@ export default function JobsPage({
               title="Job Files"
               description="Drawings, point files, PDFs and reference documents for this job."
             />
+            </div>
           </div>
         )}
       </DialogTemplate>

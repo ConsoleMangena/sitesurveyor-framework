@@ -75,5 +75,16 @@ export const migrations = schemaMigrations({
         ),
       ],
     },
+    {
+      toVersion: 6,
+      steps: [
+        addColumns({
+          table: 'assets',
+          columns: [
+            { name: 'photos', type: 'string', isOptional: true },
+          ],
+        }),
+      ],
+    },
   ],
 })

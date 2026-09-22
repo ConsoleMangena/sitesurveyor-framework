@@ -53,6 +53,31 @@ export async function createMarketplaceRequest(
 }
 
 /**
+ * Fetch the current user's most recent request for a single listing,
+ * regardless of status (pending, accepted, declined, cancelled).
+ */
+export async function getMyRequestForListing(
+  listingId: string,
+): Promise<MarketplaceRequestRow | null> {
+  const user = await getCurrentUser()
+  if (!user) return null
+
+  const { data, error } = await supabase
+    .from('marketplace_requests')
+    .select('*')
+    .eq('listing_id', listingId)
+    .eq('requester_user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    console.warn('Failed to load request for listing', error)
+    return null
+  }
+  return data?.[0] ?? null
+}
+
+/**
  * Check if the current user already has a pending request on a listing.
  */
 export async function hasPendingRequest(

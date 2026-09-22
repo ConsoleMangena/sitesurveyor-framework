@@ -60,6 +60,8 @@ import {
 import { getMarketplaceWallet, getWorkspaceById } from "../../lib/repositories/workspaces.ts";
 import { listProjects, type ProjectWithOrg } from "../../lib/repositories/projects.ts";
 import { mapAssetRowToInstrument, type UiInstrument } from "../../lib/mappers.ts";
+import { AssetPhotosField } from "../../components/assets/AssetPhotosField.tsx";
+import { assetMediaUrl } from "../../lib/repositories/assetMedia.ts";
 
 type Instrument = UiInstrument & { listing?: MarketplaceListingRow | null };
 
@@ -208,6 +210,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
     serial_number: "",
     purchase_date: "",
     purchase_cost: "",
+    photos: [] as string[],
   });
   const [saving, setSaving] = useState(false);
 
@@ -223,6 +226,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
     serial_number: "",
     purchase_date: "",
     purchase_cost: "",
+    photos: [] as string[],
   });
 
   const [listOnMarketplace, setListOnMarketplace] = useState(false);
@@ -321,9 +325,10 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
         serial_number: createForm.serial_number || null,
         purchase_date: createForm.purchase_date || null,
         purchase_cost: createForm.purchase_cost ? Number(createForm.purchase_cost) : null,
+        photos: createForm.photos,
       });
       setShowCreateModal(false);
-      setCreateForm({ name: "", kind: "instrument", category: "", make: "", model: "", serial_number: "", purchase_date: "", purchase_cost: "" });
+      setCreateForm({ name: "", kind: "instrument", category: "", make: "", model: "", serial_number: "", purchase_date: "", purchase_cost: "", photos: [] });
       await fetchAssets();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create asset.");
@@ -376,6 +381,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
       serial_number: selectedAsset.serial,
       purchase_date: selectedAsset.purchaseDate || "",
       purchase_cost: selectedAsset.purchaseCost ? String(selectedAsset.purchaseCost) : "",
+      photos: selectedAsset.photos,
     });
     setEditingAssetId(selectedAsset.dbId);
 
@@ -424,6 +430,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
         serial_number: editForm.serial_number || null,
         purchase_date: editForm.purchase_date || null,
         purchase_cost: editForm.purchase_cost ? Number(editForm.purchase_cost) : null,
+        photos: editForm.photos,
       });
 
       if (listOnMarketplace) {
@@ -720,6 +727,13 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                   </div>
                 </CardContent>
               </Card>
+
+              <AssetPhotosField
+                workspaceId={workspaceId}
+                photos={createForm.photos}
+                onChange={(photos) => setCreateForm((f) => ({ ...f, photos }))}
+                onError={(msg) => setError(msg)}
+              />
             </div>
 
             {/* ── Summary ───────────────────────────────────── */}
@@ -988,6 +1002,13 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                   </div>
                 </CardContent>
               </Card>
+
+              <AssetPhotosField
+                workspaceId={workspaceId}
+                photos={editForm.photos}
+                onChange={(photos) => setEditForm((f) => ({ ...f, photos }))}
+                onError={(msg) => setError(msg)}
+              />
 
               {/* ── Marketplace ──────────────────────────────── */}
               <Card>
@@ -1339,8 +1360,18 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                   >
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-start justify-between">
-                        <div className={cn("rounded-none p-2 border text-muted-foreground", typeBgClass[inst.type] ?? typeBgClass.Other)}>
-                          <ListingIcon type={inst.type} />
+                        <div className="flex h-9 w-9 rounded-md border p-1">
+                          {inst.photos?.[0] ? (
+                            <img
+                              src={assetMediaUrl(inst.photos[0]) ?? undefined}
+                              alt=""
+                              className="h-full w-full rounded-sm object-cover"
+                            />
+                          ) : (
+                            <span className={cn("flex h-full w-full items-center justify-center text-muted-foreground", typeBgClass[inst.type] ?? typeBgClass.Other)}>
+                              <ListingIcon type={inst.type} />
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <Badge variant={statusVariant[inst.status] ?? "secondary"}>{inst.status}</Badge>
@@ -1542,7 +1573,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
           ) : null
         }
         icon={selectedAsset ? <ListingIcon type={selectedAsset.type} /> : null}
-        size="2xl"
+        size="screen"
         footer={
           selectedAsset?.status === "Available" ? (
             <>
@@ -1555,69 +1586,73 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
         }
       >
         {selectedAsset && (
-          <>
-            <div className="text-2xl font-bold">
-              ${selectedAsset.currentValue.toLocaleString()}{" "}
-              <span className="text-sm font-normal text-muted-foreground">book value</span>
-            </div>
-
-            {selectedAsset.listing && (
-              <div className="rounded-none border p-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Marketplace listing</span><span>{selectedAsset.listing.listing_type === "hire" ? "Available for Hire" : "Available for Sale"}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span>${selectedAsset.listing.price.toLocaleString()} {selectedAsset.listing.currency}{selectedAsset.listing.listing_type === "hire" ? " / day" : ""}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Condition</span><span>{selectedAsset.listing.condition}</span></div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+            <div className="min-w-0 space-y-4">
+              <div className="text-2xl font-bold">
+                ${selectedAsset.currentValue.toLocaleString()}{" "}
+                <span className="text-sm font-normal text-muted-foreground">book value</span>
               </div>
-            )}
 
-            <div className="rounded-none border p-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Make / Model</span><span>{selectedAsset.make} {selectedAsset.model}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Serial</span><code>{selectedAsset.serial}</code></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Project</span><span>{selectedAsset.assignedProject}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Purchase Cost</span><span>${selectedAsset.purchaseCost.toLocaleString()} on {selectedAsset.purchaseDate}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Depreciation</span><span>{selectedAsset.purchaseCost > 0 ? Math.round(((selectedAsset.purchaseCost - selectedAsset.currentValue) / selectedAsset.purchaseCost) * 100) : 0}%</span></div>
-            </div>
-
-            {selectedAsset.nextCalibration && (
-              <div className="rounded-none border p-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Last Calibration</span><span>{selectedAsset.lastCalibration}</span></div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Next Due</span>
-                  <span className={calDaysClass(daysUntil(selectedAsset.nextCalibration))}>{selectedAsset.nextCalibration} ({calLabel(daysUntil(selectedAsset.nextCalibration))})</span>
+              {selectedAsset.listing && (
+                <div className="rounded-none border p-4 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Marketplace listing</span><span>{selectedAsset.listing.listing_type === "hire" ? "Available for Hire" : "Available for Sale"}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Price</span><span>${selectedAsset.listing.price.toLocaleString()} {selectedAsset.listing.currency}{selectedAsset.listing.listing_type === "hire" ? " / day" : ""}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Condition</span><span>{selectedAsset.listing.condition}</span></div>
                 </div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Certificate</span><span>{selectedAsset.calibrationCert}</span></div>
-              </div>
-            )}
+              )}
 
-            {selectedAsset.maintenanceLog.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Maintenance History</h4>
-                <div className="relative space-y-3 pl-4 border-l-2 border-muted">
-                  {selectedAsset.maintenanceLog.map((log, i) => (
-                    <div key={i} className="relative text-sm">
-                      <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground" />
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                        <span className="text-muted-foreground">{log.date}</span>
-                        <span>{log.description}</span>
-                        {log.cost > 0 && <span className="font-medium">${log.cost.toLocaleString()}</span>}
+              <div className="rounded-none border p-4 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Make / Model</span><span>{selectedAsset.make} {selectedAsset.model}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Serial</span><code>{selectedAsset.serial}</code></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Project</span><span>{selectedAsset.assignedProject}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Purchase Cost</span><span>${selectedAsset.purchaseCost.toLocaleString()} on {selectedAsset.purchaseDate}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Depreciation</span><span>{selectedAsset.purchaseCost > 0 ? Math.round(((selectedAsset.purchaseCost - selectedAsset.currentValue) / selectedAsset.purchaseCost) * 100) : 0}%</span></div>
+              </div>
+
+              {selectedAsset.nextCalibration && (
+                <div className="rounded-none border p-4 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Last Calibration</span><span>{selectedAsset.lastCalibration}</span></div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Next Due</span>
+                    <span className={calDaysClass(daysUntil(selectedAsset.nextCalibration))}>{selectedAsset.nextCalibration} ({calLabel(daysUntil(selectedAsset.nextCalibration))})</span>
+                  </div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Certificate</span><span>{selectedAsset.calibrationCert}</span></div>
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0 space-y-4">
+              {selectedAsset.maintenanceLog.length > 0 && (
+                <div className="rounded-none border p-4">
+                  <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Maintenance History</h4>
+                  <div className="relative space-y-3 pl-4 border-l-2 border-muted">
+                    {selectedAsset.maintenanceLog.map((log, i) => (
+                      <div key={i} className="relative text-sm">
+                        <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground" />
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                          <span className="text-muted-foreground">{log.date}</span>
+                          <span>{log.description}</span>
+                          {log.cost > 0 && <span className="font-medium">${log.cost.toLocaleString()}</span>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Documents</h4>
-              <EntityFilesCard
-                workspaceId={workspaceId}
-                entityTable="assets"
-                entityId={selectedAsset.dbId}
-                title="Asset Files"
-                description="Certificates, calibration documents, photos and other files for this asset."
-                accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.tif,.tiff,.csv,.txt,.geojson,.dxf,.dwg,.xlsx,.xls"
-              />
+              <div className="min-w-0">
+                <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Documents</h4>
+                <EntityFilesCard
+                  workspaceId={workspaceId}
+                  entityTable="assets"
+                  entityId={selectedAsset.dbId}
+                  title="Asset Files"
+                  description="Certificates, calibration documents, photos and other files for this asset."
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.tif,.tiff,.csv,.txt,.geojson,.dxf,.dwg,.xlsx,.xls"
+                />
+              </div>
             </div>
-          </>
+          </div>
         )}
       </DialogTemplate>
 

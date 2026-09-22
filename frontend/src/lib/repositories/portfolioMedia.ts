@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.ts";
+import { downscaleImageToJpeg } from "../imageUtils.ts";
 
 /**
  * Media for the public professional portfolio lives in the public
@@ -16,26 +17,6 @@ const MAX_DIMENSIONS: Record<PortfolioMediaKind, number> = {
   banner: 1600,
   showcase: 1200,
 };
-
-/** Downscale to JPEG via canvas so phone photos don't blow up storage. */
-async function downscaleToJpeg(file: File, maxDim: number): Promise<Blob> {
-  const bitmap = await createImageBitmap(file).catch(() => null);
-  if (!bitmap) return file;
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return file;
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.85),
-  );
-  return blob ?? file;
-}
 
 /** Stable public URL for a portfolio-media path; null when unset. */
 export function portfolioMediaUrl(path: string | null | undefined): string | null {
@@ -55,7 +36,7 @@ export async function uploadPortfolioMedia(
   if (file.size > MAX_BYTES) {
     throw new Error("Image is too large — maximum 8 MB.");
   }
-  const blob = await downscaleToJpeg(file, MAX_DIMENSIONS[kind]);
+  const blob = await downscaleImageToJpeg(file, MAX_DIMENSIONS[kind]);
   const path = `${workspaceId}/${kind}-${Date.now()}.jpg`;
   const { error } = await supabase.storage
     .from(PORTFOLIO_BUCKET)

@@ -84,6 +84,7 @@ export interface AssetDocType {
   purchase_cost?: number;
   current_value?: number;
   metadata: Record<string, unknown>;
+  photos?: string[];
   created_by?: string;
   created_at: string;
   updated_at: string;

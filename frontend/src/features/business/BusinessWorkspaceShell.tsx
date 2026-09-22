@@ -13,14 +13,19 @@ import { renderBusinessView } from "./viewRegistry";
 interface BusinessWorkspaceShellProps {
   user: UiUser;
   onLogout: () => Promise<void> | void;
+  /** Validated view to open first (e.g. from a `/?view=professionals` deep
+   *  link out of the public market); overrides the saved last view. */
+  initialView?: WorkspaceView;
 }
 
 export default function BusinessWorkspaceShell({
   user,
   onLogout,
+  initialView,
 }: BusinessWorkspaceShellProps) {
   const storageKey = `sitesurveyor:lastView:business:${user.workspaceId}`;
   const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
+    if (initialView !== undefined) return initialView;
     const saved = localStorage.getItem(storageKey);
     return isWorkspaceView(saved) ? saved : "dashboard";
   });

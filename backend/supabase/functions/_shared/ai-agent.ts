@@ -1,9 +1,10 @@
 // SiteSurveyor AI agent core — shared by the `ai-chat` Edge Function (Deno)
 // and the host-server fallback (Node). Zero external dependencies: talks to
-// NVIDIA NIM's OpenAI-compatible chat completions API
-// (build.nvidia.com/models at https://integrate.api.nvidia.com/v1) with
-// streaming + tool-calling, and executes tools against the platform's Supabase
-// REST API with the service-role key. Never imported by browser code.
+// Alibaba Cloud Model Studio (DashScope, Singapore/ap-southeast-1) OpenAI-
+// compatible chat completions API
+// (https://dashscope-intl.aliyuncs.com/compatible-mode/v1) with streaming +
+// tool-calling, and executes tools against the platform's Supabase REST API
+// with the service-role key. Never imported by browser code.
 //
 // Safety contract (enforced here, mirrored in the system prompt):
 // - Reads are free against the whitelisted tables.
@@ -44,7 +45,7 @@ export type AgentEvent =
 export interface RunAgentOptions {
   history: ChatTurn[];
   userMessage: string;
-  nvidiaKey: string;
+  dashscopeKey: string;
   supabaseUrl: string;
   serviceKey: string;
   maxToolRounds?: number;
@@ -56,7 +57,7 @@ export interface RunAgentOptions {
   memoryNote?: string;
   /** Optional abort signal so callers can cancel an in-flight agent run. */
   signal?: AbortSignal;
-  /** Override the default LLM model sent to NVIDIA NIM. */
+  /** Override the default LLM model sent to DashScope (Qwen). */
   model?: string;
   /** Signed-in user id, for run attribution (optional). */
   userId?: string;
@@ -66,7 +67,8 @@ export interface RunAgentOptions {
   context?: string;
 }
 
-const NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+const DASHSCOPE_URL =
+  "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
 const MAX_TOOL_ROUNDS = 8;
 /** Routine (simple) tasks never need the full round budget — cap them lower so
  *  a single query can't chain eight slow model round-trips. Complex tasks keep
@@ -82,7 +84,7 @@ const LIVE_MESSAGE_CAP_CHARS = 6_000;
 // surfaces as an error instead of a frozen chat.
 const SUPABASE_TIMEOUT_MS = 15_000;
 const SCHEMA_TIMEOUT_MS = 10_000;
-/** Max silence between SSE chunks from NVIDIA NIM before the round is aborted. */
+/** Max silence between SSE chunks from DashScope before the round is aborted. */
 const LLM_IDLE_TIMEOUT_MS = 60_000;
 /** Hard cap for one model round (streaming included). */
 const LLM_ROUND_TIMEOUT_MS = 240_000;
@@ -1365,11 +1367,11 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     try {
       let res: Response;
       try {
-        res = await fetch(NVIDIA_URL, {
+        res = await fetch(DASHSCOPE_URL, {
           method: "POST",
           signal: controller.signal,
           headers: {
-            Authorization: `Bearer ${opts.nvidiaKey}`,
+            Authorization: `Bearer ${opts.dashscopeKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": "https://sitesurveyor.app",
             "X-Title": "SiteSurveyor AI",
@@ -1382,13 +1384,13 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
           }),
         });
       } catch (err) {
-        throw new Error(`Could not reach NVIDIA NIM: ${(err as Error).message}`);
+        throw new Error(`Could not reach DashScope (Alibaba Model Studio): ${(err as Error).message}`);
       }
 
       if (!res.ok || !res.body) {
         const detail = await res.text().catch(() => "");
         throw new Error(
-          `NVIDIA NIM error ${res.status}: ${detail.slice(0, 300) || "no response"}`,
+          `DashScope error ${res.status}: ${detail.slice(0, 300) || "no response"}`,
         );
       }
 
@@ -1547,7 +1549,7 @@ const SUMMARY_SYSTEM = [
  * simply retried on a later turn.
  */
 export async function summarizeConversationTurns(opts: {
-  nvidiaKey: string;
+  dashscopeKey: string;
   priorSummary: string;
   turns: ChatTurn[];
   model?: string;
@@ -1558,11 +1560,11 @@ export async function summarizeConversationTurns(opts: {
     .join("\n");
   const t = timeoutSignal(30_000);
   try {
-    const res = await fetch(NVIDIA_URL, {
+    const res = await fetch(DASHSCOPE_URL, {
       method: "POST",
       signal: t.signal,
       headers: {
-        Authorization: `Bearer ${opts.nvidiaKey}`,
+        Authorization: `Bearer ${opts.dashscopeKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://sitesurveyor.app",
         "X-Title": "SiteSurveyor AI",
