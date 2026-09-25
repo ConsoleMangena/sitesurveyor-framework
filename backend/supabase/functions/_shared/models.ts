@@ -2,15 +2,22 @@
 //
 // Single source of truth shared by both serve paths (ai-chat Edge Function
 // and ai-gateway-server Node host). The allowlist is the hard boundary — any
-// value not in it falls back to the default. Model ids are Alibaba Cloud Model
-// Studio (DashScope, Singapore/ap-southeast-1) Qwen ids served at the OpenAI-
-// compatible endpoint https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-// and are selected for tool/function calling support. The router escalates to a
-// larger model for tasks the keyword signal marks as complex multi-step work,
-// keeping routine tasks on the default model.
+// value not in it falls back to the default. Two OpenAI-compatible providers
+// are served: Alibaba Cloud Model Studio (DashScope, Singapore/ap-southeast-1)
+// Qwen ids at https://dashscope-intl.aliyuncs.com/compatible-mode/v1, and
+// Google Gemini ids at https://generativelanguage.googleapis.com/v1beta/openai.
+// Both are selected for tool/function calling support. The router escalates to
+// a larger model for tasks the keyword signal marks as complex multi-step
+// work, keeping routine tasks on the default model.
 
-/** Models users may select. Anything outside silently falls back to DEFAULT_MODEL. */
-export const ALLOWED_MODELS: ReadonlySet<string> = new Set([
+/** Google Gemini model ids (OpenAI-compatible endpoint). */
+export const GEMINI_MODELS: ReadonlySet<string> = new Set([
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+]);
+
+/** Alibaba Cloud Model Studio (DashScope) Qwen model ids. */
+export const QWEN_MODELS: ReadonlySet<string> = new Set([
   "qwen-plus",
   "qwen-max",
   "qwen-turbo",
@@ -19,23 +26,50 @@ export const ALLOWED_MODELS: ReadonlySet<string> = new Set([
   "qwen3.7-flash",
 ]);
 
+/** Models users may select. Anything outside silently falls back to DEFAULT_MODEL. */
+export const ALLOWED_MODELS: ReadonlySet<string> = new Set([
+  ...QWEN_MODELS,
+  ...GEMINI_MODELS,
+]);
+
 export const DEFAULT_MODEL = "qwen-plus";
-/** A larger model used to escalate complex multi-step tasks. */
-export const STRONG_MODEL = "qwen3.7-max";
+/** A larger model used to escalate complex multi-step tasks (Gemini when configured). */
+export const STRONG_MODEL = "gemini-2.5-pro";
+/** Escalation fallback used when STRONG_MODEL's provider (Gemini) is not configured. */
+export const STRONG_MODEL_FALLBACK = "qwen3.7-max";
 
 export type Complexity = "simple" | "complex";
+export type Provider = "qwen" | "gemini";
+
+/** Which OpenAI-compatible provider serves a model id. Unknown ids default to qwen. */
+export function providerFor(modelId: string): Provider {
+  return GEMINI_MODELS.has(modelId) ? "gemini" : "qwen";
+}
 
 /**
  * Pick a model honouring the user's request, the allowlist, and (when the
- * task looks complex) escalating to STRONG_MODEL. Never returns an unknown
- * value; unknown requested models fall back to DEFAULT_MODEL.
+ * task looks complex) escalating to STRONG_MODEL. `available` is the set of
+ * models whose provider key is configured on this serve path (defaults to the
+ * full allowlist). Escalation prefers STRONG_MODEL (gemini-2.5-pro), falls
+ * back to STRONG_MODEL_FALLBACK (qwen3.7-max), then DEFAULT_MODEL. An explicit
+ * allowlisted request that is unavailable locally silently falls back to
+ * DEFAULT_MODEL. Never returns an unknown value.
  */
-export function resolveModel(requested: string | undefined, complexity: Complexity): string {
+export function resolveModel(
+  requested: string | undefined,
+  complexity: Complexity,
+  available: ReadonlySet<string> = ALLOWED_MODELS,
+): string {
   const safe = typeof requested === "string" && ALLOWED_MODELS.has(requested.trim())
     ? requested.trim()
     : "";
-  if (safe) return safe;
-  return complexity === "complex" ? STRONG_MODEL : DEFAULT_MODEL;
+  if (safe) return available.has(safe) ? safe : DEFAULT_MODEL;
+  if (complexity === "complex") {
+    if (available.has(STRONG_MODEL)) return STRONG_MODEL;
+    if (available.has(STRONG_MODEL_FALLBACK)) return STRONG_MODEL_FALLBACK;
+    return DEFAULT_MODEL;
+  }
+  return DEFAULT_MODEL;
 }
 
 /** True when the requested model is in the allowlist (or empty/undefined). */

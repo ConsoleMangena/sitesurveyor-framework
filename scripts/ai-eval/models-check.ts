@@ -4,8 +4,11 @@
 import {
   ALLOWED_MODELS,
   DEFAULT_MODEL,
+  GEMINI_MODELS,
+  QWEN_MODELS,
   STRONG_MODEL,
   isAllowedModel,
+  providerFor,
   resolveModel,
   scoreComplexity,
 } from "../../backend/supabase/functions/_shared/models.ts";
@@ -52,6 +55,27 @@ check(
 check(
   "resolve-unknown-complex",
   resolveModel("not-a-real-model", "complex") === STRONG_MODEL,
+);
+
+// Gemini allowlist + provider routing.
+check("allowlist-has-gemini-flash", ALLOWED_MODELS.has("gemini-2.5-flash"));
+check("allowlist-has-gemini-pro", ALLOWED_MODELS.has("gemini-2.5-pro"));
+check("gemini-set-size", GEMINI_MODELS.size === 2);
+check("qwen-set-nonempty", QWEN_MODELS.size >= 6);
+check("provider-gemini", providerFor("gemini-2.5-flash") === "gemini");
+check("provider-gemini-pro", providerFor("gemini-2.5-pro") === "gemini");
+check("provider-qwen", providerFor("qwen-plus") === "qwen");
+check("provider-unknown-defaults-qwen", providerFor("wat") === "qwen");
+
+// Availability-aware resolution.
+check("resolve-explicit-gemini", resolveModel("gemini-2.5-flash", "simple") === "gemini-2.5-flash");
+check(
+  "resolve-explicit-gemini-unavailable",
+  resolveModel("gemini-2.5-flash", "simple", new Set([...QWEN_MODELS])) === DEFAULT_MODEL,
+);
+check(
+  "resolve-complex-no-gemini-falls-back",
+  resolveModel(undefined, "complex", new Set([...QWEN_MODELS])) === "qwen3.7-max",
 );
 
 // isAllowedModel: blanks are allowed (no model == default), unknowns are not.
