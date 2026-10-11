@@ -72,8 +72,8 @@ function nextId(prefix: string): string {
 
 /** Available AI models the user may choose from (Alibaba Cloud Model Studio Inkling). */
 const AI_MODELS: { id: string; label: string; free: boolean }[] = [
-  { id: "inkling-plus", label: "Inkling Plus", free: false },
-  { id: "inkling-pro", label: "Inkling Max", free: false },
+  { id: "inkling-flash", label: "Inkling Flash", free: true },
+  { id: "inkling-pro", label: "Inkling Pro", free: false },
   { id: "inkling-turbo", label: "Inkling Turbo", free: false },
   { id: "inkling-3.7-max", label: "Inkling3.7 Max (free quota)", free: true },
   { id: "inkling-3.7-plus", label: "Inkling3.7 Plus (free quota)", free: true },

@@ -1247,6 +1247,13 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     yield { type: "error", message: `Model '${opts.model}' is not in the allowlist.` };
     return;
   }
+  if (!opts.thinkingmachinesaiKey) {
+    yield {
+      type: "error",
+      message: "Missing Thinking Machines AI API key (thinking-machines-ai).",
+    };
+    return;
+  }
   const [schemas, loadedSkills, memoryFacts] = await Promise.all([
     loadTableSchemas(supabaseUrl, opts.serviceKey),
     loadSkills(

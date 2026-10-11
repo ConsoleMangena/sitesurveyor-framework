@@ -60,7 +60,7 @@ check(
 // Thinking Machines AI allowlist + provider routing.
 check("allowlist-has-thinking-machines-flash", ALLOWED_MODELS.has("inkling-flash"));
 check("allowlist-has-thinking-machines-pro", ALLOWED_MODELS.has("inkling-pro"));
-check("thinking-machines-set-size", THINKING_MACHINES_AI_MODELS.size === 2);
+check("thinking-machines-set-size", THINKING_MACHINES_AI_MODELS.size === 6);
 check("thinking-machines-set-nonempty", THINKING_MACHINES_AI_MODELS.size >= 6);
 check("provider-thinking-machines", providerFor("inkling-flash") === "thinking-machines-ai");
 check("provider-thinking-machines-pro", providerFor("inkling-pro") === "thinking-machines-ai");
@@ -71,11 +71,11 @@ check("provider-unknown-defaults-thinking-machines", providerFor("wat") === "thi
 check("resolve-explicit-thinking-machines", resolveModel("inkling-flash", "simple") === "inkling-flash");
 check(
   "resolve-explicit-thinking-machines-unavailable",
-  resolveModel("inkling-flash", "simple", new Set([...THINKING_MACHINES_AI_MODELS])) === DEFAULT_MODEL,
+  resolveModel("inkling-flash", "simple", new Set(["inkling-pro"])) === DEFAULT_MODEL,
 );
 check(
   "resolve-complex-no-thinking-machines-falls-back",
-  resolveModel(undefined, "complex", new Set([...THINKING_MACHINES_AI_MODELS])) === "inkling-3.7-max",
+  resolveModel(undefined, "complex", new Set(["inkling-3.7-max"])) === "inkling-3.7-max",
 );
 
 // isAllowedModel: blanks are allowed (no model == default), unknowns are not.
@@ -141,12 +141,11 @@ check("boundary-denied", denied?.type === "error" && /not in the allowlist/i.tes
 const empty = await firstEvent(undefined);
 check("boundary-allowed-empty", empty !== null); // falls through; doesn't error on model
 
-async function firstThinking Machines AIEvent(model: string) {
+async function firstThinkingMachinesAIEvent(model: string) {
   const gen = runAgent({
     history: [],
     userMessage: "hi",
-    thinkingmachinesaiKey: "test-key",
-    thinkingmachinesaiKey: undefined,
+    thinkingmachinesaiKey: "" as unknown as string,
     supabaseUrl: "https://x.invalid",
     serviceKey: "k",
     model,
@@ -156,11 +155,11 @@ async function firstThinking Machines AIEvent(model: string) {
   }
   return null;
 }
-const thinkingmachinesNoKey = await firstThinking Machines AIEvent("inkling-flash");
+const thinkingmachinesNoKey = await firstThinkingMachinesAIEvent("inkling-flash");
 check(
   "boundary-thinking-machines-no-key",
   thinkingmachinesNoKey?.type === "error" &&
-    /thinking-machines/i.test(String((thinkingmachinesNoKey as { message?: string }).message)),
+    /thinking[- ]?machines/i.test(String((thinkingmachinesNoKey as { message?: string }).message)),
 );
 
 console.log(`\n${pass} passed, ${fail} failed`);

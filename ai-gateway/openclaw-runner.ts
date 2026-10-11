@@ -49,7 +49,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  * block (mcp.servers.sitesurveyor.env). The Thinking Machines AI key is passed through
  * unchanged for model auth.
  */
-export function buildThinking Machines AIEnv(bindings: {
+export function buildThinkingMachinesAIEnv(bindings: {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   WORKSPACE_ID?: string;
@@ -70,15 +70,15 @@ export const SITESURVEYOR_AGENT_ID = "sitesurveyor";
  * Run one agent turn through the Gateway. Never throws on a model/run failure -
  * that comes back in `result.status`.
  */
-export function execThinking Machines AIAgent(opts: ExecAgentOpts): Promise<AgentRunResult> {
+export function execThinkingMachinesAIAgent(opts: ExecAgentOpts): Promise<AgentRunResult> {
   return new Promise((resolve) => {
     const cmd = win32
       ? buildWin32Command(opts)
-      : ["Thinking Machines AI", ...buildArgs(opts)].join(" ");
+      : ["openclaw", ...buildArgs(opts)].join(" ");
 
     let stdout = "";
     let stderr = "";
-    // On win32 `Thinking Machines AI` is a `.cmd` shim that requires a shell; spawn passes
+    // On win32 `openclaw` is a `.cmd` shim that requires a shell; spawn passes
     // a pre-quoted command string so arguments with spaces survive parsing.
     const child = spawn(cmd, {
       env: opts.env,
@@ -115,7 +115,7 @@ function q(s: string): string {
 /** Build a single shell command line for cmd.exe on win32. */
 function buildWin32Command(opts: ExecAgentOpts): string {
   const args = buildArgs(opts);
-  return `Thinking Machines AI ${args.map((a) => /[\s"]/.test(a) ? q(a) : a).join(" ")}`;
+  return `openclaw ${args.map((a) => /[\s"]/.test(a) ? q(a) : a).join(" ")}`;
 }
 
 interface GatewayEnvelope {

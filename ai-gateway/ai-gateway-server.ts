@@ -78,8 +78,8 @@ const { resolveModel, scoreComplexity } = await import(
 ) as typeof import("../backend/supabase/functions/_shared/models.ts");
 
 const { execThinkingMachinesAIAgent, ThinkingMachinesAIEvents, buildThinkingMachinesAIEnv } = await import(
-  pathToFileURL(path.resolve(here, "Thinking Machines AI-runner.ts")).href
-) as typeof import("./Thinking Machines AI-runner.ts");
+  pathToFileURL(path.resolve(here, "openclaw-runner.ts")).href
+) as typeof import("./openclaw-runner.ts");
 
 // Agent engine. Default is the inline streaming Thinking Machines AI core (shared with
 // the cloud `ai-chat` Edge Function) so replies stream token-by-token exactly
@@ -89,7 +89,7 @@ const AGENT_CORE = path.resolve(
   here,
   "../backend/supabase/functions/_shared/ai-agent.ts",
 );
-const useThinking Machines AI = process.env.USE_THINKING_MACHINES_AI === "1";
+const useThinkingMachinesAI = process.env.USE_THINKING_MACHINES_AI === "1";
 const streamRunAgent = fs.existsSync(AGENT_CORE)
   ? (
       await import(pathToFileURL(AGENT_CORE).href)
@@ -268,7 +268,7 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
 
   let finalText = "";
   try {
-    if (useThinking Machines AI) {
+    if (useThinkingMachinesAI) {
       // Opt-in: delegate the turn to the Thinking Machines AI Gateway (sitesurveyor
       // agent, MCP tools registered in the ambient Thinking Machines AI config). Buffered:
       // the Gateway emits the full result, so a single `final` event is sent
@@ -298,7 +298,7 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
       for await (const event of streamRunAgent.runAgent({
         history,
         userMessage: message,
-        THINKING_MACHINES_AI_KEY: THINKING_MACHINES_AI_API_KEY,
+        thinkingmachinesaiKey: THINKING_MACHINES_AI_API_KEY,
         supabaseUrl: SUPABASE_URL,
         serviceKey: SUPABASE_SERVICE_ROLE_KEY,
         workspaceId: workspaceId ?? undefined,
