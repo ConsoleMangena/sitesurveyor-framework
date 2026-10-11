@@ -24,8 +24,7 @@
           var key = "sitesurveyor-theme";
           var stored = null;
           try { stored = localStorage.getItem(key); } catch (e) {}
-          var dark = stored === "dark" ||
-            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var dark = stored === "dark";
           var root = document.documentElement;
           root.classList.toggle("dark", dark);
           root.setAttribute("data-theme", dark ? "dark" : "light");

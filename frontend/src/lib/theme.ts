@@ -13,7 +13,7 @@ export function getSystemTheme(): ThemeMode {
 }
 
 export function resolveTheme(): ThemeMode {
-  return getStoredTheme() ?? getSystemTheme()
+  return getStoredTheme() ?? "light"
 }
 
 /** Applies the theme to <html> (class + data attribute + theme-color meta). */

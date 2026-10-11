@@ -254,8 +254,22 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route
+            path="/"
+            element={
+              user ? (
+                <EmbeddedWalletProvider>
+                  <WorkspaceRouter />
+                </EmbeddedWalletProvider>
+              ) : (
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <PublicMarketPage />
+                </Suspense>
+              )
+            }
+          />
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={
+            <Route path="/workspace/*" element={
               <EmbeddedWalletProvider>
                 <WorkspaceRouter />
               </EmbeddedWalletProvider>
