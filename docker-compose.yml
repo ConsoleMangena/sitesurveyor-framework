@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-https://csjjmuexzuewqnopzbik.supabase.co}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-sb_publishable_Ff8dzgN6UUKGIArhIN4UtA_Gye7Wx9C}
+        VITE_SOLANA_CLUSTER: ${VITE_SOLANA_CLUSTER:-devnet}
+        VITE_SOLANA_RPC_URL: ${VITE_SOLANA_RPC_URL:-https://api.devnet.solana.com}
+        VITE_SOLANA_USDC_MINT: ${VITE_SOLANA_USDC_MINT:-4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU}
+        VITE_SOLANA_TREASURY_ADDRESS: ${VITE_SOLANA_TREASURY_ADDRESS:-EopjFKFe77fHk2yty4h95TR4rPNH44fhBKhWHJiAwgTy}
+    ports:
+      - "8080:80"
+    restart: unless-stopped

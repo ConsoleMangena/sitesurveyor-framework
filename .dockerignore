@@ -1,0 +1,13 @@
+.git
+.github
+.vscode
+node_modules
+*/node_modules
+backend/target
+backend/bundled-gdal
+frontend/dist
+dist
+*.log
+.env
+.env.local
+tmp
