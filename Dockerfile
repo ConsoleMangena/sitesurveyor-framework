@@ -1,5 +1,5 @@
 # ── Stage 1: Build Frontend ──────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -7,8 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY frontend/package.json frontend/package-lock.json ./frontend/
 
-# Install frontend dependencies
-RUN cd frontend && npm install
+# Install frontend dependencies without running unnecessary native addon scripts (e.g. node-usb)
+RUN cd frontend && npm install --ignore-scripts
 
 # Copy frontend source code
 COPY frontend/ ./frontend/
