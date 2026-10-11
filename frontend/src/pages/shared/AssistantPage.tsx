@@ -70,14 +70,14 @@ function nextId(prefix: string): string {
   return `${prefix}${Date.now()}-${idCounter}`;
 }
 
-/** Available AI models the user may choose from (Alibaba Cloud Model Studio Qwen). */
+/** Available AI models the user may choose from (Alibaba Cloud Model Studio Inkling). */
 const AI_MODELS: { id: string; label: string; free: boolean }[] = [
-  { id: "qwen-plus", label: "Qwen Plus", free: false },
-  { id: "qwen-max", label: "Qwen Max", free: false },
-  { id: "qwen-turbo", label: "Qwen Turbo", free: false },
-  { id: "qwen3.7-max", label: "Qwen3.7 Max (free quota)", free: true },
-  { id: "qwen3.7-plus", label: "Qwen3.7 Plus (free quota)", free: true },
-  { id: "qwen3.7-flash", label: "Qwen3.7 Flash (free quota)", free: true },
+  { id: "inkling-plus", label: "Inkling Plus", free: false },
+  { id: "inkling-pro", label: "Inkling Max", free: false },
+  { id: "inkling-turbo", label: "Inkling Turbo", free: false },
+  { id: "inkling-3.7-max", label: "Inkling3.7 Max (free quota)", free: true },
+  { id: "inkling-3.7-plus", label: "Inkling3.7 Plus (free quota)", free: true },
+  { id: "inkling-3.7-flash", label: "Inkling3.7 Flash (free quota)", free: true },
 ];
 const MODEL_STORAGE_KEY = "sitesurveyor-ai-model";
 const DEFAULT_MODEL_ID = AI_MODELS[0].id;

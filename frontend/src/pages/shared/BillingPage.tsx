@@ -588,7 +588,7 @@ export default function BillingPage({
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Amount</dt>
                       <dd className="font-semibold tabular-nums">
-                        {formatCurrency(paymentAmount || "0")}
+                        {formatCurrency(Number(paymentAmount || 0))}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">

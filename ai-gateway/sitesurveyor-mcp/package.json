@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "SiteSurveyor MCP server — exposes the SiteSurveyor AI agent's data, CAD, memory and workflow tools to OpenClaw and any MCP-capable agent runtime via stdio.",
+  "description": "SiteSurveyor MCP server — exposes the SiteSurveyor AI agent's data, CAD, memory and workflow tools to Inkling Gateway and any MCP-capable agent runtime via stdio.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",

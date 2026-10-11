@@ -1,6 +1,6 @@
 # SiteSurveyor Framework
 
-**A framework for developing surveying systems with OpenClaw AI automation and Solana blockchain.**
+**A framework for developing surveying systems with Inkling Gateway AI automation and Solana blockchain.**
 
 <p align="center">
   <a href="https://github.com/ConsoleMangena/sitesurveyor-framework/releases"><img alt="Release" src="https://img.shields.io/github/v/release/ConsoleMangena/sitesurveyor-framework?include_prereleases&style=for-the-badge&label=release&color=9945FF"></a>
@@ -20,7 +20,7 @@
   <a href="https://vite.dev/"><img alt="Vite" src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white"></a>
   <a href="https://tauri.app/"><img alt="Tauri" src="https://img.shields.io/badge/Tauri-24C8DB?style=for-the-badge&logo=tauri&logoColor=white"></a>
   <a href="https://supabase.com/"><img alt="Supabase" src="https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white"></a>
-  <a href="https://openclaw.ai/"><img alt="OpenClaw" src="https://img.shields.io/badge/OpenClaw-E6EDF3?style=for-the-badge&logo=ollama&logoColor=black"></a>
+  <a href="https://openclaw.ai/"><img alt="Inkling Gateway" src="https://img.shields.io/badge/Inkling Gateway-E6EDF3?style=for-the-badge&logo=ollama&logoColor=black"></a>
 </p>
 
 SiteSurveyor Framework is a complete toolset for surveyors to execute and manage projects. It combines Tauri's cross-platform performance with native blockchain integration and AI capabilities, giving developers everything needed to ship production-grade systems. From planning to deployment, handle complex computations, secure data management, and decentralized workflows all within a single, extensible architecture.
@@ -32,10 +32,11 @@ What sets it apart:
 - **Direct on-chain payments.** Pay network gas fees directly from your wallet and settle invoices in crypto all verified on-chain through Supabase Edge Functions.
 - **A real engineering core.** Complex computations (geometry, terrain analysis, coordinate geometry) are handled by a single Rust engine that runs identically as WebAssembly cross-platform and natively on the Tauri desktop app deterministic and tested.
 - **Built for teams and tenants.** Personal, Business, and Platform Admin workspaces sit on a multi-tenant foundation with PostgreSQL Row-Level Security and role-based access control.
-- **OpenClaw AI automation.** Use the OpenClaw agent stack for intelligent analysis, pattern recognition, natural language interaction, and automated decision-making across your workflows.
+- **Inkling Gateway AI automation.** Use the Inkling Gateway agent stack for intelligent analysis, pattern recognition, natural language interaction, and automated decision-making across your workflows.
 
 Built by **Eineva Incorporated**.
 
+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
 ---
 
 ## Features
@@ -76,8 +77,8 @@ Built by **Eineva Incorporated**.
 - **Hybrid storage** — choose, per file, between on-chain (maximum security, immutable) and off-chain Supabase storage (fast, affordable)
 - Hire crew / find jobs
 
-**OpenClaw AI & Automation**
-- OpenClaw agent integration for intelligent analysis
+**Inkling Gateway AI & Automation**
+- Inkling Gateway agent integration for intelligent analysis
 - Automated pattern recognition and decision-making
 - AI-powered workflow optimization
 - Natural language CLI and chat interfaces
@@ -93,8 +94,8 @@ Everything in Personal, plus:
 - Cross-tenant user and workspace management
 - Full audit log
 
-### OpenClaw AI & Automation
-- **Intelligent Automation** — OpenClaw agent-driven workflow optimization and decision support
+### Inkling Gateway AI & Automation
+- **Intelligent Automation** — Inkling Gateway agent-driven workflow optimization and decision support
 - **Pattern Recognition** — Intelligent data analysis and prediction
 - **Natural Language Processing** — Text analysis, document understanding, and automated tagging
 - **Predictive Analytics** — Forecasting and trend analysis for project planning
@@ -104,7 +105,7 @@ Everything in Personal, plus:
 ## The Development Workflow, End to End
 
 ```
-Planning ──► Development ──► Computation ──► Deployment ──► Blockchain ──► OpenClaw AI
+Planning ──► Development ──► Computation ──► Deployment ──► Blockchain ──► Inkling Gateway AI
     │            │               │               │            │                │
     │            │               │               │            │                │
     │            │      Rust     │               │            │          Solana │
@@ -127,7 +128,7 @@ Planning ──► Development ──► Computation ──► Deployment ──
 | **Desktop** | Tauri 2 (Rust) — native shell with IPC to core modules |
 | **Geometry Engine** | Rust → WebAssembly for browsers; native Rust (`survey-core`) for desktop — same code, identical results |
 | **Blockchain** | Solana Web3.js — on-chain file anchoring and crypto payments |
-| **AI & Automation** | OpenClaw — agent-based AI and workflow automation |
+| **AI & Automation** | Inkling Gateway — agent-based AI and workflow automation |
 | **Testing** | Vitest 4, jsdom, @testing-library/react |
 | **Linting** | ESLint 9, typescript-eslint 8 |
 
@@ -140,7 +141,7 @@ Planning ──► Development ──► Computation ──► Deployment ──
 │                    Frontend (SPA)                                   │
 │  React + Vite (TypeScript 6)                                       │
 │  ┌─────────────┐  ┌────────────────────────┐  ┌──────────────┐    │
-│  │ WASM module  │  │ Supabase SDK           │  │  OpenClaw    │    │
+│  │ WASM module  │  │ Supabase SDK           │  │  Inkling Gateway    │    │
 │  │ survey-core  │  │ (REST / GraphQL)       │  │  Gateway     │    │
 │  └─────────────┘  └───────────┬────────────┘  └──────────────┘    │
 │                               │                                    │
@@ -150,7 +151,7 @@ Planning ──► Development ──► Computation ──► Deployment ──
 ├─────────────────────────────────┬──────────────────────────────────┤
 │     Tauri Desktop Shell         │                                  │
 │  Rust IPC → survey-core (opt)   │                                  │
-│  Rust IPC → OpenClaw gateway    │                                  │
+│  Rust IPC → Inkling Gateway gateway    │                                  │
 └─────────────────────────────────┼──────────────────────────────────┘
                                   │
          ┌────────────────────────┼────────────────────────────────┐
@@ -163,7 +164,7 @@ Planning ──► Development ──► Computation ──► Deployment ──
 └──────────────────┘   └──────────────────┘   └────────────────────┘
 ```
 
-The frontend is a single-page application backed entirely by Supabase — no custom backend server. Survey geometry runs as WebAssembly cross-platform or over Tauri IPC on desktop, both from the same Rust `survey-core` crate. Solana integration handles on-chain file anchoring and crypto payment verification via Supabase Edge Functions. OpenClaw provides AI automation, natural language interactions, and intelligent analysis. Multi-tenant isolation is enforced through PostgreSQL Row-Level Security.
+The frontend is a single-page application backed entirely by Supabase — no custom backend server. Survey geometry runs as WebAssembly cross-platform or over Tauri IPC on desktop, both from the same Rust `survey-core` crate. Solana integration handles on-chain file anchoring and crypto payment verification via Supabase Edge Functions. Inkling Gateway provides AI automation, natural language interactions, and intelligent analysis. Multi-tenant isolation is enforced through PostgreSQL Row-Level Security.
 
 ---
 
@@ -193,7 +194,7 @@ The frontend is a single-page application backed entirely by Supabase — no cus
 │   │   │   ├── auth/                # Zustand auth store + session management
 │   │   │   ├── solana/              # Solana wallet config + provider
 │   │   │   ├── payments/            # Payment verification
-│   │   │   ├── openclaw/             # OpenClaw gateway integration
+│   │   │   ├── Inkling Gateway/ AI automation
 │   │   │   └── permissions.ts       # RBAC helpers
 │   │   └── styles/                  # Hand-written CSS
 │   ├── vite.config.ts               # Vite + WASM plugins, es2022 target
@@ -208,11 +209,11 @@ The frontend is a single-page application backed entirely by Supabase — no cus
 │   │   ├── sql/                     # Schema, functions, RLS, seeds
 │   │   ├── functions/
 │   │   │   ├── solana-pay-verify/   # Edge Function: payment verification
-│   │   │   └── openclaw-proxy/      # Edge Function: OpenClaw gateway proxy
+│   │   │   └── Inkling Gateway-proxy/      # Edge Function: Inkling Gateway gateway proxy
 │   │   └── config.toml
 │   └── tauri.conf.json
 │
-├── ai-gateway/                      # OpenClaw host server (local AI stack)
+├── ai-gateway/                      # Inkling Gateway host server (local AI stack)
 ├── package.json                     # Root scripts
 └── README.md
 ```
@@ -288,7 +289,7 @@ npm run build      # Production bundle
 - **Hybrid on-chain / off-chain storage** — handles sensitive, legally significant data, so users choose per file what to anchor to Solana (tamper-evident, immutable, verifiable) versus what to keep in affordable Supabase storage. Security where it matters, low cost everywhere else.
 - **Wallet-native economics** — the user's own Solana wallet pays the network gas fees for on-chain operations, keeping the platform's running costs predictable and the user in control of their data and spend.
 - **Web 3.0 by default** — Solana on-chain payments and file anchoring are first-class features, not afterthoughts
-- **OpenClaw AI & Automation** — the OpenClaw agent stack powers intelligent automation, natural language interaction, pattern recognition, and decision support throughout the framework
+- **Inkling Gateway AI & Automation** — the Inkling Gateway agent stack powers intelligent automation, natural language interaction, pattern recognition, and decision support throughout the framework
 - **No custom backend** — all server logic is Supabase (PostgreSQL + RLS + Edge Functions)
 - **One geometry engine, two runtimes** — the same Rust code runs as WASM in the browser and over Tauri IPC on desktop, guaranteeing identical results
 - **Multi-tenancy via RLS** — every table carries a `workspace_id`; Row-Level Security enforces tenant isolation

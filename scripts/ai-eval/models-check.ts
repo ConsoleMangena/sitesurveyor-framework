@@ -4,8 +4,8 @@
 import {
   ALLOWED_MODELS,
   DEFAULT_MODEL,
-  GEMINI_MODELS,
-  QWEN_MODELS,
+  THINKING_MACHINES_AI_MODELS,
+  
   STRONG_MODEL,
   isAllowedModel,
   providerFor,
@@ -33,16 +33,16 @@ check("allowlist-size", ALLOWED_MODELS.size >= 3);
 // isAllowedModel + resolveModel: explicit allowed value wins.
 check(
   "resolve-explicit-allowed-simple",
-  resolveModel("qwen-plus", "simple") === "qwen-plus",
+  resolveModel("inkling-flash", "simple") === "inkling-flash",
 );
 check(
   "resolve-explicit-allowed-complex",
-  resolveModel("qwen-max", "complex") === "qwen-max",
+  resolveModel("inkling-pro", "complex") === "inkling-pro",
 );
 
 check(
   "resolve-explicit-allowed-max",
-  resolveModel("qwen3.7-max", "complex") === "qwen3.7-max",
+  resolveModel("inkling-3.7-max", "complex") === "inkling-3.7-max",
 );
 
 // resolveModel: empty / unknown falls back to default or strong by complexity.
@@ -57,31 +57,31 @@ check(
   resolveModel("not-a-real-model", "complex") === STRONG_MODEL,
 );
 
-// Gemini allowlist + provider routing.
-check("allowlist-has-gemini-flash", ALLOWED_MODELS.has("gemini-2.5-flash"));
-check("allowlist-has-gemini-pro", ALLOWED_MODELS.has("gemini-2.5-pro"));
-check("gemini-set-size", GEMINI_MODELS.size === 2);
-check("qwen-set-nonempty", QWEN_MODELS.size >= 6);
-check("provider-gemini", providerFor("gemini-2.5-flash") === "gemini");
-check("provider-gemini-pro", providerFor("gemini-2.5-pro") === "gemini");
-check("provider-qwen", providerFor("qwen-plus") === "qwen");
-check("provider-unknown-defaults-qwen", providerFor("wat") === "qwen");
+// Thinking Machines AI allowlist + provider routing.
+check("allowlist-has-thinking-machines-flash", ALLOWED_MODELS.has("inkling-flash"));
+check("allowlist-has-thinking-machines-pro", ALLOWED_MODELS.has("inkling-pro"));
+check("thinking-machines-set-size", THINKING_MACHINES_AI_MODELS.size === 2);
+check("thinking-machines-set-nonempty", THINKING_MACHINES_AI_MODELS.size >= 6);
+check("provider-thinking-machines", providerFor("inkling-flash") === "thinking-machines-ai");
+check("provider-thinking-machines-pro", providerFor("inkling-pro") === "thinking-machines-ai");
+check("provider-thinking-machines-default", providerFor("inkling-flash") === "thinking-machines-ai");
+check("provider-unknown-defaults-thinking-machines", providerFor("wat") === "thinking-machines-ai");
 
 // Availability-aware resolution.
-check("resolve-explicit-gemini", resolveModel("gemini-2.5-flash", "simple") === "gemini-2.5-flash");
+check("resolve-explicit-thinking-machines", resolveModel("inkling-flash", "simple") === "inkling-flash");
 check(
-  "resolve-explicit-gemini-unavailable",
-  resolveModel("gemini-2.5-flash", "simple", new Set([...QWEN_MODELS])) === DEFAULT_MODEL,
+  "resolve-explicit-thinking-machines-unavailable",
+  resolveModel("inkling-flash", "simple", new Set([...THINKING_MACHINES_AI_MODELS])) === DEFAULT_MODEL,
 );
 check(
-  "resolve-complex-no-gemini-falls-back",
-  resolveModel(undefined, "complex", new Set([...QWEN_MODELS])) === "qwen3.7-max",
+  "resolve-complex-no-thinking-machines-falls-back",
+  resolveModel(undefined, "complex", new Set([...THINKING_MACHINES_AI_MODELS])) === "inkling-3.7-max",
 );
 
 // isAllowedModel: blanks are allowed (no model == default), unknowns are not.
 check("is-allowed-blank", isAllowedModel(undefined));
 check("is-allowed-empty", isAllowedModel(""));
-check("is-allowed-known", isAllowedModel("qwen-plus"));
+check("is-allowed-known-thinking-machines", isAllowedModel("inkling-flash"));
 check("is-denied-unknown", !isAllowedModel("gpt-4-turbo"));
 check("is-denied-typo", !isAllowedModel("openrouter/auto"));
 
@@ -128,7 +128,7 @@ async function firstEvent(model: string) {
   const gen = runAgent({
     history: [],
     userMessage: "hi",
-    dashscopeKey: "test-key",
+    thinkingmachinesaiKey: "test-key",
     supabaseUrl: "https://x.invalid",
     serviceKey: "k",
     model,
@@ -140,6 +140,28 @@ const denied = await firstEvent("gpt-4-not-allowed");
 check("boundary-denied", denied?.type === "error" && /not in the allowlist/i.test(String((denied as { message?: string }).message)));
 const empty = await firstEvent(undefined);
 check("boundary-allowed-empty", empty !== null); // falls through; doesn't error on model
+
+async function firstThinking Machines AIEvent(model: string) {
+  const gen = runAgent({
+    history: [],
+    userMessage: "hi",
+    thinkingmachinesaiKey: "test-key",
+    thinkingmachinesaiKey: undefined,
+    supabaseUrl: "https://x.invalid",
+    serviceKey: "k",
+    model,
+  });
+  for await (const ev of gen) {
+    if (ev.type === "error") return ev;
+  }
+  return null;
+}
+const thinkingmachinesNoKey = await firstThinking Machines AIEvent("inkling-flash");
+check(
+  "boundary-thinking-machines-no-key",
+  thinkingmachinesNoKey?.type === "error" &&
+    /thinking-machines/i.test(String((thinkingmachinesNoKey as { message?: string }).message)),
+);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

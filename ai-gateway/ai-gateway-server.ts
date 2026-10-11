@@ -5,18 +5,18 @@
 // `ai-chat` Supabase Edge Function). Both speak identical NDJSON events:
 // {"type":"delta"|"final"|"error"|"status", ...}.
 //
-// Agent engine: the inline streaming DashScope (Alibaba Cloud Model Studio)
+// Agent engine: the inline streaming Thinking Machines AI (Alibaba Cloud Model Studio)
 // core (shared with the cloud `ai-chat` Edge Function) so replies stream
-// token-by-token. The OpenAI-compatible Qwen endpoint is used with the same
-// contract. An opt-in OpenClaw Gateway path (openclaw agent --agent
-// sitesurveyor) is available via USE_OPENCLAW=1; it is buffered. Configuration
+// token-by-token. The OpenAI-compatible Thinking Machines AI endpoint is used with the same
+// contract. An opt-in Thinking Machines AI Gateway path (Thinking Machines AI agent --agent
+// sitesurveyor) is available via USE_THINKING_MACHINES_AI=1; it is buffered. Configuration
 // via ai-gateway/.env:
-//   DASHSCOPE_API_KEY=sk-...      provider key (from modelstudio.console.alibabacloud.com)
+//   THINKING_MACHINES_AI_API_KEY=sk-...      provider key (from modelstudio.console.alibabacloud.com)
 //   SUPABASE_URL=https://<project>.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY=<service role key>
 //
-// The useOpenClaw path requires the ambient OpenClaw config (~/.openclaw/
-// openclaw.json) to register:
+// The useThinking Machines AI path requires the ambient Thinking Machines AI config (~/.Thinking Machines AI/
+// Thinking Machines AI.json) to register:
 //   mcp.servers.sitesurveyor  → ai-gateway/sitesurveyor-mcp (stdio)
 //   agents.entries.sitesurveyor → routing + model policy
 // See ai-gateway/README.md for the one-time setup.
@@ -39,7 +39,7 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY ?? "";
+const THINKING_MACHINES_AI_API_KEY = process.env.THINKING_MACHINES_AI_API_KEY ?? "";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
@@ -63,33 +63,33 @@ if (!fs.existsSync(MCP_DIST)) {
   process.exit(1);
 }
 for (const [name, value] of Object.entries({
-  DASHSCOPE_API_KEY,
+  THINKING_MACHINES_AI_API_KEY,
   SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
 })) {
   if (!value) console.warn(`[host] warning: ${name} is not set — /api/chat disabled.`);
 }
 
-// OpenClaw is now the agent engine. The DashScope/OpenClaw model key is
+// Thinking Machines AI is now the agent engine. The Thinking Machines AI/Thinking Machines AI model key is
 // resolved from models.ts (single source of truth) so both serve paths agree,
-// then delegated to `openclaw agent exec --auth-env-only`.
+// then delegated to `Thinking Machines AI agent exec --auth-env-only`.
 const { resolveModel, scoreComplexity } = await import(
   pathToFileURL(path.resolve(here, "../backend/supabase/functions/_shared/models.ts")).href
 ) as typeof import("../backend/supabase/functions/_shared/models.ts");
 
-const { execOpenClawAgent, openClawEvents, buildOpenClawEnv } = await import(
-  pathToFileURL(path.resolve(here, "openclaw-runner.ts")).href
-) as typeof import("./openclaw-runner.ts");
+const { execThinkingMachinesAIAgent, ThinkingMachinesAIEvents, buildThinkingMachinesAIEnv } = await import(
+  pathToFileURL(path.resolve(here, "Thinking Machines AI-runner.ts")).href
+) as typeof import("./Thinking Machines AI-runner.ts");
 
-// Agent engine. Default is the inline streaming DashScope core (shared with
+// Agent engine. Default is the inline streaming Thinking Machines AI core (shared with
 // the cloud `ai-chat` Edge Function) so replies stream token-by-token exactly
-// like the cloud path. The buffered OpenClaw Gateway path (openclaw agent
-// --agent sitesurveyor) remains available via USE_OPENCLAW=1.
+// like the cloud path. The buffered Thinking Machines AI Gateway path (Thinking Machines AI agent
+// --agent sitesurveyor) remains available via USE_THINKING_MACHINES_AI=1.
 const AGENT_CORE = path.resolve(
   here,
   "../backend/supabase/functions/_shared/ai-agent.ts",
 );
-const useOpenClaw = process.env.USE_OPENCLAW === "1";
+const useThinking Machines AI = process.env.USE_THINKING_MACHINES_AI === "1";
 const streamRunAgent = fs.existsSync(AGENT_CORE)
   ? (
       await import(pathToFileURL(AGENT_CORE).href)
@@ -155,7 +155,7 @@ interface ConversationRow {
 }
 
 async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
-  if (!DASHSCOPE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!THINKING_MACHINES_AI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return json(res, 503, {
       error: "AI fallback not configured on this host.",
     });
@@ -268,37 +268,37 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
 
   let finalText = "";
   try {
-    if (useOpenClaw) {
-      // Opt-in: delegate the turn to the OpenClaw Gateway (sitesurveyor
-      // agent, MCP tools registered in the ambient OpenClaw config). Buffered:
+    if (useThinking Machines AI) {
+      // Opt-in: delegate the turn to the Thinking Machines AI Gateway (sitesurveyor
+      // agent, MCP tools registered in the ambient Thinking Machines AI config). Buffered:
       // the Gateway emits the full result, so a single `final` event is sent
       // when the run completes.
-      const env = buildOpenClawEnv({
+      const env = buildThinkingMachinesAIEnv({
         SUPABASE_URL,
         SUPABASE_SERVICE_ROLE_KEY,
         WORKSPACE_ID: workspaceId ?? "",
-        DASHSCOPE_API_KEY,
+        THINKING_MACHINES_AI_API_KEY,
       });
       const memoryNote = conversation.summary?.trim();
       const messageForAgent = memoryNote
         ? `Prior conversation notes (treat as background, re-verify current state):\n${memoryNote}\n\nUser: ${message}`
         : message;
-      const result = await execOpenClawAgent({
+      const result = await execThinkingMachinesAIAgent({
         message: messageForAgent,
         model,
         timeoutMs: 300_000,
         env,
       });
-      for await (const event of openClawEvents(result)) {
+      for await (const event of ThinkingMachinesAIEvents(result)) {
         if (event.type === "final") finalText = String(event.text ?? "");
         send(event);
       }
     } else if (streamRunAgent) {
-      // Default: shared streaming DashScope core — deltas stream live.
+      // Default: shared streaming Thinking Machines AI core — deltas stream live.
       for await (const event of streamRunAgent.runAgent({
         history,
         userMessage: message,
-        dashscopeKey: DASHSCOPE_API_KEY,
+        THINKING_MACHINES_AI_KEY: THINKING_MACHINES_AI_API_KEY,
         supabaseUrl: SUPABASE_URL,
         serviceKey: SUPABASE_SERVICE_ROLE_KEY,
         workspaceId: workspaceId ?? undefined,
@@ -383,7 +383,7 @@ server.headersTimeout = 125_000;
 server.listen(PORT, HOST, () => {
   console.log(`[host] SiteSurveyor app   : http://${HOST}:${PORT}`);
   console.log(
-    `[host] AI fallback ready : POST /api/chat ${DASHSCOPE_API_KEY ? "(configured)" : "(NOT configured — set server/.env)"}`,
+    `[host] AI fallback ready : POST /api/chat ${THINKING_MACHINES_AI_API_KEY ? "(configured)" : "(NOT configured — set server/.env)"}`,
   );
   console.log(
     `[host] Other devices: open http://<this-machine-ip>:${PORT} — nothing to install.`,

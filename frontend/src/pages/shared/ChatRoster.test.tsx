@@ -8,11 +8,11 @@ import type { ChatMessage } from "@/lib/repositories/chat";
 const members = [
   { user_id: "a", full_name: "Alice", role: "manager", email: "a@test.com" },
   { user_id: "b", full_name: "Bob", role: "member", email: "b@test.com" },
-] as WorkspaceMemberWithProfile[];
+] as unknown as WorkspaceMemberWithProfile[];
 
 const messages = [
   { id: "m1", user_id: "a", content: "Hello team", created_at: "2026-09-16T10:00:00Z" },
-] as ChatMessage[];
+] as unknown as ChatMessage[];
 
 function roster(props: Partial<React.ComponentProps<typeof ChatRoster>> = {}) {
   return (

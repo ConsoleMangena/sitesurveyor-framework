@@ -1,7 +1,7 @@
 import { supabase } from "../supabase/client.ts";
 
 /** A Datum/SiteSurveyor AI conversation owned by the signed-in account.
- *  `sessionKey` is the OpenClaw gateway session that backs the transcript.
+ *  `sessionKey` is the Inkling Gateway gateway session that backs the transcript.
  *  `context` separates CAD-workspace chats from dashboard chats. */
 export type AiConversationContext = "dashboard" | "cad";
 

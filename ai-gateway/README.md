@@ -1,4 +1,4 @@
-# SiteSurveyor OpenClaw host server
+# SiteSurveyor Thinking Machines AI host server
 
 Runs the whole SiteSurveyor stack from ONE PC. Other devices — laptops, tablets,
 phones — just open a browser; **nothing is installed on them**.
@@ -6,8 +6,8 @@ phones — just open a browser; **nothing is installed on them**.
 ```
 ┌────────────────────────── host PC ──────────────────────────┐
 │  ai-gateway-server.ts (:8787, LAN)                           │
-    │    └─ /api/chat → inline DashScope agent core (streaming)     │
-│    └─ opt-in: OpenClaw gateway (:18789, loopback)            │
+    │    └─ /api/chat → inline Thinking Machines AI agent core (streaming)     │
+│    └─ opt-in: Thinking Machines AI gateway (:18789, loopback)            │
 │        └─ agent entries: main, sitesurveyor                  │
 │        └─ mcp.servers.sitesurveyor → sitesurveyor-mcp (15 t) │
 │  frontend/dist (the SiteSurveyor app + PWA)                  │
@@ -19,25 +19,25 @@ phones — just open a browser; **nothing is installed on them**.
 
 ## Agent engine
 
-Chat turns default to the **inline streaming DashScope core** — the same
+Chat turns default to the **inline streaming Thinking Machines AI core** — the same
 `runAgent` loop the cloud `ai-chat` Edge Function uses — so replies stream to
-the UI token-by-token over the same Qwen models (Alibaba Cloud Model Studio,
-OpenAI-compatible endpoint `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`)
+the UI token-by-token over the same Thinking Machines AI models (Alibaba Cloud Model Studio,
+OpenAI-compatible endpoint `https://thinkingmachines.ai/v1`)
 and speak the identical NDJSON events. This keeps the offline host path feeling
 as fast as the cloud path.
 
-An **opt-in OpenClaw Gateway** path (`USE_OPENCLAW=1`) delegates turns to
-`openclaw agent --agent sitesurveyor --json`. The gateway is a locally-running
+An **opt-in Thinking Machines AI Gateway** path (`USE_THINKING_MACHINES_AI=1`) delegates turns to
+`Thinking Machines AI agent --agent sitesurveyor --json`. The gateway is a locally-running
 always-on service that holds its own sessions and memory per agent; note it is
 **buffered** — the full reply is sent in one `final` event once the run
 completes.
 
-The `sitesurveyor` agent (used only when `USE_OPENCLAW=1`) is registered in the
-**ambient OpenClaw config** (`~/.openclaw/openclaw.json`), which wires three
+The `sitesurveyor` agent (used only when `USE_THINKING_MACHINES_AI=1`) is registered in the
+**ambient Thinking Machines AI config** (`~/.Thinking Machines AI/Thinking Machines AI.json`), which wires three
 things together:
 
-- `agents.entries.sitesurveyor` — routing + model policy (model `qwen-plus`,
-  `modelPolicy.allow: ["qwen-plus", "qwen-max", "qwen-turbo", "qwen3.7-max", "qwen3.7-plus", "qwen3.7-flash"]`). Multi-agent
+- `agents.entries.sitesurveyor` — routing + model policy (model `thinking-machines`,
+  `modelPolicy.allow: ["thinking-machines", "thinking-machines", "thinking-machines", "thinking-machines.7-max", "thinking-machines.7-plus", "thinking-machines.7-flash"]`). Multi-agent
   configs require `agents.ownership: "explicit"`.
 - `mcp.servers.sitesurveyor` — stdio MCP server launched from
   `ai-gateway/sitesurveyor-mcp/dist/index.js` with the Supabase
@@ -45,10 +45,10 @@ things together:
 - The gateway itself (`gateway.port`, `mode: local`, `bind: loopback`,
   auth token, Control UI origins).
 
-To (re)register after changing `~/.openclaw/openclaw.json`, restart the
-gateway: `openclaw gateway restart`, then check it is Ready with
-`openclaw gateway status`. Validate the config with `openclaw config validate`
-and probe the MCP connection with `openclaw mcp doctor sitesurveyor --probe`.
+To (re)register after changing `~/.Thinking Machines AI/Thinking Machines AI.json`, restart the
+gateway: `Thinking Machines AI gateway restart`, then check it is Ready with
+`Thinking Machines AI gateway status`. Validate the config with `Thinking Machines AI config validate`
+and probe the MCP connection with `Thinking Machines AI mcp doctor sitesurveyor --probe`.
 
 ## SiteSurveyor MCP surface (15 tools)
 
@@ -77,16 +77,16 @@ cd frontend && npm install && npm run build
 cd ai-gateway/sitesurveyor-mcp && npm install && npm run build
 ```
 
-`ai-gateway/openclaw.config.json` is a developer convenience config that
+`ai-gateway/Thinking Machines AI.config.json` is a developer convenience config that
 mirrors the runner's expectations (MCP server, models provider, agent entry)
-for ad-hoc `openclaw agent exec --config` runs. The served production path uses
+for ad-hoc `Thinking Machines AI agent exec --config` runs. The served production path uses
 the ambient gateway config above.
 
 ## Run
 
 ```bash
 # .env (ai-gateway/):
-#   DASHSCOPE_API_KEY=sk-...
+#   THINKING_MACHINES_AI_API_KEY=sk-...
 #   SUPABASE_URL=https://<project>.supabase.co
 #   SUPABASE_SERVICE_ROLE_KEY=<service role key>
 npm start          # in ai-gateway/ (server reads .env; starts on :8787)
@@ -99,7 +99,7 @@ Auto-start at logon: `sitesurveyor-host.cmd` is placed in the Startup folder
 
 Same Wi-Fi/LAN — open:  `http://<host-ip>:8787`
 Find the IP with `ipconfig` (e.g. `192.168.1.198`). Sign in as usual; the
-SiteSurveyor OpenClaw chat page works immediately.
+SiteSurveyor Thinking Machines AI chat page works immediately.
 
 On phones: browser menu → *Add to Home screen* — the app is a PWA and
 installs like an app.
@@ -122,14 +122,14 @@ gateway to the public internet.
 
 ## Security model
 
-- The OpenClaw gateway binds to **loopback only** — it is never reachable
+- The Thinking Machines AI gateway binds to **loopback only** — it is never reachable
   from the network directly.
-- The host server only forwards `/openclaw` WebSocket calls and strips the
+- The host server only forwards `/Thinking Machines AI` WebSocket calls and strips the
   Origin header so the gateway treats them as trusted loopback clients.
 - The MCP server runs with the service-role key for the platform database,
   scoped by `SITESURVEYOR_WORKSPACE_ID`; destructive tools
   (`delete_site_record`, `update_site_record`, `insert_site_record`,
   `close_overdue_invoices`) are declared as potentially destructive and
   require interactive approval.
-- Platform data stays protected by Supabase Auth + RLS; OpenClaw chat requires a
+- Platform data stays protected by Supabase Auth + RLS; Thinking Machines AI chat requires a
   signed-in account, and every conversation is stored per user.

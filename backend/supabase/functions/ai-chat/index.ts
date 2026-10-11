@@ -10,7 +10,7 @@ import { runAgent, summarizeConversationTurns, type ChatTurn } from "../_shared/
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const DASHSCOPE_API_KEY = Deno.env.get("DASHSCOPE_API_KEY")!;
+const THINKING_MACHINES_AI_API_KEY = Deno.env.get("THINKING_MACHINES_AI_API_KEY")!;
 
 // ALLOWED_MODELS lives in _shared/models.ts (single source of truth for both
 // serve paths). It is the hard boundary: unknown values silently fall back to
@@ -106,7 +106,7 @@ async function refreshConversationSummary(
   if (rows.length < SUMMARY_MIN_PENDING) return;
   const batch = rows.slice(0, SUMMARY_BATCH);
   const summary = await summarizeConversationTurns({
-    dashscopeKey: DASHSCOPE_API_KEY,
+    thinkingmachinesaiKey: THINKING_MACHINES_AI_API_KEY,
     priorSummary: currentSummary,
     turns: batch.map(({ role, content }) => ({ role, content })),
   });
@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
         for await (const event of runAgent({
           history,
           userMessage: message,
-          dashscopeKey: DASHSCOPE_API_KEY,
+          thinkingmachinesaiKey: THINKING_MACHINES_AI_API_KEY,
           supabaseUrl: SUPABASE_URL,
           serviceKey: SERVICE_ROLE_KEY,
           workspaceId: workspaceId ?? undefined,

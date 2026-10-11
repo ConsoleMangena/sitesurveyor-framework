@@ -30,9 +30,9 @@ backend/supabase/bundle_apply_in_dashboard.sql
 *.sln
 *.sw?
 .agents/
-.gemini/
+/
 skills-lock.json
-GEMINI.md
+
 AGENTS.md
 opencode.json
 opencode.*.json
