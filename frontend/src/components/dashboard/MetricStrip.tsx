@@ -42,7 +42,7 @@ function defaultIcon(accentColor: string) {
 function MetricSkeleton() {
   return (
     <Card className="h-full border-border/60">
-      <CardContent className="flex items-center gap-3 p-3">
+      <CardContent className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3">
         <Skeleton className="rounded-lg h-7 w-7" />
         <div className="flex flex-col gap-1.5 min-w-0">
           <Skeleton className="h-3 w-20" />
@@ -95,7 +95,10 @@ export function MetricStrip({ metrics, loading = false }: MetricStripProps) {
                 : undefined
             }
           >
-            <CardContent className="flex items-center gap-3 p-3">
+            <CardContent
+              data-testid="metric-strip-item-content"
+              className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3"
+            >
               <div
                 className="flex size-7 shrink-0 items-center justify-center rounded-lg border bg-muted"
                 style={{ color: metric.accentColor }}
