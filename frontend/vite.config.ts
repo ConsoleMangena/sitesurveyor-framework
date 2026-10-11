@@ -139,6 +139,7 @@ export default defineConfig({
   // Tauri expects the dev server on port 5174. Prevent Vite from silently
   // picking a different port if 5174 is busy.
   server: {
+    host: '127.0.0.1',
     port: 5174,
     strictPort: true,
   },

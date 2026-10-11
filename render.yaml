@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: sitesurveyor-web
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        value: https://csjjmuexzuewqnopzbik.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: sb_publishable_Ff8dzgN6UUKGIArhIN4UtA_Gye7Wx9C
+      - key: VITE_SOLANA_CLUSTER
+        value: devnet
+      - key: VITE_SOLANA_RPC_URL
+        value: https://api.devnet.solana.com
+      - key: VITE_SOLANA_USDC_MINT
+        value: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+      - key: VITE_SOLANA_TREASURY_ADDRESS
+        value: EopjFKFe77fHk2yty4h95TR4rPNH44fhBKhWHJiAwgTy
