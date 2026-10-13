@@ -33,7 +33,7 @@ import { spawnSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const SDK_DIR = join(ROOT, "backend", "gdal-sdk");
+const SDK_DIR = join(ROOT, "apps", "desktop", "gdal-sdk");
 
 // GISInternals MSVC 2022 (1930) build for GDAL 3.9.0. The runtime package
 // contains GDAL/PROJ DLLs and utilities; the dev package contains headers

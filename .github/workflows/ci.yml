@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/web/package-lock.json
 
       - name: Setup Rust (for survey-wasm)
         uses: dtolnay/rust-toolchain@stable
@@ -38,21 +38,21 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            backend/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/**/Cargo.lock', 'backend/**/Cargo.toml') }}
+            apps/desktop/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('apps/desktop/**/Cargo.lock', 'apps/desktop/**/Cargo.toml') }}
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
       - name: Build survey-wasm
         working-directory: ${{ github.workspace }}
-        run: npm --prefix frontend run build:wasm
+        run: npm --prefix apps/web run build:wasm
 
       - name: Test survey-core (Rust)
-        working-directory: backend
+        working-directory: apps/desktop
         run: cargo test -p survey-core
 
-      - name: Write frontend/.env from secrets
+      - name: Write apps/web/.env from secrets
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

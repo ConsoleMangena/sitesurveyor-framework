@@ -15,8 +15,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const DEFAULT_BUNDLE_TARGET = join(ROOT, "backend", "bundled-gdal");
-const DEFAULT_SDK_TARGET = join(ROOT, "backend", "gdal-sdk");
+const DEFAULT_BUNDLE_TARGET = join(ROOT, "apps", "desktop", "bundled-gdal");
+const DEFAULT_SDK_TARGET = join(ROOT, "apps", "desktop", "gdal-sdk");
 
 function clean(target) {
   mkdirSync(target, { recursive: true });

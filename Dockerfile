@@ -5,13 +5,13 @@ WORKDIR /app
 
 # Copy root and frontend package definitions for efficient caching
 COPY package.json package-lock.json ./
-COPY frontend/package.json frontend/package-lock.json ./frontend/
+COPY apps/web/package.json apps/web/package-lock.json ./apps/web/
 
 # Install frontend dependencies without running unnecessary native addon scripts (e.g. node-usb)
-RUN cd frontend && npm install --ignore-scripts
+RUN cd apps/web && npm install --ignore-scripts
 
 # Copy frontend source code
-COPY frontend/ ./frontend/
+COPY apps/web/ ./apps/web/
 
 # Build arguments for Supabase & Solana integration
 ARG VITE_SUPABASE_URL=https://csjjmuexzuewqnopzbik.supabase.co
@@ -29,7 +29,7 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SOLANA_TREASURY_ADDRESS=$VITE_SOLANA_TREASURY_ADDRESS
 
 # Build frontend production bundle (CAD/GDAL heavy features remain desktop-only via platform stubs)
-RUN cd frontend && npm run build
+RUN cd apps/web && npm run build
 
 # ── Stage 2: Production Web Server ──────────────────────────────
 FROM nginx:alpine AS runner
@@ -38,7 +38,7 @@ FROM nginx:alpine AS runner
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built static assets
-COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 
 EXPOSE 80
 

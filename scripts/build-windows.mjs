@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const BACKEND = join(ROOT, "backend");
+const BACKEND = join(ROOT, "apps", "desktop");
 
 function log(...args) {
   console.log("[build-windows]", ...args);
@@ -111,7 +111,7 @@ async function main() {
   // Build the Tauri desktop installer with GDAL support.
   // GDAL_HOME must be visible to cargo/gdal-sys during the Rust build.
   const extraArgs = process.argv.slice(2);
-  const tauriCli = join(ROOT, "frontend", "node_modules", "@tauri-apps", "cli", "tauri.js");
+  const tauriCli = join(ROOT, "apps", "web", "node_modules", "@tauri-apps", "cli", "tauri.js");
   const buildCode = await run(
     process.execPath,
     [tauriCli, "build", "--features", "gdal", ...extraArgs],

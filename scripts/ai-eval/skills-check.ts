@@ -7,7 +7,7 @@ import {
   formatSkillContext,
   promoteExample,
   parseExamples,
-} from "../../backend/supabase/functions/_shared/skills.ts";
+} from "../../supabase/functions/_shared/skills.ts";
 import { seed } from "./fixtures.ts";
 
 const skills = (seed as unknown as { ai_skills: Record<string, unknown>[] }).ai_skills.map(

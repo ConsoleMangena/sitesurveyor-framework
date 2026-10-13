@@ -16,7 +16,7 @@ import {
   seed,
 } from "./fixtures.ts";
 import { cases, type EvalFrame, type RunLog } from "./cases.ts";
-import { runAgent, type AgentEvent } from "../../backend/supabase/functions/_shared/ai-agent.ts";
+import { runAgent, type AgentEvent } from "../../supabase/functions/_shared/ai-agent.ts";
 
 const KEY = process.env.THINKING_MACHINES_AI_API_KEY ?? "";
 const CASE_TIMEOUT_MS = 180_000;

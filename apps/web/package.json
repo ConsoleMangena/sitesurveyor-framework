@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "@sitesurveyor/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,11 +10,11 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "preview": "vite preview",
-    "tauri:dev": "npm --prefix ../backend run tauri:dev",
-    "tauri:dev:win": "npm --prefix ../backend run tauri:dev:win",
-    "tauri:build": "npm --prefix ../backend run tauri:build",
-    "tauri:build:win": "npm --prefix ../backend run tauri:build:win",
-    "build:wasm": "bash ../backend/crates/build-wasm.sh"
+    "tauri:dev": "npm --prefix ../desktop run tauri:dev",
+    "tauri:dev:win": "npm --prefix ../desktop run tauri:dev:win",
+    "tauri:build": "npm --prefix ../desktop run tauri:build",
+    "tauri:build:win": "npm --prefix ../desktop run tauri:build:win",
+    "build:wasm": "bash ../desktop/crates/build-wasm.sh"
   },
   "dependencies": {
     "@nozbe/watermelondb": "^0.28.0",

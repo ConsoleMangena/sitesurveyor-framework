@@ -1,0 +1,17 @@
+{
+  "name": "@sitesurveyor/desktop",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix ../web run build",
+    "dev": "npm --prefix ../web run dev",
+    "tauri": "node ../web/node_modules/@tauri-apps/cli/tauri.js",
+    "tauri:dev": "node ../../scripts/dev-windows.mjs",
+    "tauri:dev:win": "node ../../scripts/dev-windows.mjs",
+    "tauri:build": "node ../../scripts/build-windows.mjs",
+    "tauri:build:win": "node ../../scripts/build-windows.mjs",
+    "cargo:build:gdal": "cargo build --features gdal",
+    "cargo:check:gdal": "cargo check --features gdal",
+    "bundle:gdal": "node ../../scripts/bundle-gdal.mjs",
+    "clean:gdal": "node ../../scripts/clean-gdal.mjs"
+  }
+}

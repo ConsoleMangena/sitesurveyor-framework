@@ -106,12 +106,12 @@ async function main() {
   // Invoke the local Tauri CLI directly. Using `npm exec tauri` is fragile on
   // Windows because npm may resolve the unscoped `tauri` package from the
   // registry instead of the locally installed `@tauri-apps/cli` binary.
-  const tauriCli = join(ROOT, "frontend", "node_modules", "@tauri-apps", "cli", "tauri.js");
+  const tauriCli = join(ROOT, "apps", "web", "node_modules", "@tauri-apps", "cli", "tauri.js");
   const child = spawn(
     process.execPath,
     [tauriCli, "dev", "--features", "gdal"],
     {
-      cwd: ROOT,
+      cwd: join(ROOT, "apps", "desktop"),
       env,
       stdio: "inherit",
     },

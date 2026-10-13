@@ -8,7 +8,7 @@ import {
   forget,
   loadMemory,
   remember,
-} from "../../backend/supabase/functions/_shared/memory.ts";
+} from "../../supabase/functions/_shared/memory.ts";
 
 interface MemoryRow {
   conversation_id: string;

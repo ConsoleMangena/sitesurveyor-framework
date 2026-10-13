@@ -24,8 +24,7 @@ import { spawnSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const BACKEND_DIR = path.join(ROOT, 'backend');
-const SUPABASE_DIR = path.join(BACKEND_DIR, 'supabase');
+const SUPABASE_DIR = path.join(ROOT, 'supabase');
 const ENV_FILE = path.join(SUPABASE_DIR, '.env.local');
 const ENV_KEY = 'SECURE_FIELD_ENCRYPTION_KEY';
 
@@ -79,7 +78,7 @@ function ask(question) {
 
 function supabaseCliAvailable() {
   const probe = spawnSync('npx', ['supabase', '--version'], {
-    cwd: BACKEND_DIR, encoding: 'utf8', shell: process.platform === 'win32',
+    cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32',
   });
   return probe.status === 0;
 }
@@ -102,23 +101,20 @@ async function main() {
     const a = await ask('  Set this key in your linked Supabase project now? [y/N] ');
     if (a.toLowerCase() === 'y' || a.toLowerCase() === 'yes') {
       const res = spawnSync('npx', ['supabase', 'secrets', 'set', `${ENV_KEY}=${key}`], {
-        cwd: BACKEND_DIR, stdio: 'inherit', shell: process.platform === 'win32',
+        cwd: ROOT, stdio: 'inherit', shell: process.platform === 'win32',
       });
       if (res.status === 0) {
         console.log(green('\n  ✓ Key set as a Supabase secret.\n'));
       } else {
-        console.log(yellow('\n  Could not set the secret automatically. Run it manually from the backend directory:\n'));
-        console.log('    cd backend');
+        console.log(yellow('\n  Could not set the secret automatically. Run it manually:\n'));
         console.log('    ' + secretCmd + '\n');
       }
     } else {
-      console.log('\n  Set it yourself later (run from backend/):');
-      console.log('    cd backend');
+      console.log('\n  Set it yourself later:');
       console.log('    ' + secretCmd + '\n');
     }
   } else {
-    console.log('  Set the key as a Supabase secret (run from backend/):');
-    console.log('    cd backend');
+    console.log('  Set the key as a Supabase secret:');
     console.log('    ' + secretCmd + '\n');
     console.log('  Make sure you have the Supabase CLI installed and are linked to your project:\n');
     console.log('    npx supabase login');
@@ -128,8 +124,7 @@ async function main() {
   console.log(bold('  Remaining steps:'));
   console.log('    1. Back up this key in a password manager. Losing it means encrypted');
   console.log('       Crypto Wallet payment-method data cannot be recovered.');
-  console.log('    2. Deploy the Edge Function (run from backend/):');
-  console.log('         cd backend');
+  console.log('    2. Deploy the Edge Function:');
   console.log('         npx supabase functions deploy secure-field\n');
 }
 

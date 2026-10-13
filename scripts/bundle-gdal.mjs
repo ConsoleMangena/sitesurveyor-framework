@@ -21,11 +21,11 @@ import { spawnSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const BACKEND_DIR = join(ROOT, "backend");
-const DEFAULT_TARGET = join(BACKEND_DIR, "bundled-gdal");
+const DESKTOP_DIR = join(ROOT, "apps", "desktop");
+const DEFAULT_TARGET = join(DESKTOP_DIR, "bundled-gdal");
 
 const EXE_EXT = process.platform === "win32" ? ".exe" : "";
-const DEFAULT_SDK_DIR = join(BACKEND_DIR, "gdal-sdk");
+const DEFAULT_SDK_DIR = join(DESKTOP_DIR, "gdal-sdk");
 
 function log(...args) {
   console.log("[bundle-gdal]", ...args);

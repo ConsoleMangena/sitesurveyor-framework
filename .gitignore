@@ -14,12 +14,12 @@ dist-ssr
 .env
 .env.*
 !.env.example
-backend/supabase/.temp/
 /supabase/.temp/
-backend/supabase/bundle_apply_in_dashboard.sql
-/backend/bundled-gdal/*
-!/backend/bundled-gdal/.gitkeep
-/backend/gdal-sdk/
+supabase/bundle_apply_in_dashboard.sql
+/apps/desktop/bundled-gdal/*
+!/apps/desktop/bundled-gdal/.gitkeep
+/apps/desktop/gdal-sdk/
+/apps/desktop/target/
 .vscode/*
 !.vscode/extensions.json
 .idea

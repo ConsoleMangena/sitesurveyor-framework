@@ -21,7 +21,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRATE_DIR="$SCRIPT_DIR/survey-wasm"
-OUT_DIR="$SCRIPT_DIR/../../frontend/src/features/projects/components/cad/survey/wasm"
+OUT_DIR="$SCRIPT_DIR/../../web/src/features/projects/components/cad/survey/wasm"
 
 echo "Building survey-wasm -> $OUT_DIR"
 wasm-pack build "$CRATE_DIR" \

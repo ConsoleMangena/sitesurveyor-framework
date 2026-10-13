@@ -47,12 +47,12 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? "0.0.0.0";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const DIST = path.resolve(here, "../frontend/dist");
+const DIST = path.resolve(here, "../apps/web/dist");
 const MCP_DIST = path.resolve(here, "sitesurveyor-mcp/dist/index.js");
 
 if (!fs.existsSync(path.join(DIST, "index.html"))) {
   console.error(
-    `[host] missing ${DIST}/index.html — run "npm run build" inside frontend/ first.`,
+    `[host] missing ${DIST}/index.html — run "npm run build" inside apps/web/ first.`,
   );
   process.exit(1);
 }
@@ -74,8 +74,8 @@ for (const [name, value] of Object.entries({
 // resolved from models.ts (single source of truth) so both serve paths agree,
 // then delegated to `Thinking Machines AI agent exec --auth-env-only`.
 const { resolveModel, scoreComplexity } = await import(
-  pathToFileURL(path.resolve(here, "../backend/supabase/functions/_shared/models.ts")).href
-) as typeof import("../backend/supabase/functions/_shared/models.ts");
+  pathToFileURL(path.resolve(here, "../supabase/functions/_shared/models.ts")).href
+) as typeof import("../supabase/functions/_shared/models.ts");
 
 const { execThinkingMachinesAIAgent, ThinkingMachinesAIEvents, buildThinkingMachinesAIEnv } = await import(
   pathToFileURL(path.resolve(here, "openclaw-runner.ts")).href
@@ -87,13 +87,13 @@ const { execThinkingMachinesAIAgent, ThinkingMachinesAIEvents, buildThinkingMach
 // --agent sitesurveyor) remains available via USE_THINKING_MACHINES_AI=1.
 const AGENT_CORE = path.resolve(
   here,
-  "../backend/supabase/functions/_shared/ai-agent.ts",
+  "../supabase/functions/_shared/ai-agent.ts",
 );
 const useThinkingMachinesAI = process.env.USE_THINKING_MACHINES_AI === "1";
 const streamRunAgent = fs.existsSync(AGENT_CORE)
   ? (
       await import(pathToFileURL(AGENT_CORE).href)
-    ) as typeof import("../backend/supabase/functions/_shared/ai-agent.ts")
+    ) as typeof import("../supabase/functions/_shared/ai-agent.ts")
   : null;
 
 function json(res: http.ServerResponse, status: number, body: unknown) {

@@ -11,7 +11,7 @@ import {
   providerFor,
   resolveModel,
   scoreComplexity,
-} from "../../backend/supabase/functions/_shared/models.ts";
+} from "../../supabase/functions/_shared/models.ts";
 
 let pass = 0;
 let fail = 0;
@@ -123,7 +123,7 @@ check("score-zero-skills", scoreComplexity("hi", 0) === "simple");
 // runAgent boundary: an unknown model yields an error event and exits before
 // hitting the network. Proves the hard allowlist is enforced at the agent
 // core (not just the serve paths).
-const { runAgent } = await import("../../backend/supabase/functions/_shared/ai-agent.ts");
+const { runAgent } = await import("../../supabase/functions/_shared/ai-agent.ts");
 async function firstEvent(model: string) {
   const gen = runAgent({
     history: [],
