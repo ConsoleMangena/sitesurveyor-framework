@@ -605,7 +605,7 @@ export default function PublicMarketPage() {
       </header>
 
       <main>
-        <Suspense fallback={<div className="h-[68vh] min-h-[480px] w-full bg-muted/40" />}>
+        <Suspense fallback={<div className="h-[48vh] min-h-[320px] sm:h-[68vh] sm:min-h-[480px] w-full bg-muted/40" />}>
           <PublicMarketGlobe
             dots={dots}
             totalPoints={totalPoints}
@@ -613,12 +613,12 @@ export default function PublicMarketPage() {
             onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
             onRetry={retry}
           >
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/25 to-transparent pb-8 pt-20 sm:pb-10">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/25 to-transparent pb-6 pt-16 sm:pb-10 sm:pt-20">
               <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-                <h1 className="max-w-xl text-3xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+                <h1 className="max-w-xl text-2xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
                   The open surveying market.
                 </h1>
-                <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/85 sm:text-base">
+                <p className="mt-2 max-w-lg text-xs leading-relaxed text-white/85 sm:mt-3 sm:text-base">
                   Instruments, professionals, jobs, firms, and training —
                   published live by SiteSurveyor workspaces worldwide.
                 </p>
@@ -645,7 +645,7 @@ export default function PublicMarketPage() {
         <section ref={registryRef} className="mx-auto w-full max-w-6xl scroll-mt-16 space-y-12 px-4 py-12 sm:px-6 sm:py-16">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div role="group" aria-label="Filter by kind" className="inline-flex w-fit flex-wrap gap-1 rounded-lg bg-muted p-1">
+              <div role="group" aria-label="Filter by kind" className="flex w-full overflow-x-auto pb-1 sm:pb-0 gap-1 rounded-lg bg-muted p-1 sm:w-fit sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {(
                   [
                     ["all", "Everything", true],
@@ -661,7 +661,7 @@ export default function PublicMarketPage() {
                     type="button"
                     aria-pressed={scope === value}
                     onClick={() => setScope(value)}
-                    className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                    className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors ${
                       scope === value
                         ? "bg-background font-medium text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
@@ -681,8 +681,8 @@ export default function PublicMarketPage() {
                   </button>
                 ))}
               </div>
-              <div className="flex w-full items-center gap-2 lg:w-auto">
-                <div className="relative min-w-0 flex-1 lg:w-[320px]">
+              <div className="flex flex-col sm:flex-row w-full sm:items-center gap-2 lg:w-auto">
+                <div className="relative min-w-0 w-full sm:flex-1 lg:w-[320px]">
                   <Search
                     className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                     aria-hidden="true"
@@ -697,7 +697,7 @@ export default function PublicMarketPage() {
                     className="pl-9"
                   />
                 </div>
-                <label className="relative shrink-0">
+                <label className="relative w-full sm:w-auto shrink-0">
                   <span className="sr-only">Sort results</span>
                   <ArrowDownWideNarrow
                     className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -708,7 +708,7 @@ export default function PublicMarketPage() {
                     onChange={(event) =>
                       setSort(event.target.value as SortKey)
                     }
-                    className="h-9 appearance-none rounded-md border border-input bg-transparent py-1 pl-9 pr-8 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    className="w-full sm:w-auto h-9 appearance-none rounded-md border border-input bg-transparent py-1 pl-9 pr-8 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                   >
                     <option value="newest">Newest first</option>
                     <option value="price-asc">Price: low to high</option>
@@ -1013,7 +1013,7 @@ function MarketPulseStrip({
       aria-label="Market pulse"
       className="mx-auto w-full max-w-6xl space-y-3 px-4 pt-10 sm:px-6"
     >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
         {stats.map((stat) => (
           <div
             key={stat.label}
@@ -1289,6 +1289,7 @@ function ListingRowItem({
           {row.category === "accessory" ? "Accessory" : row.type}
           {row.condition ? ` · ${row.condition}` : ""}
           {row.listing_type === "hire" ? " · hire" : ""}
+          <span className="sm:hidden"> · {row.location}</span>
         </p>
       </div>
       <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
@@ -1338,6 +1339,7 @@ function ProfessionalRowItem({
         </p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {row.title} · {row.discipline} · {row.experience}
+          <span className="sm:hidden"> · {row.location}</span>
         </p>
       </div>
       <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
@@ -1375,6 +1377,7 @@ function JobRowItem({ row, onOpen }: { row: JobRow; onOpen: () => void }) {
         </p>
         <p className="mt-0.5 truncate text-xs capitalize text-muted-foreground">
           {row.discipline} · {row.employment_type}
+          <span className="sm:hidden"> · {row.location}</span>
         </p>
       </div>
       <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
@@ -1425,6 +1428,7 @@ function FirmRowItem({ row, onOpen }: { row: FirmRow; onOpen: () => void }) {
         </p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {(row.services ?? []).slice(0, 3).join(" · ")}
+          <span className="sm:hidden"> · {row.location}</span>
         </p>
       </div>
       <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
@@ -1460,6 +1464,7 @@ function EventRowItem({ row, onOpen }: { row: EventRow; onOpen: () => void }) {
         </p>
         <p className="mt-0.5 truncate text-xs capitalize text-muted-foreground">
           {row.kind} · {row.provider}
+          <span className="sm:hidden"> · {row.location}</span>
         </p>
       </div>
       <div className="hidden min-w-0 shrink basis-52 items-center gap-1 text-xs text-muted-foreground sm:flex">

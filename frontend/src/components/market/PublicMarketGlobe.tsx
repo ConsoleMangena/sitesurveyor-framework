@@ -239,7 +239,7 @@ function CoordReadout() {
     };
   }, [map]);
   return (
-    <div className="pointer-events-none absolute right-4 top-4 sm:right-6 sm:top-6">
+    <div className="pointer-events-none absolute right-4 top-4 hidden min-[480px]:block sm:right-6 sm:top-6">
       <p className="flex items-center gap-1.5 rounded-none border border-border/60 bg-background/85 px-2.5 py-1.5 font-mono text-xs tabular-nums text-muted-foreground shadow-sm backdrop-blur-sm">
         <Crosshair className="size-3" aria-hidden="true" />
         <span ref={coordRef}>——.——° ———.——°</span>
@@ -258,7 +258,7 @@ export default function PublicMarketGlobe({
   onSelect,
   onRetry,
   children,
-  heightClassName = "h-[68vh] min-h-[480px]",
+  heightClassName = "h-[48vh] min-h-[320px] sm:h-[68vh] sm:min-h-[480px]",
 }: PublicMarketGlobeProps) {
   const mapRef = useRef<MapRef | null>(null);
   const [ready, setReady] = useState(false);
@@ -317,7 +317,7 @@ export default function PublicMarketGlobe({
             />
             <CoordReadout />
             {/* Telemetry pill */}
-            <div className="pointer-events-none absolute left-4 top-4 max-w-[calc(100%-5rem)] sm:left-6 sm:top-6">
+            <div className="pointer-events-none absolute left-3 top-3 max-w-[calc(100%-1.5rem)] min-[480px]:max-w-[calc(100%-5rem)] sm:left-6 sm:top-6">
               <div
                 className="rounded-none border border-border/60 bg-background/85 px-3 py-1.5 shadow-sm backdrop-blur-sm"
                 role="status"

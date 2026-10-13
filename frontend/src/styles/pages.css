@@ -10338,6 +10338,12 @@
   }
 }
 
+@media (max-width: 640px) {
+  [data-testid="metric-strip"] > * {
+    min-width: 0;
+  }
+}
+
 /* ── Professional table polish ── */
 .table-card,
 .admin-console-table-wrap,

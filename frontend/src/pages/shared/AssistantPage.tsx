@@ -529,7 +529,7 @@ export default function AssistantPage({
               <h1 className="truncate text-sm font-semibold text-foreground">
                 SiteSurveyor AI agent
               </h1>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="truncate text-[11px] text-muted-foreground">
                 Your surveying reference point — reads and acts on workspace
                 data
               </p>
@@ -727,7 +727,7 @@ export default function AssistantPage({
                         className={`${
                           embedded
                             ? "max-w-[calc(100%-2rem)] px-3 py-2 text-[13px]"
-                            : "max-w-[85%] px-3.5 py-2 text-sm"
+                            : "max-w-[92%] sm:max-w-[85%] px-3.5 py-2 text-sm"
                         } leading-relaxed shadow-sm ${
                           message.role === "user"
                             ? "whitespace-pre-wrap rounded-[16px_16px_0_16px] bg-primary text-primary-foreground"

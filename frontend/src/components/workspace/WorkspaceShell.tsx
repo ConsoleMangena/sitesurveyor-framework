@@ -1027,6 +1027,7 @@ function WorkspaceTopbar({
             className={`hub-status-pill ${serverStatus}`}
             aria-live="polite"
             aria-label={`Server status: ${statusLabel}`}
+            title={`Server status: ${statusLabel}`}
           >
             <span className="hub-status-dot" />
             <span>{statusLabel}</span>

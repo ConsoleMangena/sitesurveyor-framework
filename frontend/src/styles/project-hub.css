@@ -2837,6 +2837,45 @@
         padding: 4px 8px;
     }
 
+    @media (max-width: 640px) {
+        .hub-topbar {
+            padding-left: max(8px, env(safe-area-inset-left, 0px));
+            padding-right: max(8px, env(safe-area-inset-right, 0px));
+        }
+
+        .hub-topbar-right {
+            gap: 6px;
+        }
+
+        .hub-status-pill {
+            padding: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            gap: 0;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .hub-status-pill span:not(.hub-status-dot) {
+            display: none;
+        }
+
+        .hub-status-dot {
+            width: 8px;
+            height: 8px;
+            margin: 0;
+        }
+
+        .hub-avatar-chevron {
+            display: none;
+        }
+
+        .hub-avatar-btn {
+            padding: 2px;
+        }
+    }
+
     .hub-workspace {
         min-width: 0;
     }
@@ -2853,6 +2892,16 @@
     .project-hub-body {
         padding: 18px 12px 24px;
         width: 100%;
+    }
+
+    @media (max-width: 480px) {
+        .hub-body {
+            padding: 16px 8px;
+        }
+
+        .project-hub-body {
+            padding: 12px 8px 20px;
+        }
     }
 
     .project-hub-body-fullscreen {

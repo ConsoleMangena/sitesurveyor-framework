@@ -921,3 +921,26 @@
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+/* ── Mobile responsiveness for Auth screens ────────────────────────────── */
+@media (max-width: 480px) {
+  .auth-screen {
+    min-height: 100dvh;
+    padding: max(16px, env(safe-area-inset-top, 0px) + 8px)
+      max(12px, env(safe-area-inset-right, 0px))
+      max(16px, env(safe-area-inset-bottom, 0px) + 8px)
+      max(12px, env(safe-area-inset-left, 0px));
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .auth-card {
+    padding: 20px 16px;
+    max-width: 100%;
+  }
+
+  .account-type-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
