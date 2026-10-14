@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import "../../styles/project-hub.css";
 import { Link } from "react-router-dom";
 import { ChevronDown, Menu } from "lucide-react";
-import { useServerStatus } from "../../lib/serverStatus.ts";
-import { useOfflineSyncStatus } from "../../lib/hooks/useOfflineSyncStatus.ts";
+
 import {
   useNotifications,
   type NotificationRow,
@@ -974,28 +973,11 @@ function WorkspaceTopbar({
 }: WorkspaceTopbarProps) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const serverStatus = useServerStatus();
-  const offlineSync = useOfflineSyncStatus();
   const avatarUrl = useMyAvatar();
   const accountClassName = useMemo<AccountType>(
     () => user.accountType,
     [user.accountType],
   );
-  const statusLabel =
-    serverStatus === "online"
-      ? "Online"
-      : serverStatus === "offline"
-        ? "Offline"
-        : "Checking...";
-
-  const syncLabel =
-    offlineSync.status === "idle"
-      ? "Local ready"
-      : offlineSync.status === "syncing"
-        ? "Syncing..."
-        : offlineSync.status === "error"
-          ? "Sync error"
-          : "Synced";
 
   return (
     <>
@@ -1022,26 +1004,6 @@ function WorkspaceTopbar({
 
         <div className="hub-topbar-right">
           <ThemeToggle />
-
-          <div
-            className={`hub-status-pill ${serverStatus}`}
-            aria-live="polite"
-            aria-label={`Server status: ${statusLabel}`}
-            title={`Server status: ${statusLabel}`}
-          >
-            <span className="hub-status-dot" />
-            <span>{statusLabel}</span>
-          </div>
-
-          <div
-            className={`hub-status-pill ${offlineSync.status}`}
-            aria-live="polite"
-            aria-label={`Local sync: ${syncLabel}`}
-            title={offlineSync.lastError ?? syncLabel}
-          >
-            <span className="hub-status-dot" />
-            <span>{syncLabel}</span>
-          </div>
 
           <WorkspaceNotifications workspaceId={user.workspaceId} onChangeView={onChangeView} />
 

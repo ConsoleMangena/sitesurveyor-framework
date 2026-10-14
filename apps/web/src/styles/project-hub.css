@@ -93,7 +93,7 @@
 }
 
 .hub-mobile-menu-btn {
-    display: none;
+    display: none !important;
     background: none;
     border: none;
     color: var(--text-h);
@@ -2747,9 +2747,14 @@
     }
 
     .hub-mobile-menu-btn {
-        display: flex;
+        display: inline-flex !important;
         align-items: center;
         justify-content: center;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border-radius: 8px;
+        flex-shrink: 0;
     }
 
     .hub-mobile-nav-overlay {
@@ -2777,8 +2782,11 @@
     }
 
     .hub-logo {
-        width: clamp(28px, 8vmin, 42px);
-        height: clamp(28px, 8vmin, 42px);
+        height: 30px;
+        width: auto;
+        max-width: 110px;
+        object-fit: contain;
+        flex-shrink: 0;
     }
 
     .hub-search {
@@ -2833,46 +2841,89 @@
     }
 
     .hub-status-pill {
-        font-size: 11px;
-        padding: 4px 8px;
+        display: none !important;
+    }
+
+    .hub-theme-toggle {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .hub-notif-btn {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .hub-avatar-chevron {
+        display: none !important;
+    }
+
+    .hub-avatar-name {
+        display: none !important;
+    }
+
+    .hub-avatar-btn {
+        height: 36px;
+        padding: 2px 4px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .hub-avatar-btn-avatar {
+        width: 30px;
+        height: 30px;
     }
 
     @media (max-width: 640px) {
         .hub-topbar {
             padding-left: max(8px, env(safe-area-inset-left, 0px));
             padding-right: max(8px, env(safe-area-inset-right, 0px));
+            gap: 4px;
         }
 
-        .hub-topbar-right {
+        .hub-topbar-left {
             gap: 6px;
         }
 
-        .hub-status-pill {
-            padding: 0;
-            width: 26px;
+        .hub-logo {
             height: 26px;
-            border-radius: 999px;
-            gap: 0;
-            justify-content: center;
-            flex-shrink: 0;
+            max-width: 90px;
         }
 
-        .hub-status-pill span:not(.hub-status-dot) {
-            display: none;
+        .hub-topbar-right {
+            gap: 4px;
         }
 
-        .hub-status-dot {
-            width: 8px;
-            height: 8px;
-            margin: 0;
-        }
-
-        .hub-avatar-chevron {
-            display: none;
+        .hub-mobile-menu-btn,
+        .hub-search-trigger,
+        .hub-theme-toggle,
+        .hub-notif-btn {
+            width: 34px;
+            height: 34px;
         }
 
         .hub-avatar-btn {
+            height: 34px;
             padding: 2px;
+        }
+
+        .hub-avatar-btn-avatar {
+            width: 28px;
+            height: 28px;
         }
     }
 
