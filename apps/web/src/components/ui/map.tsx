@@ -316,6 +316,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       },
       ...props,
       ...viewport,
+      ...(projection ? { projection } : {}),
     });
 
     const styleLoadHandler = () => {
@@ -407,7 +408,18 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   useEffect(() => {
     if (!mapInstance || !isStyleLoaded || !projection) return;
     if (styleSwapInFlightRef.current) return;
-    mapInstance.setProjection(projection);
+    try {
+      // Ensure map is fully loaded before setting projection
+      if (mapInstance.loaded()) {
+        mapInstance.setProjection(projection);
+      } else {
+        mapInstance.once('load', () => {
+          mapInstance.setProjection(projection);
+        });
+      }
+    } catch (error) {
+      console.error('Failed to set map projection:', error);
+    }
   }, [mapInstance, isStyleLoaded, projection]);
 
   const contextValue = useMemo(
@@ -424,6 +436,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       <div
         ref={containerRef}
         className={cn("relative h-full w-full", className)}
+        style={{ minHeight: '100px' }}
       >
         {(!isLoaded || loading) && <DefaultLoader />}
         {/* SSR-safe: children render only when map is loaded on client */}
