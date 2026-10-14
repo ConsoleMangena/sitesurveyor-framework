@@ -319,6 +319,9 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       ...(projection ? { projection } : {}),
     });
 
+    // Debug: Log map initialization
+    console.log('[Map] Initialized with projection:', projection);
+
     const styleLoadHandler = () => {
       styleSwapInFlightRef.current = false;
       setIsStyleLoaded(true);
@@ -410,15 +413,20 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     if (styleSwapInFlightRef.current) return;
     try {
       // Ensure map is fully loaded before setting projection
+      console.log('[Map] Setting projection:', projection, 'Map loaded:', mapInstance.loaded());
       if (mapInstance.loaded()) {
         mapInstance.setProjection(projection);
+        console.log('[Map] Projection set successfully (immediate)');
       } else {
         mapInstance.once('load', () => {
+          console.log('[Map] Map loaded, setting projection');
           mapInstance.setProjection(projection);
+          console.log('[Map] Projection set successfully (on load)');
         });
       }
     } catch (error) {
-      console.error('Failed to set map projection:', error);
+      console.error('[Map] Failed to set map projection:', error);
+      console.error('[Map] WebGL context:', mapInstance.getCanvas()?.getContext('webgl2'));
     }
   }, [mapInstance, isStyleLoaded, projection]);
 

@@ -279,20 +279,7 @@ export default function PublicMarketGlobe({
 }: PublicMarketGlobeProps) {
   const mapRef = useRef<MapRef | null>(null);
   const [ready, setReady] = useState(false);
-  const [tilesFailed, setTilesFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-
-  // Acquisition watchdog: if the basemap never loads, fall back to the
-  // self-contained tile-free canvas rather than pulsing forever.
-  useEffect(() => {
-    if (failed || ready || tilesFailed) return;
-    const timeoutId = window.setTimeout(() => {
-      window.setTimeout(() => setTilesFailed(true), 0);
-    }, LOAD_FAILURE_TIMEOUT_MS);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [failed, ready, tilesFailed, attempt]);
 
   const plottedCount = dots?.length ?? 0;
 
@@ -303,14 +290,12 @@ export default function PublicMarketGlobe({
   };
 
   const mapStyles = useMemo(() => {
-    if (tilesFailed) {
-      return {
-        light: selfContainedGlobeLightStyle,
-        dark: selfContainedGlobeDarkStyle,
-      };
-    }
-    return undefined;
-  }, [tilesFailed]);
+    // Always use self-contained globe styles to ensure globe projection works
+    return {
+      light: selfContainedGlobeLightStyle,
+      dark: selfContainedGlobeDarkStyle,
+    };
+  }, []);
 
   return (
     <section className="relative">
@@ -324,11 +309,10 @@ export default function PublicMarketGlobe({
           and training events. The same items are listed below the globe.
         </p>
         <MapcnMap
-          key={`${attempt}-${tilesFailed ? "offline" : "online"}`}
+          key={attempt}
           ref={mapRef}
           theme="light"
           styles={mapStyles}
-          blank={tilesFailed}
           projection={{ type: "globe" }}
           center={[15, 15]}
           zoom={1.4}
@@ -339,7 +323,7 @@ export default function PublicMarketGlobe({
             dots={dots}
             onSelect={onSelect}
             onReady={() => setReady(true)}
-            onBasemapFailure={() => setTilesFailed(true)}
+            onBasemapFailure={() => {}}
           />
           <CoordReadout />
           {/* Telemetry pill */}
