@@ -1,8 +1,10 @@
 import type * as GeoJSON from "geojson";
 import type { StyleSpecification } from "maplibre-gl";
 import worldLandRaw from "./worldLand.json";
+import worldBordersRaw from "./worldBorders.json";
 
 const worldLand = worldLandRaw as unknown as GeoJSON.FeatureCollection;
+const worldBorders = worldBordersRaw as unknown as GeoJSON.FeatureCollection;
 
 export function createGraticuleGeoJSON(): GeoJSON.FeatureCollection {
   const lines: GeoJSON.Feature[] = [];
@@ -43,6 +45,10 @@ export const selfContainedGlobeLightStyle: StyleSpecification = {
       type: "geojson",
       data: worldLand,
     },
+    "world-borders": {
+      type: "geojson",
+      data: worldBorders,
+    },
     "world-graticule": {
       type: "geojson",
       data: graticuleData,
@@ -81,6 +87,16 @@ export const selfContainedGlobeLightStyle: StyleSpecification = {
       source: "world-land",
       paint: {
         "line-color": "#94a3b8",
+        "line-width": 0.9,
+        "line-opacity": 0.9,
+      },
+    },
+    {
+      id: "world-borders-lines",
+      type: "line",
+      source: "world-borders",
+      paint: {
+        "line-color": "#94a3b8",
         "line-width": 0.8,
         "line-opacity": 0.85,
       },
@@ -95,6 +111,10 @@ export const selfContainedGlobeDarkStyle: StyleSpecification = {
     "world-land": {
       type: "geojson",
       data: worldLand,
+    },
+    "world-borders": {
+      type: "geojson",
+      data: worldBorders,
     },
     "world-graticule": {
       type: "geojson",
@@ -134,8 +154,18 @@ export const selfContainedGlobeDarkStyle: StyleSpecification = {
       source: "world-land",
       paint: {
         "line-color": "#334155",
-        "line-width": 0.8,
+        "line-width": 0.9,
         "line-opacity": 0.9,
+      },
+    },
+    {
+      id: "world-borders-lines",
+      type: "line",
+      source: "world-borders",
+      paint: {
+        "line-color": "#475569",
+        "line-width": 0.8,
+        "line-opacity": 0.85,
       },
     },
   ],
