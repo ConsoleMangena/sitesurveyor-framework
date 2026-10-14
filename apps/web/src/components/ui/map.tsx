@@ -29,6 +29,10 @@ import { createPortal } from "react-dom";
 import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import {
+  selfContainedGlobeLightStyle,
+  selfContainedGlobeDarkStyle,
+} from "../market/worldGlobeData.ts";
 
 if (typeof window !== "undefined" && !MapLibreGL.getWorkerUrl()) {
   // Self-hosted worker (copied into public/) so map rendering doesn't depend
@@ -284,7 +288,10 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       };
     }
     if (blank) {
-      return { dark: blankMapStyle, light: blankMapStyle };
+      return {
+        dark: selfContainedGlobeDarkStyle,
+        light: selfContainedGlobeLightStyle,
+      };
     }
     return defaultStyles;
   }, [stableStyles, blank]);
@@ -339,6 +346,16 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Resize map whenever container dimensions change
+  useEffect(() => {
+    if (!mapInstance || !containerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      mapInstance.resize();
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [mapInstance]);
 
   // Sync controlled viewport to map
   useEffect(() => {

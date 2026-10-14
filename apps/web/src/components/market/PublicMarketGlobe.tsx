@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as maplibregl from "maplibre-gl";
 import { Crosshair, Globe2 } from "lucide-react";
 import { Button } from "../ui/button.tsx";
@@ -10,8 +10,13 @@ import {
   type MarketDotKind,
 } from "./marketDots";
 
-// Generous: slow connections beat a false error (bizintel uses the same value).
-const LOAD_FAILURE_TIMEOUT_MS = 10_000;
+import {
+  selfContainedGlobeLightStyle,
+  selfContainedGlobeDarkStyle,
+} from "./worldGlobeData.ts";
+
+// Fast fallback: if Carto tiles don't load in 4s, seamlessly switch to self-contained globe
+const LOAD_FAILURE_TIMEOUT_MS = 4_000;
 
 interface PublicMarketGlobeProps {
   /** null while the parent is fetching. Already filtered by scope/location. */
@@ -88,11 +93,10 @@ function MapPins({
         event.error as unknown as { status?: number } | undefined
       )?.status;
       const message = String(event.error?.message ?? "");
+      // Only failover if style itself failed or network cannot connect to style
       if (
-        /style|fetch|network/i.test(message) ||
-        status === 0 ||
-        status === 403 ||
-        status === 404
+        /style.*failed|failed to fetch style|error loading style/i.test(message) ||
+        (status === 404 && /style\.json/i.test(message))
       ) {
         onBasemapFailure();
       }
@@ -280,12 +284,20 @@ export default function PublicMarketGlobe({
   const plottedCount = dots?.length ?? 0;
 
   const handleRetry = () => {
-    // Event-handler context: synchronous updates are fine here.
     setReady(false);
-    setTilesFailed(false);
     setAttempt((value) => value + 1);
     onRetry();
   };
+
+  const mapStyles = useMemo(() => {
+    if (tilesFailed) {
+      return {
+        light: selfContainedGlobeLightStyle,
+        dark: selfContainedGlobeDarkStyle,
+      };
+    }
+    return undefined;
+  }, [tilesFailed]);
 
   return (
     <section className="relative">
@@ -298,104 +310,103 @@ export default function PublicMarketGlobe({
           Interactive globe of published listings, professionals, jobs, firms,
           and training events. The same items are listed below the globe.
         </p>
-        {!failed ? (
-          <MapcnMap
-            key={attempt}
-            ref={mapRef}
-            theme="light"
-            blank={tilesFailed}
-            projection={{ type: "globe" }}
-            center={[15, 15]}
-            zoom={1.4}
-            className="absolute inset-0"
-          >
-            <MapPins
-              dots={dots}
-              onSelect={onSelect}
-              onReady={() => setReady(true)}
-              onBasemapFailure={() => setTilesFailed(true)}
-            />
-            <CoordReadout />
-            {/* Telemetry pill */}
-            <div className="pointer-events-none absolute left-3 top-3 max-w-[calc(100%-1.5rem)] min-[480px]:max-w-[calc(100%-5rem)] sm:left-6 sm:top-6">
-              <div
-                className="rounded-none border border-border/60 bg-background/85 px-3 py-1.5 shadow-sm backdrop-blur-sm"
-                role="status"
-                aria-live="polite"
-              >
-                <p className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {dots === null ? (
-                    <span>ACQUIRING FEED…</span>
-                  ) : plottedCount === 0 ? (
-                    <span>NO PINS IN VIEW</span>
-                  ) : (
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      {(Object.keys(MARKET_DOT_COLORS) as MarketDotKind[]).map(
-                        (kind) => {
-                          const count =
-                            dots?.filter((dot) => dot.kind === kind).length ??
-                            0;
-                          if (count === 0) return null;
-                          return (
-                            <span key={kind} className="flex items-center gap-1.5">
-                              <span
-                                className="size-2 shrink-0 rounded-full"
-                                style={{
-                                  backgroundColor: MARKET_DOT_COLORS[kind],
-                                }}
-                                aria-hidden="true"
-                              />
-                              {count}
-                            </span>
-                          );
-                        },
-                      )}
-                    </span>
-                  )}
-                </p>
-                {dots !== null && plottedCount < totalPoints ? (
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    showing {plottedCount} of {totalPoints} pins · filters
-                    applied
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            {/* Legend */}
-            <div className="pointer-events-none absolute bottom-4 right-4 hidden flex-col items-end gap-1.5 sm:bottom-6 sm:right-6 md:flex">
-              {(Object.keys(MARKET_DOT_COLORS) as MarketDotKind[]).map(
-                (kind) => (
-                  <span
-                    key={kind}
-                    className="flex items-center gap-1.5 rounded-none border border-border/60 bg-background/85 px-2.5 py-1 text-xs capitalize shadow-sm backdrop-blur-sm"
-                  >
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: MARKET_DOT_COLORS[kind] }}
-                      aria-hidden="true"
-                    />
-                    {kind === "event" ? "Training" : `${kind}s`}
+        <MapcnMap
+          key={`${attempt}-${tilesFailed ? "offline" : "online"}`}
+          ref={mapRef}
+          theme="light"
+          styles={mapStyles}
+          blank={tilesFailed}
+          projection={{ type: "globe" }}
+          center={[15, 15]}
+          zoom={1.4}
+          className="absolute inset-0"
+        >
+          <MapPins
+            dots={dots}
+            onSelect={onSelect}
+            onReady={() => setReady(true)}
+            onBasemapFailure={() => setTilesFailed(true)}
+          />
+          <CoordReadout />
+          {/* Telemetry pill */}
+          <div className="pointer-events-none absolute left-3 top-3 max-w-[calc(100%-1.5rem)] min-[480px]:max-w-[calc(100%-5rem)] sm:left-6 sm:top-6">
+            <div
+              className="rounded-none border border-border/60 bg-background/85 px-3 py-1.5 shadow-sm backdrop-blur-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                {dots === null ? (
+                  <span>ACQUIRING FEED…</span>
+                ) : plottedCount === 0 ? (
+                  <span>NO PINS IN VIEW</span>
+                ) : (
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {(Object.keys(MARKET_DOT_COLORS) as MarketDotKind[]).map(
+                      (kind) => {
+                        const count =
+                          dots?.filter((dot) => dot.kind === kind).length ??
+                          0;
+                        if (count === 0) return null;
+                        return (
+                          <span key={kind} className="flex items-center gap-1.5">
+                            <span
+                              className="size-2 shrink-0 rounded-full"
+                              style={{
+                                backgroundColor: MARKET_DOT_COLORS[kind],
+                              }}
+                              aria-hidden="true"
+                            />
+                            {count}
+                          </span>
+                        );
+                      },
+                    )}
                   </span>
-                ),
-              )}
+                )}
+              </p>
+              {dots !== null && plottedCount < totalPoints ? (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  showing {plottedCount} of {totalPoints} pins · filters
+                  applied
+                </p>
+              ) : null}
             </div>
-            {children}
-          </MapcnMap>
-        ) : (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 p-6 text-center">
-            <Globe2 className="size-9 text-muted-foreground/50" aria-hidden="true" />
-            <p className="text-lg font-semibold">Couldn&rsquo;t acquire the feed</p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Map tiles didn&rsquo;t arrive in time — your network may be
-              blocking them. Retry switches to a self-contained globe that
-              needs no tiles. The registry below always works.
-            </p>
-            <Button size="sm" variant="outline" onClick={handleRetry}>
-              Retry without map tiles
-            </Button>
           </div>
-        )}
-        {!failed && !ready && dots === null ? (
+          {/* Legend */}
+          <div className="pointer-events-none absolute bottom-4 right-4 hidden flex-col items-end gap-1.5 sm:bottom-6 sm:right-6 md:flex">
+            {(Object.keys(MARKET_DOT_COLORS) as MarketDotKind[]).map(
+              (kind) => (
+                <span
+                  key={kind}
+                  className="flex items-center gap-1.5 rounded-none border border-border/60 bg-background/85 px-2.5 py-1 text-xs capitalize shadow-sm backdrop-blur-sm"
+                >
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: MARKET_DOT_COLORS[kind] }}
+                    aria-hidden="true"
+                  />
+                  {kind === "event" ? "Training" : `${kind}s`}
+                </span>
+              ),
+            )}
+          </div>
+          {children}
+        </MapcnMap>
+
+        {failed ? (
+          <div className="pointer-events-none absolute top-3 right-3 z-20 sm:top-6 sm:right-6">
+            <div className="pointer-events-auto flex items-center gap-2 rounded-none border border-border/60 bg-background/90 px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm">
+              <Globe2 className="size-3.5 text-amber-500" aria-hidden="true" />
+              <span className="text-muted-foreground">Cached market feed</span>
+              <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs text-foreground hover:bg-muted" onClick={handleRetry}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {!ready && dots === null ? (
           <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2">
             <div className="mx-auto flex w-fit flex-col items-center gap-3 rounded-none border border-border/60 bg-background/85 px-5 py-4 shadow-sm backdrop-blur-sm">
               <div
@@ -413,7 +424,7 @@ export default function PublicMarketGlobe({
             </div>
           </div>
         ) : null}
-        {!failed && ready && dots !== null && dots.length === 0 ? (
+        {ready && dots !== null && dots.length === 0 ? (
           <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 px-6">
             <p className="mx-auto max-w-md rounded-none border border-border/60 bg-background/90 px-6 py-4 text-center shadow-sm backdrop-blur-sm">
               <span className="block text-base font-semibold">

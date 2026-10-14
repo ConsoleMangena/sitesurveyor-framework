@@ -133,13 +133,13 @@ export default defineConfig({
     global: 'globalThis',
   },
   // Tauri loads index.html from the filesystem/custom protocol, so asset URLs
-  // must be relative to that file rather than absolute from the origin root.
-  base: './',
+  // must be relative to that file. On web/Render/Nginx, root-relative base ensures
+  // deep routes (e.g. /market) resolve assets properly on direct load or refresh.
+  base: process.env.TAURI_ENV_PLATFORM ? './' : '/',
 
-  // Tauri expects the dev server on port 5174. Prevent Vite from silently
-  // picking a different port if 5174 is busy.
+  // Host 0.0.0.0 allows mobile devices on the same Wi-Fi network to test the dev server.
   server: {
-    host: '127.0.0.1',
+    host: true,
     port: 5174,
     strictPort: true,
   },
