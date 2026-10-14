@@ -83,10 +83,10 @@ export function DatabaseStorageCard({
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+          <div className="relative h-3 w-full overflow-hidden rounded-none bg-muted">
             <div
               className={cn(
-                "h-full rounded-full transition-all duration-500",
+                "h-full rounded-none transition-all duration-500",
                 getProgressColor(percent),
               )}
               style={{ width: `${Math.min(percent, 100)}%` }}

@@ -941,7 +941,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ClipboardList size={15} />
                     </div>
                     <div>
@@ -1015,7 +1015,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <MapPin size={15} />
                     </div>
                     <div>
@@ -1117,13 +1117,13 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
   return (
       <DashboardShell className={`hub-body project-hub-body ${activeProject ? 'project-hub-body-fullscreen p-0 gap-0' : ''}`}>
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {notice && (
-        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-sm ${notice.type === 'success' ? 'border border-emerald-200 bg-emerald-50 text-emerald-800' : 'border border-blue-200 bg-blue-50 text-blue-800'}`} role="status" aria-live="polite">
+        <div className={`flex items-center justify-between rounded-none px-4 py-3 text-sm ${notice.type === 'success' ? 'border border-emerald-200 bg-emerald-50 text-emerald-800' : 'border border-blue-200 bg-blue-50 text-blue-800'}`} role="status" aria-live="polite">
           <span>{notice.message}</span>
           <button type="button" onClick={() => setNotice(null)} className="text-lg leading-none" aria-label="Dismiss notice">×</button>
         </div>
@@ -1131,7 +1131,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
       {syncStatus.status !== 'idle' && syncStatus.status !== 'synced' && (
         <div
-          className={`flex items-center justify-between rounded-lg px-4 py-2 text-sm ${
+          className={`flex items-center justify-between rounded-none px-4 py-2 text-sm ${
             syncStatus.status === 'error'
               ? 'border border-amber-200 bg-amber-50 text-amber-800'
               : 'border border-blue-200 bg-blue-50 text-blue-800'
@@ -1471,8 +1471,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                       <TableCell className="align-middle text-right hidden sm:table-cell font-mono font-semibold">{p.points.toLocaleString()}</TableCell>
                       <TableCell className="align-middle hidden md:table-cell">
                         <div className="flex items-center gap-2">
-                          <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
+                          <div className="h-2 flex-1 rounded-none bg-muted overflow-hidden">
+                            <div className="h-full rounded-none bg-primary" style={{ width: `${p.progress}%` }} />
                           </div>
                           <span className="text-xs font-semibold w-8 text-right">{p.progress}%</span>
                         </div>
@@ -1495,7 +1495,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 return (
                   <article
                     key={p.dbId}
-                    className="cursor-pointer rounded-lg border border-border/40 bg-muted/30 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="cursor-pointer rounded-none border border-border/40 bg-muted/30 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => setSelectedProject(p)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedProject(p); } }}
                     tabIndex={0}
@@ -1522,8 +1522,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                       </p>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
+                      <div className="h-2 flex-1 rounded-none bg-muted overflow-hidden">
+                        <div className="h-full rounded-none bg-primary" style={{ width: `${p.progress}%` }} />
                       </div>
                       <span className="w-9 shrink-0 text-right text-xs font-semibold">{p.progress}%</span>
                       <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{p.points.toLocaleString()} pts</span>
@@ -1649,8 +1649,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
             <div className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Progress</span>
               <div className="flex items-center gap-3">
-                <div className="h-2.5 flex-1 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${selectedProject.progress}%` }} />
+                <div className="h-2.5 flex-1 rounded-none bg-muted overflow-hidden">
+                  <div className="h-full rounded-none bg-primary" style={{ width: `${selectedProject.progress}%` }} />
                 </div>
                 <span className="text-sm font-bold w-10 text-right">{selectedProject.progress}%</span>
               </div>
@@ -1668,7 +1668,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team ({selectedProject.members.length})</span>
                 <div className="space-y-2">
                   {selectedProject.members.map((m, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                    <div key={i} className="flex items-center justify-between rounded-none border p-3 text-sm">
                       <div>
                         <p className="font-medium">{m.name}</p>
                         <p className="text-xs text-muted-foreground">{m.role}</p>
@@ -1681,7 +1681,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
             )}
 
             {showPermanentDeleteConfirm ? (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+              <div className="rounded-none border border-destructive/50 bg-destructive/10 p-4 space-y-3">
                 <p className="text-sm font-semibold text-destructive">Are you sure you want to PERMANENTLY DELETE this project?</p>
                 <p className="text-sm text-destructive">This will destroy all related field data. Type <strong>{selectedProject.name}</strong> to confirm.</p>
                 <Input id="delete-project-confirm" name="delete-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
@@ -1691,7 +1691,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 </div>
               </div>
             ) : showDeleteConfirm ? (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+              <div className="rounded-none border border-destructive/50 bg-destructive/10 p-4 space-y-3">
                 <p className="text-sm font-semibold text-destructive">Are you sure you want to archive this project?</p>
                 <p className="text-sm text-destructive">Type <strong>{selectedProject.name}</strong> to confirm.</p>
                 <Input id="archive-project-confirm" name="archive-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
@@ -1737,7 +1737,7 @@ function ToolCard({ tool, index, onOpen }: { tool: ProjectTool; index: number; o
       aria-disabled={disabled}
       title={tool.label}
     >
-      <div className="inline-flex shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors h-9 w-9">
+      <div className="inline-flex shrink-0 items-center justify-center rounded-none bg-muted text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors h-9 w-9">
         <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
       </div>
       <div className="flex-1 min-w-0">
@@ -1849,7 +1849,7 @@ className="cursor-pointer rounded-none border border-border/40 bg-muted/30 p-3 t
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background text-xs font-bold text-muted-foreground">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-background text-xs font-bold text-muted-foreground">
                             {idx + 1}
                           </span>
                           <div className="min-w-0">

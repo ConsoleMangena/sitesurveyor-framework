@@ -43,7 +43,7 @@ function MetricSkeleton() {
   return (
     <Card className="h-full border-border/60">
       <CardContent className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3">
-        <Skeleton className="rounded-lg h-7 w-7" />
+        <Skeleton className="rounded-none h-7 w-7" />
         <div className="flex flex-col gap-1.5 min-w-0">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-4 w-12" />
@@ -78,8 +78,8 @@ export function MetricStrip({ metrics, loading = false }: MetricStripProps) {
           <Card
             key={metric.label + index}
             className={cn(
-              "h-full border-border/60 bg-card shadow-sm transition-all duration-200 group relative overflow-hidden",
-              clickable && "cursor-pointer hover:shadow-md hover:-translate-y-0.5",
+              "h-full border-border/60 bg-card transition-all duration-200 group relative overflow-hidden",
+              clickable && "cursor-pointer hover:border-border",
             )}
             onClick={metric.onClick}
             role={clickable ? "button" : undefined}
@@ -100,7 +100,7 @@ export function MetricStrip({ metrics, loading = false }: MetricStripProps) {
               className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3"
             >
               <div
-                className="flex size-7 shrink-0 items-center justify-center rounded-lg border bg-muted"
+                className="flex size-7 shrink-0 items-center justify-center rounded-none border bg-muted"
                 style={{ color: metric.accentColor }}
               >
                 {metric.icon ? (

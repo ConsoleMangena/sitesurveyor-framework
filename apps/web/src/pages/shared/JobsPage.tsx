@@ -343,7 +343,7 @@ export default function JobsPage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <Briefcase size={15} />
                     </div>
                     <div>
@@ -411,7 +411,7 @@ export default function JobsPage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <MapPin size={15} />
                     </div>
                     <div>
@@ -465,7 +465,7 @@ export default function JobsPage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <CalendarDays size={15} />
                     </div>
                     <div>
@@ -650,7 +650,7 @@ export default function JobsPage({
             <div className="flex items-start gap-4">
               <div
                 className={cn(
-                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-lg",
+                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-none",
                   jobTypeColors[selectedJob.job_type ?? ""] ?? "bg-muted text-primary",
                 )}
               >
@@ -738,7 +738,7 @@ export default function JobsPage({
                     <div className="flex items-start justify-between gap-3">
                       <div
                         className={cn(
-                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg",
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-none",
                           jobTypeColors[job.job_type ?? ""] ?? "bg-muted text-primary",
                         )}
                       >

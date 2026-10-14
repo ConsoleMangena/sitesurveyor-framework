@@ -32,7 +32,7 @@ export function DashboardCard({
   return (
     <Card
       className={cn(
-        "border-border/60 bg-card flex flex-col shadow-sm transition-shadow",
+        "border-border/60 bg-card flex flex-col transition-shadow",
         accent && "border-l-4 border-l-primary",
         className,
       )}
@@ -43,7 +43,7 @@ export function DashboardCard({
             {icon && (
               <span
                 className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-none",
                   accent
                     ? "bg-primary/10 text-primary"
                     : "bg-muted text-muted-foreground",

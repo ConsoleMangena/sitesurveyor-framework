@@ -196,7 +196,7 @@ function InvoiceDetail({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                 <FileText className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
@@ -1111,7 +1111,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ClipboardList size={15} />
                     </div>
                     <div>
@@ -1218,7 +1218,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ListChecks size={15} />
                     </div>
                     <div>
@@ -1256,7 +1256,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ScrollText size={15} />
                     </div>
                     <div>
@@ -1399,7 +1399,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}

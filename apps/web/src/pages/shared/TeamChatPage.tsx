@@ -123,7 +123,7 @@ function MessageBubble({
   return (
     <div
       className={cn(
-        "rounded-md transition-colors",
+        "rounded-none transition-colors",
         isHighlighted && "bg-primary/10 ring-1 ring-primary/30",
       )}
     >
@@ -132,7 +132,7 @@ function MessageBubble({
           type="button"
           onClick={() => onJumpTo(repliedTo.id)}
           className={cn(
-            "mb-1 flex max-w-[75%] items-center gap-2 rounded-md border-l-2 border-primary/60 bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-muted",
+            "mb-1 flex max-w-[75%] items-center gap-2 rounded-none border-l-2 border-primary/60 bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-muted",
             isMe && "ml-auto",
           )}
           title="Jump to original message"
@@ -181,7 +181,7 @@ function MessageBubble({
           type="button"
           onClick={() => onReply(msg)}
           aria-label="Reply to message"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
+          className="flex h-7 w-7 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
         >
           <Reply className="h-3.5 w-3.5" />
         </button>
@@ -190,7 +190,7 @@ function MessageBubble({
             type="button"
             onClick={() => onStartEdit(msg)}
             aria-label="Edit message"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
+            className="flex h-7 w-7 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
@@ -200,7 +200,7 @@ function MessageBubble({
             type="button"
             onClick={() => onDelete(msg)}
             aria-label="Delete message"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive sm:h-6 sm:w-6"
+            className="flex h-7 w-7 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive sm:h-6 sm:w-6"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -217,7 +217,7 @@ interface ReplyBannerProps {
 
 function ReplyBanner({ replyTo, onCancel }: ReplyBannerProps) {
   return (
-    <div className="flex items-center gap-2 rounded-md border-l-2 border-primary/60 bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
+    <div className="flex items-center gap-2 rounded-none border-l-2 border-primary/60 bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
       <Reply className="h-3 w-3 shrink-0 text-primary/70" />
       <span className="truncate">
         Replying to{" "}
@@ -228,7 +228,7 @@ function ReplyBanner({ replyTo, onCancel }: ReplyBannerProps) {
         type="button"
         onClick={onCancel}
         aria-label="Cancel reply"
-        className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+        className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-muted hover:text-foreground"
       >
         <X className="h-3 w-3" />
       </button>
@@ -254,9 +254,9 @@ function TypingIndicator({ names }: TypingIndicatorProps) {
       className="flex items-center gap-2 px-1 text-[11px] text-muted-foreground"
     >
       <span className="flex items-center gap-0.5">
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-none bg-muted-foreground/60 [animation-delay:0ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-none bg-muted-foreground/60 [animation-delay:150ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-none bg-muted-foreground/60 [animation-delay:300ms]" />
       </span>
       <span>{label}…</span>
     </div>
@@ -750,7 +750,7 @@ export default function TeamChatPage({
         </div>
 
         {!connected && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-600 dark:text-amber-400">
           <WifiOff className="h-3.5 w-3.5" />
           Connection lost — messages will sync once we're back online.
         </div>
@@ -822,7 +822,7 @@ export default function TeamChatPage({
                   {showDaySeparator && (
                     <div className="mb-2 flex items-center gap-3 py-2">
                       <div className="h-px flex-1 bg-border" />
-                      <span className="rounded-full border bg-background px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shadow-sm">
+                      <span className="rounded-none border bg-background px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shadow-sm">
                         {formatDayLabel(msgDate)}
                       </span>
                       <div className="h-px flex-1 bg-border" />
@@ -878,7 +878,7 @@ export default function TeamChatPage({
                         )}
                       >
                         {isEditing ? (
-                          <div className="flex w-full max-w-full flex-col gap-1.5 rounded-lg border bg-background p-2 shadow-sm">
+                          <div className="flex w-full max-w-full flex-col gap-1.5 rounded-none border bg-background p-2 shadow-sm">
                             <Textarea
                               ref={editTextareaRef}
                               value={editDraft}
@@ -963,7 +963,7 @@ export default function TeamChatPage({
         onSubmit={handleSendMessage}
       >
         {error && (
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <div className="flex items-center justify-between gap-2 rounded-none bg-destructive/10 px-3 py-2 text-xs text-destructive">
             <span>{error}</span>
             <button
               type="button"

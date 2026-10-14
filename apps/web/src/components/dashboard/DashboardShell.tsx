@@ -149,7 +149,7 @@ export function DashboardListItem({
         type="button"
         onClick={onClick}
         className={cn(
-          "flex items-center justify-between gap-4 w-full text-left py-3 px-1 rounded-lg transition-colors",
+          "flex items-center justify-between gap-4 w-full text-left py-3 px-1 rounded-none transition-colors",
           onClick && "hover:bg-muted/60 cursor-pointer",
           className,
         )}

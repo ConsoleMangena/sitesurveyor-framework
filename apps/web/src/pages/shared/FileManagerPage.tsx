@@ -771,13 +771,13 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {notice && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {notice}
         </div>
       )}
@@ -804,10 +804,10 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
       />
 
       {uploading && uploadQueue.length > 0 && (
-        <div className="rounded-lg border bg-muted/50 p-2 flex items-center gap-2 text-xs">
+        <div className="rounded-none border bg-muted/50 p-2 flex items-center gap-2 text-xs">
           <span className="shrink-0">Uploading {completedUploads} of {uploadQueue.length} files…</span>
-          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgressPct}%` }} />
+          <div className="h-1.5 flex-1 rounded-none bg-muted overflow-hidden">
+            <div className="h-full rounded-none bg-primary transition-all" style={{ width: `${uploadProgressPct}%` }} />
           </div>
           <span className="shrink-0">{uploadProgressPct}%</span>
         </div>
@@ -899,7 +899,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             </div>
 
           {visibleSelectedCount > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-none border bg-muted/50 p-3 text-sm">
               <span>{visibleSelectedCount} selected</span>
               <div className="flex flex-wrap items-center gap-2">
                 {viewMode !== "trash" ? (
@@ -931,7 +931,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             </div>
           )}
 
-          <div className="border rounded-md overflow-hidden">
+          <div className="border rounded-none overflow-hidden">
             <ResponsiveTable>
               <Table>
                 <TableHeader>
@@ -1217,7 +1217,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             <div>
               <p className="text-muted-foreground">Status</p>
               <span
-                className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
+                className="inline-flex items-center gap-1.5 rounded-none border px-2 py-0.5 text-xs font-medium"
                 style={{
                   background: CHAIN_BADGES[detailFile.chain_status].bg,
                   color: CHAIN_BADGES[detailFile.chain_status].color,
@@ -1347,7 +1347,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
               <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading text…
             </div>
           ) : (
-            <pre className="max-h-[70vh] overflow-auto rounded-lg bg-muted p-4 text-xs font-mono whitespace-pre-wrap">
+            <pre className="max-h-[70vh] overflow-auto rounded-none bg-muted p-4 text-xs font-mono whitespace-pre-wrap">
               {previewText ?? "No content."}
             </pre>
           )
@@ -1355,13 +1355,13 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           <img
             src={previewUrl}
             alt={getFileName(previewFile.storage_path)}
-            className="max-h-[70vh] w-full object-contain rounded-lg border"
+            className="max-h-[70vh] w-full object-contain rounded-none border"
           />
         ) : (
           <iframe
             src={previewUrl}
             title={getFileName(previewFile.storage_path)}
-            className="w-full h-[70vh] rounded-lg border"
+            className="w-full h-[70vh] rounded-none border"
           />
         )}
       </DialogTemplate>
@@ -1562,7 +1562,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                 {attachmentVersions.map((version, idx) => (
                   <div
                     key={version.id}
-                    className="flex items-center justify-between rounded-lg border p-3 gap-3"
+                    className="flex items-center justify-between rounded-none border p-3 gap-3"
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Version {attachmentVersions.length - idx}</p>
@@ -1603,9 +1603,9 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             const fileId = tagMenuFileId!;
             const isAttached = fileTagMap[fileId]?.some((t) => t.id === tag.id) ?? false;
             return (
-              <div key={tag.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+              <div key={tag.id} className="flex items-center justify-between rounded-none border px-3 py-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="h-2 w-2 rounded-full" style={{ background: tag.color ?? "currentColor" }} />
+                  <span className="h-2 w-2 rounded-none" style={{ background: tag.color ?? "currentColor" }} />
                   {tag.name}
                 </div>
                 <Switch checked={isAttached} onCheckedChange={() => void handleToggleTag(fileId, tag.id)} />

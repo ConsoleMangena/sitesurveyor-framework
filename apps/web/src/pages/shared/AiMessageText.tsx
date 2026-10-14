@@ -81,18 +81,18 @@ export const AiMessageText = memo(function AiMessageText({ text }: { text: strin
                 </code>
               );
             return (
-              <code className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[12px] text-foreground">
+              <code className="rounded-none bg-muted px-1.5 py-0.5 font-mono text-[12px] text-foreground">
                 {children}
               </code>
             );
           },
           pre: ({ children }) => (
-            <pre className="my-2 overflow-x-auto rounded-md border border-border/60 bg-muted/50 p-3 text-xs leading-relaxed">
+            <pre className="my-2 overflow-x-auto rounded-none border border-border/60 bg-muted/50 p-3 text-xs leading-relaxed">
               {children}
             </pre>
           ),
           table: ({ children }) => (
-            <div className="my-2 overflow-x-auto rounded-md border border-border/60">
+            <div className="my-2 overflow-x-auto rounded-none border border-border/60">
               <table className="w-full border-collapse text-[13px]">
                 {children}
               </table>

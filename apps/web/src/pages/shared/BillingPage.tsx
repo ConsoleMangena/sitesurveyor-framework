@@ -427,7 +427,7 @@ export default function BillingPage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <Banknote size={15} />
                     </div>
                     <div>
@@ -519,7 +519,7 @@ export default function BillingPage({
                 <Card>
                   <CardHeader>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                         <Wallet size={15} />
                       </div>
                       <div>
@@ -654,7 +654,7 @@ export default function BillingPage({
       />
 
       {notice && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {notice}
         </div>
       )}
@@ -744,7 +744,7 @@ export default function BillingPage({
                           <div className="flex items-center gap-3">
                             <div
                               className={cn(
-                                "h-10 w-10 rounded-lg flex items-center justify-center text-sm font-semibold",
+                                "h-10 w-10 rounded-none flex items-center justify-center text-sm font-semibold",
                                 method.type === "Card"
                                   ? "bg-blue-100 text-blue-700"
                                   : method.type === "Crypto Wallet"
@@ -811,7 +811,7 @@ export default function BillingPage({
 
             <TabsContent value="history" className="mt-0 space-y-4">
               {historyError && (
-                <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   {historyError}
                 </div>
               )}
@@ -850,7 +850,7 @@ export default function BillingPage({
                     : "No records match your search."}
                 </div>
               ) : (
-                <div className="divide-y border rounded-md">
+                <div className="divide-y border rounded-none">
                   {filteredHistory.map((entry) => (
                     <div
                       key={entry.id}

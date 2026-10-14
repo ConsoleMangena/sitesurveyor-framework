@@ -420,14 +420,14 @@ export default function AssistantPage({
                   <button
                     type="submit"
                     aria-label="Save name"
-                    className="shrink-0 rounded-md p-1 text-emerald-600 hover:bg-muted"
+                    className="shrink-0 rounded-none p-1 text-emerald-600 hover:bg-muted"
                   >
                     <Check className="size-3.5" />
                   </button>
                   <button
                     type="button"
                     aria-label="Cancel"
-                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+                    className="shrink-0 rounded-none p-1 text-muted-foreground hover:bg-muted"
                     onClick={() => setRenamingId(null)}
                   >
                     <X className="size-3.5" />
@@ -447,7 +447,7 @@ export default function AssistantPage({
                     <button
                       type="button"
                       aria-label={`Rename "${conversation.title}"`}
-                      className="rounded-md p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+                      className="rounded-none p-1 text-muted-foreground hover:bg-background hover:text-foreground"
                       onClick={() => startRename(conversation)}
                     >
                       <Pencil className="size-3.5" />
@@ -455,7 +455,7 @@ export default function AssistantPage({
                     <button
                       type="button"
                       aria-label={`Delete "${conversation.title}"`}
-                      className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      className="rounded-none p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       onClick={() => void deleteConversation(conversation)}
                     >
                       <Trash2 className="size-3.5" />
@@ -494,7 +494,7 @@ export default function AssistantPage({
             <button
               type="button"
               aria-label="Close chat history"
-              className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              className="rounded-none p-1 text-muted-foreground hover:bg-muted"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="size-4" />
@@ -572,7 +572,7 @@ export default function AssistantPage({
 
         <div
           ref={scrollRef}
-          className={`min-h-0 flex-1 overflow-y-auto rounded-lg ${
+          className={`min-h-0 flex-1 overflow-y-auto rounded-none ${
             embedded
               ? "border border-[var(--cad-border)] bg-[var(--cad-bg-2)]"
               : "border border-border/60 bg-card"
@@ -584,7 +584,7 @@ export default function AssistantPage({
             <div className={`flex h-full flex-col items-center justify-center gap-3 py-8 text-center ${embedded ? "px-1" : ""}`}>
               <div
                 aria-hidden
-                className="flex size-11 shrink-0 items-center justify-center rounded-full"
+                className="flex size-11 shrink-0 items-center justify-center rounded-none"
                 style={{
                   background: "var(--cad-accent-bg)",
                   color: "var(--cad-accent)",
@@ -612,7 +612,7 @@ export default function AssistantPage({
                     key={suggestion}
                     type="button"
                     onClick={() => setDraft(suggestion)}
-                    className={`rounded-md border text-left transition-colors hover:bg-[var(--cad-accent-bg)] hover:text-[var(--cad-text-hi)] ${
+                    className={`rounded-none border text-left transition-colors hover:bg-[var(--cad-accent-bg)] hover:text-[var(--cad-text-hi)] ${
                       embedded
                         ? "border-[var(--cad-border)] bg-[var(--cad-bg)] px-2.5 py-2 text-[11px] text-[var(--cad-text-dim)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cad-accent)]/40"
                         : "border-border/60 bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -698,7 +698,7 @@ export default function AssistantPage({
                       {message.role === "assistant" ? (
                         <div
                           aria-hidden
-                          className={`mt-1 flex shrink-0 items-center justify-center rounded-full border border-border/60 shadow-sm ${
+                          className={`mt-1 flex shrink-0 items-center justify-center rounded-none border border-border/60 shadow-sm ${
                             embedded ? "size-6" : "size-8"
                           }`}
                           style={{
@@ -714,7 +714,7 @@ export default function AssistantPage({
                       ) : (
                         <div
                           aria-hidden
-                          className={`mt-1 flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-primary/10 text-primary shadow-sm ${
+                          className={`mt-1 flex shrink-0 items-center justify-center rounded-none border border-border/60 bg-primary/10 text-primary shadow-sm ${
                             embedded ? "size-6" : "size-8"
                           }`}
                         >
@@ -788,7 +788,7 @@ export default function AssistantPage({
                   {
                     <div
                       aria-hidden
-                      className={`mt-1 flex shrink-0 items-center justify-center rounded-full border border-border/60 shadow-sm ${
+                      className={`mt-1 flex shrink-0 items-center justify-center rounded-none border border-border/60 shadow-sm ${
                         embedded ? "size-6" : "size-8"
                       }`}
                       style={{
@@ -806,16 +806,16 @@ export default function AssistantPage({
                       {activityLabel(activity)}
                     </div>
                     <div className="space-y-1.5 pt-0.5" aria-hidden>
-                      <div className="h-3 w-[82%] animate-pulse rounded-sm bg-muted-foreground/15" />
-                      <div className="h-3 w-[64%] animate-pulse rounded-sm bg-muted-foreground/15 [animation-delay:150ms]" />
-                      <div className="h-3 w-[42%] animate-pulse rounded-sm bg-muted-foreground/15 [animation-delay:300ms]" />
+                      <div className="h-3 w-[82%] animate-pulse rounded-none bg-muted-foreground/15" />
+                      <div className="h-3 w-[64%] animate-pulse rounded-none bg-muted-foreground/15 [animation-delay:150ms]" />
+                      <div className="h-3 w-[42%] animate-pulse rounded-none bg-muted-foreground/15 [animation-delay:300ms]" />
                     </div>
                   </div>
                 </div>
               )}
               {streaming && hasLiveText && activity && (
                 <div className="flex justify-start">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--cad-border)] bg-[var(--cad-bg)] px-2.5 py-1 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--cad-border)] bg-[var(--cad-bg)] px-2.5 py-1 text-[11px] text-muted-foreground">
                     <Loader2 className="size-3 animate-spin" />
                     {activityLabel(activity)}
                   </span>
@@ -845,7 +845,7 @@ export default function AssistantPage({
                   <SelectItem key={m.id} value={m.id} className="text-xs">
                     {m.label}
                     {m.free && (
-                      <span className="ml-1.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="ml-1.5 rounded-none bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                         free
                       </span>
                     )}

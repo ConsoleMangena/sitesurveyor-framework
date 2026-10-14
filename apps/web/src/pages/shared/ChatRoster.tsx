@@ -81,7 +81,7 @@ export function ChatRoster({
       <div className="flex items-center justify-between px-3 pt-3 pb-2">
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
           <span>Inbox</span>
-          <span className="inline-flex items-center justify-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
+          <span className="inline-flex items-center justify-center rounded-none bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
             {members.length}
           </span>
         </div>

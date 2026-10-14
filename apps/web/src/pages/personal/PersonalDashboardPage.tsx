@@ -319,7 +319,7 @@ export default function PersonalDashboardPage({
             <div className="flex flex-col gap-3">
               {taskItems.map((task) => (
                 <div key={task} className="flex items-start gap-3">
-                  <span className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
+                  <span className="mt-1.5 h-2 w-2 rounded-none bg-primary shrink-0" />
                   <span className="text-sm text-foreground">{task}</span>
                 </div>
               ))}

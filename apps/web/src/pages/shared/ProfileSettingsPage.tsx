@@ -319,10 +319,10 @@ export default function ProfileSettingsPage() {
               <img
                 src={avatarUrl}
                 alt="Profile photo"
-                className="h-20 w-20 rounded-full object-cover ring-4 ring-primary/15 shadow-sm"
+                className="h-20 w-20 rounded-none object-cover ring-4 ring-primary/15 shadow-sm"
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-indigo-500 text-2xl font-bold text-primary-foreground ring-4 ring-primary/15">
+              <div className="flex h-20 w-20 items-center justify-center rounded-none bg-gradient-to-br from-primary to-indigo-500 text-2xl font-bold text-primary-foreground ring-4 ring-primary/15">
                 {initials}
               </div>
             )}
@@ -534,7 +534,7 @@ export default function ProfileSettingsPage() {
                   {specializationTags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                      className="rounded-none bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                     >
                       {tag}
                     </span>
@@ -568,10 +568,10 @@ export default function ProfileSettingsPage() {
               <img
                 src={avatarUrl}
                 alt=""
-                className="h-16 w-16 rounded-full object-cover ring-4 ring-primary/15"
+                className="h-16 w-16 rounded-none object-cover ring-4 ring-primary/15"
               />
             ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-indigo-500 text-xl font-bold text-primary-foreground ring-4 ring-primary/15">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-none bg-gradient-to-br from-primary to-indigo-500 text-xl font-bold text-primary-foreground ring-4 ring-primary/15">
                 {initials}
               </div>
             )}
@@ -627,7 +627,7 @@ export default function ProfileSettingsPage() {
                   {specializationTags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                      className="rounded-none bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                     >
                       {tag}
                     </span>

@@ -298,7 +298,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <CalendarDays size={15} />
                     </div>
                     <div>
@@ -375,7 +375,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       {activeTab === "time" ? (
                         <Clock size={15} />
                       ) : (
@@ -534,7 +534,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <FileText size={15} />
                     </div>
                     <div>
@@ -764,7 +764,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               />
             </div>
             <select
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-[color,box-shadow]
+              className="h-9 rounded-none border border-input bg-background px-3 py-1 text-sm shadow-sm transition-[color,box-shadow]
               focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1 sm:w-[220px]"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}

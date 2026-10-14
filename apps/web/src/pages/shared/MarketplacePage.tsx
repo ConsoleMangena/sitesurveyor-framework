@@ -621,7 +621,7 @@ export default function MarketplacePage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ClipboardList size={15} />
                     </div>
                     <div>
@@ -684,7 +684,7 @@ export default function MarketplacePage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <DollarSign size={15} />
                     </div>
                     <div>
@@ -737,7 +737,7 @@ export default function MarketplacePage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <MapPin size={15} />
                     </div>
                     <div>
@@ -940,7 +940,7 @@ export default function MarketplacePage({
                         className="pl-9"
                       />
                     </div>
-                    <div className="inline-flex items-center gap-0.5 rounded-lg border bg-background p-0.5 shrink-0">
+                    <div className="inline-flex items-center gap-0.5 rounded-none border bg-background p-0.5 shrink-0">
                       <Button
                         type="button"
                         variant={layoutMode === "tiles" ? "default" : "ghost"}
@@ -1131,7 +1131,7 @@ export default function MarketplacePage({
                 <div className="min-w-0 space-y-4">
 
                 {showRequestForm && (
-                  <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
+                  <div className="space-y-3 rounded-none border bg-muted/40 p-4">
                     <h4 className="text-sm font-semibold">
                       {selectedListing.listing_type === "hire" ? "Request to Hire" : "Request to Purchase"}
                     </h4>
@@ -1188,7 +1188,7 @@ export default function MarketplacePage({
                 )}
 
                 {showPayment && selectedListing && (
-                  <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
+                  <div className="space-y-3 rounded-none border bg-muted/40 p-4">
                     <h4 className="text-sm font-semibold">Pay with Solana</h4>
                     <div className="space-y-1">
                       <Label className="text-xs">Recipient wallet</Label>
@@ -1336,10 +1336,10 @@ export default function MarketplacePage({
                     >
                       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-primary/10 text-xs font-semibold text-primary">
                             {(effectivePage - 1) * pageSize + index + 1}
                           </span>
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted text-primary">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-none bg-muted text-primary">
                             <ListingIcon type={l.type} />
                           </div>
                           <div className="min-w-0">
@@ -1405,7 +1405,7 @@ export default function MarketplacePage({
                       >
                         <CardContent className="flex flex-col gap-3 p-6">
                           <div className="flex items-start justify-between gap-3">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-primary/10 text-xs font-semibold text-primary">
                               {itemNumber}
                             </span>
                             <div className="flex flex-wrap justify-end gap-1">
@@ -1419,7 +1419,7 @@ export default function MarketplacePage({
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-2 py-3">
-                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-muted">
+                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-none bg-muted">
                               {l.assets?.photos?.[0] ? (
                                 <img
                                   src={assetMediaUrl(l.assets.photos[0]) ?? undefined}
@@ -1471,10 +1471,10 @@ export default function MarketplacePage({
                         <CardContent className="flex flex-col gap-3 p-5">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-2">
-                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-primary/10 text-xs font-semibold text-primary">
                                 {itemNumber}
                               </span>
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-none bg-muted">
                                 {l.assets?.photos?.[0] ? (
                                   <img
                                     src={assetMediaUrl(l.assets.photos[0]) ?? undefined}

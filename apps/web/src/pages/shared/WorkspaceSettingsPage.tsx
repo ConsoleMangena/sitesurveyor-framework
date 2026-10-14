@@ -45,7 +45,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/10">
                 <Server size={20} className="text-primary" />
               </div>
               <div>
@@ -63,7 +63,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
                 <span className="ml-2 text-muted-foreground">Loading database stats...</span>
               </div>
             ) : error ? (
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+              <div className="flex items-center gap-3 p-4 rounded-none bg-destructive/10 border border-destructive/20">
                 <HardDrive size={16} className="text-destructive" />
                 <div>
                   <p className="text-sm font-medium">Unable to load database stats</p>
@@ -97,7 +97,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/10">
                 <Bell size={20} className="text-primary" />
               </div>
               <div>
@@ -143,7 +143,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/10">
                 <Database size={20} className="text-primary" />
               </div>
               <div>
@@ -172,7 +172,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
               <span className="ml-2 text-muted-foreground">Loading storage...</span>
             </div>
           ) : storageError ? (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+            <div className="flex items-center gap-3 p-4 rounded-none bg-destructive/10 border border-destructive/20">
               <HardDrive size={16} className="text-destructive" />
               <div>
                 <p className="text-sm font-medium">Unable to load storage info</p>
@@ -189,7 +189,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
                     {percent}%
                   </span>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-none overflow-hidden">
                   <div
                     className={`h-full transition-all ${
                       isAtLimit ? "bg-destructive" : isNearLimit ? "bg-amber-500" : "bg-primary"
@@ -203,7 +203,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
               </div>
 
               {isNearLimit && (
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-start gap-3 p-4 rounded-none bg-amber-500/10 border border-amber-500/20">
                   <HardDrive size={16} className="text-amber-500 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium">
@@ -266,7 +266,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/10">
               <Users size={20} className="text-primary" />
             </div>
             <div>
@@ -300,7 +300,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/10">
               <Bell size={20} className="text-primary" />
             </div>
             <div>

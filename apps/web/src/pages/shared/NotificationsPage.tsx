@@ -187,7 +187,7 @@ export default function NotificationsPage({
                     >
                       <span
                         className={cn(
-                          "mt-2 h-2 w-2 shrink-0 rounded-full",
+                          "mt-2 h-2 w-2 shrink-0 rounded-none",
                           notification.status === "unread"
                             ? "bg-primary"
                             : "bg-muted-foreground/30",

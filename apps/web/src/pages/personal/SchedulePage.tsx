@@ -433,7 +433,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <MapPin size={15} />
                     </div>
                     <div>
@@ -476,7 +476,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <Clock size={15} />
                     </div>
                     <div>
@@ -546,7 +546,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <FileText size={15} />
                     </div>
                     <div>
@@ -639,7 +639,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -672,7 +672,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 rounded-md border">
+        <div className="inline-flex items-center gap-1 rounded-none border">
           <Button variant="ghost" size="icon" onClick={() => setWeekOffset((v) => v - 1)} disabled={viewMode !== "week"}>
             <ChevronLeft size={18} />
           </Button>
@@ -765,7 +765,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
                               setMobileDetailOpen(true);
                             }}
                             className={cn(
-                              "w-full text-left rounded-md border px-2 py-2 md:py-1.5 text-xs transition-all hover:shadow-sm",
+                              "w-full text-left rounded-none border px-2 py-2 md:py-1.5 text-xs transition-all hover:shadow-sm",
                               typeBgClass[ev.event_type] ?? typeBgClass.other,
                               selectedEventId === ev.id && "ring-2 ring-primary ring-offset-1",
                             )}
@@ -846,7 +846,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
                         }}
                         className="flex items-start gap-3 rounded-none border border-border/60 bg-card p-2.5 text-left transition-colors hover:bg-muted/60"
                       >
-                        <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-md bg-muted py-1.5">
+                        <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-none bg-muted py-1.5">
                           <span className="text-[10px] font-semibold uppercase text-muted-foreground">
                             {new Date(ev.event_date).toLocaleDateString("en-US", { month: "short" })}
                           </span>
@@ -938,7 +938,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
                   >
                     <div
                       className={cn(
-                        "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full",
+                        "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-none",
                         isTodayDate && "bg-primary text-primary-foreground",
                       )}
                     >
@@ -974,7 +974,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
                             key={ev.id}
                             aria-label={`${ev.start_time ?? ""} ${ev.title}`}
                             className={cn(
-                              "size-2.5 shrink-0 rounded-full border border-white/60",
+                              "size-2.5 shrink-0 rounded-none border border-white/60",
                               typeDotClass[ev.event_type] ?? typeDotClass.other,
                             )}
                             onClick={(e) => {

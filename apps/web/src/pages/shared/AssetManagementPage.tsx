@@ -522,7 +522,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ClipboardList size={15} />
                     </div>
                     <div>
@@ -612,7 +612,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <Wrench size={15} />
                     </div>
                     <div>
@@ -676,7 +676,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <DollarSign size={15} />
                     </div>
                     <div>
@@ -803,7 +803,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ClipboardList size={15} />
                     </div>
                     <div>
@@ -888,7 +888,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <Wrench size={15} />
                     </div>
                     <div>
@@ -951,7 +951,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <DollarSign size={15} />
                     </div>
                     <div>
@@ -1014,7 +1014,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <LayoutGrid size={15} />
                     </div>
                     <div className="flex-1">
@@ -1242,7 +1242,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -1360,12 +1360,12 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                   >
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-start justify-between">
-                        <div className="flex h-9 w-9 rounded-md border p-1">
+                        <div className="flex h-9 w-9 rounded-none border p-1">
                           {inst.photos?.[0] ? (
                             <img
                               src={assetMediaUrl(inst.photos[0]) ?? undefined}
                               alt=""
-                              className="h-full w-full rounded-sm object-cover"
+                              className="h-full w-full rounded-none object-cover"
                             />
                           ) : (
                             <span className={cn("flex h-full w-full items-center justify-center text-muted-foreground", typeBgClass[inst.type] ?? typeBgClass.Other)}>
@@ -1438,9 +1438,9 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                         <Badge className={cn("border", calBgClass(days))}>{calLabel(days)}</Badge>
                       </div>
                       <div className="space-y-1">
-                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-2 w-full rounded-none bg-muted overflow-hidden">
                           <div
-                            className={cn("h-full rounded-full", days < 0 ? "bg-destructive" : days <= 30 ? "bg-amber-500" : days <= 60 ? "bg-yellow-500" : "bg-emerald-500")}
+                            className={cn("h-full rounded-none", days < 0 ? "bg-destructive" : days <= 30 ? "bg-amber-500" : days <= 60 ? "bg-yellow-500" : "bg-emerald-500")}
                             style={{ width: `${Math.max(0, Math.min(100, ((180 - days) / 180) * 100))}%` }}
                           />
                         </div>
@@ -1458,7 +1458,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               })}
           </div>
           {filtered.filter((i) => i.nextCalibration).length === 0 && (
-            <div className="rounded-xl border border-dashed p-12 text-center text-muted-foreground">
+            <div className="rounded-none border border-dashed p-12 text-center text-muted-foreground">
               <Gauge size={40} className="mx-auto" />
               <h3 className="mt-3 text-lg font-semibold text-foreground">No calibration records</h3>
               <p>Add calibration details to instruments to track due dates.</p>
@@ -1530,7 +1530,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                   <div className="relative space-y-3 pl-4 border-l-2 border-muted">
                     {inst.maintenanceLog.map((log, i) => (
                       <div key={i} className="relative">
-                        <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground" />
+                        <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-none border-2 border-background bg-muted-foreground" />
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm">
                           <span className="text-muted-foreground">{log.date}</span>
                           <span>{log.description}</span>
@@ -1544,7 +1544,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               </Card>
             ))}
           {filtered.filter((i) => i.maintenanceLog.length > 0).length === 0 && (
-            <div className="rounded-xl border border-dashed p-12 text-center text-muted-foreground">
+            <div className="rounded-none border border-dashed p-12 text-center text-muted-foreground">
               <Wrench size={40} className="mx-auto" />
               <h3 className="mt-3 text-lg font-semibold text-foreground">No maintenance records</h3>
             </div>
@@ -1628,7 +1628,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                   <div className="relative space-y-3 pl-4 border-l-2 border-muted">
                     {selectedAsset.maintenanceLog.map((log, i) => (
                       <div key={i} className="relative text-sm">
-                        <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground" />
+                        <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-none border-2 border-background bg-muted-foreground" />
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                           <span className="text-muted-foreground">{log.date}</span>
                           <span>{log.description}</span>

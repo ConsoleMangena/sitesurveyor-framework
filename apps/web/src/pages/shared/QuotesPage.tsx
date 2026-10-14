@@ -162,7 +162,7 @@ function QuoteDetail({
           <Card className="shadow-none border-border/60">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                   <ClipboardList size={15} />
                 </div>
                 <div>
@@ -290,7 +290,7 @@ function QuoteDetail({
           <Card className="shadow-none border-border/60">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                   <ListChecks size={15} />
                 </div>
                 <div>
@@ -329,7 +329,7 @@ function QuoteDetail({
           <Card className="shadow-none border-border/60">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                   <ScrollText size={15} />
                 </div>
                 <div>
@@ -849,7 +849,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ClipboardList size={15} />
                     </div>
                     <div>
@@ -922,7 +922,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ListChecks size={15} />
                     </div>
                     <div>
@@ -960,7 +960,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
                       <ScrollText size={15} />
                     </div>
                     <div>
@@ -1183,7 +1183,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
       />
 
       {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}

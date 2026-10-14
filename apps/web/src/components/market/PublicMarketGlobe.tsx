@@ -10,13 +10,23 @@ import {
   type MarketDotKind,
 } from "./marketDots";
 
+import CountryBorders from "./CountryBorders.tsx";
 import {
   selfContainedGlobeLightStyle,
   selfContainedGlobeDarkStyle,
 } from "./worldGlobeData.ts";
 
-// Fast fallback: if Carto tiles don't load in 4s, seamlessly switch to self-contained globe
-const LOAD_FAILURE_TIMEOUT_MS = 4_000;
+/** Shared surface for the HUD readouts floating over the globe. */
+const GLASS_PILL =
+  "rounded-none border border-border/60 bg-background/85 shadow-sm backdrop-blur-sm";
+
+// Safety net: if the Carto basemap still hasn't rendered after this long, fall
+// back to the tile-free self-contained globe. Genuine failures (blocked or
+// unreachable tiles) are caught sooner by the map "error" handler below; this
+// only covers a silent stall. It must be generous — the globe can take several
+// seconds to compile its shaders and fetch the first vector tiles, and falling
+// back early leaves the globe on the borderless canvas.
+const LOAD_FAILURE_TIMEOUT_MS = 20_000;
 
 interface PublicMarketGlobeProps {
   /** null while the parent is fetching. Already filtered by scope/location. */
@@ -93,9 +103,13 @@ function MapPins({
         event.error as unknown as { status?: number } | undefined
       )?.status;
       const message = String(event.error?.message ?? "");
-      // Only failover if style itself failed or network cannot connect to style
+      // Failover on any pre-load network/style error. A blocked or unreachable
+      // basemap surfaces as a fetch failure ("Failed to fetch"/"Load failed"),
+      // not a "style" message, so those must match too.
       if (
-        /style.*failed|failed to fetch style|error loading style/i.test(message) ||
+        /failed to fetch|load failed|network ?error|error loading style|style.*failed/i.test(
+          message,
+        ) ||
         (status === 404 && /style\.json/i.test(message))
       ) {
         onBasemapFailure();
@@ -244,7 +258,7 @@ function CoordReadout() {
   }, [map]);
   return (
     <div className="pointer-events-none absolute right-4 top-4 hidden min-[480px]:block sm:right-6 sm:top-6">
-      <p className="flex items-center gap-1.5 rounded-none border border-border/60 bg-background/85 px-2.5 py-1.5 font-mono text-xs tabular-nums text-muted-foreground shadow-sm backdrop-blur-sm">
+      <p className={`flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-xs tabular-nums text-muted-foreground ${GLASS_PILL}`}>
         <Crosshair className="size-3" aria-hidden="true" />
         <span ref={coordRef}>——.——° ———.——°</span>
       </p>
@@ -321,6 +335,7 @@ export default function PublicMarketGlobe({
           zoom={1.4}
           className="absolute inset-0"
         >
+          <CountryBorders />
           <MapPins
             dots={dots}
             onSelect={onSelect}
@@ -331,7 +346,7 @@ export default function PublicMarketGlobe({
           {/* Telemetry pill */}
           <div className="pointer-events-none absolute left-3 top-3 max-w-[calc(100%-1.5rem)] min-[480px]:max-w-[calc(100%-5rem)] sm:left-6 sm:top-6">
             <div
-              className="rounded-none border border-border/60 bg-background/85 px-3 py-1.5 shadow-sm backdrop-blur-sm"
+              className={`px-3 py-1.5 ${GLASS_PILL}`}
               role="status"
               aria-live="polite"
             >
@@ -379,7 +394,7 @@ export default function PublicMarketGlobe({
               (kind) => (
                 <span
                   key={kind}
-                  className="flex items-center gap-1.5 rounded-none border border-border/60 bg-background/85 px-2.5 py-1 text-xs capitalize shadow-sm backdrop-blur-sm"
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs capitalize ${GLASS_PILL}`}
                 >
                   <span
                     className="size-2 shrink-0 rounded-full"
@@ -395,7 +410,7 @@ export default function PublicMarketGlobe({
         </MapcnMap>
 
         {failed ? (
-          <div className="pointer-events-none absolute top-3 right-3 z-20 sm:top-6 sm:right-6">
+          <div className="pointer-events-none absolute top-3 left-1/2 z-20 -translate-x-1/2 sm:top-6">
             <div className="pointer-events-auto flex items-center gap-2 rounded-none border border-border/60 bg-background/90 px-3 py-1.5 text-xs shadow-sm backdrop-blur-sm">
               <Globe2 className="size-3.5 text-amber-500" aria-hidden="true" />
               <span className="text-muted-foreground">Cached market feed</span>

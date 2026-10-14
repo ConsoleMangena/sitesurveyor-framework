@@ -24,7 +24,6 @@ import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowDownWideNarrow,
   BadgeCheck,
   Briefcase,
   Building2,
@@ -42,6 +41,7 @@ import {
   RefreshCw,
   Search,
   UserRound,
+  X,
 } from "lucide-react";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
@@ -69,6 +69,13 @@ import {
 } from "../../components/market/marketDots";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.tsx";
 
 const PublicMarketGlobe = lazy(
   () => import("../../components/market/PublicMarketGlobe.tsx"),
@@ -512,7 +519,11 @@ export default function PublicMarketPage() {
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <span className="flex items-baseline gap-2">
-            <span className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            <Link
+              to="/"
+              aria-label="SiteSurveyor home"
+              className="flex items-center gap-2 text-base font-semibold tracking-tight transition-opacity hover:opacity-80"
+            >
               <img
                 src="/logo.svg"
                 alt=""
@@ -520,7 +531,7 @@ export default function PublicMarketPage() {
                 aria-hidden="true"
               />
               SiteSurveyor
-            </span>
+            </Link>
             <span className="text-sm text-muted-foreground">/ Market</span>
           </span>
           {user ? (
@@ -622,30 +633,31 @@ export default function PublicMarketPage() {
                   Instruments, professionals, jobs, firms, and training —
                   published live by SiteSurveyor workspaces worldwide.
                 </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-5">
+                  <Button
+                    size="lg"
+                    onClick={scrollToRegistry}
+                    className="pointer-events-auto bg-white text-foreground shadow-sm hover:bg-white/90"
+                  >
+                    Browse the registry
+                    <ChevronDown className="size-4" aria-hidden="true" />
+                  </Button>
+                </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={scrollToRegistry}
-              aria-label="Scroll to the registry"
-              className="absolute bottom-8 right-4 hidden flex-col items-center gap-1 text-white/85 transition-colors hover:text-white md:flex lg:hidden"
-            >
-              <span className="text-[11px] font-medium tracking-widest drop-shadow-sm">
-                REGISTRY
-              </span>
-              <ChevronDown className="size-4" aria-hidden="true" />
-            </button>
           </PublicMarketGlobe>
         </Suspense>
 
-        {!failed && !loading ? (
+        {failed ? null : loading ? (
+          <MarketPulseStripSkeleton />
+        ) : (
           <MarketPulseStrip data={data} addedThisWeek={addedThisWeek} />
-        ) : null}
+        )}
 
         <section ref={registryRef} className="mx-auto w-full max-w-6xl scroll-mt-16 space-y-12 px-4 py-12 sm:px-6 sm:py-16">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div role="group" aria-label="Filter by kind" className="flex w-full overflow-x-auto pb-1 sm:pb-0 gap-1 rounded-lg bg-muted p-1 sm:w-fit sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div role="group" aria-label="Filter by kind" className="flex w-full flex-wrap gap-1 rounded-none bg-muted p-1 sm:w-fit">
                 {(
                   [
                     ["all", "Everything", true],
@@ -661,7 +673,7 @@ export default function PublicMarketPage() {
                     type="button"
                     aria-pressed={scope === value}
                     onClick={() => setScope(value)}
-                    className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors ${
+                    className={`shrink-0 whitespace-nowrap rounded-none px-3 py-1.5 text-sm transition-colors ${
                       scope === value
                         ? "bg-background font-medium text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
@@ -694,31 +706,38 @@ export default function PublicMarketPage() {
                       setSearch(event.target.value);
                       resetRegistryPages();
                     }}
-                    className="pl-9"
+                    className="pl-9 pr-9"
                   />
+                  {search ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch("");
+                        resetRegistryPages();
+                      }}
+                      aria-label="Clear search"
+                      className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="size-3.5" aria-hidden="true" />
+                    </button>
+                  ) : null}
                 </div>
-                <label className="relative w-full sm:w-auto shrink-0">
-                  <span className="sr-only">Sort results</span>
-                  <ArrowDownWideNarrow
-                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <select
-                    value={sort}
-                    onChange={(event) =>
-                      setSort(event.target.value as SortKey)
-                    }
-                    className="w-full sm:w-auto h-9 appearance-none rounded-md border border-input bg-transparent py-1 pl-9 pr-8 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                <Select
+                  value={sort}
+                  onValueChange={(value) => setSort(value as SortKey)}
+                >
+                  <SelectTrigger
+                    aria-label="Sort results"
+                    className="w-full shrink-0 sm:w-[190px]"
                   >
-                    <option value="newest">Newest first</option>
-                    <option value="price-asc">Price: low to high</option>
-                    <option value="price-desc">Price: high to low</option>
-                  </select>
-                  <ChevronDown
-                    className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                </label>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="price-asc">Price: low to high</SelectItem>
+                    <SelectItem value="price-desc">Price: high to low</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -771,7 +790,7 @@ export default function PublicMarketPage() {
                           setListingCategory(value);
                           setListingPage(1);
                         }}
-                        className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                        className={`rounded-none px-2.5 py-1 text-xs transition-colors ${
                           listingCategory === value
                             ? "bg-primary font-medium text-primary-foreground"
                             : "border border-border bg-background text-muted-foreground hover:text-foreground"
@@ -1017,9 +1036,9 @@ function MarketPulseStrip({
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-none border border-border bg-card px-3.5 py-3 shadow-sm"
+            className="rounded-none border border-border bg-card px-4 py-3.5"
           >
-            <p className="flex items-center gap-1.5 font-mono text-xl font-semibold tabular-nums">
+            <p className="flex items-center gap-1.5 font-mono text-2xl font-semibold leading-none tracking-tight tabular-nums">
               {stat.color ? (
                 <span
                   className="size-2 shrink-0 rounded-full"
@@ -1029,12 +1048,34 @@ function MarketPulseStrip({
               ) : null}
               {stat.value}
             </p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            <p className="mt-1.5 truncate text-xs text-muted-foreground">
               {stat.label}
             </p>
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function MarketPulseStripSkeleton() {
+  return (
+    <section
+      aria-hidden="true"
+      className="mx-auto w-full max-w-6xl space-y-3 px-4 pt-10 sm:px-6"
+    >
+      <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
+        {Array.from({ length: 7 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-none border border-border bg-card px-4 py-3.5"
+          >
+            <div className="h-6 w-10 animate-pulse rounded bg-muted" />
+            <div className="mt-2 h-3 w-20 animate-pulse rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">Loading market pulse…</span>
     </section>
   );
 }
@@ -1054,7 +1095,7 @@ function RateBenchmarks({
       {benchmarks.map(({ type, median, count }) => (
         <span
           key={type}
-          className="rounded-full border border-amber-600/25 bg-amber-500/10 px-2.5 py-1 text-xs"
+          className="rounded-none border border-amber-600/25 bg-amber-500/10 px-2.5 py-1 text-xs"
         >
           <span className="font-medium">{type}</span>{" "}
           <span className="font-mono tabular-nums text-amber-800">
@@ -1071,7 +1112,7 @@ function RateBenchmarks({
 
 function NewBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+    <span className="inline-flex shrink-0 items-center rounded-none bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
       New
     </span>
   );
@@ -1112,7 +1153,7 @@ function LoadErrorPanel({
 function SkeletonPanel({ label }: { label: string }) {
   return (
     <div aria-hidden="true">
-      <div className="mb-3 h-4 w-32 animate-pulse rounded bg-muted" />
+      <div className="mb-4 h-5 w-36 animate-pulse rounded bg-muted" />
       <div className="overflow-hidden rounded-none border border-border">
         {[0, 1, 2].map((i) => (
           <div
