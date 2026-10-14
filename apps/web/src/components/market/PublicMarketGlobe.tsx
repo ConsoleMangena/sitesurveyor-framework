@@ -21,12 +21,9 @@ const GLASS_PILL =
   "rounded-none border border-border/60 bg-background/85 shadow-sm backdrop-blur-sm";
 
 // Safety net: if the Carto basemap still hasn't rendered after this long, fall
-// back to the tile-free self-contained globe. Genuine failures (blocked or
-// unreachable tiles) are caught sooner by the map "error" handler below; this
-// only covers a silent stall. It must be generous — the globe can take several
-// seconds to compile its shaders and fetch the first vector tiles, and falling
-// back early leaves the globe on the borderless canvas.
-const LOAD_FAILURE_TIMEOUT_MS = 20_000;
+// back to the tile-free self-contained globe immediately so the user isn't left
+// on an empty/pulsing canvas.
+const LOAD_FAILURE_TIMEOUT_MS = 4_000;
 
 interface PublicMarketGlobeProps {
   /** null while the parent is fetching. Already filtered by scope/location. */
@@ -97,27 +94,17 @@ function MapPins({
   // parent can fall back to the tile-free blank mode.
   useEffect(() => {
     if (!map) return;
-    const handleError = (event: maplibregl.ErrorEvent) => {
+    const handleError = () => {
       if (isLoaded) return;
-      const status = (
-        event.error as unknown as { status?: number } | undefined
-      )?.status;
-      const message = String(event.error?.message ?? "");
-      // Failover on any pre-load network/style error. A blocked or unreachable
-      // basemap surfaces as a fetch failure ("Failed to fetch"/"Load failed"),
-      // not a "style" message, so those must match too.
-      if (
-        /failed to fetch|load failed|network ?error|error loading style|style.*failed/i.test(
-          message,
-        ) ||
-        (status === 404 && /style\.json/i.test(message))
-      ) {
-        onBasemapFailure();
-      }
+      onBasemapFailure();
     };
     map.on("error", handleError);
     return () => {
-      map.off("error", handleError);
+      try {
+        map.off("error", handleError);
+      } catch {
+        // Safe guard against destroyed map
+      }
     };
     // isLoaded intentionally excluded: only pre-load errors matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -217,23 +204,31 @@ function MapPins({
 
     return () => {
       cancelAnimationFrame(entranceRaf);
-      map.off("click", CORE_LAYER_ID, handleClick);
-      map.off("mouseenter", CORE_LAYER_ID, handleEnter);
-      map.off("mouseleave", CORE_LAYER_ID, handleLeave);
-      if (map.getLayer(CORE_LAYER_ID)) map.removeLayer(CORE_LAYER_ID);
-      if (map.getLayer(HALO_LAYER_ID)) map.removeLayer(HALO_LAYER_ID);
-      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+      try {
+        map.off("click", CORE_LAYER_ID, handleClick);
+        map.off("mouseenter", CORE_LAYER_ID, handleEnter);
+        map.off("mouseleave", CORE_LAYER_ID, handleLeave);
+        if (map.getLayer(CORE_LAYER_ID)) map.removeLayer(CORE_LAYER_ID);
+        if (map.getLayer(HALO_LAYER_ID)) map.removeLayer(HALO_LAYER_ID);
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+      } catch {
+        // Safe guard against destroyed map or mid-transition unmount
+      }
     };
   }, [map, isLoaded, onReady]);
 
   // Keep the data fresh when the parent refetches.
   useEffect(() => {
     if (!map || !isLoaded) return;
-    const source = map.getSource(SOURCE_ID);
-    if (source && "setData" in source) {
-      (source as maplibregl.GeoJSONSource).setData(
-        toFeatureCollection(dots ?? []),
-      );
+    try {
+      const source = map.getSource(SOURCE_ID);
+      if (source && "setData" in source) {
+        (source as maplibregl.GeoJSONSource).setData(
+          toFeatureCollection(dots ?? []),
+        );
+      }
+    } catch {
+      // Safe guard against destroyed map
     }
   }, [map, isLoaded, dots]);
 
@@ -253,7 +248,11 @@ function CoordReadout() {
     };
     map.on("mousemove", handleMove);
     return () => {
-      map.off("mousemove", handleMove);
+      try {
+        map.off("mousemove", handleMove);
+      } catch {
+        // Safe guard against destroyed map
+      }
     };
   }, [map]);
   return (
