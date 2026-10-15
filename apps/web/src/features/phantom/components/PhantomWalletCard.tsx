@@ -46,7 +46,14 @@ export default function PhantomWalletCard() {
         </div>
       </CardHeader>
       <CardContent>
-        {!wallet.installed ? (
+        {!wallet.installed && wallet.isMobile ? (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-sm text-muted-foreground">Open this page in the Phantom app to connect your wallet on Android or iOS.</p>
+            <Button variant="outline" size="sm" className="gap-2" onClick={wallet.openMobile}>
+              <ExternalLink size={14} /> Open in Phantom
+            </Button>
+          </div>
+        ) : !wallet.installed ? (
           <div className="flex flex-col items-start gap-2">
             <p className="text-sm text-muted-foreground">
               Phantom wallet is not installed. Install the browser extension to

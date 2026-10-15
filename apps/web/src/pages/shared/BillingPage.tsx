@@ -646,6 +646,13 @@ export default function BillingPage({
         </div>
       )}
 
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Card className="border-emerald-500/20 bg-emerald-500/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Collected</p><p className="mt-1 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{formatCurrency(history.reduce((sum, entry) => sum + Number(entry.amount || 0), 0))}</p><p className="text-[11px] text-muted-foreground">recorded payments</p></CardContent></Card>
+        <Card className="border-amber-500/20 bg-amber-500/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Outstanding</p><p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(invoices.reduce((sum, invoice) => sum + (invoice.status === "paid" ? 0 : Number(invoice.total || 0)), 0))}</p><p className="text-[11px] text-muted-foreground">open invoices</p></CardContent></Card>
+        <Card className="border-primary/20 bg-primary/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Invoices</p><p className="mt-1 text-lg font-bold tabular-nums">{invoices.length}</p><p className="text-[11px] text-muted-foreground">in this workspace</p></CardContent></Card>
+        <Card className="border-violet-500/20 bg-violet-500/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Wallet</p><p className="mt-1 text-lg font-bold">{phantomWallet.connected ? "Connected" : "Ready"}</p><p className="text-[11px] text-muted-foreground">Phantom status</p></CardContent></Card>
+      </div>
+
       <PhantomWalletCard />
 
       <DashboardCard
