@@ -572,7 +572,7 @@ export default function AssistantPage({
 
         <div
           ref={scrollRef}
-          className={`min-h-0 flex-1 overflow-y-auto rounded-none ${
+          className={`min-h-0 flex-1 overflow-y-auto rounded-lg pb-[env(safe-area-inset-bottom,0px)] ${
             embedded
               ? "border border-[var(--cad-border)] bg-[var(--cad-bg-2)]"
               : "border border-border/60 bg-card"

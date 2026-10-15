@@ -50,7 +50,7 @@ export function PageForm({
 
       <div
         className={cn(
-          "flex-1 overflow-y-auto px-5 py-4",
+          "flex-1 overflow-y-auto px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]",
           contentClassName
         )}
       >
@@ -58,7 +58,7 @@ export function PageForm({
       </div>
 
       {footer && (
-        <footer className="flex flex-col-reverse gap-2 border-t px-5 py-4 sm:flex-row sm:justify-end">
+        <footer className="flex flex-col-reverse gap-2 border-t px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:justify-end">
           {footer}
         </footer>
       )}

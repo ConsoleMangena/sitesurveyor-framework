@@ -1088,7 +1088,7 @@
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 24px 28px 32px;
+    padding: 24px 28px max(48px, calc(32px + env(safe-area-inset-bottom, 0px)));
     box-sizing: border-box;
 }
 
@@ -2936,7 +2936,7 @@
     }
 
     .hub-body {
-        padding: 24px 16px;
+        padding: 24px 16px max(64px, calc(48px + env(safe-area-inset-bottom, 0px)));
         width: 100%;
     }
 
@@ -2947,7 +2947,7 @@
 
     @media (max-width: 480px) {
         .hub-body {
-            padding: 16px 8px;
+            padding: 16px 8px max(72px, calc(56px + env(safe-area-inset-bottom, 0px)));
         }
 
         .project-hub-body {

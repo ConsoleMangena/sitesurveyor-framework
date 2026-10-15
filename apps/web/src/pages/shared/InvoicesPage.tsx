@@ -1462,8 +1462,8 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
         </Select>
       </div>
 
-      <div className="h-[min(600px,calc(100vh-22rem))] overflow-hidden rounded-none border border-border/60 bg-card">
-        <div className="h-full overflow-y-auto">
+      <div className="min-h-[min(600px,calc(100dvh-22rem))] max-h-[min(600px,calc(100dvh-22rem))] overflow-y-auto rounded-lg border border-border/60 bg-card pb-[env(safe-area-inset-bottom,0px)]">
+        <div className="flex h-full flex-col overflow-y-auto">
           {sortedInvoices.map((inv) => {
             const sum = calcTotal(inv.items);
             return (

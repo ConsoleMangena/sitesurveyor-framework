@@ -171,7 +171,7 @@ export default function NotificationsPage({
               </div>
             </div>
           ) : (
-            <ScrollArea className="h-[min(600px,60vh)]">
+            <ScrollArea className="h-[min(600px,calc(100dvh-18rem))] pb-[env(safe-area-inset-bottom,0px)]">
               <div className="divide-y">
                 {filteredNotifications.map((notification) => {
                   const targetView = getNotificationView(notification);

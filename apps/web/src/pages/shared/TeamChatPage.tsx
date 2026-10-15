@@ -756,8 +756,8 @@ export default function TeamChatPage({
         </div>
       )}
 
-      <div className="relative min-h-[320px] flex-1 rounded-none border border-border/60 bg-card">
-        <div ref={rootRef} className="h-full overflow-y-auto">
+      <div className="relative min-h-[320px] flex-1 rounded-lg border border-border/60 bg-card pb-[env(safe-area-inset-bottom,0px)]">
+        <div ref={rootRef} className="h-full overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
           <div className="flex flex-col p-4 pb-2">
             {hasMore && (
               <Button
