@@ -58,7 +58,7 @@ export function DialogTemplate({
       <DialogContent
         disableAnimation={size === "screen"}
         className={cn(
-          "w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto p-0 sm:w-auto",
+          "w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-none p-0 sm:w-auto",
           sizeClasses[size],
           className
         )}
