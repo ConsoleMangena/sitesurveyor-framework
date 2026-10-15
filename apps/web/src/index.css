@@ -464,36 +464,28 @@ h2 {
   background-clip: content-box;
 }
 
-/* mapcn: maplibre chrome themed via shadcn tokens */
+/* mapcn: leaflet chrome themed via shadcn tokens */
 @layer base {
-  .maplibregl-map {
+  .leaflet-container {
     width: 100%;
     height: 100%;
-    position: relative;
+    background: transparent;
+    font: inherit;
   }
-  .maplibregl-canvas {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-  .maplibregl-popup-content {
-    @apply bg-transparent! shadow-none! p-0! rounded-none!;
-  }
-  .maplibregl-popup-tip {
-    @apply hidden!;
-  }
-  .maplibregl-ctrl-attrib {
+  .leaflet-control-attribution {
     @apply bg-background! text-muted-foreground! border-border! rounded-md! border! shadow-sm!;
   }
-  .maplibregl-ctrl-attrib a {
+  .leaflet-control-attribution a {
     @apply text-muted-foreground!;
   }
-  .maplibregl-ctrl-attrib a:hover {
+  .leaflet-control-attribution a:hover {
     @apply text-foreground!;
   }
-  .maplibregl-ctrl-attrib-button {
-    @apply bg-transparent! dark:invert;
+  .leaflet-bar,
+  .leaflet-bar a {
+    @apply bg-background! text-foreground! border-border! rounded-none!;
+  }
+  .leaflet-bar a:hover {
+    @apply bg-muted!;
   }
 }

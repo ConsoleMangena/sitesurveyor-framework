@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button } from "../ui/button.tsx";
-import { Crosshair, Globe2 } from "lucide-react";
 import {
   MARKET_DOT_COLORS,
   type MarketDot,
@@ -23,7 +22,10 @@ interface LeafletGlobeProps {
 }
 
 // Fix default marker icon paths in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+const defaultIcon = L.Icon.Default.prototype as {
+  _getIconUrl?: unknown;
+};
+delete defaultIcon._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -33,7 +35,6 @@ L.Icon.Default.mergeOptions({
 
 export default function LeafletGlobe({
   dots,
-  totalPoints,
   failed,
   onSelect,
   onRetry,
@@ -44,7 +45,6 @@ export default function LeafletGlobe({
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.CircleMarker[]>([]);
   const [cursorCoords, setCursorCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [ready, setReady] = useState(false);
 
   const plottedCount = dots?.length ?? 0;
 
@@ -78,7 +78,6 @@ export default function LeafletGlobe({
     });
 
     mapRef.current = map;
-    setReady(true);
 
     return () => {
       map.remove();
