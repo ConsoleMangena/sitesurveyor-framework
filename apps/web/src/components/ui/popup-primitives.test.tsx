@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog.tsx";
 
 describe("dialog primitive", () => {
-  it("renders a square-cornered panel and shows the close button by default", () => {
+  it("renders a rounded panel and shows the close button by default", () => {
     render(
       <Dialog open>
         <DialogContent>
@@ -15,7 +15,7 @@ describe("dialog primitive", () => {
       </Dialog>,
     );
     const panel = screen.getByRole("dialog");
-    expect(panel.className).toContain("rounded-none");
+    expect(panel.className).toContain("rounded-lg");
     expect(panel.querySelector("button")).not.toBeNull();
   });
 
@@ -34,7 +34,7 @@ describe("dialog primitive", () => {
 });
 
 describe("alert dialog primitive", () => {
-  it("renders title, description and action buttons in a square panel", async () => {
+  it("renders title, description and action buttons in a rounded panel", async () => {
     render(
       <AlertDialog open onOpenChange={() => {}}>
         <AlertDialogContent>
@@ -45,7 +45,7 @@ describe("alert dialog primitive", () => {
         </AlertDialogContent>
       </AlertDialog>,
     );
-    expect(screen.getByRole("alertdialog").className).toContain("rounded-none");
+    expect(screen.getByRole("alertdialog").className).toContain("rounded-lg");
     expect(screen.getByText("Delete?")).toBeTruthy();
     expect(screen.getByText("The data will go.")).toBeTruthy();
     expect(screen.getByText("Delete")).toBeTruthy();
