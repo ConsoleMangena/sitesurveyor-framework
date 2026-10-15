@@ -11,7 +11,7 @@ export function DashboardShell({ children, className }: DashboardShellProps) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 sm:gap-6 p-3 sm:p-6 animate-in fade-in slide-in-from-bottom-2 duration-500",
+        "mx-auto flex w-full max-w-[1600px] flex-col gap-5 p-4 sm:gap-7 sm:p-6 xl:p-8 animate-in fade-in slide-in-from-bottom-2 duration-500",
         className,
       )}
     >
@@ -40,7 +40,7 @@ export function DashboardHeader({
   return (
     <header
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
+        "relative flex flex-col gap-4 overflow-hidden border-b border-border/70 pb-5 sm:flex-row sm:items-end sm:justify-between sm:pb-6",
         className,
       )}
     >

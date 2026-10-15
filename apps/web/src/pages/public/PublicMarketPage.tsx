@@ -517,7 +517,7 @@ export default function PublicMarketPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
           <span className="flex items-baseline gap-2">
             <Link
               to="/"
@@ -654,7 +654,7 @@ export default function PublicMarketPage() {
           <MarketPulseStrip data={data} addedThisWeek={addedThisWeek} />
         )}
 
-        <section ref={registryRef} className="mx-auto w-full max-w-6xl scroll-mt-16 space-y-12 px-4 py-12 sm:px-6 sm:py-16">
+        <section ref={registryRef} className="mx-auto w-full max-w-7xl scroll-mt-16 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div role="group" aria-label="Filter by kind" className="flex w-full flex-wrap gap-1 rounded-none bg-muted p-1 sm:w-fit">
@@ -1030,13 +1030,13 @@ function MarketPulseStrip({
   return (
     <section
       aria-label="Market pulse"
-      className="mx-auto w-full max-w-6xl space-y-3 px-4 pt-10 sm:px-6"
+      className="mx-auto w-full max-w-7xl space-y-3 px-4 pt-8 sm:px-6"
     >
-      <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3 lg:grid-cols-7">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-none border border-border bg-card px-4 py-3.5"
+            className="group rounded-md border border-border/80 bg-card px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,20,0.03)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-border hover:shadow-[0_10px_24px_rgba(15,23,20,0.06)]"
           >
             <p className="flex items-center gap-1.5 font-mono text-2xl font-semibold leading-none tracking-tight tabular-nums">
               {stat.color ? (
@@ -1212,7 +1212,7 @@ function RegistryPanel({
         </div>
       ) : (
         <>
-          <ul className="divide-y divide-border overflow-hidden rounded-none border border-border bg-card shadow-sm">
+          <ul className="divide-y divide-border overflow-hidden rounded-md border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
             {children}
           </ul>
           {pagination}
@@ -1286,7 +1286,7 @@ function RowShell({
         type="button"
         onClick={onClick}
         aria-label={ariaLabel}
-        className="group flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/60"
+        className="group flex w-full items-center gap-3 border-l-2 border-transparent px-4 py-4 text-left transition-[background,border-color,transform] hover:-translate-y-px hover:border-l-current hover:bg-muted/60 focus-visible:bg-muted/60"
       >
         <span
           className="size-2 shrink-0 rounded-full transition-transform group-hover:scale-125"

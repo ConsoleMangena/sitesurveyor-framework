@@ -61,9 +61,9 @@ export function KpiCard({
   return (
     <Card
       className={cn(
-        "group relative h-full overflow-hidden border-border/60 bg-card",
+        "group relative h-full overflow-hidden border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]",
         "transition-[border-color,box-shadow] duration-300 ease-in-out",
-        "hover:border-border",
+        "hover:border-border hover:shadow-[0_12px_30px_rgba(15,23,20,0.06)] hover:-translate-y-0.5",
         className,
       )}
     >
@@ -78,7 +78,7 @@ export function KpiCard({
         <div className="flex items-center justify-between gap-2">
           <span
             className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-none border border-border/50 transition-transform group-hover:scale-105",
+              "flex size-9 shrink-0 items-center justify-center rounded-md border border-border/60 transition-transform group-hover:scale-105",
               styles.chip,
             )}
           >

@@ -33,7 +33,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
 
   if (isPlatformAdmin) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="hub-body mx-auto w-full max-w-6xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
         <div>
           <h1 className="text-2xl font-bold">System Settings</h1>
           <p className="text-muted-foreground mt-1">
@@ -45,7 +45,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10">
                 <Server size={20} className="text-primary" />
               </div>
               <div>
@@ -130,7 +130,7 @@ export default function WorkspaceSettingsPage({ workspaceId, isPlatformAdmin = f
 
   // Regular user view
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="hub-body mx-auto w-full max-w-6xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
       <div>
         <h1 className="text-2xl font-bold">Workspace Settings</h1>
         <p className="text-muted-foreground mt-1">
