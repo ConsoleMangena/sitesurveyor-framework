@@ -624,7 +624,7 @@ export default function PublicMarketPage() {
             onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
             onRetry={retry}
           >
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/25 to-transparent pb-6 pt-16 sm:pb-10 sm:pt-20">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/30 to-transparent pb-8 pt-20 sm:pb-12 sm:pt-24">
               <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <h1 className="max-w-xl text-2xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
                   The open surveying market.
@@ -637,7 +637,7 @@ export default function PublicMarketPage() {
                   <Button
                     size="lg"
                     onClick={scrollToRegistry}
-                    className="pointer-events-auto bg-white text-foreground shadow-sm hover:bg-white/90"
+                    className="pointer-events-auto bg-white font-semibold text-foreground shadow-lg hover:bg-white/90"
                   >
                     Browse the registry
                     <ChevronDown className="size-4" aria-hidden="true" />
@@ -657,7 +657,7 @@ export default function PublicMarketPage() {
         <section ref={registryRef} className="mx-auto w-full max-w-7xl scroll-mt-16 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div role="group" aria-label="Filter by kind" className="flex w-full flex-wrap gap-1 rounded-none bg-muted p-1 sm:w-fit">
+              <div role="group" aria-label="Filter by kind" className="flex w-full flex-wrap gap-1 rounded-lg border border-border/70 bg-card p-1 shadow-sm sm:w-fit">
                 {(
                   [
                     ["all", "Everything", true],
@@ -1187,8 +1187,9 @@ function RegistryPanel({
 }) {
   return (
     <section>
-      <h2 className="mb-4 text-xl font-semibold tracking-tight">
-        {title}{" "}
+      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold tracking-tight">
+        <span className="mr-1 size-2 rounded-full bg-primary" aria-hidden="true" />
+        {title}
         <span className="ml-1 align-middle font-mono text-xs font-normal tabular-nums text-muted-foreground">
           ({count})
         </span>
@@ -1212,7 +1213,7 @@ function RegistryPanel({
         </div>
       ) : (
         <>
-          <ul className="divide-y divide-border overflow-hidden rounded-md border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
+          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
             {children}
           </ul>
           {pagination}

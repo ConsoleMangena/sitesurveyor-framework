@@ -876,7 +876,7 @@ export default function MarketplacePage({
         <PageLoader />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard
               title="Total Listings"
               value={String(totalListings)}
@@ -908,7 +908,7 @@ export default function MarketplacePage({
             onValueChange={handleTabChange}
             className="space-y-4"
           >
-            <TabsList className="h-auto flex-wrap">
+            <TabsList className="h-auto w-full flex-wrap rounded-lg border border-border/70 bg-card p-1 shadow-sm sm:w-fit">
               <TabsTrigger value="browse">
                 <Package className="mr-2 h-4 w-4" /> Browse
               </TabsTrigger>
@@ -925,7 +925,7 @@ export default function MarketplacePage({
                 title="Available Listings"
                 icon={<Package size={16} />}
                 titleAction={
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  <div className="flex w-full flex-col gap-3 rounded-lg border border-border/70 bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                     <div className="relative w-full sm:w-[260px]">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -1309,12 +1309,12 @@ export default function MarketplacePage({
                         }
                       }}
                     >
-                      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-primary/10 text-xs font-semibold text-primary">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
                             {(effectivePage - 1) * pageSize + index + 1}
                           </span>
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-none bg-muted text-primary">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-muted text-primary">
                             <ListingIcon type={l.type} />
                           </div>
                           <div className="min-w-0">
@@ -1365,7 +1365,7 @@ export default function MarketplacePage({
                       <Card
                         key={l.id}
                         className={cn(
-                          "cursor-pointer transition-all hover:border-primary hover:shadow-md",
+                          "cursor-pointer border-border/70 transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary hover:shadow-lg",
                           l.assets?.status === "deployed" && "opacity-70",
                         )}
                         onClick={() => openListingDetail(l)}
