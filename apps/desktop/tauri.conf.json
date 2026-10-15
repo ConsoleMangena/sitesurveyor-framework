@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.succeed.sitesurveyor",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev:web",
+    "beforeBuildCommand": "npm run build:web",
     "devUrl": "http://localhost:5174",
     "frontendDist": "../web/dist"
   },
