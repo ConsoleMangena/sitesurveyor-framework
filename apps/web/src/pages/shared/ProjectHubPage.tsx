@@ -51,6 +51,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ResponsiveTable } from '@/components/ui/responsive-table'
+import { generateLocalId } from '@/lib/localDb/utils'
 import { DashboardShell, DashboardHeader } from '@/components/dashboard/DashboardShell.tsx'
 import { DashboardCard } from '@/components/dashboard/DashboardCard.tsx'
 import { KpiCard } from '@/components/dashboard/KpiCard.tsx'
@@ -627,7 +628,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
     try {
       if (!navigator.onLine) {
-        const tempId = window.crypto.randomUUID()
+        const tempId = generateLocalId()
         const pending = buildPendingActivity(
           activeProjectId,
           tempId,
@@ -659,7 +660,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
     try {
       if (!navigator.onLine) {
-        const tempId = window.crypto.randomUUID()
+        const tempId = generateLocalId()
         const content = `Executed: ${action}`
         const pending = buildPendingActivity(
           activeProjectId,

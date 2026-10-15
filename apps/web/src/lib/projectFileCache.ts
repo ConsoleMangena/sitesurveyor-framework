@@ -1,4 +1,5 @@
 import type { AttachmentRow } from "./repositories/attachments.ts";
+import { generateLocalId } from "./localDb/utils.ts";
 
 const CACHE_KEY = (projectId: string) => `ss:projectFiles:v1:${projectId}`;
 
@@ -43,7 +44,7 @@ export function addLocalProjectFile(
   if (!projectId) return null;
   const now = new Date().toISOString();
   const localFile: ProjectFile = {
-    id: `local-${window.crypto.randomUUID()}`,
+    id: `local-${generateLocalId()}`,
     workspace_id: "",
     bucket_name: "workspace-private",
     storage_path: file.name,

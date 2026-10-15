@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { getCurrentUser } from "../auth/session.ts";
+import { generateLocalId } from "../localDb/utils.ts";
 import { supabase } from "../supabase/client.ts";
 import type { Json, Tables, TablesInsert } from "../supabase/types.ts";
 
@@ -119,7 +120,7 @@ export function useNotifications(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
-  const channelIdRef = useRef(crypto.randomUUID());
+  const channelIdRef = useRef(generateLocalId());
 
   const refresh = useCallback(async () => {
     if (!workspaceId) {
