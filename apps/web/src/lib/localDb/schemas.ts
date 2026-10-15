@@ -1,8 +1,7 @@
 /**
  * Local-first document types that mirror the matching Supabase tables.
- * These are intentionally flat because the local store (now WatermelonDB)
- * is a document store; relations are represented by foreign-key strings and
- * joined client-side.
+ * These are intentionally flat because the web app uses Supabase directly;
+ * relations are represented by foreign-key strings and joined client-side.
  */
 
 export interface ProjectDocType {

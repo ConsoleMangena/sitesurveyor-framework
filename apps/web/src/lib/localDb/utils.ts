@@ -20,8 +20,7 @@ export function nowIso(): string {
 
 /**
  * Returns a shallow copy of `obj` with `null` and `undefined` values removed.
- * Useful when feeding Supabase-generated types into WatermelonDB, which stores
- * optional fields as "absent" rather than "nullable".
+ * Useful when feeding Supabase-generated types into the web data adapter.
  */
 export function omitNullish<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const out: Partial<T> = {};

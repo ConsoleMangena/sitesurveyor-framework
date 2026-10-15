@@ -13,9 +13,8 @@ interface UseProjectsResult {
 }
 
 /**
- * Reactive, local-first hook for the current workspace's projects.
- * The first call starts WatermelonDB <-> Supabase sync, so subsequent
- * updates (local or remote) are reflected immediately without refetching.
+ * The web app reads and writes Supabase directly, so refreshes always use
+ * the current server data.
  */
 export function useProjects(workspaceId: string): UseProjectsResult {
   const [projects, setProjects] = useState<ProjectWithOrg[]>([]);
