@@ -52,3 +52,23 @@ export function toUsdcBaseUnits(amount: number): bigint {
 export function isOnChainPaymentConfigured(): boolean {
   return SOLANA_TREASURY_ADDRESS.trim().length > 0;
 }
+
+/** Solana Explorer link for a transaction signature. */
+export function explorerTxUrl(
+  signature: string,
+  cluster: SolanaCluster = SOLANA_CLUSTER,
+): string {
+  return `https://explorer.solana.com/tx/${signature}${
+    cluster === "mainnet-beta" ? "" : `?cluster=${cluster}`
+  }`;
+}
+
+/** Solana Explorer link for an account/program address. */
+export function explorerAccountUrl(
+  address: string,
+  cluster: SolanaCluster = SOLANA_CLUSTER,
+): string {
+  return `https://explorer.solana.com/address/${address}${
+    cluster === "mainnet-beta" ? "" : `?cluster=${cluster}`
+  }`;
+}

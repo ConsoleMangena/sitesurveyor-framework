@@ -1,6 +1,6 @@
 # SiteSurveyor Framework
 
-**A framework for developing surveying systems with Inkling Gateway AI automation and Solana blockchain.**
+**A framework for developing surveying systems with Inkling Gateway AI automation and Solana payments.**
 
 <p align="center">
   <a href="https://github.com/ConsoleMangena/sitesurveyor-framework/releases"><img alt="Release" src="https://img.shields.io/github/v/release/ConsoleMangena/sitesurveyor-framework?include_prereleases&style=for-the-badge&label=release&color=9945FF"></a>
@@ -23,20 +23,18 @@
   <a href="https://openclaw.ai/"><img alt="Inkling Gateway" src="https://img.shields.io/badge/Inkling Gateway-E6EDF3?style=for-the-badge&logo=ollama&logoColor=black"></a>
 </p>
 
-SiteSurveyor Framework is a complete toolset for surveyors to execute and manage projects. It combines Tauri's cross-platform performance with native blockchain integration and AI capabilities, giving developers everything needed to ship production-grade systems. From planning to deployment, handle complex computations, secure data management, and decentralized workflows all within a single, extensible architecture.
+SiteSurveyor Framework is a complete toolset for surveyors to execute and manage projects. It combines Tauri's cross-platform performance with native AI capabilities, giving developers everything needed to ship production-grade systems. From planning to deployment, handle complex computations, secure data management, and automated workflows all within a single, extensible architecture.
 
 What sets it apart:
 
-- **Your data, secured on-chain.** Handle sensitive information with confidence anchor critical files to the **Solana blockchain** for tamper-evident, verifiable, and durable security, so data integrity can be proven cryptographically rather than trusted blindly.
-- **Hybrid on-chain / off-chain by choice.** You decide, per file, what goes **on-chain** (maximum security and immutability) versus **off-chain** in Supabase storage (fast and affordable). This keeps everyday work cheap while reserving the blockchain for the records that truly need it.
-- **Direct on-chain payments.** Pay network gas fees directly from your wallet and settle invoices in crypto all verified on-chain through Supabase Edge Functions.
+- **Verifiable, tamper-evident files.** Every file gets a SHA-256 content hash when it is uploaded, so data integrity can be proven cryptographically rather than trusted blindly.
+- **Direct crypto payments.** Connect a **Phantom** wallet and settle invoices in **USDC or SOL** on Solana — signed in the browser, no seed phrase ever leaves the wallet.
 - **A real engineering core.** Complex computations (geometry, terrain analysis, coordinate geometry) are handled by a single Rust engine that runs identically as WebAssembly cross-platform and natively on the Tauri desktop app deterministic and tested.
 - **Built for teams and tenants.** Personal, Business, and Platform Admin workspaces sit on a multi-tenant foundation with PostgreSQL Row-Level Security and role-based access control.
 - **Inkling Gateway AI automation.** Use the Inkling Gateway agent stack for intelligent analysis, pattern recognition, natural language interaction, and automated decision-making across your workflows.
 
 Built by **Eineva Incorporated**.
 
-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
 ---
 
 ## Features
@@ -46,7 +44,7 @@ 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
 **Planning & Project Management**
 - Dashboard, schedule, and time tracking
 - Project hub with file manager and document storage
-- **Blockchain file security** — anchor sensitive files (CAD, coordinates, deliverables) to Solana for tamper-evident, verifiable integrity, with a per-file choice between on-chain and off-chain storage
+- **File integrity** — every upload is hashed (SHA-256) so you can verify a document has not been altered since it was stored
 
 **Core Development Tools**
 - Full drafting workspace with TIN generation, contour mapping, and volume calculations (cut/fill, surface-to-surface, elevation)
@@ -66,15 +64,14 @@ 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
 
 **Business Operations**
 - Quotes and invoicing
-- Billing with **Solana crypto payments**
+- Billing with **Solana crypto payments** (USDC or SOL via Phantom)
 - Contact management (CRM)
 
 **Asset Management**
 - Instrument/equipment tracking with calibration scheduling
 
-**Web 3.0 & Marketplace**
-- **Pay network gas fees directly from your Solana wallet** when anchoring files or settling on-chain
-- **Hybrid storage** — choose, per file, between on-chain (maximum security, immutable) and off-chain Supabase storage (fast, affordable)
+**Marketplace**
+- **Pay with your Phantom wallet** when hiring crew or settling on-chain
 - Hire crew / find jobs
 
 **Inkling Gateway AI & Automation**
@@ -105,13 +102,13 @@ Everything in Personal, plus:
 ## The Development Workflow, End to End
 
 ```
-Planning ──► Development ──► Computation ──► Deployment ──► Blockchain ──► Inkling Gateway AI
+Planning ──► Development ──► Computation ──► Deployment ──► Payments ──► Inkling Gateway AI
     │            │               │               │            │                │
     │            │               │               │            │                │
     │            │      Rust     │               │            │          Solana │
-  Schedule    Design      TIN & COGO      CI/CD        On-chain       Agents
+  Schedule    Design      TIN & COGO      CI/CD        Phantom       Agents
   Projects    Review     Contours       Containers     payments        Automation
-              Testing    Volumes        k8s            crypto tx       Prediction
+              Testing    Volumes        k8s            USDC / SOL      Prediction
                                                        ↓              ↓
                                          Deploy     Confirmed      Intelligent
                                                      Live          Automation
@@ -127,7 +124,7 @@ Planning ──► Development ──► Computation ──► Deployment ──
 | **Backend** | Supabase (PostgreSQL 17, RLS, Edge Functions, Storage) |
 | **Desktop** | Tauri 2 (Rust) — native shell with IPC to core modules |
 | **Geometry Engine** | Rust → WebAssembly for browsers; native Rust (`survey-core`) for desktop — same code, identical results |
-| **Blockchain** | Solana Web3.js — on-chain file anchoring and crypto payments |
+| **Blockchain** | Solana Web3.js + Phantom wallet — USDC / SOL payments |
 | **AI & Automation** | Inkling Gateway — agent-based AI and workflow automation |
 | **Testing** | Vitest 4, jsdom, @testing-library/react |
 | **Linting** | ESLint 9, typescript-eslint 8 |
@@ -146,7 +143,7 @@ Planning ──► Development ──► Computation ──► Deployment ──
 │  └─────────────┘  └───────────┬────────────┘  └──────────────┘    │
 │                               │                                    │
 │  ┌────────────────────────────┴────────────┐                       │
-│  │    Solana Wallet Adapter (Web3.js)      │                       │
+│  │      Phantom Wallet (Web3.js)           │                       │
 │  └─────────────────────────────────────────┘                       │
 ├─────────────────────────────────┬──────────────────────────────────┤
 │     Tauri Desktop Shell         │                                  │
@@ -160,60 +157,64 @@ Planning ──► Development ──► Computation ──► Deployment ──
 │   Supabase        │   │   Supabase       │   │    Solana          │
 │   PostgreSQL 17   │   │ Edge Functions   │   │   Blockchain       │
 │   + RLS           │   │ (Deno / TS)      │   │                    │
-│   + Storage       │   │ solana-pay-verify│   │  On-chain payments │
+│   + Storage       │   │ ai-chat, etc.    │   │  USDC / SOL        │
 └──────────────────┘   └──────────────────┘   └────────────────────┘
 ```
 
-The frontend is a single-page application backed entirely by Supabase — no custom backend server. Survey geometry runs as WebAssembly cross-platform or over Tauri IPC on desktop, both from the same Rust `survey-core` crate. Solana integration handles on-chain file anchoring and crypto payment verification via Supabase Edge Functions. Inkling Gateway provides AI automation, natural language interactions, and intelligent analysis. Multi-tenant isolation is enforced through PostgreSQL Row-Level Security.
+The frontend is a single-page application backed entirely by Supabase — no custom backend server. Survey geometry runs as WebAssembly cross-platform or over Tauri IPC on desktop, both from the same Rust `survey-core` crate. Solana payments are signed in the browser through the injected **Phantom** wallet (`@solana/web3.js`) and recorded against invoices in Supabase; there is no server-side payment verification function. Inkling Gateway provides AI automation, natural language interactions, and intelligent analysis. Multi-tenant isolation is enforced through PostgreSQL Row-Level Security.
 
 ---
 
 ## Repository Structure
 
 ```
-├── frontend/                        # React + Vite SPA
-│   ├── src/
-│   │   ├── main.tsx                 # Entry point (polyfills Buffer for Solana)
-│   │   ├── App.tsx                  # Router & auth bootstrap
-│   │   ├── pages/                   # Route-level pages
-│   │   │   ├── auth/                # Login, signup, password reset
-│   │   │   ├── personal/            # Personal workspace
-│   │   │   ├── business/            # Business workspace
-│   │   │   ├── shared/              # Contacts, invoices, quotes, projects, etc.
-│   │   │   └── admin/               # Platform admin
-│   │   ├── features/
-│   │   │   ├── workspace/           # Workspace type definitions
-│   │   │   ├── personal/            # Personal shell & navigation
-│   │   │   ├── business/            # Business shell & navigation
-│   │   │   ├── platform/            # Platform operator shell
-│   │   │   └── projects/            # Core development tools, calculators, tool registry
-│   │   ├── components/              # Shared UI (WorkspaceShell, ProtectedRoute, etc.)
-│   │   ├── lib/
-│   │   │   ├── supabase/            # Client + auto-generated DB types
-│   │   │   ├── repositories/        # 25 data access modules
-│   │   │   ├── auth/                # Zustand auth store + session management
-│   │   │   ├── solana/              # Solana wallet config + provider
-│   │   │   ├── payments/            # Payment verification
-│   │   │   ├── Inkling Gateway/ AI automation
-│   │   │   └── permissions.ts       # RBAC helpers
-│   │   └── styles/                  # Hand-written CSS
-│   ├── vite.config.ts               # Vite + WASM plugins, es2022 target
-│   └── package.json
-│
-├── backend/                         # Tauri + Rust + Supabase SQL
-│   ├── src/                         # Tauri app (main.rs, lib.rs, survey.rs)
-│   ├── crates/
-│   │   ├── survey-core/             # Pure Rust geometry (TIN, contours, volumes)
-│   │   └── survey-wasm/             # wasm-bindgen bindings
-│   ├── supabase/
-│   │   ├── sql/                     # Schema, functions, RLS, seeds
-│   │   ├── functions/
-│   │   │   ├── solana-pay-verify/   # Edge Function: payment verification
-│   │   │   └── Inkling Gateway-proxy/      # Edge Function: Inkling Gateway gateway proxy
-│   │   └── config.toml
-│   └── tauri.conf.json
+├── apps/
+│   ├── web/                         # React + Vite SPA
+│   │   ├── src/
+│   │   │   ├── main.tsx             # Entry point (polyfills Buffer for Solana)
+│   │   │   ├── App.tsx              # Router & auth bootstrap
+│   │   │   ├── pages/               # Route-level pages
+│   │   │   │   ├── auth/            # Login, signup, password reset
+│   │   │   │   ├── personal/        # Personal workspace
+│   │   │   │   ├── business/        # Business workspace
+│   │   │   │   ├── shared/          # Contacts, invoices, quotes, projects, etc.
+│   │   │   │   ├── public/          # Public market page
+│   │   │   │   └── admin/           # Platform admin
+│   │   │   ├── features/
+│   │   │   │   ├── workspace/       # Workspace type definitions
+│   │   │   │   ├── personal/        # Personal shell & navigation
+│   │   │   │   ├── business/        # Business shell & navigation
+│   │   │   │   ├── platform/        # Platform operator shell
+│   │   │   │   ├── phantom/         # Phantom wallet config, provider & payments
+│   │   │   │   └── projects/        # Core development tools, calculators, tool registry
+│   │   │   ├── components/          # Shared UI (WorkspaceShell, ProtectedRoute, etc.)
+│   │   │   ├── lib/
+│   │   │   │   ├── supabase/        # Client + auto-generated DB types
+│   │   │   │   ├── repositories/    # Data access modules
+│   │   │   │   ├── auth/            # Zustand auth store + session management
+│   │   │   │   ├── geo/             # Geometry helpers
+│   │   │   │   ├── localDb/         # Offline cache (LokiJS)
+│   │   │   │   └── permissions.ts   # RBAC helpers
+│   │   │   └── styles/              # Hand-written CSS
+│   │   ├── vite.config.ts           # Vite + WASM plugins, es2022 target
+│   │   └── package.json
+│   └── desktop/                     # Tauri desktop shell + Rust
+│       ├── src/                     # Tauri app (main.rs, lib.rs, survey.rs)
+│       ├── crates/
+│       │   ├── survey-core/         # Pure Rust geometry (TIN, contours, volumes)
+│       │   └── survey-wasm/         # wasm-bindgen bindings
+│       └── tauri.conf.json
 │
 ├── ai-gateway/                      # Inkling Gateway host server (local AI stack)
+├── supabase/
+│   ├── migrations/                  # SQL schema, functions, RLS, seeds
+│   ├── functions/
+│   │   ├── ai-chat/                 # Edge Function: AI chat
+│   │   ├── backfill-geocode/        # Edge Function: geocoding backfill
+│   │   └── delete-user/             # Edge Function: account deletion
+│   └── config.toml
+├── scripts/                         # Build & dev helper scripts
+├── paper/                           # Research paper
 ├── package.json                     # Root scripts
 └── README.md
 ```
@@ -232,18 +233,22 @@ The frontend is a single-page application backed entirely by Supabase — no cus
 ### Frontend
 
 ```bash
-cd frontend
+cd apps/web
 npm install
 npm run dev
 ```
 
 ### Environment
 
-Create `frontend/.env` (see `frontend/.env.example`):
+Create `apps/web/.env` (see `apps/web/.env.example`):
 
 ```env
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# Solana payments (Phantom). TREASURY is required to show the pay button.
+VITE_SOLANA_CLUSTER=devnet
+VITE_SOLANA_TREASURY_ADDRESS=
 ```
 
 ### Database
@@ -254,19 +259,19 @@ supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 ```
 
-SQL schema is in `backend/sql/`.
+SQL migrations are in `supabase/migrations/`.
 
 ### WASM Build (browser geometry engine)
 
 ```bash
-cd backend/crates
+cd apps/desktop/crates
 bash build-wasm.sh
 ```
 
 ### Desktop Build (Tauri)
 
 ```bash
-cd backend
+cd apps/desktop
 cargo tauri dev
 ```
 
@@ -275,7 +280,6 @@ cargo tauri dev
 ## Quality Checks
 
 ```bash
-cd frontend
 npm run lint       # ESLint
 npm run typecheck  # TypeScript
 npm run test       # Vitest
@@ -286,9 +290,9 @@ npm run build      # Production bundle
 
 ## Key Design Decisions
 
-- **Hybrid on-chain / off-chain storage** — handles sensitive, legally significant data, so users choose per file what to anchor to Solana (tamper-evident, immutable, verifiable) versus what to keep in affordable Supabase storage. Security where it matters, low cost everywhere else.
-- **Wallet-native economics** — the user's own Solana wallet pays the network gas fees for on-chain operations, keeping the platform's running costs predictable and the user in control of their data and spend.
-- **Web 3.0 by default** — Solana on-chain payments and file anchoring are first-class features, not afterthoughts
+- **Content-hashed files** — every uploaded file is hashed (SHA-256) so its integrity can be verified later, without depending on a blockchain.
+- **Wallet-native payments** — the user's own **Phantom** wallet signs USDC / SOL payments in the browser; the seed phrase never leaves the wallet and the platform never custodies keys.
+- **Solana payments as a first-class feature** — invoices and marketplace orders can be settled on-chain, with the transaction signature recorded against the invoice in Supabase
 - **Inkling Gateway AI & Automation** — the Inkling Gateway agent stack powers intelligent automation, natural language interaction, pattern recognition, and decision support throughout the framework
 - **No custom backend** — all server logic is Supabase (PostgreSQL + RLS + Edge Functions)
 - **One geometry engine, two runtimes** — the same Rust code runs as WASM in the browser and over Tauri IPC on desktop, guaranteeing identical results

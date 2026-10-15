@@ -103,7 +103,7 @@ export async function hasPendingRequest(
 
 /**
  * Check if the current user has an active request (pending or accepted) on a
- * listing. Used to gate the Solana payment button behind a request.
+ * listing. Used to gate the payment button behind a request.
  */
 export async function hasActiveRequest(listingId: string): Promise<boolean> {
   const user = await getCurrentUser()

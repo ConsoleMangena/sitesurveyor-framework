@@ -6,7 +6,6 @@ import SessionExpiredBanner from "./components/SessionExpiredBanner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
-import { EmbeddedWalletProvider } from "./features/solana/contexts/EmbeddedWalletContext.tsx";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
@@ -258,9 +257,7 @@ export default function App() {
             path="/"
             element={
               user ? (
-                <EmbeddedWalletProvider>
-                  <WorkspaceRouter />
-                </EmbeddedWalletProvider>
+                <WorkspaceRouter />
               ) : (
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <PublicMarketPage />
@@ -270,9 +267,7 @@ export default function App() {
           />
           <Route element={<ProtectedRoute />}>
             <Route path="/workspace/*" element={
-              <EmbeddedWalletProvider>
-                <WorkspaceRouter />
-              </EmbeddedWalletProvider>
+              <WorkspaceRouter />
             } />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

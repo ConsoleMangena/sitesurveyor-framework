@@ -3,7 +3,6 @@ use tauri::Manager;
 
 #[cfg(feature = "gdal")]
 mod gdal_setup;
-mod solana_rpc;
 mod survey;
 
 #[tauri::command]
@@ -54,7 +53,6 @@ pub fn run() {
             survey::read_shapefile_points,
             survey::las_available,
             survey::read_las_points,
-            solana_rpc::solana_rpc_request,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

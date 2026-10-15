@@ -1,12 +1,13 @@
 /**
- * Solana Pay style USDC transfer builder.
+ * Phantom-wallet payment builders.
  *
  * Implements the small slice of the Solana Pay spec we need:
  *   - a USDC (SPL token) transfer to the workspace treasury
  *   - a unique `reference` public key attached as a read-only, non-signer key
- *     on the transfer instruction, so the backend can correlate the on-chain
- *     transaction with a specific invoice without trusting the client.
+ *     on the transfer instruction, so the payment can be correlated with a
+ *     specific invoice without trusting the client.
  *
+ * All transactions are signed and sent by the injected Phantom wallet.
  * The SPL-token transfer instruction and associated-token-account derivation
  * are built directly with @solana/web3.js to avoid pulling in @solana/spl-token
  * (and @solana/pay) as extra dependencies.
@@ -28,12 +29,12 @@ import {
   SOLANA_TREASURY_ADDRESS,
   SOLANA_USDC_MINT,
   toUsdcBaseUnits,
-} from "../lib/config";
+} from "../lib/config.ts";
 import {
   connectWallet,
   isUserRejection,
-  type SolanaWalletProvider,
-} from "../lib/provider";
+  type PhantomWalletProvider,
+} from "../lib/provider.ts";
 
 // Well-known program IDs.
 const TOKEN_PROGRAM_ID = new PublicKey(
@@ -52,7 +53,10 @@ export function getConnection(): Connection {
 }
 
 /** Derive the associated token account (ATA) for an owner + mint. */
-export function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
+export function getAssociatedTokenAddress(
+  mint: PublicKey,
+  owner: PublicKey,
+): PublicKey {
   const [address] = PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -85,7 +89,7 @@ export interface InvoicePaymentRequest {
 
 /**
  * Build the USDC transfer instruction to the treasury.
- * This instruction carries a unique reference key for server-side correlation.
+ * This instruction carries a unique reference key for payment correlation.
  */
 export function buildUsdcTransferInstruction(
   payer: PublicKey,
@@ -161,16 +165,15 @@ export async function estimateUsdcTransferFee(amount: number): Promise<number> {
   }
   tx.add(transferIx);
 
-  const { value } = await conn.getFeeForMessage(tx.compileMessage(), "confirmed");
+  const { value } = await conn.getFeeForMessage(
+    tx.compileMessage(),
+    "confirmed",
+  );
   return ((value ?? 0) + rentLamports) / LAMPORTS_PER_SOL;
 }
 
 /**
- * Pay an invoice with USDC.
- *
- * When `signer` is provided (embedded wallet), the transaction is signed
- * directly in-app. Otherwise we fall back to an external wallet provider such
- * as Phantom or Solflare.
+ * Pay an invoice with USDC via the injected Phantom wallet.
  *
  * If the treasury's USDC token account does not exist yet, the transaction
  * prepends an associated-token-account `Create` instruction funded by the
@@ -178,7 +181,6 @@ export async function estimateUsdcTransferFee(amount: number): Promise<number> {
  */
 export async function payInvoiceWithUsdc(
   request: InvoicePaymentRequest,
-  signer?: Keypair,
 ): Promise<BuildTransferResult> {
   if (!SOLANA_TREASURY_ADDRESS) {
     throw new Error(
@@ -186,26 +188,15 @@ export async function payInvoiceWithUsdc(
     );
   }
 
-  const treasury = new PublicKey(SOLANA_TREASURY_ADDRESS);
-  let payer: PublicKey;
-  let walletAddress: string;
-  let provider: SolanaWalletProvider | undefined;
-
-  if (signer) {
-    payer = signer.publicKey;
-    walletAddress = signer.publicKey.toBase58();
-  } else {
-    const connected = await connectWallet();
-    if (!connected.provider.signAndSendTransaction) {
-      throw new Error(
-        "This wallet does not support sending transactions. Use Phantom or Solflare.",
-      );
-    }
-    provider = connected.provider;
-    walletAddress = connected.walletAddress;
-    payer = new PublicKey(connected.walletAddress);
+  const { provider, walletAddress } = await connectWallet();
+  if (!provider.signAndSendTransaction) {
+    throw new Error(
+      "This wallet does not support sending transactions. Use Phantom.",
+    );
   }
+  const payer = new PublicKey(walletAddress);
 
+  const treasury = new PublicKey(SOLANA_TREASURY_ADDRESS);
   const conn = getConnection();
   const { instruction: transferIx, reference, destAta } =
     buildUsdcTransferInstruction(payer, treasury, request.amount);
@@ -229,26 +220,18 @@ export async function payInvoiceWithUsdc(
   }
   tx.add(transferIx);
 
-  let signature: string;
-  if (signer) {
-    tx.sign(signer);
-    signature = await conn.sendRawTransaction(tx.serialize(), {
-      preflightCommitment: "confirmed",
-    });
-    await conn.confirmTransaction(signature, "confirmed");
-  } else {
-    signature = (await sendWithProvider(provider!, tx)).signature;
-  }
+  const signature = await sendWithProvider(provider, tx);
 
   return { signature, reference: reference.toBase58(), walletAddress };
 }
 
 async function sendWithProvider(
-  provider: SolanaWalletProvider,
+  provider: PhantomWalletProvider,
   tx: Transaction,
-): Promise<{ signature: string }> {
+): Promise<string> {
   try {
-    return await provider.signAndSendTransaction!(tx);
+    const { signature } = await provider.signAndSendTransaction!(tx);
+    return signature;
   } catch (err) {
     if (isUserRejection(err)) {
       throw new Error("Payment cancelled in wallet.");
@@ -280,7 +263,6 @@ function createAtaInstruction(
 }
 
 export interface SendTokensRequest {
-  keypair: Keypair;
   token: "SOL" | "USDC";
   recipient: string;
   amount: number;
@@ -292,14 +274,14 @@ export interface SendTokensResult {
 }
 
 /**
- * Send SOL or USDC from the embedded wallet to an arbitrary recipient.
- * For USDC, the recipient's associated token account is created automatically
- * if it does not already exist.
+ * Send SOL or USDC from the connected Phantom wallet to an arbitrary
+ * recipient. For USDC, the recipient's associated token account is created
+ * automatically if it does not already exist.
  */
 export async function sendTokens(
   request: SendTokensRequest,
 ): Promise<SendTokensResult> {
-  const { keypair, token, recipient, amount } = request;
+  const { token, recipient, amount } = request;
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("Enter a positive amount.");
   }
@@ -311,8 +293,15 @@ export async function sendTokens(
     throw new Error("Invalid recipient address.");
   }
 
+  const { provider, walletAddress } = await connectWallet();
+  if (!provider.signAndSendTransaction) {
+    throw new Error(
+      "This wallet does not support sending transactions. Use Phantom.",
+    );
+  }
+  const payer = new PublicKey(walletAddress);
+
   const conn = getConnection();
-  const payer = keypair.publicKey;
   const { blockhash } = await conn.getLatestBlockhash("confirmed");
   const tx = new Transaction();
   tx.feePayer = payer;
@@ -358,12 +347,8 @@ export async function sendTokens(
     tx.add(transferIx);
   }
 
-  tx.sign(keypair);
-  const signature = await conn.sendRawTransaction(tx.serialize(), {
-    preflightCommitment: "confirmed",
-  });
-  await conn.confirmTransaction(signature, "confirmed");
-  return { signature, walletAddress: payer.toBase58() };
+  const signature = await sendWithProvider(provider, tx);
+  return { signature, walletAddress };
 }
 
 export { isUserRejection };

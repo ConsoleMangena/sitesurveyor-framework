@@ -678,42 +678,6 @@ export type Database = {
           },
         ]
       }
-      embedded_solana_wallets: {
-        Row: {
-          created_at: string
-          encrypted_key: string
-          encrypted_mnemonic: string | null
-          iv: string
-          mnemonic_iv: string | null
-          salt: string
-          updated_at: string
-          user_id: string
-          wallet_address: string
-        }
-        Insert: {
-          created_at?: string
-          encrypted_key: string
-          encrypted_mnemonic?: string | null
-          iv: string
-          mnemonic_iv?: string | null
-          salt: string
-          updated_at?: string
-          user_id: string
-          wallet_address: string
-        }
-        Update: {
-          created_at?: string
-          encrypted_key?: string
-          encrypted_mnemonic?: string | null
-          iv?: string
-          mnemonic_iv?: string | null
-          salt?: string
-          updated_at?: string
-          user_id?: string
-          wallet_address?: string
-        }
-        Relationships: []
-      }
       expense_entries: {
         Row: {
           _deleted: boolean

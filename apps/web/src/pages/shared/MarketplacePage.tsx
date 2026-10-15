@@ -51,8 +51,9 @@ import {
   getMarketplaceWallet,
   getWorkspaceById,
 } from "../../lib/repositories/workspaces.ts";
-import { useEmbeddedWallet } from "../../features/solana/hooks/useEmbeddedWallet.ts";
-import { SOLANA_CLUSTER } from "../../features/solana/lib/config.ts";
+import { usePhantomWallet } from "../../features/phantom/hooks/usePhantomWallet.ts";
+import { SOLANA_CLUSTER } from "../../features/phantom/lib/config.ts";
+import { sendTokens } from "../../features/phantom/payments/phantomPay.ts";
 import { PublicKey } from "@solana/web3.js";
 import SelectDropdown from "../../components/SelectDropdown.tsx";
 import PageLoader from "../../components/PageLoader.tsx";
@@ -271,11 +272,10 @@ export default function MarketplacePage({
 
   const [showPayment, setShowPayment] = useState(false);
   const [paymentToken, setPaymentToken] = useState<"SOL" | "USDC">("USDC");
-  const [paymentPin, setPaymentPin] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState<{ signature: string; orderId: string } | null>(null);
 
-  const embeddedWallet = useEmbeddedWallet();
+  const phantomWallet = usePhantomWallet();
 
   const fetchListings = useCallback(async () => {
     try {
@@ -380,7 +380,6 @@ export default function MarketplacePage({
     setRequestEndDate("");
     setShowPayment(false);
     setPaymentToken("USDC");
-    setPaymentPin("");
     setPaymentSuccess(null);
     const active = await hasActiveRequest(listing.id);
     setAlreadyRequested(active);
@@ -437,10 +436,7 @@ export default function MarketplacePage({
     setPaymentBusy(true);
     setNotice(null);
     try {
-      if (!embeddedWallet.unlocked) {
-        await embeddedWallet.unlockWallet(paymentPin);
-      }
-      const signature = await embeddedWallet.sendTokens({
+      const { signature } = await sendTokens({
         token: paymentToken,
         recipient: selectedListing.seller_wallet_address,
         amount: selectedListing.price,
@@ -463,13 +459,12 @@ export default function MarketplacePage({
       });
       setPaymentSuccess({ signature, orderId: order.id });
       setShowPayment(false);
-      void embeddedWallet.refreshBalances();
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Payment failed. Please try again.");
     } finally {
       setPaymentBusy(false);
     }
-  }, [selectedListing, workspaceId, paymentToken, paymentPin, embeddedWallet, isValidSolanaAddress]);
+  }, [selectedListing, workspaceId, paymentToken, isValidSolanaAddress]);
 
   const openCreateListing = () => {
     setEditingId(null);
@@ -1189,7 +1184,7 @@ export default function MarketplacePage({
 
                 {showPayment && selectedListing && (
                   <div className="space-y-3 rounded-none border bg-muted/40 p-4">
-                    <h4 className="text-sm font-semibold">Pay with Solana</h4>
+                    <h4 className="text-sm font-semibold">Pay with Phantom</h4>
                     <div className="space-y-1">
                       <Label className="text-xs">Recipient wallet</Label>
                       <code className="block break-all rounded bg-background px-2 py-1 text-xs text-muted-foreground">
@@ -1214,37 +1209,21 @@ export default function MarketplacePage({
                       />
                     </div>
 
-                    {!embeddedWallet.supported ? (
+                    {!phantomWallet.installed ? (
                       <p className="text-sm text-destructive">
-                        Embedded Solana wallet is not supported in this environment.
+                        Phantom wallet is not installed. Install the browser
+                        extension to pay.
                       </p>
-                    ) : !embeddedWallet.exists ? (
-                      <p className="text-sm text-destructive">
-                        Set up your embedded Solana wallet in Settings before paying.
+                    ) : phantomWallet.connected && phantomWallet.shortAddress ? (
+                      <p className="text-xs text-muted-foreground">
+                        Paying from{" "}
+                        <span className="font-mono">{phantomWallet.shortAddress}</span>
                       </p>
                     ) : (
-                      <div className="space-y-1">
-                        {embeddedWallet.shortAddress && (
-                          <p className="text-xs text-muted-foreground">
-                            Paying from <span className="font-mono">{embeddedWallet.shortAddress}</span>
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Balance: {embeddedWallet.balances.sol.toFixed(4)} SOL /{" "}
-                          {embeddedWallet.balances.usdc.toFixed(2)} USDC
-                        </p>
-                        {!embeddedWallet.unlocked && (
-                          <div className="space-y-1 pt-1">
-                            <Label className="text-xs">Wallet PIN</Label>
-                            <Input
-                              type="password"
-                              value={paymentPin}
-                              onChange={(e) => setPaymentPin(e.target.value)}
-                              placeholder="Unlock wallet to pay"
-                            />
-                          </div>
-                        )}
-                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Your Phantom wallet will ask you to connect when you
+                        confirm the payment.
+                      </p>
                     )}
 
                     <div className="flex flex-wrap gap-2">
@@ -1258,11 +1237,7 @@ export default function MarketplacePage({
                       </Button>
                       <Button
                         size="sm"
-                        disabled={
-                          paymentBusy ||
-                          !embeddedWallet.exists ||
-                          (!embeddedWallet.unlocked && !paymentPin.trim())
-                        }
+                        disabled={paymentBusy || !phantomWallet.installed}
                         onClick={handlePayWithSolana}
                       >
                         {paymentBusy ? (

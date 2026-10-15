@@ -5,7 +5,7 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   buildUsdcTransferInstruction,
   getAssociatedTokenAddress,
-} from "./solanaPay.ts";
+} from "./phantomPay.ts";
 import { SOLANA_USDC_MINT, toUsdcBaseUnits } from "../lib/config.ts";
 
 const TOKEN_PROGRAM_ID = new PublicKey(

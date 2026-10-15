@@ -25,7 +25,6 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 survey-core = { path = "crates/survey-core" }
 
 # Native-only GeoRust datum/CRS transforms. `proj` wraps the system PROJ C

@@ -4,14 +4,12 @@ import type { Json, Tables, TablesInsert } from "../supabase/types.ts";
 
 export type AttachmentRow = Tables<"attachments">;
 export type AttachmentInsert = TablesInsert<"attachments">;
-export type StorageTier = AttachmentRow["storage_tier"];
-export type ChainStatus = AttachmentRow["chain_status"];
 export type FolderRow = Tables<"folders">;
 export type FolderInsert = TablesInsert<"folders">;
 export type TagRow = Tables<"tags">;
 export type TagInsert = TablesInsert<"tags">;
 
-/** Lowercase hex SHA-256 of a file's bytes, used as the on-chain anchor. */
+/** Lowercase hex SHA-256 of a file's bytes, used for integrity verification. */
 export async function hashFile(file: Blob): Promise<string> {
   const buffer = await file.arrayBuffer();
   const digest = await crypto.subtle.digest("SHA-256", buffer);
@@ -180,12 +178,6 @@ export async function uploadWorkspaceAttachment(
   file: File,
   options: {
     bucketName?: "workspace-private" | "workspace-public";
-    /**
-     * "on_chain" computes the file hash now and marks the anchor as `pending`,
-     * so the caller can submit the Solana anchor transaction afterwards.
-     * "off_chain" (default) keeps the file in Supabase Storage only.
-     */
-    storageTier?: StorageTier;
     folderId?: string | null;
     tagIds?: string[];
     /** Link the attachment to a specific record, e.g. entityTable="projects" and entityId=projectId. */
@@ -197,13 +189,11 @@ export async function uploadWorkspaceAttachment(
   if (!user) throw new Error("You must be signed in to upload a file.");
 
   const bucketName = options.bucketName ?? "workspace-private";
-  const storageTier: StorageTier = options.storageTier ?? "off_chain";
 
   const fileName = sanitizeFileName(file.name);
   const storagePath = `${workspaceId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${fileName}`;
 
-  // Always compute the content hash so any file can be verified or anchored
-  // later, even if it was first stored off-chain.
+  // Always compute the content hash so any file can be verified later.
   const contentHash = await hashFile(file);
 
   const { error: uploadError } = await supabase.storage
@@ -225,8 +215,8 @@ export async function uploadWorkspaceAttachment(
       mime_type: file.type || null,
       size_bytes: file.size,
       content_hash: contentHash,
-      storage_tier: storageTier,
-      chain_status: storageTier === "on_chain" ? "pending" : "none",
+      storage_tier: "off_chain",
+      chain_status: "none",
       folder_id: options.folderId ?? null,
     });
 
@@ -237,7 +227,7 @@ export async function uploadWorkspaceAttachment(
     await logActivity(workspaceId, "attachments", attachment.id, "attachment_uploaded", {
       name: fileName,
       size_bytes: file.size,
-      storage_tier: storageTier,
+      storage_tier: "off_chain",
     });
 
     return attachment;
@@ -248,38 +238,8 @@ export async function uploadWorkspaceAttachment(
 }
 
 /**
- * Record the result of anchoring a file's content hash on Solana. The actual
- * transaction is signed and submitted by the user's wallet (which also pays the
- * network gas fee); this persists the confirmed signature against the file.
- */
-export async function recordAttachmentAnchor(
-  id: string,
-  input: { txSignature: string; network: string; programAddress?: string },
-): Promise<AttachmentRow> {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("You must be signed in to anchor a file.");
-
-  const { data, error } = await supabase
-    .from("attachments")
-    .update({
-      storage_tier: "on_chain",
-      chain_status: "anchored",
-      chain_tx_signature: input.txSignature,
-      chain_network: input.network,
-      chain_program_address: input.programAddress ?? null,
-      anchored_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select("*")
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/**
  * Verify that an off-chain object still matches the hash recorded for it. A
- * mismatch means the stored file was altered since it was last hashed/anchored.
+ * mismatch means the stored file was altered since it was last hashed.
  */
 export async function verifyAttachmentIntegrity(
   attachment: Pick<

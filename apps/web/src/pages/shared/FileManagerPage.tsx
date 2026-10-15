@@ -8,7 +8,6 @@ import {
   Download,
   Link2,
   ShieldCheck,
-  ExternalLink,
   Tags,
   FolderInput,
   Activity,
@@ -30,7 +29,6 @@ import {
   uploadWorkspaceAttachment,
   getAttachmentAccessUrl,
   getAttachmentVersionAccessUrl,
-  recordAttachmentAnchor,
   verifyAttachmentIntegrity,
   moveAttachmentsToFolder,
   renameAttachment,
@@ -42,15 +40,11 @@ import {
   getAttachmentTags,
   setAttachmentTags,
   listActivityLog,
-  type StorageTier,
   type FolderRow,
   type TagRow,
   type ActivityLogEntry,
   type AttachmentVersionRow,
 } from "../../lib/repositories/attachments.ts";
-import { anchorFileHash, explorerTxUrl, explorerAccountUrl } from "../../features/solana/payments/fileAnchor.ts";
-import { saveWalletActivity } from "../../features/solana/lib/walletHistory.ts";
-import { SOLANA_CLUSTER } from "../../features/solana/lib/config.ts";
 import PageLoader from "@/components/PageLoader.tsx";
 import { DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import { Button } from "@/components/ui/button";
@@ -83,7 +77,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEmbeddedWallet } from "../../features/solana/hooks/useEmbeddedWallet.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import type { AttachmentRow } from "../../lib/repositories/attachments.ts";
 
@@ -94,7 +87,7 @@ interface FileManagerPageProps {
 }
 
 type SortOption = "date-desc" | "date-asc" | "name-asc" | "size-desc" | "size-asc";
-type ViewMode = "offchain" | "onchain" | "trash";
+type ViewMode = "files" | "trash";
 
 const TAG_COLORS = [
   "#2563eb",
@@ -135,23 +128,10 @@ const formatDateLabel = (isoDate: string): string =>
     year: "numeric",
   });
 
-const CHAIN_BADGES: Record<
-  AttachmentRow["chain_status"],
-  { label: string; bg: string; color: string }
-> = {
-  anchored: { label: "On-chain", bg: "#dcfce7", color: "#15803d" },
-  pending: { label: "Anchoring…", bg: "#fef9c3", color: "#a16207" },
-  failed: { label: "Anchor failed", bg: "#fee2e2", color: "#b91c1c" },
-  none: { label: "Off-chain", bg: "#f1f5f9", color: "#475569" },
-};
-
-
-
 const shortSig = (sig: string): string =>
   sig.length > 12 ? `${sig.slice(0, 6)}…${sig.slice(-4)}` : sig;
 
 export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
-  const embeddedWallet = useEmbeddedWallet();
   const [files, setFiles] = useState<AttachmentRow[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [tags, setTags] = useState<TagRow[]>([]);
@@ -171,10 +151,9 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     { name: string; status: "pending" | "done" | "error" }[]
   >([]);
   const [busyFileId, setBusyFileId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("offchain");
+  const [viewMode, setViewMode] = useState<ViewMode>("files");
   const [moveMenuFileId, setMoveMenuFileId] = useState<string | null>(null);
   const [tagMenuFileId, setTagMenuFileId] = useState<string | null>(null);
-  const [detailFile, setDetailFile] = useState<AttachmentRow | null>(null);
   const [previewFile, setPreviewFile] = useState<AttachmentRow | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -231,8 +210,6 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
 
   useAsyncAction(fetchFiles, [fetchFiles]);
 
-  const uploadTier: StorageTier = viewMode === "onchain" ? "on_chain" : "off_chain";
-
   const fileTypes = Array.from(
     new Set(files.map((f) => getFileType(f.storage_path, f.mime_type))),
   );
@@ -243,8 +220,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   if (viewMode === "trash") {
     filtered = filtered.filter((f) => f.deleted_at != null);
   } else {
-    const tier: StorageTier = viewMode === "onchain" ? "on_chain" : "off_chain";
-    filtered = filtered.filter((f) => f.deleted_at == null && f.storage_tier === tier);
+    filtered = filtered.filter((f) => f.deleted_at == null);
   }
   if (activeType !== "ALL") {
     filtered = filtered.filter((f) => getFileType(f.storage_path, f.mime_type) === activeType);
@@ -376,13 +352,10 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     setError(null);
     setUploadQueue(uploadFiles.map((f) => ({ name: f.name, status: "pending" })));
 
-    const tier = uploadTier;
     const results = await Promise.allSettled(
       uploadFiles.map(async (file, index) => {
         try {
-          const result = await uploadWorkspaceAttachment(workspaceId, file, {
-            storageTier: tier,
-          });
+          const result = await uploadWorkspaceAttachment(workspaceId, file);
           setUploadQueue((prev) => {
             const next = [...prev];
             next[index] = { ...next[index], status: "done" };
@@ -418,46 +391,6 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     setUploading(false);
     setUploadQueue([]);
     if (uploadInputRef.current) uploadInputRef.current.value = "";
-
-    if (tier === "on_chain") {
-      for (const att of uploaded) {
-        await anchorFile(att);
-      }
-    }
-  };
-
-  const anchorFile = async (file: AttachmentRow) => {
-    if (!file.content_hash) {
-      setError("This file has no content hash and cannot be anchored.");
-      return;
-    }
-    setBusyFileId(file.id);
-    setError(null);
-    try {
-      const { signature, network, recordPda } = await anchorFileHash(
-        workspaceId,
-        file.content_hash,
-        embeddedWallet.unlockedWallet?.keypair,
-      );
-      await recordAttachmentAnchor(file.id, {
-        txSignature: signature,
-        network,
-        programAddress: recordPda || undefined,
-      });
-      saveWalletActivity({
-        type: "anchor",
-        label: "Anchored file on Solana",
-        signature,
-        detail: getFileName(file.storage_path),
-        network: SOLANA_CLUSTER,
-      });
-      showNotice("File anchored on Solana.");
-      await fetchFiles();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to anchor file on-chain.");
-    } finally {
-      setBusyFileId(null);
-    }
   };
 
   const handleVerifyIntegrity = async (file: AttachmentRow) => {
@@ -472,16 +405,6 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     } finally {
       setBusyFileId(null);
     }
-  };
-
-  const viewOnExplorer = (file: AttachmentRow) => {
-    if (!file.chain_network) return;
-    const url = file.chain_program_address
-      ? explorerAccountUrl(file.chain_program_address, file.chain_network)
-      : file.chain_tx_signature
-        ? explorerTxUrl(file.chain_tx_signature, file.chain_network)
-        : null;
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleFileDownload = async (file: AttachmentRow) => {
@@ -733,20 +656,6 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     }
   };
 
-  const handleBulkAnchor = async () => {
-    if (visibleSelectedCount === 0) return;
-    const toAnchor = filtered.filter(
-      (f) => selectedFiles.has(f.id) && f.content_hash && f.chain_status !== "anchored",
-    );
-    if (toAnchor.length === 0) {
-      showNotice("No selected files are available for anchoring.");
-      return;
-    }
-    for (const file of toAnchor) {
-      await anchorFile(file);
-    }
-  };
-
   if (loading) {
     return (
       <div className="hub-body p-6 file-manager-page">
@@ -819,18 +728,11 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2 border-b pb-2">
               <Button
-                variant={viewMode === "offchain" ? "default" : "outline"}
+                variant={viewMode === "files" ? "default" : "outline"}
                 size="sm"
-                onClick={() => { setViewMode("offchain"); setSelectedFiles(new Set()); }}
+                onClick={() => { setViewMode("files"); setSelectedFiles(new Set()); }}
               >
-                Off-chain
-              </Button>
-              <Button
-                variant={viewMode === "onchain" ? "default" : "outline"}
-                size="sm"
-                onClick={() => { setViewMode("onchain"); setSelectedFiles(new Set()); }}
-              >
-                On-chain
+                Files
               </Button>
               <Button
                 variant={viewMode === "trash" ? "default" : "outline"}
@@ -905,19 +807,6 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                 {viewMode !== "trash" ? (
                   <>
                     <Button size="sm" variant="outline" onClick={handleBulkCopyLinks}>Copy Links</Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleBulkAnchor}
-                      disabled={!embeddedWallet.unlocked}
-                      title={
-                        embeddedWallet.unlocked
-                          ? undefined
-                          : "Unlock your embedded wallet to anchor files on-chain."
-                      }
-                    >
-                      {embeddedWallet.unlocked ? "Anchor on Solana" : "Unlock wallet to anchor"}
-                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setMoveMenuFileId("__bulk__")}><FolderInput size={14} className="mr-1" /> Move</Button>
                     <Button size="sm" variant="destructive" onClick={handleBulkDelete}><Trash2 size={14} className="mr-1" /> Trash</Button>
                   </>
@@ -955,7 +844,6 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                 {filtered.map((file) => {
                   const type = getFileType(file.storage_path, file.mime_type);
                   const name = getFileName(file.storage_path);
-                  const isOnchain = viewMode === "onchain";
                   const isTrash = viewMode === "trash";
                   const fileTags = fileTagMap[file.id] ?? [];
                   return (
@@ -979,15 +867,11 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                           >
                             {name}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {fileTags.length > 0 && <span>{fileTags.map((t) => t.name).join(", ")}</span>}
-                            {isOnchain && file.chain_status !== "none" && (
-                              <span>
-                                {fileTags.length > 0 && " · "}
-                                {busyFileId === file.id ? "Working…" : CHAIN_BADGES[file.chain_status].label.toLowerCase()}
-                              </span>
-                            )}
-                          </div>
+                          {fileTags.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              <span>{fileTags.map((t) => t.name).join(", ")}</span>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">
@@ -1021,34 +905,9 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                                 <DropdownMenuItem onClick={() => openShare(file)}>
                                   <Share2 size={14} className="mr-2" /> Share link
                                 </DropdownMenuItem>
-                                {isOnchain ? (
-                                  <>
-                                    <DropdownMenuItem onClick={() => setDetailFile(file)}>
-                                      <ShieldCheck size={14} className="mr-2" /> On-chain details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => void handleVerifyIntegrity(file)} disabled={busyFileId === file.id || file.chain_status !== "anchored"}>
-                                      <ShieldCheck size={14} className="mr-2" /> Verify integrity
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => viewOnExplorer(file)}>
-                                      <ExternalLink size={14} className="mr-2" /> View on explorer
-                                    </DropdownMenuItem>
-                                  </>
-                                ) : (
-                                  <DropdownMenuItem
-                                    onClick={() => void anchorFile(file)}
-                                    disabled={busyFileId === file.id || !embeddedWallet.unlocked}
-                                    title={
-                                      embeddedWallet.unlocked
-                                        ? undefined
-                                        : "Unlock your embedded wallet to anchor files on-chain."
-                                    }
-                                  >
-                                    <ShieldCheck size={14} className="mr-2" />
-                                    {file.chain_status === "failed"
-                                      ? "Retry anchor on Solana"
-                                      : embeddedWallet.unlocked
-                                        ? "Anchor on Solana"
-                                        : "Unlock wallet to anchor"}
+                                {file.content_hash && (
+                                  <DropdownMenuItem onClick={() => void handleVerifyIntegrity(file)} disabled={busyFileId === file.id}>
+                                    <ShieldCheck size={14} className="mr-2" /> Verify integrity
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
@@ -1121,14 +980,12 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                         <p>
                           {files.length === 0
                             ? "Upload your first file to get started."
-                            : viewMode === "onchain"
-                              ? "Anchor off-chain files to see them here."
-                              : "Adjust your filters or upload a new file."}
+                            : "Adjust your filters or upload a new file."}
                         </p>
                         <div className="mt-3">
-                          {files.length === 0 || viewMode === "onchain" ? (
+                          {files.length === 0 ? (
                             <Button size="sm" onClick={openFilePicker}>
-                              {viewMode === "onchain" ? "Upload a file" : "Upload your first file"}
+                              Upload your first file
                             </Button>
                           ) : hasActiveFilters ? (
                             <Button size="sm" variant="outline" onClick={clearFilters}>Clear filters</Button>
@@ -1199,104 +1056,6 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           ))}
           {folders.length === 0 && <p className="text-sm text-muted-foreground">No folders available.</p>}
         </div>
-      </DialogTemplate>
-
-      {/* On-chain Detail Dialog */}
-      <DialogTemplate
-        open={detailFile !== null}
-        onOpenChange={(open) => { if (!open) setDetailFile(null); }}
-        title="On-chain details"
-        size="md"
-      >
-        {detailFile && (
-          <div className="space-y-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">File</p>
-              <p className="font-medium break-all">{getFileName(detailFile.storage_path)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Status</p>
-              <span
-                className="inline-flex items-center gap-1.5 rounded-none border px-2 py-0.5 text-xs font-medium"
-                style={{
-                  background: CHAIN_BADGES[detailFile.chain_status].bg,
-                  color: CHAIN_BADGES[detailFile.chain_status].color,
-                  borderColor: CHAIN_BADGES[detailFile.chain_status].color,
-                }}
-              >
-                {CHAIN_BADGES[detailFile.chain_status].label}
-              </span>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Network</p>
-              <p className="font-medium">{detailFile.chain_network ?? "—"}</p>
-            </div>
-            {detailFile.chain_tx_signature && (
-              <div>
-                <p className="text-muted-foreground">Transaction</p>
-                <div className="flex items-center gap-2">
-                  <code className="rounded bg-muted px-2 py-1 font-mono text-xs">{shortSig(detailFile.chain_tx_signature)}</code>
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground"
-                    onClick={() => void navigator.clipboard.writeText(detailFile.chain_tx_signature!)}
-                    aria-label="Copy transaction signature"
-                  >
-                    <Copy size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-            {detailFile.chain_program_address && (
-              <div>
-                <p className="text-muted-foreground">File Record PDA</p>
-                <div className="flex items-center gap-2">
-                  <code className="rounded bg-muted px-2 py-1 font-mono text-xs">{shortSig(detailFile.chain_program_address)}</code>
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground"
-                    onClick={() => void navigator.clipboard.writeText(detailFile.chain_program_address!)}
-                    aria-label="Copy PDA address"
-                  >
-                    <Copy size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-            <div>
-              <p className="text-muted-foreground">Content hash (SHA-256)</p>
-              <div className="flex items-center gap-2">
-                <code className="rounded bg-muted px-2 py-1 font-mono text-xs">{shortSig(detailFile.content_hash ?? "")}</code>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => void navigator.clipboard.writeText(detailFile.content_hash ?? "")}
-                  aria-label="Copy content hash"
-                >
-                  <Copy size={14} />
-                </button>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void handleVerifyIntegrity(detailFile)}
-                disabled={busyFileId === detailFile.id || detailFile.chain_status !== "anchored"}
-              >
-                <ShieldCheck size={14} className="mr-2" /> Verify integrity
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => viewOnExplorer(detailFile)}
-                disabled={!detailFile.chain_network}
-              >
-                <ExternalLink size={14} className="mr-2" /> View on explorer
-              </Button>
-            </div>
-          </div>
-        )}
       </DialogTemplate>
 
       {/* Preview Dialog */}

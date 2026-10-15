@@ -38,17 +38,19 @@ import {
   updateMarketplaceWallet,
   type WorkspaceMemberRow,
 } from "../../lib/repositories/workspaces.ts";
-import SolanaLogo from "../../features/solana/components/SolanaLogo.tsx";
-import EmbeddedWalletCard from "../../features/solana/components/EmbeddedWalletCard.tsx";
-import { useEmbeddedWallet } from "../../features/solana/hooks/useEmbeddedWallet.ts";
+import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
+import PhantomWalletCard from "../../features/phantom/components/PhantomWalletCard.tsx";
+import { usePhantomWallet } from "../../features/phantom/hooks/usePhantomWallet.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import {
   estimateUsdcTransferFee,
   payInvoiceWithUsdc,
-} from "../../features/solana/payments/solanaPay.ts";
-import { verifySolanaPayment } from "../../features/solana/payments/verify.ts";
-import { isOnChainPaymentConfigured, SOLANA_CLUSTER } from "../../features/solana/lib/config.ts";
-import { saveWalletActivity } from "../../features/solana/lib/walletHistory.ts";
+} from "../../features/phantom/payments/phantomPay.ts";
+import {
+  isOnChainPaymentConfigured,
+  SOLANA_CLUSTER,
+  SOLANA_USDC_MINT,
+} from "../../features/phantom/lib/config.ts";
 
 interface BillingPageProps {
   workspaceId: string;
@@ -60,7 +62,7 @@ export default function BillingPage({
   workspaceId,
   isPlatformAdmin = false,
 }: BillingPageProps) {
-  const embeddedWallet = useEmbeddedWallet();
+  const phantomWallet = usePhantomWallet();
   const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
   const [notice, setNotice] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRow[]>([]);
@@ -78,7 +80,7 @@ export default function BillingPage({
   const [recordPaymentError, setRecordPaymentError] = useState<string | null>(null);
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [solanaStatus, setSolanaStatus] = useState<
-    "idle" | "connecting" | "pending" | "verifying"
+    "idle" | "connecting" | "pending" | "recording"
   >("idle");
   const [solanaFeeEstimate, setSolanaFeeEstimate] = useState<string | null>(null);
   const [paymentInvoiceId, setPaymentInvoiceId] = useState("");
@@ -306,9 +308,9 @@ export default function BillingPage({
 
   const solanaButtonLabel = {
     idle: `Pay with Solana (USDC) on ${SOLANA_CLUSTER}`,
-    connecting: "Connecting wallet…",
+    connecting: "Connecting Phantom…",
     pending: "Confirm in wallet…",
-    verifying: "Verifying on-chain payment…",
+    recording: "Recording payment…",
   }[solanaStatus];
 
   const payWithSolana = async () => {
@@ -319,40 +321,28 @@ export default function BillingPage({
     setRecordPaymentError(null);
     try {
       setSolanaStatus("connecting");
-      const { signature, reference, walletAddress } = await payInvoiceWithUsdc(
-        {
-          amount: selectedInvoice.total,
-          invoiceId: selectedInvoice.id,
-        },
-        embeddedWallet.unlockedWallet?.keypair,
-      );
-
-      setSolanaStatus("verifying");
-      const result = await verifySolanaPayment({
-        workspaceId,
+      const { signature, reference, walletAddress } = await payInvoiceWithUsdc({
+        amount: selectedInvoice.total,
         invoiceId: selectedInvoice.id,
-        signature,
-        reference,
-        walletAddress,
       });
 
-      saveWalletActivity({
-        type: "payment",
-        label: `Paid invoice ${selectedInvoice.invoice_number}`,
-        signature,
-        amount: selectedInvoice.total.toString(),
-        token: "USDC",
-        detail: selectedInvoice.invoice_number,
-        network: SOLANA_CLUSTER,
+      setSolanaStatus("recording");
+      await createPayment(workspaceId, {
+        invoice_id: selectedInvoice.id,
+        paid_on: new Date().toISOString().slice(0, 10),
+        amount: selectedInvoice.total,
+        payment_method: "Solana (USDC)",
+        reference,
+        notes: `Invoice ${selectedInvoice.invoice_number} paid via Phantom`,
+        chain: "solana",
+        token_mint: SOLANA_USDC_MINT,
+        tx_signature: signature,
+        wallet_address: walletAddress,
       });
       await fetchHistory();
       setIsRecordPaymentOpen(false);
       resetRecordPaymentForm();
-      showNotice(
-        result.alreadyRecorded
-          ? "Payment already recorded."
-          : "Solana payment confirmed and recorded.",
-      );
+      showNotice("Solana payment sent and recorded.");
     } catch (err: unknown) {
       setRecordPaymentError(err instanceof Error ? err.message : "Solana payment failed.");
     } finally {
@@ -542,8 +532,7 @@ export default function BillingPage({
                         disabled={
                           solanaBusy ||
                           recordingPayment ||
-                          !selectedInvoice ||
-                          !embeddedWallet.unlocked
+                          !selectedInvoice
                         }
                         aria-busy={solanaBusy}
                       >
@@ -552,15 +541,13 @@ export default function BillingPage({
                         {solanaButtonLabel}
                       </Button>
                       <p className="text-center text-xs text-muted-foreground">
-                        {!embeddedWallet.unlocked
-                          ? "Unlock your embedded wallet to pay invoices on-chain."
-                          : selectedInvoice
-                            ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC to the workspace treasury. Verified on-chain before recording.${
-                                solanaFeeEstimate
-                                  ? ` Estimated network cost: ${solanaFeeEstimate}.`
-                                  : ""
-                              }`
-                            : "Select an invoice to pay it directly with a Solana wallet."}
+                        {selectedInvoice
+                          ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC to the workspace treasury from your connected Phantom wallet.${
+                              solanaFeeEstimate
+                                ? ` Estimated network cost: ${solanaFeeEstimate}.`
+                                : ""
+                            }`
+                          : "Select an invoice to pay it directly with your Phantom wallet."}
                       </p>
                     </div>
                   </CardContent>
@@ -659,7 +646,7 @@ export default function BillingPage({
         </div>
       )}
 
-      <EmbeddedWalletCard />
+      <PhantomWalletCard />
 
       <DashboardCard
         title="Marketplace Receiving Wallet"
@@ -684,9 +671,9 @@ export default function BillingPage({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">— No wallet selected —</SelectItem>
-                {embeddedWallet.walletAddress && (
-                  <SelectItem value={embeddedWallet.walletAddress}>
-                    Embedded Wallet ({embeddedWallet.shortAddress})
+                {phantomWallet.address && (
+                  <SelectItem value={phantomWallet.address}>
+                    Phantom Wallet ({phantomWallet.shortAddress})
                   </SelectItem>
                 )}
                 {paymentMethods

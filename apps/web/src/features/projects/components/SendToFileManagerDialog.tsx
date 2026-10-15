@@ -1,16 +1,8 @@
 import { useState } from "react";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Label } from "@/components/ui/label.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
 import { Loader2, CheckCircle2, FolderInput } from "lucide-react";
-import { uploadWorkspaceAttachment, type StorageTier } from "../../../lib/repositories/attachments.ts";
+import { uploadWorkspaceAttachment } from "../../../lib/repositories/attachments.ts";
 import type { ProjectOutput } from "../tools/calculators/projectOutputs.ts";
 
 interface SendToFileManagerDialogProps {
@@ -26,13 +18,11 @@ export function SendToFileManagerDialog({
   workspaceId,
   onClose,
 }: SendToFileManagerDialogProps) {
-  const [tier, setTier] = useState<StorageTier>("off_chain");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleClose = () => {
-    setTier("off_chain");
     setBusy(false);
     setDone(false);
     setError(null);
@@ -46,7 +36,7 @@ export function SendToFileManagerDialog({
     try {
       const blob = new Blob([output.content], { type: output.mimeType || "text/plain" });
       const file = new File([blob], output.fileName, { type: output.mimeType || "text/plain" });
-      await uploadWorkspaceAttachment(workspaceId, file, { storageTier: tier });
+      await uploadWorkspaceAttachment(workspaceId, file);
       setDone(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
@@ -66,7 +56,7 @@ export function SendToFileManagerDialog({
       }
       description={
         output
-          ? `Upload "${output.fileName}" to the workspace file manager and choose the storage tier.`
+          ? `Upload "${output.fileName}" to the workspace file manager.`
           : "No output selected."
       }
       size="md"
@@ -98,26 +88,9 @@ export function SendToFileManagerDialog({
         </div>
       ) : (
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="storage-tier">Storage tier</Label>
-            <Select
-              value={tier}
-              onValueChange={(v) => setTier(v as StorageTier)}
-              disabled={busy}
-            >
-              <SelectTrigger id="storage-tier">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="off_chain">Off-chain storage</SelectItem>
-                <SelectItem value="on_chain">On-chain anchor (Solana)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Off-chain is fast and free. On-chain anchors the file hash on Solana for tamper-proof verification.
-            </p>
-          </div>
-
+          <p className="text-sm text-muted-foreground">
+            The file will be stored securely in the workspace file manager.
+          </p>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )}
