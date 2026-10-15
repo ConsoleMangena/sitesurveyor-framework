@@ -1256,8 +1256,8 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         </Select>
       </div>
 
-      <div className="min-h-[min(600px,calc(100dvh-22rem))] max-h-[min(600px,calc(100dvh-22rem))] overflow-y-auto rounded-lg border border-border/60 bg-card pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="flex h-full flex-col overflow-y-auto">
+      <div className="min-h-0 overflow-visible rounded-lg border border-border/60 bg-card pb-[env(safe-area-inset-bottom,0px)] sm:min-h-[min(600px,calc(100dvh-22rem))] sm:max-h-[min(600px,calc(100dvh-22rem))] sm:overflow-y-auto">
+        <div className="flex flex-col overflow-visible sm:h-full sm:overflow-y-auto">
           {sortedQuotes.map((quote) => {
             const total = calculateTotal(quote.items);
             return (

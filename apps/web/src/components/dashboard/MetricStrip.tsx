@@ -56,7 +56,7 @@ function MetricSkeleton() {
 export function MetricStrip({ metrics, loading = false }: MetricStripProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <MetricSkeleton key={i} />
         ))}
@@ -67,10 +67,7 @@ export function MetricStrip({ metrics, loading = false }: MetricStripProps) {
   return (
     <div
       data-testid="metric-strip"
-      className="grid gap-2"
-      style={{
-        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
-      }}
+      className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4"
     >
       {metrics.map((metric, index) => {
         const clickable = !!metric.onClick;
@@ -97,10 +94,10 @@ export function MetricStrip({ metrics, loading = false }: MetricStripProps) {
           >
             <CardContent
               data-testid="metric-strip-item-content"
-              className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3"
+              className="flex flex-col items-start gap-1.5 p-2 sm:flex-row sm:items-center sm:gap-3 sm:p-3"
             >
               <div
-                className="flex size-7 shrink-0 items-center justify-center rounded-none border bg-muted"
+                className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-muted sm:size-7"
                 style={{ color: metric.accentColor }}
               >
                 {metric.icon ? (
@@ -110,15 +107,15 @@ export function MetricStrip({ metrics, loading = false }: MetricStripProps) {
                 )}
               </div>
               <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                <p className="text-[10px] text-muted-foreground truncate">{metric.label}</p>
+                <p className="text-[9px] text-muted-foreground truncate sm:text-[10px]">{metric.label}</p>
                 <p
-                  className="text-sm font-semibold text-foreground tabular-nums leading-none tracking-tight truncate"
+                  className="text-xs font-semibold text-foreground tabular-nums leading-none tracking-tight truncate sm:text-sm"
                   title={metric.value}
                 >
                   {metric.value}
                 </p>
                 {metric.subtext && (
-                  <p className="text-[10px] text-muted-foreground truncate">{metric.subtext}</p>
+                  <p className="text-[9px] text-muted-foreground truncate sm:text-[10px]">{metric.subtext}</p>
                 )}
               </div>
             </CardContent>
