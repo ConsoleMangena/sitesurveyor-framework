@@ -57,6 +57,16 @@ function workspaceNotReadyMessage(diagnostics: AppUserLoadDiagnostics): string {
   return base;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => reject(new Error(`${label} timed out.`)), timeoutMs);
+    promise.then(
+      (value) => { window.clearTimeout(timeoutId); resolve(value); },
+      (error) => { window.clearTimeout(timeoutId); reject(error); },
+    );
+  });
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -117,7 +127,7 @@ export default function App() {
 
   const syncUser = useCallback(async () => {
     try {
-      let session = await getCurrentSession();
+      let session = await withTimeout(getCurrentSession(), 8000, "Session check");
       if (!session && !isOnline()) {
         session = loadStoredSession();
       }
@@ -128,7 +138,11 @@ export default function App() {
         return;
       }
 
-      const { user: mappedUser, diagnostics } = await mapUserWithRetries();
+      const { user: mappedUser, diagnostics } = await withTimeout(
+        mapUserWithRetries(),
+        10000,
+        "Workspace loading",
+      );
       if (mappedUser) {
         saveCachedUser(mappedUser);
         setUser(mappedUser);
