@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useRouter } from 'expo-router';
 import { ScrollView } from 'react-native';
-import { ThemeView } from '@/components/ui/theme-view';
 import { ThemeText } from '@/components/ui/theme-text';
 import { Button } from '@/components/ui/button';
 import { TextField } from '@/components/ui/text-field';
