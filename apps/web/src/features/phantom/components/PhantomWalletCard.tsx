@@ -165,7 +165,7 @@ export default function PhantomWalletCard() {
         onOpenChange={setCustomDialogOpen}
         title={customWalletAdapter.hasStoredWallet() ? "Unlock SiteSurveyor Wallet" : "Create SiteSurveyor Wallet"}
         description="Use a strong PIN to protect this wallet on the current device."
-        className="left-1/2! top-1/2! inset-x-auto! w-[min(22rem,calc(100vw-1rem))]! max-w-[22rem]! max-h-[calc(100dvh-1rem)]! translate-x-[-50%]! translate-y-[-50%]!"
+        className="fixed! left-1/2! top-1/2! right-auto! bottom-auto! inset-x-auto! w-[calc(100vw-1rem)]! max-w-sm! max-h-[calc(100dvh-1rem)]! translate-x-[-50%]! translate-y-[-50%]!"
         size="sm"
         footer={
           <>
