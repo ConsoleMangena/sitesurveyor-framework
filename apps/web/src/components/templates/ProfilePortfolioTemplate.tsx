@@ -285,20 +285,24 @@ export function ProfilePortfolioTemplate({
         )}
 
         {showcase.length > 0 && (
-          <div className="mt-5 space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <Images size={12} /> Project Showcase
-              <span className="rounded-full bg-muted px-1.5 py-0 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
-                {showcase.length}
-              </span>
+          <div className="mt-6 space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Images size={14} /></span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-foreground">Project showcase</p>
+                  <p className="text-[11px] text-muted-foreground">Selected field work and project highlights</p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[10px] font-semibold tabular-nums text-muted-foreground ring-1 ring-border/70">{showcase.length} {showcase.length === 1 ? "project" : "projects"}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {showcase.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setPreview(item)}
-                  className="group relative aspect-[4/3] overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border/70 bg-muted shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={`View project ${item.title}`}
                 >
                   {item.imageUrl ? (

@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import {
   Award,
-  Briefcase,
   Camera,
   ChevronDown,
   ChevronUp,
   DollarSign,
+  FolderKanban,
   Globe,
   ImagePlus,
   Images,
@@ -383,37 +383,25 @@ export function ProfessionalPortfolioCard({
   };
 
   return (
-    <Card className="gap-4">
-      <CardHeader className="pb-0">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Briefcase className="size-4" />
+    <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.04] via-background to-violet-500/[0.04] shadow-sm">
+      <CardHeader className="border-b border-border/60 bg-background/70 pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm ring-1 ring-primary/10">
+              <FolderKanban className="size-5" />
             </span>
-            <div>
-              <CardTitle className="text-lg">Professional Portfolio</CardTitle>
-              <CardDescription>
-                Publish your surveyor profile so businesses can find and hire you.
-              </CardDescription>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-lg sm:text-xl">Professional Portfolio</CardTitle>
+                {profile?.is_global && <Badge variant="outline" className="gap-1"><Globe size={11} /> Global</Badge>}
+              </div>
+              <CardDescription className="mt-1 max-w-xl">Build a profile that shows your field experience, visual work, and availability at a glance.</CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {profile?.is_global && (
-              <Badge variant="outline" className="gap-1">
-                <Globe size={12} /> Global
-              </Badge>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setIsOpen((v) => !v)}
-              aria-label={isOpen ? "Collapse portfolio" : "Expand portfolio"}
-            >
-              {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </Button>
-          </div>
+          <Button type="button" variant="outline" size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setIsOpen((v) => !v)} aria-label={isOpen ? "Collapse portfolio" : "Expand portfolio"}>
+            {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {isOpen ? "Hide editor" : "Edit portfolio"}
+          </Button>
         </div>
       </CardHeader>
 
@@ -843,22 +831,23 @@ export function ProfessionalPortfolioCard({
 
                     <Separator className="my-5" />
 
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Images size={14} className="text-muted-foreground" />
-                          Project showcase
-                          <span className="rounded-full bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground">
-                            {showcaseItems.length}
-                          </span>
+                    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Images size={15} /></span>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Project showcase</p>
+                            <p className="text-xs text-muted-foreground">Add visual proof of your best field work.</p>
+                          </div>
                         </div>
+                        <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[10px] font-semibold tabular-nums text-muted-foreground ring-1 ring-border/70">{showcaseItems.length} / 8</span>
                       </div>
-                      {showcaseItems.length > 0 && (
-                        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {showcaseItems.length > 0 ? (
+                        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                           {showcaseItems.map((item) => (
                             <li
                               key={item.id}
-                              className="group relative overflow-hidden rounded-none border bg-muted/30"
+                              className="group relative overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm transition-shadow hover:shadow-md"
                             >
                               <div className="relative aspect-[4/3]">
                                 {item.image_path ? (
@@ -900,9 +889,15 @@ export function ProfessionalPortfolioCard({
                             </li>
                           ))}
                         </ul>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-6 text-center">
+                          <span className="mx-auto flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Images size={18} /></span>
+                          <p className="mt-2 text-sm font-medium text-foreground">No projects added yet</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Add a title and optional photo to make your portfolio more credible.</p>
+                        </div>
                       )}
                       {profile ? (
-                        <div className="space-y-2 rounded-lg border border-dashed bg-muted/20 p-3">
+                        <div className="rounded-xl border border-dashed border-primary/30 bg-primary/[0.03] p-4">
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_100px]">
                             <Input
                               placeholder="Project title (e.g. Mine haul road survey)"
