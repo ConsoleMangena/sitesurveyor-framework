@@ -77,3 +77,22 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  mobile:
+    name: Mobile checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+        working-directory: apps/mobile
+      - run: npm run lint
+        working-directory: apps/mobile
+      - run: npm run typecheck
+        working-directory: apps/mobile
+      - run: npm run test
+        working-directory: apps/mobile
