@@ -20,7 +20,7 @@ day-rate benchmark chips computed live from hire listings. FINISH:
 unreviewed and undocumented is unfinished; this build ends with the finish
 review, the verdict, and DESIGN.md.
 */
-import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -42,6 +42,8 @@ import {
   Search,
   UserRound,
   X,
+  Bookmark,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
@@ -154,6 +156,8 @@ export default function PublicMarketPage() {
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState("");
+  const [savedSearch, setSavedSearch] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [scope, setScope] = useState<Scope>("all");
   const [sort, setSort] = useState<SortKey>("newest");
   const [listingCategory, setListingCategory] = useState<ListingCategory>("all");
@@ -193,6 +197,18 @@ export default function PublicMarketPage() {
     setJobPage(1);
     setFirmPage(1);
     setEventPage(1);
+  };
+
+  useEffect(() => {
+    const key = `surveyor-market-search:${search}:${scope}:${sort}`;
+    setSavedSearch(window.localStorage.getItem(key) === "1");
+  }, [search, scope, sort]);
+
+  const toggleSavedSearch = () => {
+    const key = `surveyor-market-search:${search}:${scope}:${sort}`;
+    if (savedSearch) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, "1");
+    setSavedSearch((value) => !value);
   };
 
   const failed = failure !== null;
@@ -532,7 +548,7 @@ export default function PublicMarketPage() {
               />
               SiteSurveyor
             </Link>
-            <span className="text-sm text-muted-foreground">/ Market</span>
+            <span className="text-sm text-muted-foreground">/ Surveyor’s Market</span>
           </span>
           {user ? (
             <DropdownMenu
@@ -627,7 +643,7 @@ export default function PublicMarketPage() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/30 to-transparent pb-8 pt-20 sm:pb-12 sm:pt-24">
               <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <h1 className="max-w-xl text-2xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
-                  The open surveying market.
+                  The Surveyor’s Market.
                 </h1>
                 <p className="mt-2 max-w-lg text-xs leading-relaxed text-white/85 sm:mt-3 sm:text-base">
                   Instruments, professionals, jobs, firms, and training —
@@ -722,7 +738,8 @@ export default function PublicMarketPage() {
                     </button>
                   ) : null}
                 </div>
-                <Select
+                <div className="flex gap-2">
+                  <Select
                   value={sort}
                   onValueChange={(value) => setSort(value as SortKey)}
                 >
@@ -738,6 +755,13 @@ export default function PublicMarketPage() {
                     <SelectItem value="price-desc">Price: high to low</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button type="button" variant={savedSearch ? "default" : "outline"} size="icon" onClick={toggleSavedSearch} aria-label={savedSearch ? "Remove saved search" : "Save this search"} title={savedSearch ? "Saved search" : "Save this search"}>
+                  <Bookmark className="size-4" fill={savedSearch ? "currentColor" : "none"} aria-hidden="true" />
+                </Button>
+                <Button type="button" variant="outline" size="icon" className="sm:hidden" onClick={() => setMobileFiltersOpen((value) => !value)} aria-expanded={mobileFiltersOpen} aria-label="Toggle marketplace filters">
+                  <SlidersHorizontal className="size-4" aria-hidden="true" />
+                </Button>
+                </div>
               </div>
             </div>
 
