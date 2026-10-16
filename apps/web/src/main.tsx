@@ -16,6 +16,7 @@ if (typeof globalAny.global === 'undefined') {
   globalAny.global = globalThis
 }
 import App from './App.tsx'
+import { SolanaWalletProvider } from './features/phantom/SolanaWalletProvider.tsx'
 import { registerSW } from 'virtual:pwa-register'
 import { clearSiteData } from './lib/clearSiteData.ts'
 import { initTheme } from './lib/theme.ts'
@@ -67,7 +68,9 @@ createRoot(document.getElementById('root')!).render(
       // Lazy import keeps the harness out of production bundles' initial path.
       <PlotFitReproLazy />
     ) : (
-      <App />
+      <SolanaWalletProvider>
+        <App />
+      </SolanaWalletProvider>
     )}
   </StrictMode>,
 )

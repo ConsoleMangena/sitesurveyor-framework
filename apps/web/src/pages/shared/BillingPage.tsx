@@ -40,7 +40,7 @@ import {
 } from "../../lib/repositories/workspaces.ts";
 import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
 import PhantomWalletCard from "../../features/phantom/components/PhantomWalletCard.tsx";
-import { usePhantomWallet } from "../../features/phantom/hooks/usePhantomWallet.ts";
+import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import {
   estimateUsdcTransferFee,
@@ -62,7 +62,7 @@ export default function BillingPage({
   workspaceId,
   isPlatformAdmin = false,
 }: BillingPageProps) {
-  const phantomWallet = usePhantomWallet();
+  const phantomWallet = useSiteSurveyorWallet();
   const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
   const [notice, setNotice] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRow[]>([]);
@@ -523,7 +523,15 @@ export default function BillingPage({
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">SiteSurveyor uses the Solana wallet adapter for this payment. Confirm the network, token, recipient, and amount in Phantom before approving.</p>
+                      <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                        <div className="rounded-lg border bg-muted/30 p-3"><strong className="block text-foreground">1. Connect</strong>Use your Phantom wallet.</div>
+                        <div className="rounded-lg border bg-muted/30 p-3"><strong className="block text-foreground">2. Review</strong>Check the invoice and treasury.</div>
+                        <div className="rounded-lg border bg-muted/30 p-3"><strong className="block text-foreground">3. Confirm</strong>Approve only the expected transaction.</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
                       <Button
                         type="button"
                         variant="outline"

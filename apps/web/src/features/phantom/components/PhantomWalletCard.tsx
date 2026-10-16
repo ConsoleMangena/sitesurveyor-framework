@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { usePhantomWallet } from "../hooks/usePhantomWallet.ts";
+import { useSiteSurveyorWallet } from "../hooks/useSiteSurveyorWallet.ts";
 import { SOLANA_CLUSTER, explorerAccountUrl } from "../lib/config.ts";
 import SolanaLogo from "./SolanaLogo.tsx";
 
@@ -17,7 +17,7 @@ import SolanaLogo from "./SolanaLogo.tsx";
  * or disconnect, and displays the connected address with copy/explorer links.
  */
 export default function PhantomWalletCard() {
-  const wallet = usePhantomWallet();
+  const wallet = useSiteSurveyorWallet();
   const [copied, setCopied] = useState(false);
 
   const copyAddress = async () => {
