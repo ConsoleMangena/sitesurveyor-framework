@@ -58,27 +58,27 @@ export default function PhantomWalletCard() {
   };
 
   return (
-    <Card className="mt-4 overflow-hidden border-slate-200 bg-slate-50/70 shadow-sm dark:border-slate-800 dark:bg-background">
-      <CardHeader className="border-b border-slate-200/80 pb-4 dark:border-slate-800">
+    <Card className="mt-4 max-w-4xl overflow-hidden border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-50">
+      <CardHeader className="border-b border-slate-200 bg-white pb-4 text-slate-900 dark:border-slate-200 dark:bg-white dark:text-slate-900">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-100 dark:text-slate-700">
               <SolanaLogo size={22} />
             </div>
             <div>
               <CardTitle className="text-base">Wallet methods</CardTitle>
-              <CardDescription>Choose how you connect and settle Solana payments.</CardDescription>
+              <CardDescription className="text-slate-600">Choose how you connect and settle Solana payments.</CardDescription>
             </div>
           </div>
-          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-900">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
             {SOLANA_CLUSTER}
           </span>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-5">
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-violet-200 bg-white p-4 shadow-sm dark:border-violet-900/60 dark:bg-background">
+      <CardContent className="bg-slate-50 p-3 text-slate-900 sm:p-4">
+        <div className="grid max-w-3xl gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-violet-200 bg-white p-3 text-slate-900 shadow-sm sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300">
@@ -86,7 +86,7 @@ export default function PhantomWalletCard() {
                 </div>
                 <div>
                   <p className="font-semibold">Phantom</p>
-                  <p className="text-xs text-muted-foreground">External wallet</p>
+                  <p className="text-xs text-slate-600">External wallet</p>
                 </div>
               </div>
               <span className="rounded-full bg-violet-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-950/70 dark:text-violet-300">
@@ -96,7 +96,7 @@ export default function PhantomWalletCard() {
 
             {wallet.connected && wallet.address ? (
               <>
-                <div className="mt-5 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950">
+                <div className="mt-5 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2">
                   <code className="truncate text-xs font-medium">{shortenAddress(wallet.address)}</code>
                   <div className="flex shrink-0 items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyAddress()} aria-label="Copy Phantom wallet address">
@@ -113,7 +113,7 @@ export default function PhantomWalletCard() {
               </>
             ) : wallet.installed || !wallet.isMobile ? (
               <>
-                <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Connect Phantom to pay invoices with USDC directly from your external wallet.</p>
+                <p className="text-xs leading-relaxed text-slate-600">Connect Phantom to pay invoices with USDC directly from your external wallet.</p>
                 <Button size="sm" className="mt-4 w-full gap-2" onClick={() => void wallet.connect()} disabled={wallet.connecting}>
                   {wallet.connecting && <Loader2 size={14} className="animate-spin" />}
                   <WalletCards size={16} />
@@ -122,7 +122,7 @@ export default function PhantomWalletCard() {
               </>
             ) : (
               <>
-                <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Open this page in the Phantom app to connect on mobile.</p>
+                <p className="mt-5 text-xs leading-relaxed text-slate-600">Open this page in the Phantom app to connect on mobile.</p>
                 <Button variant="outline" size="sm" className="mt-4 w-full gap-2" onClick={wallet.openMobile}>
                   <ExternalLink size={14} /> Open Phantom
                 </Button>
@@ -130,7 +130,7 @@ export default function PhantomWalletCard() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm dark:border-cyan-900/60 dark:bg-background">
+          <div className="rounded-2xl border border-cyan-200 bg-white p-3 text-slate-900 shadow-sm sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-100">
@@ -141,12 +141,12 @@ export default function PhantomWalletCard() {
                   <p className="text-xs text-muted-foreground">App-managed wallet</p>
                 </div>
               </div>
-              <span className="rounded-full bg-cyan-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-700 dark:bg-cyan-950/70 dark:text-cyan-300">
+              <span className="rounded-full bg-cyan-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-700">
                 {customWalletAdapter.hasStoredWallet() ? "Secured" : "Not set up"}
               </span>
             </div>
 
-            <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Encrypted locally and unlocked only when you approve a payment.</p>
+            <p className="mt-5 text-xs leading-relaxed text-slate-600">Encrypted locally and unlocked only when you approve a payment.</p>
             <Button variant="outline" size="sm" className="mt-4 w-full gap-2" onClick={() => { setCustomError(null); setCustomDialogOpen(true); }}>
               <LockKeyhole size={15} />
               {customWalletAdapter.hasStoredWallet() ? "Unlock wallet" : "Create wallet"}
@@ -154,7 +154,7 @@ export default function PhantomWalletCard() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-muted-foreground dark:border-slate-800 dark:bg-background">
+        <div className="mt-3 flex max-w-3xl items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
           <KeyRound size={14} className="shrink-0 text-slate-500" />
           Your PIN never leaves this device and is not stored by SiteSurveyor.
         </div>
@@ -165,7 +165,7 @@ export default function PhantomWalletCard() {
         onOpenChange={setCustomDialogOpen}
         title={customWalletAdapter.hasStoredWallet() ? "Unlock SiteSurveyor Wallet" : "Create SiteSurveyor Wallet"}
         description="Use a strong PIN to protect this wallet on the current device."
-        className="left-1/2! top-1/2! inset-x-auto! w-[calc(100vw-1rem)]! max-w-[28rem]! max-h-[calc(100dvh-1rem)]! translate-x-[-50%]! translate-y-[-50%]!"
+        className="left-1/2! top-1/2! inset-x-auto! w-[min(22rem,calc(100vw-1rem))]! max-w-[22rem]! max-h-[calc(100dvh-1rem)]! translate-x-[-50%]! translate-y-[-50%]!"
         size="sm"
         footer={
           <>
