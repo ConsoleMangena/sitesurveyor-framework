@@ -15,23 +15,33 @@ export function useSiteSurveyorWallet() {
   const connect = useCallback(async () => {
     setConnecting(true);
     try {
-      await adapter.connect();
-      return adapter.publicKey?.toBase58() ?? null;
+      // Use Phantom's injected provider directly. Wallet Standard may expose
+      // Phantom without selecting a wallet-adapter adapter first.
+      return await legacy.connect();
     } finally {
       setConnecting(false);
     }
-  }, [adapter]);
+  }, [legacy]);
+
+  const disconnect = useCallback(async () => {
+    await legacy.disconnect();
+    if (adapter.connected) {
+      await adapter.disconnect();
+    }
+  }, [adapter, legacy]);
 
   return {
     ...adapter,
     installed: legacy.installed,
     isMobile: legacy.isMobile,
+    connected: adapter.connected || legacy.connected,
     address: adapter.publicKey?.toBase58() ?? legacy.address,
     shortAddress: adapter.publicKey
       ? `${adapter.publicKey.toBase58().slice(0, 4)}…${adapter.publicKey.toBase58().slice(-4)}`
       : legacy.shortAddress,
-    connecting: connecting || adapter.connecting,
+    connecting: connecting || adapter.connecting || legacy.connecting,
     connect,
+    disconnect,
     openMobile: legacy.openMobile,
   };
 }
