@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, Ban, Loader2 } from "lucide-react";
+import { BadgeCheck, Ban, Heart, Loader2 } from "lucide-react";
 
 import { supabase } from "../../lib/supabase/client.ts";
 import type { Database } from "../../lib/supabase/types.ts";
@@ -20,6 +20,7 @@ import { MARKET_DOT_COLORS } from "./marketDots.ts";
 import type { MarketDot } from "./marketDots.ts";
 import { toPortfolioItemRows } from "./marketFeed.ts";
 import { ListingGallery } from "./ListingGallery.tsx";
+import { getMarketFavorite, addMarketFavorite, removeMarketFavorite } from "../../lib/repositories/marketPreferences.ts";
 import type {
   EventRow,
   FirmRow,
@@ -89,11 +90,42 @@ export function MarketDetailDialog({
   allowRequest?: boolean;
 }) {
   const [showcase, setShowcase] = useState<ShowcaseItemRow[]>([]);
+  const [favoriteId, setFavoriteId] = useState<string | null>(null);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
   const professionalId = professional?.id ?? null;
   const user = useAuthStore((s) => s.user);
   const signedIn = user !== null;
 
-  // Lazy-load showcase projects only while a professional detail is open.
+  useEffect(() => {
+    let cancelled = false;
+    if (!dot || !user) {
+      queueMicrotask(() => {
+        if (!cancelled) setFavoriteId(null);
+      });
+      return;
+    }
+    void getMarketFavorite(dot.kind, dot.id).then((favorite) => {
+      if (!cancelled) setFavoriteId(favorite?.id ?? null);
+    }).catch(() => { if (!cancelled) setFavoriteId(null); });
+    return () => { cancelled = true; };
+  }, [dot, user]);
+
+  async function toggleFavorite() {
+    if (!dot || !user || favoriteBusy) return;
+    setFavoriteBusy(true);
+    try {
+      if (favoriteId) {
+        await removeMarketFavorite(favoriteId);
+        setFavoriteId(null);
+      } else {
+        const favorite = await addMarketFavorite(dot.kind, dot.id);
+        setFavoriteId(favorite.id);
+      }
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
+
   useEffect(() => {
     if (!professionalId) return;
     let cancelled = false;
@@ -153,6 +185,11 @@ export function MarketDetailDialog({
                   aria-hidden="true"
                 />
                 {dot.name}
+                {user ? (
+                  <Button type="button" variant="ghost" size="icon" className="ml-auto size-8" onClick={toggleFavorite} disabled={favoriteBusy} aria-label={favoriteId ? "Remove favorite" : "Add favorite"}>
+                    <Heart className="size-4" fill={favoriteId ? "currentColor" : "none"} aria-hidden="true" />
+                  </Button>
+                ) : null}
                 {professional?.is_verified ? (
                   <BadgeCheck
                     className="size-4 shrink-0 text-cyan-600"

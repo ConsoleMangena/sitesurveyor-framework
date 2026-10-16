@@ -1659,6 +1659,18 @@ export type Database = {
           },
         ]
       }
+      market_saved_searches: {
+        Row: { id: string; user_id: string; query: string; scope: string; sort: string; listing_category: string; created_at: string }
+        Insert: { id?: string; user_id?: string; query?: string; scope?: string; sort?: string; listing_category?: string; created_at?: string }
+        Update: { id?: string; user_id?: string; query?: string; scope?: string; sort?: string; listing_category?: string; created_at?: string }
+        Relationships: []
+      }
+      market_favorites: {
+        Row: { id: string; user_id: string; market_kind: string; market_id: string; created_at: string }
+        Insert: { id?: string; user_id?: string; market_kind: string; market_id: string; created_at?: string }
+        Update: { id?: string; user_id?: string; market_kind?: string; market_id?: string; created_at?: string }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null

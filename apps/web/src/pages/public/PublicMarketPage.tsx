@@ -79,6 +79,8 @@ import {
   SelectValue,
 } from "../../components/ui/select.tsx";
 
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../../components/ui/sheet.tsx";
+
 const PublicMarketGlobe = lazy(
   () => import("../../components/market/PublicMarketGlobe.tsx"),
 );
@@ -96,6 +98,7 @@ import type {
   ProfessionalRow,
 } from "../../components/market/marketFeed.ts";
 import { MarketDetailDialog } from "../../components/market/MarketDetailDialog.tsx";
+import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
 
 type Scope = "all" | "listing" | "professional" | "job" | "firm" | "event";
 type SortKey = "newest" | "price-asc" | "price-desc";
@@ -200,15 +203,39 @@ export default function PublicMarketPage() {
   };
 
   useEffect(() => {
-    const key = `surveyor-market-search:${search}:${scope}:${sort}`;
-    setSavedSearch(window.localStorage.getItem(key) === "1");
-  }, [search, scope, sort]);
+    let cancelled = false;
+    const loadSaved = async () => {
+      if (!user) {
+        setSavedSearch(window.localStorage.getItem(`surveyor-market-search:${search}:${scope}:${sort}`) === "1");
+        return;
+      }
+      try {
+        const saved = await getSavedMarketSearch(search, scope, sort, listingCategory);
+        if (!cancelled) setSavedSearch(saved !== null);
+      } catch {
+        if (!cancelled) setSavedSearch(false);
+      }
+    };
+    void loadSaved();
+    return () => { cancelled = true; };
+  }, [user, search, scope, sort, listingCategory]);
 
-  const toggleSavedSearch = () => {
+  const toggleSavedSearch = async () => {
     const key = `surveyor-market-search:${search}:${scope}:${sort}`;
-    if (savedSearch) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, "1");
-    setSavedSearch((value) => !value);
+    if (!user) {
+      if (savedSearch) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, "1");
+      setSavedSearch((value) => !value);
+      return;
+    }
+    try {
+      const saved = await getSavedMarketSearch(search, scope, sort, listingCategory);
+      if (saved) await removeMarketSearch(saved.id);
+      else await saveMarketSearch({ query: search, scope, sort, listing_category: listingCategory });
+      setSavedSearch(!saved);
+    } catch {
+      setSavedSearch(false);
+    }
   };
 
   const failed = failure !== null;
@@ -996,6 +1023,29 @@ export default function PublicMarketPage() {
           </p>
         </div>
       </footer>
+
+      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl">
+          <SheetHeader className="px-0">
+            <SheetTitle>Filter Surveyor’s Market</SheetTitle>
+            <SheetDescription>Choose a section and sorting option.</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-5 py-4">
+            <div className="grid grid-cols-2 gap-2">
+              {([['all','Everything'],['listing','Listings'],['professional','Professionals'],['job','Jobs'],['firm','Firms'],['event','Training']] as const).map(([value,label]) => (
+                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => { setScope(value); resetRegistryPages(); }}>
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <Select value={sort} onValueChange={(value) => setSort(value as SortKey)}>
+              <SelectTrigger aria-label="Mobile sort results"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="newest">Newest first</SelectItem><SelectItem value="price-asc">Price: low to high</SelectItem><SelectItem value="price-desc">Price: high to low</SelectItem></SelectContent>
+            </Select>
+            <Button className="w-full" onClick={() => setMobileFiltersOpen(false)}>Show results</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <MarketDetailDialog
         dot={selectedDot}
