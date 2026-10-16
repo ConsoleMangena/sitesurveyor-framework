@@ -6,6 +6,7 @@ import SessionExpiredBanner from "./components/SessionExpiredBanner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
+import OfflineStatusBanner from "./components/OfflineStatusBanner";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
@@ -202,6 +203,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <GlobalLoader />
+      <OfflineStatusBanner />
       <BrowserRouter>
         <SessionExpiredBanner />
         <Routes>
