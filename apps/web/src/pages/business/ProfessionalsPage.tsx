@@ -673,7 +673,9 @@ export default function ProfessionalsPage({
         onOpenChange={(open) => !open && setSelectedPro(null)}
         title={selectedPro?.name ?? "Professional Details"}
         description={selectedPro?.title}
-        size="screen"
+        size="full"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-5xl"
+        contentClassName="px-4 py-4 sm:px-6 sm:py-5"
         footer={selectedPro ? (
           <>
             <Button variant="outline" onClick={() => setSelectedPro(null)}>
@@ -695,18 +697,18 @@ export default function ProfessionalsPage({
         ) : undefined}
       >
         {selectedPro && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-5 lg:gap-5">
-            <div className="min-w-0 space-y-4 lg:col-span-3">
-            <div className="relative -mx-1 -mt-1 h-20 overflow-hidden rounded-none bg-gradient-to-br from-primary/30 via-primary/15 to-primary/5">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">
+            <div className="min-w-0 space-y-5 lg:col-span-3">
+            <div className="relative h-28 overflow-hidden rounded-xl bg-gradient-to-br from-primary/30 via-primary/15 to-primary/5">
               {selectedPro.is_verified && (
                 <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-500/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
                   <BadgeCheck size={11} /> Verified
                 </div>
               )}
             </div>
-            <div className="-mt-12 flex items-end gap-3">
+            <div className="-mt-14 flex flex-wrap items-end gap-4 px-1">
               <img
-                className="h-20 w-20 rounded-full border-4 border-background object-cover shadow-sm"
+                className="h-24 w-24 rounded-full border-4 border-background object-cover shadow-sm sm:h-28 sm:w-28"
                 src={resolveAvatar(selectedPro)}
                 alt=""
                 onError={(e) => {
@@ -715,7 +717,7 @@ export default function ProfessionalsPage({
                   )}&background=e5e7eb&color=111827&size=128`;
                 }}
               />
-              <div className="flex flex-1 flex-wrap items-center gap-1.5 pb-1">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 pb-1">
                 {selectedPro.is_global && <Badge variant="outline">Global</Badge>}
                 <Badge variant={availabilityVariant[selectedPro.availability] ?? "secondary"}>
                   {selectedPro.availability}
@@ -735,7 +737,7 @@ export default function ProfessionalsPage({
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold tracking-tight">{selectedPro.name}</h3>
+              <h3 className="text-xl font-semibold tracking-tight">{selectedPro.name}</h3>
               <p className="text-sm text-muted-foreground">
                 {selectedPro.title}
                 {selectedPro.discipline ? ` · ${selectedPro.discipline}` : ""}
