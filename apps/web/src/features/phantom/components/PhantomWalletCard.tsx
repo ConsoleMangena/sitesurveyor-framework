@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Copy, Loader2, ExternalLink, Unplug } from "lucide-react";
+import { Check, Copy, Loader2, ExternalLink, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { usePhantomWallet } from "../hooks/usePhantomWallet.ts";
 import { SOLANA_CLUSTER, explorerAccountUrl } from "../lib/config.ts";
+import SolanaLogo from "./SolanaLogo.tsx";
 
 /**
  * Phantom wallet connection card. Shows install state, lets the user connect
@@ -31,11 +32,11 @@ export default function PhantomWalletCard() {
   };
 
   return (
-    <Card className="mt-4">
-      <CardHeader>
+    <Card className="mt-4 overflow-hidden border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] via-background to-cyan-500/[0.06] shadow-sm">
+      <CardHeader className="border-b border-violet-500/10 pb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
-            <Unplug size={15} />
+            <SolanaLogo size={22} />
           </div>
           <div>
             <CardTitle className="text-base">Solana Wallet</CardTitle>
@@ -122,7 +123,8 @@ export default function PhantomWalletCard() {
               {wallet.connecting && (
                 <Loader2 size={14} className="animate-spin" />
               )}
-              Connect Phantom
+              <WalletCards size={18} />
+              Connect to Phantom
             </Button>
             <p className="text-xs text-muted-foreground">
               Connect your Phantom wallet to pay invoices and marketplace
