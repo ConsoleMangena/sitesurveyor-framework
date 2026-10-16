@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import SplashScreen from "./components/SplashScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
+import AppErrorPage from "./components/AppErrorPage";
 import SessionExpiredBanner from "./components/SessionExpiredBanner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WorkspaceRouter from "./components/WorkspaceRouter";
@@ -285,7 +286,7 @@ export default function App() {
             <Route path="/workspace/*" element={
               <WorkspaceRouter />
             } />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<AppErrorPage kind="not-found" />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

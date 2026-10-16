@@ -19,7 +19,13 @@ function base64ToBytes(value: string): Uint8Array {
 }
 async function deriveKey(pin: string, salt: Uint8Array): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey("raw", encoder.encode(pin) as BufferSource, "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt as BufferSource, iterations: 250_000, hash: "SHA-256" }, material, { name: "AES-GCM", length: 256 }, false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: salt as BufferSource, iterations: 250_000, hash: "SHA-256" },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
 }
 async function encryptKeypair(keypair: Keypair, pin: string): Promise<StoredWallet> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
