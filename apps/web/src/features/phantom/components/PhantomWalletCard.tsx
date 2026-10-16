@@ -1,12 +1,26 @@
 import { useState } from "react";
-import { Check, Copy, ExternalLink, KeyRound, Loader2, WalletCards } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+  LockKeyhole,
+  WalletCards,
+} from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { useSiteSurveyorWallet } from "../hooks/useSiteSurveyorWallet.ts";
 import { CUSTOM_WALLET_NAME, customWalletAdapter } from "../lib/customWalletAdapter.ts";
 import { SOLANA_CLUSTER, explorerAccountUrl } from "../lib/config.ts";
 import SolanaLogo from "./SolanaLogo.tsx";
+
+function shortenAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-6)}`;
+}
 
 export default function PhantomWalletCard() {
   const wallet = useSiteSurveyorWallet();
@@ -14,6 +28,7 @@ export default function PhantomWalletCard() {
   const [copied, setCopied] = useState(false);
   const [customPin, setCustomPin] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
 
   const copyAddress = async () => {
     if (!wallet.address) return;
@@ -21,7 +36,9 @@ export default function PhantomWalletCard() {
       await navigator.clipboard.writeText(wallet.address);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
-    } catch { /* clipboard may be unavailable */ }
+    } catch {
+      // Clipboard access may be unavailable in desktop shells.
+    }
   };
 
   const unlockCustomWallet = async () => {
@@ -34,37 +51,144 @@ export default function PhantomWalletCard() {
       }
       adapterWallet.select(CUSTOM_WALLET_NAME);
       setCustomPin("");
+      setCustomDialogOpen(false);
     } catch (error) {
       setCustomError(error instanceof Error ? error.message : "Custom wallet failed.");
     }
   };
 
   return (
-    <Card className="mt-4 overflow-hidden border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] via-background to-cyan-500/[0.06] shadow-sm">
-      <CardHeader className="border-b border-violet-500/10 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary/10 text-primary"><SolanaLogo size={22} /></div>
-          <div><CardTitle className="text-base">Solana Wallet</CardTitle><CardDescription>Use Phantom or create a custom SiteSurveyor wallet.</CardDescription></div>
+    <Card className="mt-4 overflow-hidden border-slate-200 bg-slate-50/70 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+      <CardHeader className="border-b border-slate-200/80 pb-4 dark:border-slate-800">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900">
+              <SolanaLogo size={22} />
+            </div>
+            <div>
+              <CardTitle className="text-base">Wallet methods</CardTitle>
+              <CardDescription>Choose how you connect and settle Solana payments.</CardDescription>
+            </div>
+          </div>
+          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-900">
+            {SOLANA_CLUSTER}
+          </span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2 border-b pb-4">
-          <p className="text-sm font-medium">SiteSurveyor Wallet</p>
-          <p className="text-xs text-muted-foreground">An app-created wallet encrypted with your PIN. The PIN and decrypted key stay in memory.</p>
-          <div className="flex flex-wrap gap-2">
-            <input className="h-9 min-w-[220px] flex-1 rounded-md border bg-background px-3 text-sm" type="password" placeholder="Wallet PIN" value={customPin} onChange={(event) => setCustomPin(event.target.value)} />
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => void unlockCustomWallet()} disabled={!customPin || wallet.connecting}><KeyRound size={14} />{customWalletAdapter.hasStoredWallet() ? "Unlock custom wallet" : "Create custom wallet"}</Button>
+
+      <CardContent className="p-4 sm:p-5">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-violet-200 bg-white p-4 shadow-sm dark:border-violet-900/60 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300">
+                  <WalletCards size={20} />
+                </div>
+                <div>
+                  <p className="font-semibold">Phantom</p>
+                  <p className="text-xs text-muted-foreground">External wallet</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-violet-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-950/70 dark:text-violet-300">
+                {wallet.connected ? "Connected" : "Available"}
+              </span>
+            </div>
+
+            {wallet.connected && wallet.address ? (
+              <>
+                <div className="mt-5 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950">
+                  <code className="truncate text-xs font-medium">{shortenAddress(wallet.address)}</code>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyAddress()} aria-label="Copy Phantom wallet address">
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(explorerAccountUrl(wallet.address!, SOLANA_CLUSTER), "_blank", "noopener,noreferrer")} aria-label="View Phantom wallet on Solana Explorer">
+                      <ExternalLink size={14} />
+                    </Button>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => void wallet.disconnect()}>
+                  Disconnect Phantom
+                </Button>
+              </>
+            ) : wallet.installed || !wallet.isMobile ? (
+              <>
+                <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Connect Phantom to pay invoices with USDC directly from your external wallet.</p>
+                <Button size="sm" className="mt-4 w-full gap-2" onClick={() => void wallet.connect()} disabled={wallet.connecting}>
+                  {wallet.connecting && <Loader2 size={14} className="animate-spin" />}
+                  <WalletCards size={16} />
+                  Connect Phantom
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Open this page in the Phantom app to connect on mobile.</p>
+                <Button variant="outline" size="sm" className="mt-4 w-full gap-2" onClick={wallet.openMobile}>
+                  <ExternalLink size={14} /> Open Phantom
+                </Button>
+              </>
+            )}
           </div>
+
+          <div className="rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm dark:border-cyan-900/60 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-slate-900 shadow-sm dark:bg-slate-800">
+                  <img src="/logo.svg" alt="SiteSurveyor" className="h-7 w-7 object-contain" />
+                </div>
+                <div>
+                  <p className="font-semibold">SiteSurveyor Wallet</p>
+                  <p className="text-xs text-muted-foreground">App-managed wallet</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-cyan-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-700 dark:bg-cyan-950/70 dark:text-cyan-300">
+                {customWalletAdapter.hasStoredWallet() ? "Secured" : "Not set up"}
+              </span>
+            </div>
+
+            <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Encrypted locally and unlocked only when you approve a payment.</p>
+            <Button variant="outline" size="sm" className="mt-4 w-full gap-2" onClick={() => { setCustomError(null); setCustomDialogOpen(true); }}>
+              <LockKeyhole size={15} />
+              {customWalletAdapter.hasStoredWallet() ? "Unlock wallet" : "Create wallet"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-muted-foreground dark:border-slate-800 dark:bg-slate-900">
+          <KeyRound size={14} className="shrink-0 text-slate-500" />
+          Your PIN never leaves this device and is not stored by SiteSurveyor.
+        </div>
+      </CardContent>
+
+      <DialogTemplate
+        open={customDialogOpen}
+        onOpenChange={setCustomDialogOpen}
+        title={customWalletAdapter.hasStoredWallet() ? "Unlock SiteSurveyor Wallet" : "Create SiteSurveyor Wallet"}
+        description="Use a strong PIN to protect this wallet on the current device."
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCustomDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => void unlockCustomWallet()} disabled={!customPin} className="gap-2">
+              <LockKeyhole size={15} />
+              {customWalletAdapter.hasStoredWallet() ? "Unlock" : "Create wallet"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Input
+            autoFocus
+            type="password"
+            inputMode="numeric"
+            placeholder="Wallet PIN"
+            value={customPin}
+            onChange={(event) => setCustomPin(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter" && customPin) void unlockCustomWallet(); }}
+          />
           {customError && <p className="text-sm text-destructive">{customError}</p>}
         </div>
-        {!wallet.installed && wallet.isMobile ? (
-          <div className="flex flex-col items-start gap-2"><p className="text-sm text-muted-foreground">Open this page in the Phantom app to connect on mobile.</p><Button variant="outline" size="sm" className="gap-2" onClick={wallet.openMobile}><ExternalLink size={14} /> Open in Phantom</Button></div>
-        ) : wallet.connected && wallet.address ? (
-          <div className="space-y-3"><div className="flex flex-wrap items-center gap-2"><span className="text-xs text-muted-foreground">Connected</span><code className="rounded bg-muted px-2 py-1 font-mono text-xs">{wallet.address}</code><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyAddress()} aria-label="Copy wallet address">{copied ? <Check size={14} /> : <Copy size={14} />}</Button><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(explorerAccountUrl(wallet.address!, SOLANA_CLUSTER), "_blank", "noopener,noreferrer")} aria-label="View wallet on Solana Explorer"><ExternalLink size={14} /></Button></div><Button variant="outline" size="sm" onClick={() => void wallet.disconnect()}>Disconnect</Button></div>
-        ) : (
-          <div className="space-y-2"><Button size="sm" className="gap-2" onClick={() => void wallet.connect()} disabled={wallet.connecting}>{wallet.connecting && <Loader2 size={14} className="animate-spin" />}<WalletCards size={18} />Connect to Phantom</Button><p className="text-xs text-muted-foreground">Connect Phantom to pay invoices and marketplace orders on Solana.</p></div>
-        )}
-      </CardContent>
+      </DialogTemplate>
     </Card>
   );
 }
