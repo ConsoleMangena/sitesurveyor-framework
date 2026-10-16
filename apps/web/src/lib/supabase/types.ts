@@ -856,6 +856,7 @@ export type Database = {
           notes: string | null
           organization_id: string | null
           paid_at: string | null
+          pesepay_reference: string | null
           project_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
@@ -876,6 +877,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           paid_at?: string | null
+          pesepay_reference?: string | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
@@ -896,6 +898,7 @@ export type Database = {
           notes?: string | null
           organization_id?: string | null
           paid_at?: string | null
+          pesepay_reference?: string | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number

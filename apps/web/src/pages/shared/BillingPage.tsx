@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Banknote, ExternalLink, Loader2, Plus, Download, Wallet } from "lucide-react";
+import { Banknote, ExternalLink, Loader2, Plus, Download, Wallet, CreditCard } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import PageLoader from "@/components/PageLoader.tsx";
@@ -24,6 +24,7 @@ import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
 import { listInvoices } from "../../lib/repositories/invoices.ts";
 import type { InvoiceWithDetails } from "../../lib/repositories/invoices.ts";
 import { createPayment, listPayments } from "../../lib/repositories/payments.ts";
+import { initiatePesepayCheckout } from "../../lib/repositories/pesepay.ts";
 import type { PaymentWithInvoice } from "../../lib/repositories/payments.ts";
 import {
   deletePaymentMethod,
@@ -79,6 +80,8 @@ export default function BillingPage({
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [recordPaymentError, setRecordPaymentError] = useState<string | null>(null);
   const [recordingPayment, setRecordingPayment] = useState(false);
+  const [pesepayBusy, setPesepayBusy] = useState(false);
+  const [pesepayReference, setPesepayReference] = useState<string | null>(null);
   const [solanaStatus, setSolanaStatus] = useState<
     "idle" | "connecting" | "pending" | "recording"
   >("idle");
@@ -303,6 +306,27 @@ export default function BillingPage({
   };
 
   const selectedInvoice = invoices.find((inv) => inv.id === paymentInvoiceId);
+
+  const payWithPesepay = async () => {
+    if (!selectedInvoice) {
+      setRecordPaymentError("Please select an invoice to pay.");
+      return;
+    }
+    setRecordPaymentError(null);
+    setPesepayBusy(true);
+    try {
+      const checkout = await initiatePesepayCheckout({
+        invoiceId: selectedInvoice.id,
+        workspaceId,
+      });
+      setPesepayReference(checkout.referenceNumber);
+      window.location.assign(checkout.redirectUrl);
+    } catch (err: unknown) {
+      setRecordPaymentError(err instanceof Error ? err.message : "Pesepay checkout failed.");
+      setPesepayBusy(false);
+    }
+  };
+
   const solanaBusy = solanaStatus !== "idle";
   const solanaConfigured = isOnChainPaymentConfigured();
 
@@ -504,6 +528,32 @@ export default function BillingPage({
                   {recordPaymentError}
                 </div>
               )}
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
+                      <CreditCard size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Pay with Pesepay</CardTitle>
+                      <CardDescription>Use EcoCash, InnBucks, cards, Zimswitch, or other supported Zimbabwe payment methods.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button type="button" className="w-full gap-2" onClick={payWithPesepay} disabled={pesepayBusy || solanaBusy || !selectedInvoice}>
+                    {pesepayBusy && <Loader2 size={16} className="animate-spin" />}
+                    <CreditCard size={16} />
+                    {pesepayBusy ? "Opening Pesepay…" : "Pay with Pesepay"}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    {selectedInvoice ? `Pays ${formatCurrency(selectedInvoice.total)} ${selectedInvoice.currency_code} for ${selectedInvoice.invoice_number} on Pesepay.` : "Select an invoice to continue."}
+                  </p>
+                  {pesepayReference && <p className="text-center text-xs text-muted-foreground">Reference: {pesepayReference}</p>}
+                </CardContent>
+              </Card>
+
 
               {solanaConfigured && (
                 <Card>
