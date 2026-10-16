@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { usePhantomWallet } from "./usePhantomWallet.ts";
+import { CUSTOM_WALLET_NAME } from "../lib/customWalletAdapter.ts";
 
 export function useSiteSurveyorWallet() {
   const adapter = useWallet();
@@ -15,8 +16,10 @@ export function useSiteSurveyorWallet() {
   const connect = useCallback(async () => {
     setConnecting(true);
     try {
-      // Use Phantom's injected provider directly. Wallet Standard may expose
-      // Phantom without selecting a wallet-adapter adapter first.
+      if (adapter.wallet?.adapter.name === CUSTOM_WALLET_NAME) {
+        await adapter.connect();
+        return adapter.publicKey?.toBase58() ?? null;
+      }
       return await legacy.connect();
     } finally {
       setConnecting(false);
