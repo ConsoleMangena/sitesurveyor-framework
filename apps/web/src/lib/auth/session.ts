@@ -41,57 +41,29 @@ export function loadStoredSession(): Session | null {
   return null;
 }
 
-// ── Google OAuth helper ───────────────────────────────────────────────────────
+// ── Solana Web3 (SIWS) helper ────────────────────────────────────────────────
 
 /**
- * Starts the Google OAuth (PKCE) flow. Supabase redirects the browser to
- * Google and back to `redirectTo`; the returning URL is consumed by the
- * client's `detectSessionInUrl`, which fires a `SIGNED_IN` auth event that
- * `App.tsx` already listens for. No session is returned here directly.
+ * Signs in via a Solana wallet using Supabase Web3 auth (Sign-In With Solana).
+ * Pass a wallet-standard compatible adapter or the `window.solana` object; when
+ * omitted, auth-js falls back to `window.solana`. Throws the Supabase error on
+ * failure, otherwise resolves with the fresh session and user.
  */
-export async function signInWithGoogle(): Promise<void> {
-  const redirectTo = `${window.location.origin}/`;
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
-    },
-  });
+export async function signInWithSolanaWallet(
+  wallet?: unknown,
+  options?: unknown,
+): Promise<{ session: Session | null; user: User | null }> {
+  const { data, error } = await supabase.auth.signInWithWeb3({
+    chain: "solana",
+    wallet,
+    options,
+  } as never);
 
   if (error) {
     throw error;
   }
-}
 
-export interface SignInInput {
-  email: string;
-  password: string;
-}
-
-export interface SignUpInput {
-  email: string;
-  password: string;
-  fullName: string;
-  /**
-   * Self-supplied at signup. The DB trigger `public.handle_new_auth_user` only
-   * stores this in `profiles.auth_signup_account_type`; `is_platform_admin` is
-   * never set from this value, so submitting "platform_admin" creates a regular
-   * account that a super-admin must subsequently elevate.
-   */
-  accountType: "personal" | "business" | "platform_admin";
-  workspaceName?: string;
-  company?: string;
-  promoCode?: string;
-}
-
-export interface SignUpResult {
-  session: Session | null;
-  user: User | null;
-  needsEmailConfirmation: boolean;
+  return { session: data.session, user: data.user };
 }
 
 export async function getCurrentSession(): Promise<Session | null> {
@@ -127,47 +99,6 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
-export async function signInWithEmail({ email, password }: SignInInput) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
-
-export async function signUpWithEmail(
-  input: SignUpInput,
-): Promise<SignUpResult> {
-  const { data, error } = await supabase.auth.signUp({
-    email: input.email,
-    password: input.password,
-    options: {
-      data: {
-        full_name: input.fullName,
-        account_type: input.accountType,
-        workspace_name: input.workspaceName ?? input.company ?? null,
-        company: input.company ?? null,
-        promo_code: input.promoCode ?? null,
-      },
-    },
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return {
-    session: data.session,
-    user: data.user,
-    needsEmailConfirmation: data.session === null,
-  };
-}
-
 export async function signOut() {
   clearCachedUser();
   const { error } = await supabase.auth.signOut();
@@ -175,44 +106,6 @@ export async function signOut() {
   if (error) {
     throw error;
   }
-}
-
-export async function resendSignupConfirmation(email: string) {
-  const { data, error } = await supabase.auth.resend({
-    type: "signup",
-    email,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
-
-export async function requestPasswordReset(email: string) {
-  const redirectTo = `${window.location.origin}/?auth=reset-password`;
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
-
-export async function updatePassword(newPassword: string) {
-  const { data, error } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
 }
 
 export function onAuthStateChange(
