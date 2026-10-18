@@ -8,10 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
 import OfflineStatusBanner from "./components/OfflineStatusBanner";
-import LoginPage from "./pages/auth/LoginPage";
-import SignupPage from "./pages/auth/SignupPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import WalletLoginPage from "./pages/auth/WalletLoginPage";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 import {
@@ -228,40 +225,13 @@ export default function App() {
               user ? (
                 <Navigate to="/" replace />
               ) : (
-                <LoginPage />
+                <WalletLoginPage />
               )
             }
           />
-          <Route
-            path="/signup"
-            element={
-              user ? (
-                <Navigate to="/" replace />
-              ) : (
-                <SignupPage />
-              )
-            }
-          />
-          <Route
-            path="/forgot-password"
-            element={
-              user ? (
-                <Navigate to="/" replace />
-              ) : (
-                <ForgotPasswordPage />
-              )
-            }
-          />
-          <Route
-            path="/reset-password"
-            element={
-              user ? (
-                <Navigate to="/" replace />
-              ) : (
-                <ResetPasswordPage />
-              )
-            }
-          />
+          <Route path="/signup" element={<Navigate to="/login" replace />} />
+          <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
+          <Route path="/reset-password" element={<Navigate to="/login" replace />} />
           <Route
             path="/market"
             element={
