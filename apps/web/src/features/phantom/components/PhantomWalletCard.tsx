@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { useSiteSurveyorWallet } from "../hooks/useSiteSurveyorWallet.ts";
+import { useCustomWalletStatus } from "../hooks/useCustomWalletStatus.ts";
 import { CUSTOM_WALLET_NAME, customWalletAdapter } from "../lib/customWalletAdapter.ts";
 import { SOLANA_CLUSTER, explorerAccountUrl } from "../lib/config.ts";
 import SolanaLogo from "./SolanaLogo.tsx";
@@ -29,6 +30,8 @@ export default function PhantomWalletCard() {
   const [customPin, setCustomPin] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
+  const { status: customWalletStatus, refresh: refreshCustomWalletStatus } = useCustomWalletStatus();
+  const hasStoredWallet = customWalletStatus === "stored";
 
   const copyAddress = async () => {
     if (!wallet.address) return;
@@ -44,16 +47,28 @@ export default function PhantomWalletCard() {
   const unlockCustomWallet = async () => {
     try {
       setCustomError(null);
-      if (customWalletAdapter.hasStoredWallet()) {
+      if (hasStoredWallet) {
         await customWalletAdapter.unlockWallet(customPin);
       } else {
-        await customWalletAdapter.createWallet(customPin);
+        try {
+          await customWalletAdapter.createWallet(customPin);
+        } catch (error) {
+          // A wallet can exist server-side without a local hint (new device,
+          // cleared storage). Retry as an unlock with the same PIN instead of dead-ending.
+          if (error instanceof Error && error.message.includes("already exists")) {
+            await customWalletAdapter.unlockWallet(customPin);
+          } else {
+            throw error;
+          }
+        }
       }
       adapterWallet.select(CUSTOM_WALLET_NAME);
       setCustomPin("");
       setCustomDialogOpen(false);
+      void refreshCustomWalletStatus();
     } catch (error) {
       setCustomError(error instanceof Error ? error.message : "Custom wallet failed.");
+      void refreshCustomWalletStatus();
     }
   };
 
@@ -142,14 +157,14 @@ export default function PhantomWalletCard() {
                 </div>
               </div>
               <span className="rounded-full bg-cyan-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-600 dark:text-cyan-400">
-                {customWalletAdapter.hasStoredWallet() ? "Secured" : "Not set up"}
+                {hasStoredWallet ? "Secured" : "Not set up"}
               </span>
             </div>
 
             <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Encrypted locally and unlocked only when you approve a payment.</p>
             <Button variant="outline" size="sm" className="mt-4 w-full gap-2" onClick={() => { setCustomError(null); setCustomDialogOpen(true); }}>
               <LockKeyhole size={15} />
-              {customWalletAdapter.hasStoredWallet() ? "Unlock wallet" : "Create wallet"}
+              {hasStoredWallet ? "Unlock wallet" : "Create wallet"}
             </Button>
           </div>
         </div>
@@ -163,7 +178,7 @@ export default function PhantomWalletCard() {
       <DialogTemplate
         open={customDialogOpen}
         onOpenChange={setCustomDialogOpen}
-        title={customWalletAdapter.hasStoredWallet() ? "Unlock SiteSurveyor Wallet" : "Create SiteSurveyor Wallet"}
+        title={hasStoredWallet ? "Unlock SiteSurveyor Wallet" : "Create SiteSurveyor Wallet"}
         description="Use a strong PIN to protect this wallet on the current device."
         size="sm"
         footer={
@@ -171,7 +186,7 @@ export default function PhantomWalletCard() {
             <Button variant="outline" onClick={() => setCustomDialogOpen(false)}>Cancel</Button>
             <Button onClick={() => void unlockCustomWallet()} disabled={!customPin} className="gap-2">
               <LockKeyhole size={15} />
-              {customWalletAdapter.hasStoredWallet() ? "Unlock" : "Create wallet"}
+              {hasStoredWallet ? "Unlock" : "Create wallet"}
             </Button>
           </>
         }
