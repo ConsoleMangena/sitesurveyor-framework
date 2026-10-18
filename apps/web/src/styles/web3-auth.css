@@ -13,10 +13,10 @@
   position: relative;
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--accent) 7%, var(--bg)) 0%,
-    color-mix(in oklab, var(--surface-muted) 85%, var(--bg)) 100%
+    color-mix(in oklab, var(--accent) 6%, var(--bg)) 0%,
+    color-mix(in oklab, var(--surface-muted) 88%, var(--bg)) 100%
   );
-  padding: max(24px, env(safe-area-inset-top, 0px) + 12px) 16px max(28px, env(safe-area-inset-bottom, 0px) + 12px);
+  padding: max(20px, env(safe-area-inset-top, 0px) + 12px) 16px max(24px, env(safe-area-inset-bottom, 0px) + 12px);
   overflow-x: hidden;
   box-sizing: border-box;
 }
@@ -26,25 +26,25 @@
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   background: var(--surface);
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   box-shadow: 
-    0 16px 40px rgba(0, 0, 0, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.04);
+    0 12px 32px rgba(0, 0, 0, 0.07),
+    0 2px 6px rgba(0, 0, 0, 0.03);
   overflow: hidden;
-  animation: web3-fade-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: web3-fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Accent rim highlight across the top */
+/* Subtle accent highlight rim */
 .web3-auth-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2.5px;
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent-purple, #8b5cf6) 100%);
   z-index: 2;
 }
@@ -52,7 +52,7 @@
 @keyframes web3-fade-up {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.99);
+    transform: translateY(10px) scale(0.99);
   }
   to {
     opacity: 1;
@@ -62,11 +62,11 @@
 
 /* ── Header Chrome ── */
 .web3-card-header {
-  padding: 24px 28px 18px;
+  padding: 18px 22px 14px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   background: var(--surface);
 }
 
@@ -79,11 +79,11 @@
 .web3-brand-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .web3-brand-logo {
-  height: 40px;
+  height: 34px;
   width: auto;
   object-fit: contain;
 }
@@ -91,15 +91,16 @@
 .web3-brand-title {
   margin: 0;
   font-family: var(--heading, sans-serif);
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--text-h);
   letter-spacing: -0.3px;
+  line-height: 1.2;
 }
 
 .web3-brand-subtitle {
-  margin: 2px 0 0;
-  font-size: 12px;
+  margin: 1px 0 0;
+  font-size: 11px;
   color: var(--text);
   font-weight: 400;
 }
@@ -108,22 +109,22 @@
 .web3-network-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  padding: 3px 8px;
   background: var(--surface-muted);
   border: 1px solid var(--border);
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--text);
 }
 
 .web3-network-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--color-success, #0c8f5d);
-  box-shadow: 0 0 6px var(--color-success, #0c8f5d);
+  box-shadow: 0 0 5px var(--color-success, #0c8f5d);
 }
 
 /* ── Mode Switcher (Tabs) ── */
@@ -132,26 +133,26 @@
   grid-template-columns: 1fr 1fr;
   background: var(--surface-muted);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 3px;
+  border-radius: 8px;
+  padding: 2.5px;
   position: relative;
 }
 
 .web3-tab-btn {
   background: transparent;
   border: none;
-  border-radius: 7px;
-  padding: 8px 12px;
+  border-radius: 6px;
+  padding: 6px 10px;
   font-family: var(--sans, sans-serif);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text);
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
 }
 
 .web3-tab-btn:hover {
@@ -161,7 +162,7 @@
 .web3-tab-btn.active {
   background: var(--surface);
   color: var(--text-h);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .web3-tab-btn.active .tab-icon {
@@ -170,10 +171,10 @@
 
 /* ── Body Content ── */
 .web3-card-body {
-  padding: 22px 28px 24px;
+  padding: 18px 22px 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 15px;
   background: var(--surface);
 }
 
@@ -181,11 +182,11 @@
 .web3-wallets-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .web3-section-label {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -198,20 +199,20 @@
 .web3-wallet-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .web3-wallet-chip {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 9px 12px;
+  border-radius: 8px;
+  padding: 7px 10px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   text-align: left;
-  transition: all 0.16s ease;
+  transition: all 0.15s ease;
   color: var(--text-h);
 }
 
@@ -228,9 +229,9 @@
 }
 
 .web3-wallet-chip-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -240,8 +241,8 @@
 
 .web3-wallet-chip-icon img,
 .web3-wallet-chip-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 17px;
+  height: 17px;
   object-fit: contain;
 }
 
@@ -252,7 +253,7 @@
 }
 
 .web3-wallet-chip-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -260,7 +261,7 @@
 }
 
 .web3-wallet-chip-sub {
-  font-size: 10px;
+  font-size: 9.5px;
   color: var(--text-muted);
 }
 
@@ -268,34 +269,34 @@
 .web3-connected-pill {
   background: var(--surface-muted);
   border: 1px solid color-mix(in oklab, var(--color-success, #0c8f5d) 30%, var(--border));
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: 8px;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .web3-connected-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   overflow: hidden;
 }
 
 .web3-address-text {
   font-family: var(--mono, monospace);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-h);
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
 .web3-copy-btn {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 5px;
+  border-radius: 5px;
+  padding: 4px;
   color: var(--text);
   cursor: pointer;
   display: flex;
@@ -313,9 +314,9 @@
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 11px;
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: 10.5px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -325,24 +326,24 @@
   color: var(--color-error);
 }
 
-/* ── Account Scope Selector (Create Account Mode) ── */
+/* ── Account Scope Compact Tiles (Create Account Mode) ── */
 .web3-type-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .web3-type-card {
   background: var(--surface);
   border: 1.5px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 12px;
+  border-radius: 8px;
+  padding: 8px 10px;
   cursor: pointer;
   text-align: left;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  transition: all 0.16s ease;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
 }
 
 .web3-type-card:hover {
@@ -356,21 +357,16 @@
   box-shadow: 0 0 0 1px var(--accent);
 }
 
-.web3-type-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .web3-type-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--surface-muted);
   color: var(--text-h);
+  flex-shrink: 0;
 }
 
 .web3-type-card.active .web3-type-icon {
@@ -378,14 +374,40 @@
   color: var(--accent-contrast);
 }
 
+.web3-type-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.web3-type-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.web3-type-desc {
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--text);
+  margin: 1px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .web3-type-radio {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 1.5px solid var(--border-heavy);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .web3-type-card.active .web3-type-radio {
@@ -395,35 +417,21 @@
 
 .web3-type-card.active .web3-type-radio::after {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--accent-contrast);
-}
-
-.web3-type-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-h);
-  margin: 0;
-}
-
-.web3-type-desc {
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text);
-  margin: 0;
 }
 
 /* ── Form Inputs ── */
 .web3-form-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .web3-label {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-h);
   display: flex;
@@ -432,7 +440,7 @@
 }
 
 .web3-label-optional {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -441,9 +449,9 @@
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
+  border-radius: 7px;
+  padding: 8px 11px;
+  font-size: 13px;
   color: var(--text-h);
   outline: none;
   transition: all 0.15s ease;
@@ -452,37 +460,47 @@
 
 .web3-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-bg);
+  box-shadow: 0 0 0 2.5px var(--accent-bg);
 }
 
 .web3-input::placeholder {
   color: var(--placeholder, #8a918c);
 }
 
-/* ── Primary Action Button ── */
-.web3-action-btn {
+/* ── Button Row & Compact Action Button (No big/long buttons) ── */
+.web3-btn-row {
+  display: flex;
+  justify-content: center;
   width: 100%;
+  padding-top: 2px;
+}
+
+.web3-action-btn {
+  width: auto;
+  min-width: 180px;
+  max-width: 270px;
   background: var(--accent);
   color: var(--accent-contrast);
   border: none;
-  border-radius: 10px;
-  padding: 12px 18px;
+  border-radius: 8px;
+  padding: 8.5px 22px;
   font-family: var(--sans, sans-serif);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.1px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px var(--accent-bg);
+  gap: 7px;
+  box-shadow: 0 2px 8px var(--accent-bg);
   transition: all 0.16s ease;
 }
 
 .web3-action-btn:hover:not(:disabled) {
   background: color-mix(in oklab, var(--accent) 88%, black);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px var(--accent-bg);
+  box-shadow: 0 4px 12px var(--accent-bg);
 }
 
 .web3-action-btn:active:not(:disabled) {
@@ -501,12 +519,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 10.5px;
   color: var(--text-muted);
   text-align: center;
   line-height: 1.4;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 .web3-security-footer svg {
@@ -518,35 +536,32 @@
 .web3-error-alert {
   background: var(--color-error-bg, #fdebec);
   border: 1px solid var(--color-error-border, #f8c2c7);
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 7px;
+  padding: 8px 12px;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 11.5px;
   color: var(--color-error, #cc2435);
   line-height: 1.4;
 }
 
 /* ── Responsive Mobile ── */
-@media (max-width: 520px) {
+@media (max-width: 500px) {
   .web3-auth-card {
     border-radius: 10px;
   }
   
   .web3-card-header {
-    padding: 18px 18px 14px;
+    padding: 16px 16px 12px;
   }
   
   .web3-card-body {
-    padding: 18px 18px 20px;
+    padding: 16px 16px 18px;
   }
   
-  .web3-type-selector {
-    grid-template-columns: 1fr;
-  }
-  
-  .web3-wallet-grid {
-    grid-template-columns: 1fr;
+  .web3-action-btn {
+    width: 100%;
+    max-width: none;
   }
 }

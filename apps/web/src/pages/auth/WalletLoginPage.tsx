@@ -369,7 +369,7 @@ export default function WalletLoginPage() {
 
           {/* ── Mode 1: Sign In Flow ── */}
           {mode === "signin" && (
-            <div className="space-y-4">
+            <div className="web3-btn-row">
               <button
                 type="button"
                 onClick={() => void handleSignIn()}
@@ -378,12 +378,12 @@ export default function WalletLoginPage() {
               >
                 {connecting || signing ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Authorizing with Wallet…</span>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Authorizing…</span>
                   </>
                 ) : (
                   <>
-                    <ShieldCheck className="h-4 w-4" />
+                    <ShieldCheck className="h-3.5 w-3.5" />
                     <span>
                       {connected
                         ? `Sign In with ${wallet?.adapter.name || "Wallet"}`
@@ -397,9 +397,9 @@ export default function WalletLoginPage() {
 
           {/* ── Mode 2: Create Account Flow ── */}
           {mode === "signup" && (
-            <form onSubmit={(e) => void handleSignUp(e)} className="space-y-4">
+            <form onSubmit={(e) => void handleSignUp(e)} className="space-y-3.5">
               {/* Account Scope Selector */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <span className="web3-section-label">Choose Account Scope</span>
                 <div className="web3-type-selector">
                   <div
@@ -411,16 +411,14 @@ export default function WalletLoginPage() {
                       if (e.key === "Enter" || e.key === " ") setAccountType("personal");
                     }}
                   >
-                    <div className="web3-type-header">
-                      <div className="web3-type-icon">
-                        <User className="h-4 w-4" />
-                      </div>
-                      <div className="web3-type-radio" />
+                    <div className="web3-type-icon">
+                      <User className="h-3.5 w-3.5" />
                     </div>
-                    <h3 className="web3-type-title">Personal</h3>
-                    <p className="web3-type-desc">
-                      Independent surveyor with personal projects &amp; local CAD.
-                    </p>
+                    <div className="web3-type-info">
+                      <span className="web3-type-title">Personal</span>
+                      <span className="web3-type-desc">Independent surveyor</span>
+                    </div>
+                    <div className="web3-type-radio" />
                   </div>
 
                   <div
@@ -432,16 +430,14 @@ export default function WalletLoginPage() {
                       if (e.key === "Enter" || e.key === " ") setAccountType("business");
                     }}
                   >
-                    <div className="web3-type-header">
-                      <div className="web3-type-icon">
-                        <Building2 className="h-4 w-4" />
-                      </div>
-                      <div className="web3-type-radio" />
+                    <div className="web3-type-icon">
+                      <Building2 className="h-3.5 w-3.5" />
                     </div>
-                    <h3 className="web3-type-title">Business Firm</h3>
-                    <p className="web3-type-desc">
-                      Multi-crew operations, team dispatch &amp; client billing.
-                    </p>
+                    <div className="web3-type-info">
+                      <span className="web3-type-title">Business Firm</span>
+                      <span className="web3-type-desc">Crews &amp; dispatch</span>
+                    </div>
+                    <div className="web3-type-radio" />
                   </div>
                 </div>
               </div>
@@ -495,27 +491,29 @@ export default function WalletLoginPage() {
               </div>
 
               {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={connecting || signing}
-                className="web3-action-btn"
-              >
-                {connecting || signing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Creating &amp; Authorizing…</span>
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-4 w-4" />
-                    <span>
-                      {connected
-                        ? "Create Account & Authorize"
-                        : "Connect Wallet & Create Account"}
-                    </span>
-                  </>
-                )}
-              </button>
+              <div className="web3-btn-row">
+                <button
+                  type="submit"
+                  disabled={connecting || signing}
+                  className="web3-action-btn"
+                >
+                  {connecting || signing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Creating &amp; Authorizing…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-3.5 w-3.5" />
+                      <span>
+                        {connected
+                          ? "Create Account & Authorize"
+                          : "Connect Wallet & Create"}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           )}
 
