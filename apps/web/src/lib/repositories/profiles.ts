@@ -114,14 +114,3 @@ export async function removeMyAvatar(): Promise<void> {
   await updateMyProfile({ avatar_path: null });
 }
 
-// ── Password reset ──────────────────────────────────────────────────────────
-
-/** Send the Supabase password-reset email to the signed-in account's address. */
-export async function sendPasswordResetEmail(): Promise<void> {
-  const user = await getCurrentUser();
-  if (!user?.email) throw new Error("No sign-in email found on this account.");
-  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-    redirectTo: `${window.location.origin}/reset-password`,
-  });
-  if (error) throw error;
-}

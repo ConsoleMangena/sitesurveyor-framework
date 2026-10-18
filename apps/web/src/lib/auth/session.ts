@@ -43,6 +43,18 @@ export function loadStoredSession(): Session | null {
 
 // ── Solana Web3 (SIWS) helper ────────────────────────────────────────────────
 
+export interface SolanaSignInOptions {
+  statement?: string;
+  [key: string]: unknown;
+}
+
+export interface SolanaSignUpInput {
+  fullName: string;
+  accountType: "personal" | "business";
+  companyName?: string;
+  email?: string;
+}
+
 /**
  * Signs in via a Solana wallet using Supabase Web3 auth (Sign-In With Solana).
  * Pass a wallet-standard compatible adapter or the `window.solana` object; when
@@ -51,11 +63,16 @@ export function loadStoredSession(): Session | null {
  */
 export async function signInWithSolanaWallet(
   wallet?: unknown,
-  options?: unknown,
+  options?: SolanaSignInOptions,
 ): Promise<{ session: Session | null; user: User | null }> {
+  const statement =
+    options?.statement ??
+    "Sign in to SiteSurveyor Framework with your Solana account.";
+
   const { data, error } = await supabase.auth.signInWithWeb3({
     chain: "solana",
     wallet,
+    statement,
     options,
   } as never);
 
@@ -64,6 +81,83 @@ export async function signInWithSolanaWallet(
   }
 
   return { session: data.session, user: data.user };
+}
+
+/**
+ * Onboards and signs up a new account via Solana wallet authentication.
+ * Prompts the wallet for SIWS authorization, stores account preferences,
+ * populates the user profile, and initializes personal or business workspaces.
+ */
+export async function signUpWithSolanaWallet(
+  wallet: unknown,
+  input: SolanaSignUpInput,
+  options?: SolanaSignInOptions,
+): Promise<{ session: Session | null; user: User | null }> {
+  const statement =
+    options?.statement ??
+    `Create SiteSurveyor ${input.accountType === "business" ? "Business" : "Personal"} Account for ${input.fullName.trim()}`;
+
+  const { session, user } = await signInWithSolanaWallet(wallet, {
+    ...options,
+    statement,
+  });
+
+  if (!user || !session) {
+    throw new Error(
+      "Wallet authorization succeeded, but user session could not be established.",
+    );
+  }
+
+  const normalizedCompany =
+    input.accountType === "personal"
+      ? "Independent Surveyor"
+      : input.companyName?.trim() || "My Company";
+
+  // 1. Update user auth metadata
+  try {
+    await supabase.auth.updateUser({
+      data: {
+        full_name: input.fullName.trim(),
+        account_type: input.accountType,
+        company: normalizedCompany,
+        workspace_name:
+          input.accountType === "business" ? normalizedCompany : undefined,
+        contact_email: input.email?.trim() || undefined,
+      },
+    });
+  } catch (err) {
+    console.warn("[signUpWithSolanaWallet] Metadata update warning:", err);
+  }
+
+  // 2. Upsert profile record
+  try {
+    await supabase.from("profiles").upsert(
+      {
+        id: user.id,
+        full_name: input.fullName.trim(),
+        auth_signup_account_type: input.accountType,
+        company_name: normalizedCompany,
+        email: input.email?.trim() || null,
+        onboarding_complete: true,
+      },
+      { onConflict: "id" },
+    );
+  } catch (err) {
+    console.warn("[signUpWithSolanaWallet] Profile upsert warning:", err);
+  }
+
+  // 3. If business workspace requested, invoke create_business_workspace RPC
+  if (input.accountType === "business") {
+    try {
+      await supabase.rpc("create_business_workspace", {
+        workspace_name: normalizedCompany,
+      });
+    } catch (err) {
+      console.warn("[signUpWithSolanaWallet] create_business_workspace RPC warning:", err);
+    }
+  }
+
+  return { session, user };
 }
 
 export async function getCurrentSession(): Promise<Session | null> {

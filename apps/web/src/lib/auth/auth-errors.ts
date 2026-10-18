@@ -60,95 +60,11 @@ function authErrorCode(error: unknown): string | undefined {
   return undefined;
 }
 
-/** True when Supabase reports the user must confirm their email before signing in. */
-export function isEmailNotConfirmedError(error: unknown): boolean {
-  if (authErrorCode(error) === "email_not_confirmed") return true;
-  const msg = authErrorMessage(error).toLowerCase();
-  return (
-    msg.includes("email not confirmed") ||
-    msg.includes("confirm your email") ||
-    msg.includes("email address not confirmed")
-  );
-}
-
-/** User-facing copy when Supabase Auth hits email / OTP rate limits (429). */
-export function formatAuthRateLimitMessage(error: unknown): string | null {
-  const raw = authErrorMessage(error);
-  const msg = raw.toLowerCase();
-  const status = authErrorStatus(error);
-
-  if (
-    status !== 429 &&
-    !msg.includes("rate limit") &&
-    !msg.includes("too many requests")
-  ) {
-    return null;
-  }
-
-  return (
-    "Email sending is temporarily limited (Supabase caps how many confirmation or reset emails " +
-    "can go out per hour on the built-in mailer). Wait about an hour and try again, or configure " +
-    "custom SMTP under Supabase Dashboard → Authentication → Emails → SMTP Settings for higher limits."
-  );
-}
-
-function friendlyAuthErrorMessage(error: unknown): string | null {
-  const raw = authErrorMessage(error).toLowerCase();
-  const code = authErrorCode(error)?.toLowerCase() ?? "";
-
-  if (
-    code === "user_already_exists" ||
-    raw.includes("user_already_exists") ||
-    raw.includes("already registered") ||
-    raw.includes("email already in use") ||
-    raw.includes("user with this email")
-  ) {
-    return (
-      "An account with this email already exists. If you recently deleted it, " +
-      "it may still be in the deletion grace period. Try signing in, or wait a few minutes and try again."
-    );
-  }
-
-  if (
-    code === "email_not_confirmed" ||
-    raw.includes("email not confirmed") ||
-    raw.includes("confirm your email")
-  ) {
-    return "Please confirm your email address before signing in.";
-  }
-
-  if (
-    code === "invalid_credentials" ||
-    raw.includes("invalid credentials") ||
-    raw.includes("invalid login credentials")
-  ) {
-    return "Incorrect email or password. Please try again.";
-  }
-
-  if (
-    code === "weak_password" ||
-    raw.includes("weak password") ||
-    raw.includes("password should")
-  ) {
-    return "Please choose a stronger password. Use at least 8 characters including letters and numbers.";
-  }
-
-  // Let raw 5xx messages through so debugging isn't hidden; we'll fall back
-  // below only when the message is truly empty.
-  return null;
-}
-
-/** Prefer rate-limit explanation; otherwise return the original error message. */
+/** Return the raw or a generic message for any auth error. */
 export function formatAuthUserFacingError(
   error: unknown,
   fallback = "Something went wrong. Please try again.",
 ): string {
-  const rate = formatAuthRateLimitMessage(error);
-  if (rate) return rate;
-
-  const friendly = friendlyAuthErrorMessage(error);
-  if (friendly) return friendly;
-
   const raw = authErrorMessage(error).trim();
   if (raw) return raw;
 

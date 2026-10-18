@@ -115,14 +115,6 @@ export default function App() {
   const isLoading = useAuthStore((s) => s.isLoading);
   const user = useAuthStore((s) => s.user);
 
-  const isPasswordRecoveryLink = useCallback(() => {
-    const search = window.location.search.toLowerCase();
-    const hash = window.location.hash.toLowerCase();
-    return (
-      search.includes("auth=reset-password") || hash.includes("type=recovery")
-    );
-  }, []);
-
   const syncUser = useCallback(async () => {
     try {
       let session = await withTimeout(getCurrentSession(), 8000, "Session check");
@@ -168,21 +160,10 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
-    const bootstrap = async () => {
-      if (isPasswordRecoveryLink()) {
-        window.history.replaceState({}, "", "/reset-password");
-      }
-      await syncUser();
-    };
-
-    void bootstrap();
+    void syncUser();
 
     const subscription = onAuthStateChange((event) => {
       if (!isMounted) return;
-      if (event === "PASSWORD_RECOVERY") {
-        window.history.replaceState({}, "", "/reset-password");
-        return;
-      }
       if (event === "SIGNED_OUT") {
         if (!isOnline()) {
           // Ignore sign-out events triggered by failed token refresh while offline.
@@ -206,7 +187,7 @@ export default function App() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [isPasswordRecoveryLink, syncUser, setSessionExpired, setAuthLoading]);
+  }, [syncUser, setSessionExpired, setAuthLoading]);
 
   if (isLoading) {
     return <SplashScreen onFinish={() => {}} />;
@@ -229,9 +210,6 @@ export default function App() {
               )
             }
           />
-          <Route path="/signup" element={<Navigate to="/login" replace />} />
-          <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
-          <Route path="/reset-password" element={<Navigate to="/login" replace />} />
           <Route
             path="/market"
             element={

@@ -1,0 +1,641 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   SiteSurveyor — Brave Wallet Themed Web3 Solana Authentication
+   Aesthetic inspired by Brave Crypto Wallet, Solana Web3 & Cyberpunk Glass
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --brave-orange: #FB542B;
+  --brave-orange-hover: #FF6842;
+  --brave-orange-glow: rgba(251, 84, 43, 0.28);
+  --brave-red: #FE2C55;
+  --brave-purple: #625BF7;
+  --brave-purple-deep: #3A358A;
+  --brave-dark-bg: #090A10;
+  --brave-card-bg: rgba(16, 17, 26, 0.88);
+  --brave-card-border: rgba(255, 255, 255, 0.08);
+  --brave-card-border-active: rgba(251, 84, 43, 0.5);
+  --brave-input-bg: rgba(10, 11, 18, 0.95);
+  --brave-input-border: rgba(255, 255, 255, 0.12);
+  --brave-text-primary: #FFFFFF;
+  --brave-text-secondary: #9FA1B4;
+  --brave-text-muted: #6B6D82;
+  --solana-green: #14F195;
+  --solana-purple: #9945FF;
+}
+
+/* ── Container Background ── */
+.brave-auth-screen {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-color: var(--brave-dark-bg);
+  background-image: 
+    radial-gradient(circle at 85% 15%, rgba(251, 84, 43, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 15% 85%, rgba(98, 91, 247, 0.14) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(20, 241, 149, 0.03) 0%, transparent 60%);
+  padding: max(20px, env(safe-area-inset-top, 0px) + 12px) 16px max(24px, env(safe-area-inset-bottom, 0px) + 12px);
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Subtle cryptographic matrix grid */
+.brave-auth-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* Ambient floating glow orbs */
+.brave-glow-orb {
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  opacity: 0.15;
+  will-change: transform;
+  animation: brave-float 16s ease-in-out infinite alternate;
+}
+
+.brave-glow-orb-orange {
+  top: -100px;
+  right: -100px;
+  background: radial-gradient(circle, var(--brave-orange), transparent 70%);
+}
+
+.brave-glow-orb-purple {
+  bottom: -120px;
+  left: -120px;
+  background: radial-gradient(circle, var(--brave-purple), transparent 70%);
+  animation-delay: -8s;
+}
+
+@keyframes brave-float {
+  0% { transform: translateY(0px) scale(1); }
+  100% { transform: translateY(30px) scale(1.08); }
+}
+
+/* ── Main Auth Card ── */
+.brave-auth-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 470px;
+  background: var(--brave-card-bg);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-radius: 18px;
+  border: 1px solid var(--brave-card-border);
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.7),
+    0 0 1px 1px rgba(255, 255, 255, 0.06),
+    0 0 45px rgba(251, 84, 43, 0.05);
+  overflow: hidden;
+  animation: brave-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Glowing top gradient rim — signature Brave look */
+.brave-auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #FF5500 0%, #FB542B 40%, #625BF7 100%);
+  z-index: 2;
+}
+
+@keyframes brave-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Header Chrome ── */
+.brave-card-header {
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brave-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brave-brand-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brave-shield-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 85, 0, 0.15), rgba(98, 91, 247, 0.15));
+  border: 1px solid rgba(251, 84, 43, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 18px rgba(251, 84, 43, 0.2);
+}
+
+.brave-brand-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--brave-text-primary);
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brave-brand-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--brave-text-secondary);
+  font-weight: 400;
+}
+
+/* Network indicator pill */
+.brave-network-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--brave-text-secondary);
+}
+
+.brave-network-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--solana-green);
+  box-shadow: 0 0 8px var(--solana-green);
+  animation: brave-pulse 2s infinite;
+}
+
+@keyframes brave-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* ── Mode Switcher (Tabs) ── */
+.brave-tabs-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(10, 11, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 4px;
+  position: relative;
+}
+
+.brave-tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brave-text-muted);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.brave-tab-btn:hover {
+  color: var(--brave-text-primary);
+}
+
+.brave-tab-btn.active {
+  background: #1C1E2D;
+  color: var(--brave-text-primary);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.brave-tab-btn.active .tab-icon {
+  color: var(--brave-orange);
+}
+
+/* ── Body Content ── */
+.brave-card-body {
+  padding: 22px 28px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Wallet Selector Grid ── */
+.brave-wallets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.brave-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--brave-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brave-wallet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.brave-wallet-chip {
+  background: rgba(14, 15, 24, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--brave-text-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.brave-wallet-chip:hover {
+  background: rgba(24, 26, 40, 0.9);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.brave-wallet-chip.selected {
+  background: rgba(251, 84, 43, 0.08);
+  border-color: var(--brave-orange);
+  box-shadow: 0 0 0 1px var(--brave-orange), 0 0 16px rgba(251, 84, 43, 0.2);
+}
+
+.brave-wallet-chip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.brave-wallet-chip-icon img,
+.brave-wallet-chip-icon svg {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.brave-wallet-chip-meta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.brave-wallet-chip-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.brave-wallet-chip-sub {
+  font-size: 10px;
+  color: var(--brave-text-muted);
+}
+
+/* ── Connected Account Banner ── */
+.brave-connected-pill {
+  background: rgba(14, 16, 26, 0.9);
+  border: 1px solid rgba(20, 241, 149, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.brave-connected-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.brave-address-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brave-text-primary);
+  letter-spacing: 0.3px;
+}
+
+.brave-copy-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 6px;
+  padding: 5px;
+  color: var(--brave-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.brave-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--brave-text-primary);
+}
+
+.brave-disconnect-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--brave-text-muted);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.brave-disconnect-btn:hover {
+  border-color: rgba(254, 44, 85, 0.5);
+  color: #FE2C55;
+}
+
+/* ── Account Type Selector (Create Account Mode) ── */
+.brave-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.brave-type-card {
+  background: rgba(14, 15, 24, 0.75);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 12px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.brave-type-card:hover {
+  background: rgba(20, 22, 34, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.brave-type-card.active {
+  background: linear-gradient(180deg, rgba(251, 84, 43, 0.12) 0%, rgba(98, 91, 247, 0.06) 100%);
+  border-color: var(--brave-orange);
+  box-shadow: 0 0 0 1px var(--brave-orange), 0 4px 20px rgba(251, 84, 43, 0.18);
+}
+
+.brave-type-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brave-type-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--brave-text-primary);
+}
+
+.brave-type-card.active .brave-type-icon {
+  background: var(--brave-orange);
+  color: #FFFFFF;
+}
+
+.brave-type-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brave-type-card.active .brave-type-radio {
+  border-color: var(--brave-orange);
+  background: var(--brave-orange);
+}
+
+.brave-type-card.active .brave-type-radio::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+
+.brave-type-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brave-text-primary);
+  margin: 0;
+}
+
+.brave-type-desc {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--brave-text-secondary);
+  margin: 0;
+}
+
+/* ── Form Inputs ── */
+.brave-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.brave-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brave-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brave-label-optional {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--brave-text-muted);
+}
+
+.brave-input {
+  width: 100%;
+  background: var(--brave-input-bg);
+  border: 1px solid var(--brave-input-border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: var(--brave-text-primary);
+  outline: none;
+  transition: all 0.16s ease;
+  box-sizing: border-box;
+}
+
+.brave-input:focus {
+  border-color: var(--brave-orange);
+  box-shadow: 0 0 0 3px var(--brave-orange-glow);
+}
+
+.brave-input::placeholder {
+  color: var(--brave-text-muted);
+}
+
+/* ── Primary Action Button ── */
+.brave-action-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #FF5500 0%, #FB542B 45%, #E03500 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 
+    0 4px 18px rgba(251, 84, 43, 0.4),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.brave-action-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #FF6842 0%, #FB542B 45%, #EA3B00 100%);
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 8px 26px rgba(251, 84, 43, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.brave-action-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.brave-action-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Security Footnote ── */
+.brave-security-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--brave-text-muted);
+  text-align: center;
+  line-height: 1.4;
+  padding-top: 4px;
+}
+
+.brave-security-footer svg {
+  color: var(--solana-green);
+  flex-shrink: 0;
+}
+
+/* ── Error Banner ── */
+.brave-error-alert {
+  background: rgba(254, 44, 85, 0.1);
+  border: 1px solid rgba(254, 44, 85, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: #FF708F;
+  line-height: 1.4;
+}
+
+/* ── Responsive Mobile ── */
+@media (max-width: 520px) {
+  .brave-auth-card {
+    border-radius: 14px;
+  }
+  
+  .brave-card-header {
+    padding: 20px 20px 14px;
+  }
+  
+  .brave-card-body {
+    padding: 18px 20px 22px;
+  }
+  
+  .brave-type-selector {
+    grid-template-columns: 1fr;
+  }
+  
+  .brave-wallet-grid {
+    grid-template-columns: 1fr;
+  }
+}

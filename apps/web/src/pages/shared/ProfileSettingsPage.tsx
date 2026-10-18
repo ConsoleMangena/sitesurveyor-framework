@@ -6,7 +6,6 @@ import {
   Eraser,
   ExternalLink,
   Globe,
-  KeyRound,
   Mail,
   MapPin,
   Trash2,
@@ -17,7 +16,6 @@ import {
   getAvatarSignedUrl,
   getMyProfile,
   removeMyAvatar,
-  sendPasswordResetEmail,
   updateMyProfile,
   uploadMyAvatar,
   requestAccountDeletion,
@@ -113,7 +111,6 @@ export default function ProfileSettingsPage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [resetBusy, setResetBusy] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -185,19 +182,6 @@ export default function ProfileSettingsPage() {
       setError(err instanceof Error ? err.message : "Failed to remove photo.");
     } finally {
       setAvatarBusy(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    setResetBusy(true);
-    setError(null);
-    try {
-      await sendPasswordResetEmail();
-      showNotice("Password reset email sent — check your inbox.");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to send reset email.");
-    } finally {
-      setResetBusy(false);
     }
   };
 
@@ -659,35 +643,6 @@ export default function ProfileSettingsPage() {
             <p className="text-xs text-muted-foreground">
               Saved with your profile when you press Save Changes.
             </p>
-          </CardContent>
-        </Card>
-
-        {/* ── Account security ── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4" /> Account Security
-            </CardTitle>
-            <CardDescription>Password and sign-in management</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-sm">Password Reset</Label>
-                <p className="text-xs text-muted-foreground">
-                  Email yourself a secure link to set a new password
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-                disabled={resetBusy}
-                onClick={handleResetPassword}
-              >
-                {resetBusy ? "Sending…" : "Send Reset Email"}
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
