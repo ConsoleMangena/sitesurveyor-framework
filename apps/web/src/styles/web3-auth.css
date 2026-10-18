@@ -1,0 +1,552 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   SiteSurveyor — Solana Web3 Authentication
+   Uses SiteSurveyor's native design tokens (--bg, --surface, --accent, --border)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Container Background ── */
+.web3-auth-screen {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 7%, var(--bg)) 0%,
+    color-mix(in oklab, var(--surface-muted) 85%, var(--bg)) 100%
+  );
+  padding: max(24px, env(safe-area-inset-top, 0px) + 12px) 16px max(28px, env(safe-area-inset-bottom, 0px) + 12px);
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* ── Main Auth Card ── */
+.web3-auth-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 
+    0 16px 40px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  animation: web3-fade-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Accent rim highlight across the top */
+.web3-auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-purple, #8b5cf6) 100%);
+  z-index: 2;
+}
+
+@keyframes web3-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Header Chrome ── */
+.web3-card-header {
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+}
+
+.web3-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.web3-brand-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.web3-brand-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
+.web3-brand-title {
+  margin: 0;
+  font-family: var(--heading, sans-serif);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-h);
+  letter-spacing: -0.3px;
+}
+
+.web3-brand-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 400;
+}
+
+/* Network indicator pill */
+.web3-network-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.web3-network-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-success, #0c8f5d);
+  box-shadow: 0 0 6px var(--color-success, #0c8f5d);
+}
+
+/* ── Mode Switcher (Tabs) ── */
+.web3-tabs-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  position: relative;
+}
+
+.web3-tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-family: var(--sans, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.16s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.web3-tab-btn:hover {
+  color: var(--text-h);
+}
+
+.web3-tab-btn.active {
+  background: var(--surface);
+  color: var(--text-h);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.web3-tab-btn.active .tab-icon {
+  color: var(--accent);
+}
+
+/* ── Body Content ── */
+.web3-card-body {
+  padding: 22px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--surface);
+}
+
+/* ── Wallet Selector Grid ── */
+.web3-wallets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.web3-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.web3-wallet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.web3-wallet-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.16s ease;
+  color: var(--text-h);
+}
+
+.web3-wallet-chip:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-heavy);
+  transform: translateY(-1px);
+}
+
+.web3-wallet-chip.selected {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.web3-wallet-chip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--surface-muted);
+}
+
+.web3-wallet-chip-icon img,
+.web3-wallet-chip-icon svg {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.web3-wallet-chip-meta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.web3-wallet-chip-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.web3-wallet-chip-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ── Connected Account Banner ── */
+.web3-connected-pill {
+  background: var(--surface-muted);
+  border: 1px solid color-mix(in oklab, var(--color-success, #0c8f5d) 30%, var(--border));
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.web3-connected-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.web3-address-text {
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  letter-spacing: 0.3px;
+}
+
+.web3-copy-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.web3-copy-btn:hover {
+  background: var(--surface-muted);
+  color: var(--text-h);
+}
+
+.web3-disconnect-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.web3-disconnect-btn:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+/* ── Account Scope Selector (Create Account Mode) ── */
+.web3-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.web3-type-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 12px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: all 0.16s ease;
+}
+
+.web3-type-card:hover {
+  border-color: var(--border-heavy);
+  background: var(--surface-muted);
+}
+
+.web3-type-card.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.web3-type-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.web3-type-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-muted);
+  color: var(--text-h);
+}
+
+.web3-type-card.active .web3-type-icon {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.web3-type-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-heavy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.web3-type-card.active .web3-type-radio {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.web3-type-card.active .web3-type-radio::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-contrast);
+}
+
+.web3-type-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.web3-type-desc {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text);
+  margin: 0;
+}
+
+/* ── Form Inputs ── */
+.web3-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.web3-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.web3-label-optional {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.web3-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-h);
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.web3-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.web3-input::placeholder {
+  color: var(--placeholder, #8a918c);
+}
+
+/* ── Primary Action Button ── */
+.web3-action-btn {
+  width: 100%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-family: var(--sans, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px var(--accent-bg);
+  transition: all 0.16s ease;
+}
+
+.web3-action-btn:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent) 88%, black);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--accent-bg);
+}
+
+.web3-action-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.web3-action-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Security Footnote ── */
+.web3-security-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.4;
+  padding-top: 4px;
+}
+
+.web3-security-footer svg {
+  color: var(--color-success, #0c8f5d);
+  flex-shrink: 0;
+}
+
+/* ── Error Banner ── */
+.web3-error-alert {
+  background: var(--color-error-bg, #fdebec);
+  border: 1px solid var(--color-error-border, #f8c2c7);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--color-error, #cc2435);
+  line-height: 1.4;
+}
+
+/* ── Responsive Mobile ── */
+@media (max-width: 520px) {
+  .web3-auth-card {
+    border-radius: 10px;
+  }
+  
+  .web3-card-header {
+    padding: 18px 18px 14px;
+  }
+  
+  .web3-card-body {
+    padding: 18px 18px 20px;
+  }
+  
+  .web3-type-selector {
+    grid-template-columns: 1fr;
+  }
+  
+  .web3-wallet-grid {
+    grid-template-columns: 1fr;
+  }
+}

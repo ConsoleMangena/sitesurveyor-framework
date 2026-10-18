@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
+import AuthBackground from "../../components/AuthBackground";
 import { signInWithSolanaWallet, signUpWithSolanaWallet } from "../../lib/auth/session.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
-import "../../styles/brave-auth.css";
+import "../../styles/auth.css";
+import "../../styles/web3-auth.css";
 import {
   AlertCircle,
   Building2,
@@ -18,54 +20,6 @@ import {
   User,
   Wallet,
 } from "lucide-react";
-
-/* ── Inline SVG Branding for Brave & Solana ── */
-function BraveLionShieldIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M16 2.5L4 7.2V15.5C4 23.2 9.2 30.2 16 31.8C22.8 30.2 28 23.2 28 15.5V7.2L16 2.5Z"
-        fill="url(#brave_shield_grad)"
-      />
-      <path
-        d="M16 5.8L6.8 9.3V15.5C6.8 21.6 10.7 27.2 16 28.6C21.3 27.2 25.2 21.6 25.2 15.5V9.3L16 5.8Z"
-        fill="#090A10"
-        fillOpacity="0.45"
-      />
-      <path
-        d="M16 9.5L20.2 16H11.8L16 9.5Z"
-        fill="#FFFFFF"
-        fillOpacity="0.95"
-      />
-      <path
-        d="M11.8 17.5H20.2L16 24L11.8 17.5Z"
-        fill="#FF7640"
-      />
-      <defs>
-        <linearGradient
-          id="brave_shield_grad"
-          x1="4"
-          y1="2.5"
-          x2="28"
-          y2="31.8"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#FF5500" />
-          <stop offset="0.5" stopColor="#FB542B" />
-          <stop offset="1" stopColor="#625BF7" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 function SolanaNetworkIcon({ className }: { className?: string }) {
   return (
@@ -195,7 +149,7 @@ export default function WalletLoginPage() {
 
       if (!activeWallet) {
         throw new Error(
-          "No active Solana wallet detected. Please connect Brave Wallet or Phantom.",
+          "No active Solana wallet detected. Please connect your wallet to continue.",
         );
       }
 
@@ -239,7 +193,7 @@ export default function WalletLoginPage() {
 
       if (!activeWallet) {
         throw new Error(
-          "No active Solana wallet detected. Please connect Brave Wallet or Phantom.",
+          "No active Solana wallet detected. Please connect your wallet to continue.",
         );
       }
 
@@ -258,41 +212,41 @@ export default function WalletLoginPage() {
   };
 
   return (
-    <div className="brave-auth-screen">
-      <div className="brave-auth-grid" />
-      <div className="brave-glow-orb brave-glow-orb-orange" />
-      <div className="brave-glow-orb brave-glow-orb-purple" />
+    <div className="web3-auth-screen">
+      <AuthBackground />
 
-      <div className="brave-auth-card">
+      <div className="web3-auth-card">
         {/* ── Top Header Bar ── */}
-        <div className="brave-card-header">
-          <div className="brave-brand-row">
-            <div className="brave-brand-identity">
-              <div className="brave-shield-avatar">
-                <BraveLionShieldIcon />
-              </div>
+        <div className="web3-card-header">
+          <div className="web3-brand-row">
+            <div className="web3-brand-identity">
+              <img
+                src="/logo.svg"
+                alt="SiteSurveyor"
+                className="web3-brand-logo"
+              />
               <div>
-                <h1 className="brave-brand-title">SiteSurveyor</h1>
-                <p className="brave-brand-subtitle">
-                  Brave Crypto &amp; Solana Web3 Gateway
+                <h1 className="web3-brand-title">SiteSurveyor</h1>
+                <p className="web3-brand-subtitle">
+                  Solana Web3 Authentication
                 </p>
               </div>
             </div>
 
-            <div className="brave-network-pill">
-              <span className="brave-network-dot" />
+            <div className="web3-network-pill">
+              <span className="web3-network-dot" />
               <SolanaNetworkIcon />
               <span>Solana</span>
             </div>
           </div>
 
-          {/* ── Tabs: Sign In / Create Account ── */}
-          <div className="brave-tabs-nav" role="tablist">
+          {/* ── Mode Switcher Tabs ── */}
+          <div className="web3-tabs-nav" role="tablist">
             <button
               type="button"
               role="tab"
               aria-selected={mode === "signin"}
-              className={`brave-tab-btn ${mode === "signin" ? "active" : ""}`}
+              className={`web3-tab-btn ${mode === "signin" ? "active" : ""}`}
               onClick={() => {
                 setError(null);
                 setMode("signin");
@@ -305,7 +259,7 @@ export default function WalletLoginPage() {
               type="button"
               role="tab"
               aria-selected={mode === "signup"}
-              className={`brave-tab-btn ${mode === "signup" ? "active" : ""}`}
+              className={`web3-tab-btn ${mode === "signup" ? "active" : ""}`}
               onClick={() => {
                 setError(null);
                 setMode("signup");
@@ -318,9 +272,9 @@ export default function WalletLoginPage() {
         </div>
 
         {/* ── Card Body ── */}
-        <div className="brave-card-body">
+        <div className="web3-card-body">
           {error && (
-            <div className="brave-error-alert" role="alert">
+            <div className="web3-error-alert" role="alert">
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -328,8 +282,8 @@ export default function WalletLoginPage() {
 
           {/* Connected Wallet Pill or Wallet Selector */}
           {connected && publicKey ? (
-            <div className="brave-connected-pill">
-              <div className="brave-connected-left">
+            <div className="web3-connected-pill">
+              <div className="web3-connected-left">
                 {wallet?.adapter.icon ? (
                   <img
                     src={wallet.adapter.icon}
@@ -337,13 +291,13 @@ export default function WalletLoginPage() {
                     className="h-5 w-5 rounded object-contain"
                   />
                 ) : (
-                  <Wallet className="h-5 w-5 text-emerald-400" />
+                  <Wallet className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 )}
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold tracking-wider uppercase">
                     Connected • {wallet?.adapter.name || "Wallet"}
                   </span>
-                  <span className="brave-address-text">{truncatedAddress}</span>
+                  <span className="web3-address-text">{truncatedAddress}</span>
                 </div>
               </div>
 
@@ -351,12 +305,12 @@ export default function WalletLoginPage() {
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="brave-copy-btn"
+                  className="web3-copy-btn"
                   title="Copy address"
                   aria-label="Copy wallet address"
                 >
                   {copied ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   ) : (
                     <Copy className="h-3.5 w-3.5" />
                   )}
@@ -364,7 +318,7 @@ export default function WalletLoginPage() {
                 <button
                   type="button"
                   onClick={() => void disconnect()}
-                  className="brave-disconnect-btn"
+                  className="web3-disconnect-btn"
                   title="Disconnect wallet"
                 >
                   <LogOut className="h-3 w-3 inline mr-1" />
@@ -373,42 +327,37 @@ export default function WalletLoginPage() {
               </div>
             </div>
           ) : (
-            <div className="brave-wallets-section">
-              <div className="brave-section-label">
+            <div className="web3-wallets-section">
+              <div className="web3-section-label">
                 <span>Select Solana Wallet</span>
                 <span>{wallets.length} Available</span>
               </div>
 
-              <div className="brave-wallet-grid">
+              <div className="web3-wallet-grid">
                 {wallets.map((w) => {
                   const isSelected = wallet?.adapter.name === w.adapter.name;
-                  const isBrave = w.adapter.name.toLowerCase().includes("brave");
                   return (
                     <button
                       key={w.adapter.name}
                       type="button"
-                      className={`brave-wallet-chip ${isSelected ? "selected" : ""}`}
+                      className={`web3-wallet-chip ${isSelected ? "selected" : ""}`}
                       onClick={() => void handleWalletSelect(w.adapter.name)}
                     >
-                      <div className="brave-wallet-chip-icon">
+                      <div className="web3-wallet-chip-icon">
                         {w.adapter.icon ? (
                           <img src={w.adapter.icon} alt={w.adapter.name} />
-                        ) : isBrave ? (
-                          <BraveLionShieldIcon className="h-5 w-5" />
                         ) : (
                           <Wallet className="h-5 w-5 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="brave-wallet-chip-meta">
-                        <span className="brave-wallet-chip-name">
+                      <div className="web3-wallet-chip-meta">
+                        <span className="web3-wallet-chip-name">
                           {w.adapter.name}
                         </span>
-                        <span className="brave-wallet-chip-sub">
-                          {isBrave
-                            ? "Brave Native"
-                            : w.readyState === "Installed"
-                              ? "Installed"
-                              : "Standard"}
+                        <span className="web3-wallet-chip-sub">
+                          {w.readyState === "Installed"
+                            ? "Installed"
+                            : "Standard"}
                         </span>
                       </div>
                     </button>
@@ -425,7 +374,7 @@ export default function WalletLoginPage() {
                 type="button"
                 onClick={() => void handleSignIn()}
                 disabled={connecting || signing}
-                className="brave-action-btn"
+                className="web3-action-btn"
               >
                 {connecting || signing ? (
                   <>
@@ -449,12 +398,12 @@ export default function WalletLoginPage() {
           {/* ── Mode 2: Create Account Flow ── */}
           {mode === "signup" && (
             <form onSubmit={(e) => void handleSignUp(e)} className="space-y-4">
-              {/* Account Type Selector */}
+              {/* Account Scope Selector */}
               <div className="space-y-2">
-                <span className="brave-section-label">Choose Account Scope</span>
-                <div className="brave-type-selector">
+                <span className="web3-section-label">Choose Account Scope</span>
+                <div className="web3-type-selector">
                   <div
-                    className={`brave-type-card ${accountType === "personal" ? "active" : ""}`}
+                    className={`web3-type-card ${accountType === "personal" ? "active" : ""}`}
                     onClick={() => setAccountType("personal")}
                     role="button"
                     tabIndex={0}
@@ -462,20 +411,20 @@ export default function WalletLoginPage() {
                       if (e.key === "Enter" || e.key === " ") setAccountType("personal");
                     }}
                   >
-                    <div className="brave-type-header">
-                      <div className="brave-type-icon">
+                    <div className="web3-type-header">
+                      <div className="web3-type-icon">
                         <User className="h-4 w-4" />
                       </div>
-                      <div className="brave-type-radio" />
+                      <div className="web3-type-radio" />
                     </div>
-                    <h3 className="brave-type-title">Personal</h3>
-                    <p className="brave-type-desc">
+                    <h3 className="web3-type-title">Personal</h3>
+                    <p className="web3-type-desc">
                       Independent surveyor with personal projects &amp; local CAD.
                     </p>
                   </div>
 
                   <div
-                    className={`brave-type-card ${accountType === "business" ? "active" : ""}`}
+                    className={`web3-type-card ${accountType === "business" ? "active" : ""}`}
                     onClick={() => setAccountType("business")}
                     role="button"
                     tabIndex={0}
@@ -483,14 +432,14 @@ export default function WalletLoginPage() {
                       if (e.key === "Enter" || e.key === " ") setAccountType("business");
                     }}
                   >
-                    <div className="brave-type-header">
-                      <div className="brave-type-icon">
+                    <div className="web3-type-header">
+                      <div className="web3-type-icon">
                         <Building2 className="h-4 w-4" />
                       </div>
-                      <div className="brave-type-radio" />
+                      <div className="web3-type-radio" />
                     </div>
-                    <h3 className="brave-type-title">Business Firm</h3>
-                    <p className="brave-type-desc">
+                    <h3 className="web3-type-title">Business Firm</h3>
+                    <p className="web3-type-desc">
                       Multi-crew operations, team dispatch &amp; client billing.
                     </p>
                   </div>
@@ -498,13 +447,13 @@ export default function WalletLoginPage() {
               </div>
 
               {/* Profile Inputs */}
-              <div className="brave-form-group">
-                <label className="brave-label" htmlFor="brave-fullname">
+              <div className="web3-form-group">
+                <label className="web3-label" htmlFor="web3-fullname">
                   Full Name / Surveyor Title
                 </label>
                 <input
-                  id="brave-fullname"
-                  className="brave-input"
+                  id="web3-fullname"
+                  className="web3-input"
                   placeholder="e.g. Samuel Vance, PLS"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -514,13 +463,13 @@ export default function WalletLoginPage() {
               </div>
 
               {accountType === "business" && (
-                <div className="brave-form-group">
-                  <label className="brave-label" htmlFor="brave-company">
+                <div className="web3-form-group">
+                  <label className="web3-label" htmlFor="web3-company">
                     Survey Firm / Organization Name
                   </label>
                   <input
-                    id="brave-company"
-                    className="brave-input"
+                    id="web3-company"
+                    className="web3-input"
                     placeholder="e.g. Apex Geospatial Engineering LLC"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
@@ -529,15 +478,15 @@ export default function WalletLoginPage() {
                 </div>
               )}
 
-              <div className="brave-form-group">
-                <label className="brave-label" htmlFor="brave-email">
+              <div className="web3-form-group">
+                <label className="web3-label" htmlFor="web3-email">
                   <span>Contact Email</span>
-                  <span className="brave-label-optional">Optional for Web3</span>
+                  <span className="web3-label-optional">Optional for Web3</span>
                 </label>
                 <input
-                  id="brave-email"
+                  id="web3-email"
                   type="email"
-                  className="brave-input"
+                  className="web3-input"
                   placeholder="surveyor@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -549,7 +498,7 @@ export default function WalletLoginPage() {
               <button
                 type="submit"
                 disabled={connecting || signing}
-                className="brave-action-btn"
+                className="web3-action-btn"
               >
                 {connecting || signing ? (
                   <>
@@ -571,8 +520,8 @@ export default function WalletLoginPage() {
           )}
 
           {/* ── Security Assurance Footnote ── */}
-          <div className="brave-security-footer">
-            <Lock className="h-3.5 w-3.5 text-emerald-400" />
+          <div className="web3-security-footer">
+            <Lock className="h-3.5 w-3.5" />
             <span>
               Cryptographic SIWS verification. Non-custodial &amp; gasless.
             </span>

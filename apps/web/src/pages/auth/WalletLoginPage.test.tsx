@@ -57,11 +57,11 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     vi.clearAllMocks();
   });
 
-  it("renders Brave Web3 gateway branding and default Sign In tab", () => {
+  it("renders SiteSurveyor Web3 gateway branding and default Sign In tab", () => {
     render(<WalletLoginPage />);
 
     expect(screen.getByText("SiteSurveyor")).toBeInTheDocument();
-    expect(screen.getByText(/Brave Crypto/i)).toBeInTheDocument();
+    expect(screen.getByText(/Solana Web3 Authentication/i)).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /create account/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /sign in with brave wallet/i })).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /create account/i }));
 
-    const businessCard = screen.getByText("Business Firm").closest(".brave-type-card");
+    const businessCard = screen.getByText("Business Firm").closest(".web3-type-card");
     expect(businessCard).toBeInTheDocument();
     if (businessCard) fireEvent.click(businessCard);
 
