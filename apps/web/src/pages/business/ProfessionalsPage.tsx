@@ -674,7 +674,7 @@ export default function ProfessionalsPage({
         title={selectedPro?.name ?? "Professional Details"}
         description={selectedPro?.title}
         size="full"
-        className="max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-w-5xl sm:left-1/2 sm:top-1/2 sm:inset-x-auto sm:translate-x-[-50%] sm:translate-y-[-50%]"
+        className="sm:max-w-5xl"
         contentClassName="px-4 py-4 sm:px-6 sm:py-5"
         footer={selectedPro ? (
           <>
