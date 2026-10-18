@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Banknote, ExternalLink, Loader2, Plus, Download, Wallet, CreditCard } from "lucide-react";
+import { Banknote, Loader2, Plus, Download, CreditCard, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import PageLoader from "@/components/PageLoader.tsx";
@@ -11,15 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
 import { PageForm } from "@/components/templates/PageForm.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
+import WalletBalancesStrip from "../../features/phantom/components/WalletBalancesStrip.tsx";
+import MetricsTiles from "../../components/finance/MetricsTiles.tsx";
+import TransactionTable from "../../components/finance/TransactionTable.tsx";
+import MarketplaceWalletCard from "../../components/finance/MarketplaceWalletCard.tsx";
+import { formatCurrency } from "../../components/finance/FinanceUtils.ts";
 
 import { listInvoices } from "../../lib/repositories/invoices.ts";
 import type { InvoiceWithDetails } from "../../lib/repositories/invoices.ts";
@@ -34,9 +32,7 @@ import {
 } from "../../lib/repositories/paymentMethods.ts";
 import { canManageFinance } from "../../lib/permissions.ts";
 import {
-  getMarketplaceWallet,
   getMyWorkspaceMembership,
-  updateMarketplaceWallet,
   type WorkspaceMemberRow,
 } from "../../lib/repositories/workspaces.ts";
 import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
@@ -68,9 +64,6 @@ export default function BillingPage({
   const [notice, setNotice] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRow[]>([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
-  const [marketplaceWallet, setMarketplaceWallet] = useState<string | null>(null);
-  const [marketplaceWalletLoading, setMarketplaceWalletLoading] = useState(false);
-  const [savingMarketplaceWallet, setSavingMarketplaceWallet] = useState(false);
   const [history, setHistory] = useState<PaymentWithInvoice[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -111,20 +104,6 @@ export default function BillingPage({
   }, [workspaceId]);
 
   useAsyncAction(fetchMethods, [fetchMethods]);
-
-  const fetchMarketplaceWallet = useCallback(async () => {
-    setMarketplaceWalletLoading(true);
-    try {
-      const address = await getMarketplaceWallet(workspaceId);
-      setMarketplaceWallet(address);
-    } catch (err: unknown) {
-      setNotice(err instanceof Error ? err.message : "Failed to load marketplace wallet");
-    } finally {
-      setMarketplaceWalletLoading(false);
-    }
-  }, [workspaceId]);
-
-  useAsyncAction(fetchMarketplaceWallet, [fetchMarketplaceWallet]);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -169,19 +148,6 @@ export default function BillingPage({
     window.setTimeout(() => setNotice(null), 2300);
   };
 
-  const formatCurrency = (amount: number) =>
-    `$${amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-
   const setDefaultMethod = async (id: string) => {
     try {
       await setDefaultPaymentMethod(workspaceId, id);
@@ -189,22 +155,6 @@ export default function BillingPage({
       showNotice("Default payment method updated.");
     } catch (err: unknown) {
       showNotice(err instanceof Error ? err.message : "Failed to update default.");
-    }
-  };
-
-  const handleMarketplaceWalletChange = async (value: string) => {
-    const address = value || null;
-    setMarketplaceWallet(address);
-    setSavingMarketplaceWallet(true);
-    try {
-      await updateMarketplaceWallet(workspaceId, address);
-      showNotice(address ? "Marketplace receiving wallet saved." : "Marketplace wallet cleared.");
-    } catch (err: unknown) {
-      showNotice(err instanceof Error ? err.message : "Failed to save marketplace wallet.");
-      // Revert to the stored value on error.
-      void getMarketplaceWallet(workspaceId).then(setMarketplaceWallet);
-    } finally {
-      setSavingMarketplaceWallet(false);
     }
   };
 
@@ -667,15 +617,15 @@ export default function BillingPage({
   return (
     <DashboardShell className="hub-body billing-page finance-page">
       <DashboardHeader
-        title="Finance"
-        subtitle="Wallet, payments, and transaction history"
+        title="Treasury"
+        subtitle="Wallet balances, payments, and transaction history"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={downloadStatementCsv}
-              className="gap-2"
+              className="gap-2 rounded-xl"
             >
               <Download size={16} />
               Export
@@ -688,7 +638,7 @@ export default function BillingPage({
                   setIsRecordPaymentOpen(true);
                 }}
                 disabled={invoicesLoading || invoices.length === 0}
-                className="gap-2"
+                className="gap-2 rounded-xl"
               >
                 <Plus size={16} />
                 Record Payment
@@ -699,78 +649,49 @@ export default function BillingPage({
       />
 
       {notice && (
-        <div className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           {notice}
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Card className="border-emerald-500/20 bg-emerald-500/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Collected</p><p className="mt-1 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{formatCurrency(history.reduce((sum, entry) => sum + Number(entry.amount || 0), 0))}</p><p className="text-[11px] text-muted-foreground">recorded payments</p></CardContent></Card>
-        <Card className="border-amber-500/20 bg-amber-500/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Outstanding</p><p className="mt-1 text-lg font-bold tabular-nums">{formatCurrency(invoices.reduce((sum, invoice) => sum + (invoice.status === "paid" ? 0 : Number(invoice.total || 0)), 0))}</p><p className="text-[11px] text-muted-foreground">open invoices</p></CardContent></Card>
-        <Card className="border-primary/20 bg-primary/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Invoices</p><p className="mt-1 text-lg font-bold tabular-nums">{invoices.length}</p><p className="text-[11px] text-muted-foreground">in this workspace</p></CardContent></Card>
-        <Card className="border-violet-500/20 bg-violet-500/5"><CardContent className="p-3 sm:p-4"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Wallet</p><p className="mt-1 text-lg font-bold">{phantomWallet.connected ? "Connected" : "Ready"}</p><p className="text-[11px] text-muted-foreground">Phantom status</p></CardContent></Card>
-      </div>
+      <WalletBalancesStrip
+        address={phantomWallet.address}
+        connected={phantomWallet.connected}
+        onConnect={() => void phantomWallet.connect()}
+      />
 
-      <PhantomWalletCard />
-
-      <DashboardCard
-        title="Marketplace Receiving Wallet"
-        icon={<Wallet size={16} />}
-        className="mt-4"
-      >
-        {marketplaceWalletLoading ? (
-          <PageLoader compact />
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Choose the wallet that will receive Solana payments from
-              marketplace sales and hires.
-            </p>
-            <Select
-              value={marketplaceWallet ?? ""}
-              onValueChange={handleMarketplaceWalletChange}
-              disabled={savingMarketplaceWallet}
-            >
-              <SelectTrigger className="max-w-md">
-                <SelectValue placeholder="Select a Solana wallet" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">— No wallet selected —</SelectItem>
-                {phantomWallet.address && (
-                  <SelectItem value={phantomWallet.address}>
-                    Phantom Wallet ({phantomWallet.shortAddress})
-                  </SelectItem>
-                )}
-                {paymentMethods
-                  .filter((m) => m.type === "Crypto Wallet" && m.detail)
-                  .map((m) => (
-                    <SelectItem key={m.id} value={m.detail}>
-                      {m.label} ({m.detail.slice(0, 6)}…{m.detail.slice(-6)})
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            {!marketplaceWallet && (
-              <p className="text-sm text-amber-600">
-                No wallet selected. Buyers will see “Seller has no wallet” until
-                one is assigned.
-              </p>
-            )}
-          </div>
+      <MetricsTiles
+        collected={history.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)}
+        outstanding={invoices.reduce(
+          (sum, invoice) => sum + (invoice.status === "paid" ? 0 : Number(invoice.total || 0)),
+          0,
         )}
-      </DashboardCard>
+        invoiceCount={invoices.length}
+      />
+
+      <div className="flex flex-col gap-4">
+        <PhantomWalletCard />
+        <MarketplaceWalletCard
+          workspaceId={workspaceId}
+          phantomAddress={phantomWallet.address}
+          phantomShortAddress={phantomWallet.shortAddress}
+          cryptoMethods={paymentMethods.filter((m) => m.type === "Crypto Wallet" && m.detail)}
+          onNotice={showNotice}
+        />
+      </div>
 
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as "overview" | "history")}
       >
         <DashboardCard
-          title="Billing & Payments"
+          title="Payments"
           icon={<Banknote size={16} />}
+          className="rounded-2xl border-border/60"
           titleAction={
             <TabsList>
-              <TabsTrigger value="overview">Saved Methods</TabsTrigger>
-              <TabsTrigger value="history">Payment History</TabsTrigger>
+              <TabsTrigger value="overview">Payment methods</TabsTrigger>
+              <TabsTrigger value="history">Payment history</TabsTrigger>
             </TabsList>
           }
         >
@@ -787,8 +708,8 @@ export default function BillingPage({
                     <Card
                       key={method.id}
                       className={cn(
-                        "border-border/60",
-                        method.is_default && "border-l-4 border-l-primary",
+                        "rounded-2xl border-border/60",
+                        method.is_default && "border-primary/60 ring-1 ring-primary/40",
                       )}
                     >
                       <CardContent className="p-4">
@@ -796,12 +717,12 @@ export default function BillingPage({
                           <div className="flex items-center gap-3">
                             <div
                               className={cn(
-                                "h-10 w-10 rounded-none flex items-center justify-center text-sm font-semibold",
+                                "h-10 w-10 rounded-xl flex items-center justify-center text-sm font-semibold",
                                 method.type === "Card"
-                                  ? "bg-blue-100 text-blue-700"
+                                  ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
                                   : method.type === "Crypto Wallet"
-                                    ? "bg-purple-100 text-purple-700"
-                                    : "bg-emerald-100 text-emerald-700",
+                                    ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
                               )}
                             >
                               {method.type === "Card"
@@ -862,18 +783,12 @@ export default function BillingPage({
             </TabsContent>
 
             <TabsContent value="history" className="mt-0 space-y-4">
-              {historyError && (
-                <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                  {historyError}
-                </div>
-              )}
-
               <div className="flex flex-wrap items-center gap-3">
                 <Input
                   placeholder="Search transactions..."
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
-                  className="max-w-sm"
+                  className="max-w-sm rounded-xl"
                 />
                 <div className="inline-flex flex-wrap gap-2">
                   {[
@@ -885,6 +800,7 @@ export default function BillingPage({
                       key={opt.value}
                       variant={historySort === opt.value ? "default" : "outline"}
                       size="sm"
+                      className="rounded-xl"
                       onClick={() => setHistorySort(opt.value as typeof historySort)}
                     >
                       {opt.label}
@@ -893,53 +809,11 @@ export default function BillingPage({
                 </div>
               </div>
 
-              {historyLoading ? (
-                <PageLoader compact />
-              ) : filteredHistory.length === 0 ? (
-                <div className="py-10 text-center text-sm text-muted-foreground">
-                  {history.length === 0
-                    ? "No payments recorded yet."
-                    : "No records match your search."}
-                </div>
-              ) : (
-                <div className="divide-y border rounded-none">
-                  {filteredHistory.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">{formatDate(entry.paid_on)}</span>
-                          <span className="font-medium">{entry.invoice_number ?? "Payment"}</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {entry.payment_method ?? "Manual"} • {entry.reference ?? "No reference"}
-                          {entry.tx_signature && (
-                            <>
-                              {" • "}
-                              <a
-                                href={`https://explorer.solana.com/tx/${entry.tx_signature}${
-                                  SOLANA_CLUSTER === "mainnet-beta" ? "" : `?cluster=${SOLANA_CLUSTER}`
-                                }`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-primary hover:underline"
-                              >
-                                View on Explorer
-                                <ExternalLink size={12} />
-                              </a>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="font-semibold text-sm shrink-0">
-                        {formatCurrency(entry.amount)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <TransactionTable
+                rows={filteredHistory}
+                loading={historyLoading}
+                error={historyError}
+              />
             </TabsContent>
         </DashboardCard>
       </Tabs>

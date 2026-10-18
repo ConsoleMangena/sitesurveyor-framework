@@ -24,13 +24,7 @@ export function useSolanaBalances(address: string | null): SolanaBalances {
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
-    if (!address) {
-      setSol(null);
-      setUsdc(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
+    if (!address) return;
 
     let cancelled = false;
 
@@ -69,5 +63,11 @@ export function useSolanaBalances(address: string | null): SolanaBalances {
     };
   }, [address, tick]);
 
-  return { sol, usdc, loading, error, refresh };
+  return {
+    sol: address ? sol : null,
+    usdc: address ? usdc : null,
+    loading: address ? loading : false,
+    error: address ? error : null,
+    refresh,
+  };
 }
