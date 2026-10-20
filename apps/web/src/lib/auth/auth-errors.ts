@@ -65,8 +65,42 @@ export function formatAuthUserFacingError(
   error: unknown,
   fallback = "Something went wrong. Please try again.",
 ): string {
+  if (
+    error instanceof Error &&
+    (error.name === "WalletNotSelectedError" ||
+      error.message?.includes("Wallet not selected") ||
+      error.message?.includes("WalletNotSelectedError"))
+  ) {
+    return "Please select a Solana wallet from the options above to continue.";
+  }
+
+  if (
+    error instanceof Error &&
+    (error.name === "WalletNotReadyError" ||
+      error.message?.includes("Wallet not ready") ||
+      error.message?.includes("WalletNotReadyError"))
+  ) {
+    return "The selected wallet is not installed or ready in your browser.";
+  }
+
   const raw = authErrorMessage(error).trim();
-  if (raw) return raw;
+  if (raw) {
+    const lower = raw.toLowerCase();
+    if (
+      lower.includes("wallet not selected") ||
+      lower.includes("walletnotselectederror")
+    ) {
+      return "Please select a Solana wallet from the options above to continue.";
+    }
+    if (
+      lower.includes("user rejected") ||
+      lower.includes("user denied") ||
+      lower.includes("signature verification failed")
+    ) {
+      return "Wallet authorization was cancelled. Please authorize the signature to continue.";
+    }
+    return raw;
+  }
 
   const code = authErrorCode(error);
   const status = authErrorStatus(error);
@@ -76,3 +110,4 @@ export function formatAuthUserFacingError(
 
   return fallback;
 }
+

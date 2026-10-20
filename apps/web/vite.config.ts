@@ -91,7 +91,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    nodePolyfills(),
+    ...(process.env.VITEST ? [] : [nodePolyfills()]),
     ...wasmPlugins(),
     disableWasmPlugin(),
     cadWorkspacePlatformPlugin(),

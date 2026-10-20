@@ -1,121 +1,198 @@
-/* ══════════════════════════════════════════════════════════════════════════
-   SiteSurveyor — Solana Web3 Authentication
-   Uses SiteSurveyor's native design tokens (--bg, --surface, --accent, --border)
-   ══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Container Background ── */
 .web3-auth-screen {
+  --web3-solana: #14f195;
+  --web3-solana-deep: #0d9960;
+  --web3-purple: #9945ff;
+  --web3-glow: color-mix(in oklab, var(--accent) 38%, transparent);
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--accent) 6%, var(--bg)) 0%,
-    color-mix(in oklab, var(--surface-muted) 88%, var(--bg)) 100%
-  );
-  padding: max(20px, env(safe-area-inset-top, 0px) + 12px) 16px max(24px, env(safe-area-inset-bottom, 0px) + 12px);
+  isolation: isolate;
   overflow-x: hidden;
+  padding: clamp(20px, 4vw, 48px) 16px;
+  background:
+    radial-gradient(
+      52rem 34rem at 4% -8%,
+      color-mix(in oklab, var(--accent) 17%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      44rem 30rem at 102% 2%,
+      color-mix(in oklab, var(--web3-solana) 12%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      42rem 32rem at 52% 112%,
+      color-mix(in oklab, var(--web3-purple) 13%, transparent),
+      transparent 64%
+    ),
+    var(--bg);
   box-sizing: border-box;
 }
 
-/* ── Main Auth Card ── */
-.web3-auth-card {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-  max-width: 440px;
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  box-shadow: 
-    0 12px 32px rgba(0, 0, 0, 0.07),
-    0 2px 6px rgba(0, 0, 0, 0.03);
-  overflow: hidden;
-  animation: web3-fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* Subtle accent highlight rim */
-.web3-auth-card::before {
-  content: '';
+.web3-auth-screen::before {
+  content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2.5px;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-purple, #8b5cf6) 100%);
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in oklab, var(--text-h) 8%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 28px 28px;
+  opacity: 0.32;
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 44%,
+    black 0%,
+    transparent 72%
+  );
+  mask-image: radial-gradient(circle at 50% 44%, black 0%, transparent 72%);
+}
+
+.web3-auth-screen ::selection {
+  background: color-mix(in oklab, var(--accent) 26%, transparent);
+  color: var(--text-h);
+}
+
+.web3-auth-stage {
+  position: relative;
   z-index: 2;
-}
-
-@keyframes web3-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* ── Header Chrome ── */
-.web3-card-header {
-  padding: 18px 22px 14px;
-  border-bottom: 1px solid var(--border);
+  width: 100%;
+  max-width: 470px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: var(--surface);
+  gap: 16px;
+  animation: web3-stage-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.web3-auth-card {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  background: linear-gradient(
+    165deg,
+    color-mix(in oklab, var(--surface) 92%, transparent) 0%,
+    color-mix(in oklab, var(--surface) 78%, transparent) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.15);
+  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  box-shadow:
+    0 34px 90px -34px var(--web3-glow),
+    0 14px 34px -20px rgba(15, 23, 20, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  animation: web3-card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+
+.web3-auth-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--accent) 80%, transparent) 32%,
+    color-mix(in oklab, var(--web3-solana) 65%, transparent) 68%,
+    transparent 100%
+  );
+  opacity: 0.9;
+}
+
+.web3-card-header {
+  padding: 28px 28px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .web3-brand-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 12px;
 }
 
-.web3-brand-identity {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.web3-brand-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.web3-brand-glow {
+  position: absolute;
+  inset: -16px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--web3-solana) 42%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 18%, transparent) 44%,
+    transparent 72%
+  );
+  filter: blur(13px);
+  opacity: 0.55;
+  animation: web3-glow-pulse 4.5s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .web3-brand-logo {
-  height: 34px;
+  position: relative;
+  z-index: 1;
+  height: 42px;
   width: auto;
+  max-width: 70px;
   object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 20, 0.18));
+}
+
+.web3-brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .web3-brand-title {
   margin: 0;
-  font-family: var(--heading, sans-serif);
-  font-size: 17px;
-  font-weight: 700;
+  font-family: var(--heading);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
   color: var(--text-h);
-  letter-spacing: -0.3px;
-  line-height: 1.2;
 }
 
 .web3-brand-subtitle {
-  margin: 1px 0 0;
-  font-size: 11px;
-  color: var(--text);
-  font-weight: 400;
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-/* Network indicator pill */
 .web3-network-pill {
+  align-self: center;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
+  gap: 6px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 500;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 72%, transparent);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--text);
 }
 
@@ -123,210 +200,483 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-success, #0c8f5d);
-  box-shadow: 0 0 5px var(--color-success, #0c8f5d);
+  background: var(--web3-solana-deep);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--web3-solana) 22%, transparent);
 }
 
-/* ── Mode Switcher (Tabs) ── */
+.web3-network-icon {
+  width: 13px;
+  height: 13px;
+}
+
 .web3-tabs-nav {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2.5px;
-  position: relative;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 76%, transparent);
 }
 
 .web3-tab-btn {
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-family: var(--sans, sans-serif);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.15s ease;
+  appearance: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .web3-tab-btn:hover {
   color: var(--text-h);
 }
 
+.web3-tab-btn:active {
+  transform: scale(0.985);
+}
+
 .web3-tab-btn.active {
   background: var(--surface);
   color: var(--text-h);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 2px 10px rgba(15, 23, 20, 0.08),
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 16%, var(--border));
+}
+
+.web3-tab-btn .tab-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .web3-tab-btn.active .tab-icon {
   color: var(--accent);
 }
 
-/* ── Body Content ── */
 .web3-card-body {
-  padding: 18px 22px 20px;
+  padding: 0 28px 26px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  background: var(--surface);
+  gap: 16px;
 }
 
-/* ── Wallet Selector Grid ── */
-.web3-wallets-section {
+.web3-mode-heading {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.web3-section-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.web3-wallet-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.web3-wallet-chip {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.15s ease;
+.web3-mode-heading h2 {
+  margin: 0;
+  font-family: var(--heading);
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.18;
+  letter-spacing: -0.032em;
   color: var(--text-h);
 }
 
-.web3-wallet-chip:hover {
-  background: var(--surface-muted);
-  border-color: var(--border-heavy);
-  transform: translateY(-1px);
+.web3-mode-heading p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
 }
 
-.web3-wallet-chip.selected {
-  background: var(--accent-bg);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.web3-wallet-chip-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+.web3-error-alert {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-error-border);
+  background: color-mix(in oklab, var(--color-error-bg) 88%, transparent);
+  color: var(--color-error);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.web3-alert-icon {
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
-  background: var(--surface-muted);
+  margin-top: 1px;
 }
 
-.web3-wallet-chip-icon img,
-.web3-wallet-chip-icon svg {
-  width: 17px;
-  height: 17px;
-  object-fit: contain;
-}
-
-.web3-wallet-chip-meta {
+.web3-wallet-section {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 7px;
 }
 
-.web3-wallet-chip-name {
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-.web3-wallet-chip-sub {
-  font-size: 9.5px;
-  color: var(--text-muted);
-}
-
-/* ── Connected Account Banner ── */
-.web3-connected-pill {
-  background: var(--surface-muted);
-  border: 1px solid color-mix(in oklab, var(--color-success, #0c8f5d) 30%, var(--border));
-  border-radius: 8px;
-  padding: 8px 12px;
+.web3-section-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.web3-wallet-field {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 58%, transparent);
+  color: var(--text-h);
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.web3-wallet-field:hover {
+  border-color: color-mix(in oklab, var(--accent) 38%, var(--border));
+  background: color-mix(in oklab, var(--surface) 82%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+  transform: translateY(-1px);
+}
+
+.web3-wallet-field-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.web3-wallet-field-icon img,
+.web3-wallet-field-icon svg {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.web3-wallet-field-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.web3-wallet-field-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.web3-wallet-field-sub {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.web3-wallet-field-chevron {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.18s ease;
+}
+
+.web3-wallet-field:hover .web3-wallet-field-chevron {
+  transform: translateX(2px);
+  color: var(--accent);
+}
+
+.web3-connected-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid
+    color-mix(in oklab, var(--color-success) 28%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-success) 8%, var(--surface)) 0%,
+    color-mix(in oklab, var(--surface) 82%, transparent) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .web3-connected-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  overflow: hidden;
+  gap: 10px;
+  min-width: 0;
+}
+
+.web3-connected-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid
+    color-mix(in oklab, var(--color-success) 22%, var(--border));
+  background: var(--surface);
+}
+
+.web3-connected-icon img,
+.web3-connected-icon svg {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.web3-connected-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.web3-connected-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-success);
+}
+
+.web3-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px
+    color-mix(in oklab, var(--color-success) 16%, transparent);
+  animation: web3-status-pulse 2.6s ease-in-out infinite;
 }
 
 .web3-address-text {
-  font-family: var(--mono, monospace);
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 12.5px;
   font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-h);
-  letter-spacing: 0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.web3-copy-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 4px;
-  color: var(--text);
-  cursor: pointer;
+.web3-connected-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.web3-copy-btn:hover {
-  background: var(--surface-muted);
-  color: var(--text-h);
-}
-
-.web3-disconnect-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 5px;
-  padding: 3px 7px;
-  font-size: 10.5px;
+.web3-icon-btn {
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 9px;
+  border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  color: var(--text);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
 }
 
-.web3-disconnect-btn:hover {
-  border-color: var(--color-error);
+.web3-icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.web3-icon-btn:hover {
+  background: var(--surface);
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--border));
+  color: var(--text-h);
+  transform: translateY(-1px);
+}
+
+.web3-icon-btn-danger:hover {
+  border-color: color-mix(in oklab, var(--color-error) 45%, var(--border));
   color: var(--color-error);
 }
 
-/* ── Account Scope Compact Tiles (Create Account Mode) ── */
+.web3-icon-success {
+  color: var(--color-success);
+}
+
+.web3-btn-row {
+  display: flex;
+  width: 100%;
+  padding-top: 2px;
+}
+
+.web3-action-btn {
+  appearance: none;
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--accent) 72%, transparent);
+  background: linear-gradient(
+    135deg,
+    var(--accent) 0%,
+    color-mix(in oklab, var(--accent) 62%, var(--web3-purple)) 100%
+  );
+  color: var(--accent-contrast);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  box-shadow:
+    0 12px 30px -12px var(--web3-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+.web3-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.008);
+  filter: brightness(1.04);
+  box-shadow:
+    0 18px 38px -14px var(--web3-glow),
+    0 0 0 3px var(--accent-bg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+.web3-action-btn:active:not(:disabled) {
+  transform: scale(0.988);
+}
+
+.web3-action-btn:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  filter: saturate(0.75);
+  box-shadow: none;
+}
+
+.web3-btn-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.web3-spin {
+  animation: web3-spin 0.9s linear infinite;
+}
+
+.web3-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.web3-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.web3-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.web3-label-optional {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.web3-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  color: var(--text-h);
+  font-family: var(--sans);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.web3-input:hover {
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+}
+
+.web3-input:focus,
+.web3-input:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.web3-input::placeholder {
+  color: var(--placeholder);
+}
+
 .web3-type-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -334,39 +684,51 @@
 }
 
 .web3-type-card {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  cursor: pointer;
-  text-align: left;
   display: flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.15s ease;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+  background: color-mix(in oklab, var(--surface) 64%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .web3-type-card:hover {
-  border-color: var(--border-heavy);
-  background: var(--surface-muted);
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
+  background: color-mix(in oklab, var(--surface) 84%, transparent);
+  transform: translateY(-1px);
 }
 
 .web3-type-card.active {
-  background: var(--accent-bg);
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent-bg) 88%, transparent) 0%,
+    color-mix(in oklab, var(--surface) 76%, transparent) 100%
+  );
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .web3-type-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-muted);
-  color: var(--text-h);
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--surface-muted) 82%, transparent);
+  color: var(--text);
+}
+
+.web3-type-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .web3-type-card.active .web3-type-icon {
@@ -377,37 +739,38 @@
 .web3-type-info {
   display: flex;
   flex-direction: column;
+  gap: 1px;
   flex: 1;
-  overflow: hidden;
+  min-width: 0;
 }
 
 .web3-type-title {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text-h);
-  margin: 0;
   line-height: 1.2;
+  color: var(--text-h);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .web3-type-desc {
-  font-size: 10px;
-  line-height: 1.2;
-  color: var(--text);
-  margin: 1px 0 0;
-  white-space: nowrap;
+  font-size: 9.5px;
+  line-height: 1.25;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .web3-type-radio {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
   border: 1.5px solid var(--border-heavy);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .web3-type-card.active .web3-type-radio {
@@ -416,152 +779,429 @@
 }
 
 .web3-type-card.active .web3-type-radio::after {
-  content: '';
+  content: "";
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: var(--accent-contrast);
 }
 
-/* ── Form Inputs ── */
-.web3-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.web3-label {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.web3-label-optional {
-  font-size: 9.5px;
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.web3-input {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 8px 11px;
-  font-size: 13px;
-  color: var(--text-h);
-  outline: none;
-  transition: all 0.15s ease;
-  box-sizing: border-box;
-}
-
-.web3-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2.5px var(--accent-bg);
-}
-
-.web3-input::placeholder {
-  color: var(--placeholder, #8a918c);
-}
-
-/* ── Button Row & Compact Action Button (No big/long buttons) ── */
-.web3-btn-row {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  padding-top: 2px;
-}
-
-.web3-action-btn {
-  width: auto;
-  min-width: 180px;
-  max-width: 270px;
-  background: var(--accent);
-  color: var(--accent-contrast);
-  border: none;
-  border-radius: 8px;
-  padding: 8.5px 22px;
-  font-family: var(--sans, sans-serif);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.1px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  box-shadow: 0 2px 8px var(--accent-bg);
-  transition: all 0.16s ease;
-}
-
-.web3-action-btn:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--accent) 88%, black);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--accent-bg);
-}
-
-.web3-action-btn:active:not(:disabled) {
-  transform: scale(0.985);
-}
-
-.web3-action-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* ── Security Footnote ── */
 .web3-security-footer {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 10.5px;
-  color: var(--text-muted);
-  text-align: center;
-  line-height: 1.4;
   padding-top: 2px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-muted);
 }
 
-.web3-security-footer svg {
-  color: var(--color-success, #0c8f5d);
+.web3-security-icon {
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
+  color: var(--color-success);
 }
 
-/* ── Error Banner ── */
-.web3-error-alert {
-  background: var(--color-error-bg, #fdebec);
-  border: 1px solid var(--color-error-border, #f8c2c7);
-  border-radius: 7px;
-  padding: 8px 12px;
+.web3-auth-legal {
+  margin: 0;
+  align-self: center;
+  max-width: 40ch;
+  text-align: center;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+[data-slot="dialog-content"].web3-wallet-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: calc(100vw - 24px);
+  max-width: 420px;
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  background: linear-gradient(
+    165deg,
+    color-mix(in oklab, var(--surface) 96%, transparent) 0%,
+    color-mix(in oklab, var(--surface) 88%, transparent) 100%
+  );
+  backdrop-filter: blur(26px) saturate(1.15);
+  -webkit-backdrop-filter: blur(26px) saturate(1.15);
+  box-shadow:
+    0 34px 100px -30px rgba(15, 23, 20, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+[data-slot="dialog-content"].web3-wallet-dialog [data-slot="dialog-close"] {
+  top: 14px;
+  right: 14px;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 7px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  color: var(--text);
+  opacity: 1;
+}
+
+[data-slot="dialog-content"].web3-wallet-dialog [data-slot="dialog-close"]:hover {
+  background: var(--surface);
+  color: var(--text-h);
+}
+
+[data-slot="dialog-content"].web3-wallet-dialog [data-slot="dialog-close"] svg {
+  width: 14px;
+  height: 14px;
+}
+
+.web3-wallet-dialog-header {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  padding-right: 34px;
+}
+
+.web3-dialog-title {
+  font-family: var(--heading);
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--text-h);
+}
+
+.web3-dialog-description {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.web3-wallet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(46vh, 350px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.web3-wallet-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.web3-wallet-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--text-muted) 34%, transparent);
+}
+
+.web3-wallet-row {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 52%, transparent);
+  color: var(--text-h);
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.web3-wallet-row:hover {
+  border-color: color-mix(in oklab, var(--accent) 36%, var(--border));
+  background: color-mix(in oklab, var(--surface) 84%, transparent);
+  transform: translateY(-1px);
+}
+
+.web3-wallet-row.selected {
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent-bg) 72%, transparent) 0%,
+    color-mix(in oklab, var(--surface) 78%, transparent) 100%
+  );
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.web3-wallet-row-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.web3-wallet-row-icon img,
+.web3-wallet-row-icon svg {
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
+}
+
+.web3-wallet-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.web3-wallet-row-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.web3-wallet-row-sub {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.web3-wallet-row-status {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  color: var(--text-muted);
+}
+
+.web3-wallet-row-status svg {
+  width: 14px;
+  height: 14px;
+}
+
+.web3-wallet-row-status.is-ready {
+  color: var(--color-success);
+  background: color-mix(in oklab, var(--color-success) 10%, transparent);
+}
+
+.web3-wallet-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 26px 18px;
+  border-radius: 14px;
+  border: 1px dashed color-mix(in oklab, var(--border) 90%, transparent);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.web3-wallet-empty svg {
+  width: 22px;
+  height: 22px;
+}
+
+.web3-wallet-dialog-footnote {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 11.5px;
-  color: var(--color-error, #cc2435);
-  line-height: 1.4;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 
-/* ── Responsive Mobile ── */
-@media (max-width: 500px) {
+.web3-wallet-dialog-footnote svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-success);
+}
+
+.web3-auth-screen :is(
+    .web3-tab-btn,
+    .web3-wallet-field,
+    .web3-icon-btn,
+    .web3-action-btn,
+    .web3-type-card,
+    .web3-input,
+    .web3-wallet-row
+  ):focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 82%, transparent);
+  outline-offset: 2px;
+}
+
+.web3-input:focus-visible {
+  outline: none;
+}
+
+:is(.dark, [data-theme="dark"]) .web3-auth-card {
+  box-shadow:
+    0 34px 100px -34px color-mix(in oklab, var(--accent) 42%, transparent),
+    0 18px 44px -24px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:is(.dark, [data-theme="dark"]) .web3-connected-pill {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:is(.dark, [data-theme="dark"])
+  [data-slot="dialog-content"].web3-wallet-dialog {
+  box-shadow:
+    0 40px 110px -30px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+@keyframes web3-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes web3-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes web3-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes web3-status-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px
+      color-mix(in oklab, var(--color-success) 16%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px
+      color-mix(in oklab, var(--color-success) 8%, transparent);
+  }
+}
+
+@keyframes web3-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 540px) {
+  .web3-auth-screen {
+    align-items: flex-start;
+    padding: max(18px, env(safe-area-inset-top, 0px) + 10px) 12px
+      max(22px, env(safe-area-inset-bottom, 0px) + 10px);
+  }
+
+  .web3-auth-stage {
+    max-width: 100%;
+  }
+
   .web3-auth-card {
-    border-radius: 10px;
+    border-radius: 20px;
   }
-  
+
   .web3-card-header {
-    padding: 16px 16px 12px;
+    padding: 24px 20px 16px;
   }
-  
+
   .web3-card-body {
-    padding: 16px 16px 18px;
+    padding: 0 20px 22px;
   }
-  
-  .web3-action-btn {
-    width: 100%;
-    max-width: none;
+
+  .web3-brand-logo {
+    height: 38px;
+    max-width: 62px;
+  }
+
+  .web3-brand-title {
+    font-size: 19px;
+  }
+
+  .web3-mode-heading h2 {
+    font-size: 19px;
+  }
+
+  .web3-input {
+    font-size: 16px;
+  }
+
+  [data-slot="dialog-content"].web3-wallet-dialog {
+    width: calc(100vw - 20px);
+    padding: 20px;
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .web3-type-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .web3-brand-row {
+    gap: 9px;
+  }
+
+  .web3-brand-logo {
+    height: 34px;
+    max-width: 54px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .web3-auth-stage,
+  .web3-auth-card,
+  .web3-brand-glow,
+  .web3-status-dot,
+  .web3-spin {
+    animation: none !important;
+  }
+
+  .web3-action-btn,
+  .web3-wallet-field,
+  .web3-wallet-row,
+  .web3-type-card,
+  .web3-icon-btn {
+    transition: none !important;
   }
 }
