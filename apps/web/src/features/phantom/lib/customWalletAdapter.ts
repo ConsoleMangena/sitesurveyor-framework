@@ -51,7 +51,7 @@ export const CUSTOM_WALLET_NAME = "SiteSurveyor Wallet" as WalletName<"SiteSurve
 export class CustomWalletAdapter extends BaseWalletAdapter {
   readonly name = CUSTOM_WALLET_NAME;
   readonly url = "https://sitesurveyor.app";
-  readonly icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%237c3aed' d='M12 2 3 7v10l9 5 9-5V7z'/%3E%3C/svg%3E";
+  readonly icon = "/logo.svg";
   readonly readyState = WalletReadyState.Loadable;
   readonly supportedTransactionVersions: SupportedTransactionVersions = null;
   private keypair: Keypair | null = null;

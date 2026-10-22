@@ -862,6 +862,128 @@
   color: var(--text);
 }
 
+[data-slot="dialog-content"].web3-auth-dialog {
+  max-width: 470px;
+  max-height: min(88dvh, 820px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.web3-dialog-kicker {
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.web3-dialog-wallet-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 48%, transparent);
+}
+
+.web3-dialog-wallet-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+  background: var(--surface);
+}
+
+.web3-dialog-wallet-icon img,
+.web3-dialog-wallet-icon svg {
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+}
+
+.web3-dialog-wallet-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.web3-dialog-wallet-name {
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-h);
+}
+
+.web3-dialog-wallet-sub {
+  font-size: 10.5px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.web3-site-surveyor-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 5px;
+}
+
+.web3-site-surveyor-mark {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+  background: var(--surface);
+}
+
+.web3-site-surveyor-mark .web3-brand-glow {
+  inset: -12px;
+  opacity: 0.38;
+}
+
+.web3-site-surveyor-mark img {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  max-height: 32px;
+  object-fit: contain;
+}
+
+.web3-site-surveyor-brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.web3-site-surveyor-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text-h);
+}
+
+.web3-site-surveyor-sub {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
 .web3-wallet-list {
   display: flex;
   flex-direction: column;
@@ -979,6 +1101,11 @@
 .web3-wallet-row-status.is-ready {
   color: var(--color-success);
   background: color-mix(in oklab, var(--color-success) 10%, transparent);
+}
+
+.web3-wallet-row-status.is-install {
+  color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .web3-wallet-empty {
@@ -1150,6 +1277,19 @@
     width: calc(100vw - 20px);
     padding: 20px;
     border-radius: 20px;
+  }
+
+  [data-slot="dialog-content"].web3-auth-dialog {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .web3-dialog-wallet-hint {
+    padding: 8px 10px;
+  }
+
+  .web3-site-surveyor-mark {
+    width: 42px;
+    height: 42px;
   }
 }
 

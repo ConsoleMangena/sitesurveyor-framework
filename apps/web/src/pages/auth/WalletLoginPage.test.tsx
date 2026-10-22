@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import WalletLoginPage from "./WalletLoginPage.tsx";
 
 const mockConnect = vi.fn();
@@ -7,15 +7,25 @@ const mockSelect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockSignInWithSolanaWallet = vi.fn();
 const mockSignUpWithSolanaWallet = vi.fn();
+const { mockHasStoredWallet, mockCreateWallet, mockUnlockWallet } = vi.hoisted(
+  () => ({
+    mockHasStoredWallet: vi.fn(() => false),
+    mockCreateWallet: vi.fn(),
+    mockUnlockWallet: vi.fn(),
+  }),
+);
+const mockWalletState = vi.hoisted(() => ({ connected: true }));
 
 vi.mock("@solana/wallet-adapter-react", () => ({
   useWallet: () => ({
-    wallet: {
-      adapter: {
-        name: "Brave Wallet",
-        icon: "data:image/svg+xml;base64,mock",
-      },
-    },
+    wallet: mockWalletState.connected
+      ? {
+          adapter: {
+            name: "Brave Wallet",
+            icon: "data:image/svg+xml;base64,mock",
+          },
+        }
+      : null,
     wallets: [
       {
         adapter: {
@@ -31,16 +41,41 @@ vi.mock("@solana/wallet-adapter-react", () => ({
         },
         readyState: "Installed",
       },
+      {
+        adapter: {
+          name: "Solflare",
+          icon: "data:image/svg+xml;base64,mock",
+        },
+        readyState: "Installed",
+      },
+      {
+        adapter: {
+          name: "SiteSurveyor Wallet",
+          icon: "/logo.svg",
+        },
+        readyState: "Loadable",
+      },
     ],
     select: mockSelect,
     connect: mockConnect,
-    connected: true,
+    connected: mockWalletState.connected,
     connecting: false,
     disconnect: mockDisconnect,
-    publicKey: {
-      toBase58: () => "8xK3ABCDEFGHIJKLM4jP9",
-    },
+    publicKey: mockWalletState.connected
+      ? {
+          toBase58: () => "8xK3ABCDEFGHIJKLM4jP9",
+        }
+      : null,
   }),
+}));
+
+vi.mock("../../features/phantom/lib/customWalletAdapter.ts", () => ({
+  CUSTOM_WALLET_NAME: "SiteSurveyor Wallet",
+  customWalletAdapter: {
+    hasStoredWallet: mockHasStoredWallet,
+    createWallet: mockCreateWallet,
+    unlockWallet: mockUnlockWallet,
+  },
 }));
 
 vi.mock("../../lib/auth/session.ts", () => ({
@@ -55,6 +90,8 @@ vi.mock("../../lib/auth/auth-store", () => ({
 describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWalletState.connected = true;
+    mockHasStoredWallet.mockReturnValue(false);
   });
 
   it("renders SiteSurveyor Web3 gateway branding and default Sign In tab", () => {
@@ -97,6 +134,42 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     if (businessCard) fireEvent.click(businessCard);
 
     expect(screen.getByLabelText(/survey firm \/ organization name/i)).toBeInTheDocument();
+  });
+
+  it("lists MetaMask as an install fallback alongside detected wallets", () => {
+    mockWalletState.connected = false;
+    render(<WalletLoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("MetaMask")).toBeInTheDocument();
+    expect(screen.getByText("Install extension")).toBeInTheDocument();
+    expect(screen.getByText("SiteSurveyor Wallet")).toBeInTheDocument();
+  });
+
+  it("creates a SiteSurveyor Wallet from the local vault dialog", async () => {
+    mockWalletState.connected = false;
+    mockCreateWallet.mockResolvedValueOnce("created-address");
+    render(<WalletLoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^sitesurveyor wallet/i }),
+    );
+
+    expect(await screen.findByText("Create your wallet")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/create a wallet pin/i), {
+      target: { value: "12345678" },
+    });
+    fireEvent.change(screen.getByLabelText(/confirm wallet pin/i), {
+      target: { value: "12345678" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create wallet/i }));
+
+    await waitFor(() =>
+      expect(mockCreateWallet).toHaveBeenCalledWith("12345678"),
+    );
   });
 
   it("calls signInWithSolanaWallet when Sign In button clicked", async () => {
