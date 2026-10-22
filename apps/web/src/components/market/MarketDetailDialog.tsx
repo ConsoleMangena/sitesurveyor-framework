@@ -184,7 +184,7 @@ export function MarketDetailDialog({
       setFavoriteId(null);
       return;
     }
-    getMarketFavorite(user.id, dot.kind, dot.id).then((fav) => {
+    getMarketFavorite(dot.kind, dot.id).then((fav) => {
       if (!cancelled) setFavoriteId(fav?.id ?? null);
     });
     return () => {
@@ -200,7 +200,7 @@ export function MarketDetailDialog({
         await removeMarketFavorite(favoriteId);
         setFavoriteId(null);
       } else {
-        const created = await addMarketFavorite(user.id, dot.kind, dot.id);
+        const created = await addMarketFavorite(dot.kind, dot.id);
         if (created) setFavoriteId(created.id);
       }
     } finally {
@@ -651,16 +651,25 @@ function ListingRequestPanel({
       .then(({ data }) => {
         if (!cancelled && data) setSellerWorkspaceId(data.workspace_id);
       });
-    getMyRequestForListing(user.id, listing.id).then((existing) => {
+    getMyRequestForListing(listing.id).then((existing) => {
       if (!cancelled) setRequest(existing);
     });
     return () => {
       cancelled = true;
     };
-  }, [listing.id, user.id]);
+  }, [listing.id]);
 
   const isHire = listing.listing_type === "hire";
   const actionLabel = isHire ? "Request to hire equipment" : "Request to purchase";
+  const isOwner = sellerWorkspaceId != null && user.workspaceId === sellerWorkspaceId;
+
+  if (isOwner) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        This is a listing from your own workspace.
+      </p>
+    );
+  }
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -672,23 +681,20 @@ function ListingRequestPanel({
     setError(null);
     try {
       const created = await createMarketplaceRequest({
-        requester_user_id: user.id,
-        listing_id: listing.id,
-        seller_workspace_id: sellerWorkspaceId,
-        request_type: isHire ? "hire" : "purchase",
-        start_date: isHire && startDate ? startDate : null,
-        end_date: isHire && endDate ? endDate : null,
+        listingId: listing.id,
+        requesterWorkspaceId: user.workspaceId,
         message: message.trim() || null,
+        desiredStartDate: (isHire && startDate) ? startDate : null,
+        desiredEndDate: (isHire && endDate) ? endDate : null,
       });
       setRequest(created);
       setFormOpen(false);
-      await notifyMarketplaceRequest({
-        targetWorkspaceId: sellerWorkspaceId,
-        actorUserId: user.id,
-        actorName: user.name,
+      void notifyMarketplaceRequest({
+        sellerWorkspaceId,
         listingName: listing.name,
-        requestType: isHire ? "hire" : "purchase",
-      });
+        requesterName: user.name,
+        listingType: listing.listing_type ?? undefined,
+      }).catch(() => undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send request.");
     } finally {
@@ -753,7 +759,7 @@ function ListingRequestPanel({
           className="mt-1"
         />
       </div>
-      {error ? <FieldError message={error} /> : null}
+      {error ? <FieldError>{error}</FieldError> : null}
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" size="sm" onClick={() => setFormOpen(false)}>
           Cancel
