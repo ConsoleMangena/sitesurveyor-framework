@@ -551,12 +551,12 @@ export default function BillingPage({
                       </Button>
                       <p className="text-center text-xs text-muted-foreground">
                         {selectedInvoice
-                          ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC to the workspace treasury from your connected Phantom wallet.${
+                          ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC to the workspace treasury${
                               solanaFeeEstimate
                                 ? ` Estimated network cost: ${solanaFeeEstimate}.`
                                 : ""
                             }`
-                          : "Select an invoice to pay it directly with your Phantom wallet."}
+                          : "Select an invoice to pay it directly with your wallet."}
                       </p>
                     </div>
                   </CardContent>
