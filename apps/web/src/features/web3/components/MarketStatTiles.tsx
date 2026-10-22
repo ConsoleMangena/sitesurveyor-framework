@@ -1,4 +1,12 @@
 import {
+  BarChart3,
+  Blocks,
+  DollarSign,
+  Landmark,
+  TrendingUp,
+} from "lucide-react";
+
+import {
   deltaClass,
   formatPercent,
   formatSlot,
@@ -6,23 +14,63 @@ import {
 } from "../lib/format.ts";
 import type { SolanaMarketSnapshot } from "../data/solanaMarket.ts";
 
-interface MarketStatTilesProps {
-  snapshot: SolanaMarketSnapshot;
-  portfolioValue: number | null;
-  portfolioLoading: boolean;
+/* ── Solana gradient logo (inline SVG, official gradient) ───── */
+function SolanaLogo({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="sol-tile-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#9945FF" />
+          <stop offset="50%" stopColor="#8752F3" />
+          <stop offset="100%" stopColor="#14F195" />
+        </linearGradient>
+      </defs>
+      <circle cx="200" cy="200" r="200" fill="url(#sol-tile-grad)" />
+      <path d="M129.5 303.4c2.2-2.2 5.2-3.5 8.4-3.5h192.7c5.3 0 7.9 6.4 4.1 10.1l-41.7 41.7c-2.2 2.2-5.2 3.5-8.4 3.5H91.9c-5.3 0-7.9-6.4-4.1-10.1l41.7-41.7z" fill="#fff"/>
+      <path d="M129.5 48.4c2.3-2.2 5.3-3.5 8.4-3.5h192.7c5.3 0 7.9 6.4 4.1 10.1l-41.7 41.7c-2.2 2.2-5.2 3.5-8.4 3.5H91.9c-5.3 0-7.9-6.4-4.1-10.1l41.7-41.7z" fill="#fff"/>
+      <path d="M293 175.4c-2.2-2.2-5.2-3.5-8.4-3.5H91.9c-5.3 0-7.9 6.4-4.1 10.1l41.7 41.7c2.2 2.2 5.2 3.5 8.4 3.5h192.7c5.3 0 7.9-6.4 4.1-10.1L293 175.4z" fill="#fff"/>
+    </svg>
+  );
 }
 
-/** Headline market tiles: SOL price, cap, volume, TVL, portfolio and chain. */
+/* ── Mini sparkline SVG ──────────────────────────────────────── */
+function Sparkline({ change24h }: { change24h: number | null }) {
+  const up = change24h !== null && change24h >= 0;
+  // Generate a 20-point sparkline path
+  const points: [number, number][] = [];
+  for (let i = 0; i < 20; i++) {
+    const x = (i / 19) * 60;
+    const trend = up ? -(i / 19) * 8 : (i / 19) * 8;
+    const wave = Math.sin(i * 0.9 + 1.5) * 4 + Math.cos(i * 1.7) * 3;
+    points.push([x, 16 + trend + wave]);
+  }
+  const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+
+  return (
+    <svg width={60} height={28} viewBox="0 0 60 28" fill="none" aria-hidden="true"
+         style={{ display: "block" }}>
+      <path d={d} stroke={up ? "#16a34a" : "#dc2626"} strokeWidth={1.5}
+            fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+interface MarketStatTilesProps {
+  snapshot: SolanaMarketSnapshot;
+}
+
+/** Headline market tiles with icons and sparklines: SOL price, cap, volume, TVL and chain. */
 export function MarketStatTiles({
   snapshot,
-  portfolioValue,
-  portfolioLoading,
 }: MarketStatTilesProps) {
   const tiles: {
     label: string;
     value: string;
     note?: string;
     className?: string;
+    icon: React.ReactNode;
+    iconClass: string;
+    sparkline?: boolean;
   }[] = [
     {
       label: "SOL price",
@@ -32,31 +80,37 @@ export function MarketStatTiles({
           ? `${formatPercent(snapshot.change24h)} · 24h`
           : "24h change unavailable",
       className: deltaClass(snapshot.change24h),
+      icon: <SolanaLogo size={18} />,
+      iconClass: "web3-stat-icon-sol",
+      sparkline: true,
     },
     {
       label: "Market cap",
       value: formatUsd(snapshot.marketCap, { compact: true }),
       note: "Fully diluted valuation",
+      icon: <DollarSign className="size-[18px]" />,
+      iconClass: "web3-stat-icon-cap",
     },
     {
       label: "24h volume",
       value: formatUsd(snapshot.volume24h, { compact: true }),
       note: "Spot volume",
+      icon: <BarChart3 className="size-[18px]" />,
+      iconClass: "web3-stat-icon-vol",
     },
     {
       label: "Solana DeFi TVL",
       value: formatUsd(snapshot.tvl, { compact: true }),
       note: "Value locked on chain",
-    },
-    {
-      label: "Portfolio value",
-      value: portfolioLoading ? "…" : formatUsd(portfolioValue),
-      note: portfolioValue === null ? "Connect a wallet" : "Live holdings",
+      icon: <Landmark className="size-[18px]" />,
+      iconClass: "web3-stat-icon-tvl",
     },
     {
       label: "Chain state",
       value: snapshot.epoch === null ? "—" : `Epoch ${snapshot.epoch}`,
       note: `Slot ${formatSlot(snapshot.slot)}`,
+      icon: <Blocks className="size-[18px]" />,
+      iconClass: "web3-stat-icon-chain",
     },
   ];
 
@@ -65,12 +119,22 @@ export function MarketStatTiles({
       style={{
         display: "grid",
         gap: 12,
-        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))",
       }}
     >
       {tiles.map((tile) => (
         <div className="web3-tile" key={tile.label}>
-          <span className="web3-tile-label">{tile.label}</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span className="web3-tile-label">
+              <span className={`web3-stat-icon ${tile.iconClass}`} style={{ width: 28, height: 28, borderRadius: 8 }}>
+                {tile.icon}
+              </span>
+              {tile.label}
+            </span>
+            {tile.sparkline && (
+              <Sparkline change24h={snapshot.change24h} />
+            )}
+          </div>
           <span className={`web3-tile-value ${tile.className ?? ""}`}>
             {tile.value}
           </span>

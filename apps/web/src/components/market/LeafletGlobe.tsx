@@ -61,14 +61,12 @@ export default function LeafletGlobe({
       zoomControl: true,
     });
 
-    // Add tile layer - CARTO dark basemap (free, CORS enabled) so the globe
-    // matches the dark web3 terminal.
+    // Add tile layer - OpenStreetMap standard basemap for the light theme.
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
         attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
         noWrap: false,
       },

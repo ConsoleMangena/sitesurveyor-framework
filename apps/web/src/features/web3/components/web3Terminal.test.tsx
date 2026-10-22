@@ -7,6 +7,8 @@ vi.mock("../../../lib/supabase/client.ts", () => ({
 }));
 
 import { MarketTicker } from "./MarketTicker.tsx";
+import { MarketStatTiles } from "./MarketStatTiles.tsx";
+import { SolanaMarketChart } from "./SolanaMarketChart.tsx";
 import { PortfolioPanel } from "./PortfolioPanel.tsx";
 import { EMPTY_MARKET_SNAPSHOT } from "../data/solanaMarket.ts";
 import type { SolanaMarketSnapshot } from "../data/solanaMarket.ts";
@@ -133,5 +135,33 @@ describe("PortfolioPanel", () => {
     expect(screen.getAllByText("SOL").length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText("USDC").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/read-only · updates every 60s/)).toBeInTheDocument();
+  });
+});
+
+describe("MarketStatTiles", () => {
+  it("renders price, volume, TVL and chain state", () => {
+    render(<MarketStatTiles snapshot={SNAPSHOT} />);
+
+    expect(screen.getByText("SOL price")).toBeInTheDocument();
+    expect(screen.getByText("Market cap")).toBeInTheDocument();
+    expect(screen.getByText("24h volume")).toBeInTheDocument();
+    expect(screen.getByText("Solana DeFi TVL")).toBeInTheDocument();
+    expect(screen.getByText("Chain state")).toBeInTheDocument();
+    expect(screen.getByText("Epoch 1064")).toBeInTheDocument();
+  });
+});
+
+describe("SolanaMarketChart", () => {
+  it("renders Solana candlestick chart and controls", () => {
+    render(<SolanaMarketChart snapshot={SNAPSHOT} />);
+
+    expect(screen.getByText("Solana")).toBeInTheDocument();
+    expect(screen.getByText("SOL / USD")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1H" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "24H" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "7D" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "30D" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Candlestick Chart" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Line Area Chart" })).toBeInTheDocument();
   });
 });

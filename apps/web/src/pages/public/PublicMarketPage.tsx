@@ -23,7 +23,6 @@ review, the verdict, and DESIGN.md.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useWallet } from "@solana/wallet-adapter-react";
 import {
   BadgeCheck,
   Briefcase,
@@ -52,10 +51,9 @@ import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
 import { signOut } from "../../lib/auth/session.ts";
 import { getWorkspaceShellAccountLabel } from "../../features/workspace/account.ts";
 import { MarketTicker } from "../../features/web3/components/MarketTicker.tsx";
+import { SolanaMarketChart } from "../../features/web3/components/SolanaMarketChart.tsx";
 import { MarketStatTiles } from "../../features/web3/components/MarketStatTiles.tsx";
-import { PortfolioPanel } from "../../features/web3/components/PortfolioPanel.tsx";
 import { useSolanaMarketFeed } from "../../features/web3/hooks/useSolanaMarketFeed.ts";
-import { useWeb3Portfolio } from "../../features/web3/hooks/useWeb3Portfolio.ts";
 import { formatUsd } from "../../features/web3/lib/format.ts";
 import {
   Avatar,
@@ -163,10 +161,7 @@ export default function PublicMarketPage() {
   const user = useAuthStore((s) => s.user);
   const avatarUrl = useMyAvatar();
   const navigate = useNavigate();
-  const { publicKey } = useWallet();
-  const walletAddress = publicKey ? publicKey.toBase58() : null;
   const market = useSolanaMarketFeed();
-  const portfolio = useWeb3Portfolio(walletAddress);
   const [marketUserMenuOpen, setMarketUserMenuOpen] = useState(false);
   const [data, setData] = useState<MarketData | null>(null);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
@@ -710,10 +705,10 @@ export default function PublicMarketPage() {
                       : `${market.snapshot.change24h > 0 ? "+" : ""}${market.snapshot.change24h.toFixed(2)}%`}
                   </span>
                 </div>
-                <h1 className="max-w-xl text-2xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+                <h1 className="max-w-xl text-2xl font-bold leading-tight tracking-tight sm:text-5xl" style={{ color: "var(--web3-text)" }}>
                   The Surveyor’s Market.
                 </h1>
-                <p className="mt-2 max-w-lg text-xs leading-relaxed text-white/80 sm:mt-3 sm:text-base">
+                <p className="mt-2 max-w-lg text-xs leading-relaxed sm:mt-3 sm:text-base" style={{ color: "var(--web3-text-muted)" }}>
                   Instruments, professionals, jobs, firms, and training —
                   published live by SiteSurveyor workspaces worldwide.
                 </p>
@@ -742,17 +737,9 @@ export default function PublicMarketPage() {
             error={market.error}
             onRefresh={market.refresh}
           />
+          <SolanaMarketChart snapshot={market.snapshot} />
           <MarketStatTiles
             snapshot={market.snapshot}
-            portfolioValue={portfolio.snapshot.totalValue}
-            portfolioLoading={portfolio.loading}
-          />
-          <PortfolioPanel
-            address={walletAddress}
-            snapshot={portfolio.snapshot}
-            loading={portfolio.loading}
-            error={portfolio.error}
-            onRefresh={portfolio.refresh}
           />
         </section>
 
