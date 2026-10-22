@@ -16,6 +16,7 @@ import {
 } from "../../lib/repositories/marketplaceRequests.ts";
 import { notifyMarketplaceRequest } from "../../lib/repositories/notificationEvents.ts";
 import { cn } from "../../lib/utils.ts";
+import FieldError from "@/components/errors/FieldError.tsx";
 import { MARKET_DOT_COLORS } from "./marketDots.ts";
 import type { MarketDot } from "./marketDots.ts";
 import { toPortfolioItemRows } from "./marketFeed.ts";
@@ -545,7 +546,7 @@ function ListingRequestPanel({
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {error ? <FieldError>{error}</FieldError> : null}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={() => setFormOpen(false)}>
           Cancel
@@ -603,7 +604,7 @@ function ListingRequestPanel({
             {request.message ? (
               <p className="text-sm text-muted-foreground">{request.message}</p>
             ) : null}
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? <FieldError>{error}</FieldError> : null}
           </div>
           {request.status === "pending" ? (
             <Button

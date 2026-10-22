@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { EntityFilesCard } from "@/components/files/EntityFilesCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1241,11 +1242,11 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
         }
       />
 
-      {error && (
-        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <KpiCard

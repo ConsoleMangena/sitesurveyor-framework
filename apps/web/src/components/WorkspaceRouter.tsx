@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../lib/auth/auth-store";
-import AppErrorPage from "./AppErrorPage";
+import PageLoader from "./PageLoader";
 import { signOut as signOutSession } from "../lib/auth/session";
 import { getAccessibleView } from "../features/workspace/account";
 import { isWorkspaceView, type WorkspaceView } from "../features/workspace/types";
@@ -28,7 +28,7 @@ export default function WorkspaceRouter() {
   };
 
   return (
-    <Suspense fallback={<AppErrorPage kind="runtime" />}>
+    <Suspense fallback={<PageLoader />}>
       {user.signupAccountType === "platform_admin" ? (
         <PlatformOperatorWorkspaceShell user={user} onLogout={handleLogout} initialView={requestedView} />
       ) : user.accountType === "business" ? (

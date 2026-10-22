@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
+import FieldError from "@/components/errors/FieldError.tsx";
 import {
   Upload,
   Download,
@@ -360,7 +361,7 @@ function CsvImportDialog({ open, onOpenChange, onImport, sections }: CsvImportDi
           </>
         )}
 
-        {error && <div className="text-sm text-destructive">⚠ {error}</div>}
+        {error ? <FieldError>{error}</FieldError> : null}
       </div>
     </DialogTemplate>
   );
@@ -950,7 +951,7 @@ export function ProjectPointsManager({ projectId }: ProjectPointsManagerProps) {
             )}
           </div>
 
-          {importError && <div className="text-sm text-destructive">⚠ {importError}</div>}
+          {importError ? <FieldError>{importError}</FieldError> : null}
           {importSuccess && <div className="text-sm text-emerald-600">{importSuccess}</div>}
           {coordSearch && (
             <div className="text-xs text-muted-foreground">

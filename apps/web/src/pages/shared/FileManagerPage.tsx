@@ -46,6 +46,7 @@ import {
   type AttachmentVersionRow,
 } from "../../lib/repositories/attachments.ts";
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -679,11 +680,11 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       {notice && (
         <div className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

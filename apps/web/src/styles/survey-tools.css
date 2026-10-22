@@ -562,11 +562,14 @@
 
 .svt-error {
   margin: 10px 14px;
-  padding: 8px 12px;
-  background: var(--color-error-bg);
+  padding: 9px 12px 9px 14px;
+  border: 1px solid var(--color-error-border);
+  border-left: 3px solid var(--color-error);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--color-error-bg) 78%, var(--surface));
   color: var(--color-error);
-  border-radius: 4px;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 /* ── Angle entry (DMS / packed DD.MMSS / decimal / gon) ──────────────────── */

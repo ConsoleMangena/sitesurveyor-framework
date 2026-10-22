@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar.tsx";
 import { ChatRoster } from "./ChatRoster.tsx";
@@ -962,18 +963,11 @@ export default function TeamChatPage({
         className="space-y-2"
         onSubmit={handleSendMessage}
       >
-        {error && (
-          <div className="flex items-center justify-between gap-2 rounded-none bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => setError(null)}
-              className="shrink-0 rounded px-1 py-0.5 font-medium underline-offset-2 hover:underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
+        {error ? (
+          <ErrorNotice tone="danger" layout="banner" onDismiss={() => setError(null)}>
+            {error}
+          </ErrorNotice>
+        ) : null}
         {replySnapshot && (
           <ReplyBanner replyTo={replySnapshot} onCancel={() => setReplyTo(null)} />
         )}

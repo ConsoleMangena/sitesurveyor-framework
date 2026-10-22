@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { RefreshCw, Search, Loader2, ShieldCheck, ShieldX } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,11 +159,11 @@ export default function AdminUsersPage({
         }
       />
 
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search

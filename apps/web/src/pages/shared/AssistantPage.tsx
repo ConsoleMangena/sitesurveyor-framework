@@ -28,6 +28,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet.tsx";
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { AiMessageText } from "./AiMessageText.tsx";
 import { messageMeta, showRowMeta } from "./messageMeta.ts";
 import { parseAssistantBlocks } from "@/features/ai/assistantBlocks.ts";
@@ -564,11 +565,11 @@ export default function AssistantPage({
           </div>
         )}
 
-        {error && (
-          <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+        {error ? (
+          <ErrorNotice tone="danger">
             {error}
-          </div>
-        )}
+          </ErrorNotice>
+        ) : null}
 
         <div
           ref={scrollRef}

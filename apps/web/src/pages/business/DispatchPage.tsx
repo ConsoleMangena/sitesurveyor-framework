@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -477,11 +478,11 @@ export default function DispatchPage({ workspaceId }: DispatchPageProps) {
         }
       />
 
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -910,11 +911,11 @@ export default function DispatchPage({ workspaceId }: DispatchPageProps) {
           </div>
         </div>
 
-        {formError && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        {formError ? (
+          <ErrorNotice tone="danger">
             {formError}
-          </div>
-        )}
+          </ErrorNotice>
+        ) : null}
       </DialogTemplate>
     </DashboardShell>
   );

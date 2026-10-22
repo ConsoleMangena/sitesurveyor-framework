@@ -1,5 +1,6 @@
+import { Clock } from "lucide-react";
 import { useAuthStore } from "../lib/auth/auth-store";
-import "../styles/session-banner.css";
+import ErrorNotice from "./errors/ErrorNotice.tsx";
 
 export default function SessionExpiredBanner() {
   const sessionExpired = useAuthStore((s) => s.sessionExpired);
@@ -8,35 +9,20 @@ export default function SessionExpiredBanner() {
   if (!sessionExpired) return null;
 
   return (
-    <div className="session-banner" role="alert">
-      <span className="session-banner-text">
-        Your session has expired. Please{" "}
-        <a href="/login" className="session-banner-link">
-          sign in again
-        </a>
-        .
-      </span>
-      <button
-        type="button"
-        className="session-banner-dismiss"
-        onClick={dismiss}
-        aria-label="Dismiss"
+    <div className="session-banner-wrap">
+      <ErrorNotice
+        tone="warning"
+        title="Session expired"
+        icon={<Clock size={16} />}
+        onDismiss={dismiss}
+        action={
+          <a href="/login" className="error-notice-link">
+            Sign in again
+          </a>
+        }
       >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
+        Your session has expired. Sign in to continue where you left off.
+      </ErrorNotice>
     </div>
   );
 }

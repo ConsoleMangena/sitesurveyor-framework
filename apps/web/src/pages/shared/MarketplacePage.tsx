@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import FieldError from "@/components/errors/FieldError.tsx";
 import {
   Package,
   Search,
@@ -1210,10 +1211,10 @@ export default function MarketplacePage({
                     </div>
 
                     {!phantomWallet.installed ? (
-                      <p className="text-sm text-destructive">
+                      <FieldError>
                         Phantom wallet is not installed. Install the browser
                         extension to pay.
-                      </p>
+                      </FieldError>
                     ) : phantomWallet.connected && phantomWallet.shortAddress ? (
                       <p className="text-xs text-muted-foreground">
                         Paying from{" "}

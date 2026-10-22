@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
+import FieldError from "@/components/errors/FieldError.tsx";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
@@ -201,7 +202,7 @@ export default function PhantomWalletCard() {
             onChange={(event) => setCustomPin(event.target.value)}
             onKeyDown={(event) => { if (event.key === "Enter" && customPin) void unlockCustomWallet(); }}
           />
-          {customError && <p className="text-sm text-destructive">{customError}</p>}
+          {customError ? <FieldError>{customError}</FieldError> : null}
         </div>
       </DialogTemplate>
     </Card>

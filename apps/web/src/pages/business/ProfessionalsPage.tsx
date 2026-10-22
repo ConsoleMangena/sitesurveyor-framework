@@ -9,6 +9,7 @@ import {
 import { listAllProfessionals } from "../../lib/repositories/adminPlatform.ts";
 import type { ProfessionalRow } from "../../lib/repositories/professionals.ts";
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -633,11 +634,11 @@ export default function ProfessionalsPage({
         }
       />
 
-      {fetchError && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {fetchError ? (
+        <ErrorNotice tone="danger">
           {fetchError}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1.5">

@@ -16,6 +16,7 @@ import type {
   WorkspaceView,
 } from "../../features/workspace/types.ts";
 import { Button } from "../ui/button.tsx";
+import ErrorNotice from "../errors/ErrorNotice.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar.tsx";
 import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
 import { Badge } from "../ui/badge.tsx";
@@ -909,7 +910,11 @@ function WorkspaceNotifications({ workspaceId, onChangeView }: WorkspaceNotifica
           {loading && notifications.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
           ) : error ? (
-            <div className="p-4 text-center text-destructive text-sm">{error}</div>
+            <div className="p-4">
+              <ErrorNotice tone="danger" layout="panel">
+                {error}
+              </ErrorNotice>
+            </div>
           ) : notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-2 text-sm">
               <BellIcon />

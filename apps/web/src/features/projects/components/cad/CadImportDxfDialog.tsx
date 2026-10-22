@@ -9,6 +9,7 @@ import {
 import { FileText, Loader2, Search, Upload, FileInput, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { DialogTemplate } from "@/components/templates/DialogTemplate";
 import { Input } from "@/components/ui/input";
 import { useAsyncAction } from "../../../../hooks/useAsyncAction.ts";
@@ -160,11 +161,11 @@ export function CadImportDxfDialog({
           />
         </div>
 
-        {error && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        {error ? (
+          <ErrorNotice tone="danger" layout="banner">
             {error}
-          </div>
-        )}
+          </ErrorNotice>
+        ) : null}
 
         <div className="rounded-lg border bg-muted/30 p-4">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">

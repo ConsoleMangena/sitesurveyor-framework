@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { explorerTxUrl } from "@/features/phantom/lib/config.ts";
 import type { PaymentWithInvoice } from "@/lib/repositories/payments.ts";
 import { formatCurrency, formatDate } from "./FinanceUtils.ts";
@@ -18,9 +19,7 @@ function methodVariant(method: string | null): "purple" | "secondary" {
 export default function TransactionTable({ rows, loading, error }: TransactionTableProps) {
   if (error) {
     return (
-      <div role="alert" className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-        {error}
-      </div>
+      <ErrorNotice tone="danger">{error}</ErrorNotice>
     );
   }
 

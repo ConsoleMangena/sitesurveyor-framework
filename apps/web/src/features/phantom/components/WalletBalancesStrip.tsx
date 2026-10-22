@@ -3,6 +3,7 @@ import { CircleDollarSign, Coins, RefreshCw, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import FieldError from "@/components/errors/FieldError.tsx";
 import { SOLANA_CLUSTER } from "../lib/config.ts";
 import { useSolanaBalances } from "../hooks/useSolanaBalances.ts";
 
@@ -63,11 +64,7 @@ function BalanceTile({
           <span className="ml-2 text-sm font-semibold text-muted-foreground">{symbol}</span>
         </p>
       )}
-      {error && (
-        <p className="mt-2 text-xs text-destructive" role="alert">
-          {error}
-        </p>
-      )}
+      {error ? <FieldError>{error}</FieldError> : null}
     </div>
   );
 }

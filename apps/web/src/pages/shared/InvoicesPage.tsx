@@ -20,6 +20,8 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
+import FieldError from "@/components/errors/FieldError.tsx";
 import { EntityFilesCard } from "@/components/files/EntityFilesCard";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
@@ -1081,11 +1083,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
         footer={
           <div className="flex w-full items-center gap-4">
             <div className="min-w-0 flex-1">
-              {createError && (
-                <div role="alert" className="text-sm text-destructive">
-                  {createError}
-                </div>
-              )}
+              {createError ? <FieldError>{createError}</FieldError> : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Button
@@ -1398,11 +1396,11 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
         }
       />
 
-      {error && (
-        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       <MetricStrip
         metrics={[

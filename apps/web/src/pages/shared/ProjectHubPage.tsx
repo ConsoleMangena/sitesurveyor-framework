@@ -28,6 +28,7 @@ import {
 
 import '../../styles/project-hub.css'
 import '../../styles/pages.css'
+import ErrorNotice from '@/components/errors/ErrorNotice.tsx'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1117,11 +1118,11 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
   return (
       <DashboardShell className={`hub-body project-hub-body ${activeProject ? 'project-hub-body-fullscreen p-0 gap-0' : ''}`}>
-      {error && (
-        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       {notice && (
         <div className={`flex items-center justify-between rounded-none px-4 py-3 text-sm ${notice.type === 'success' ? 'border border-emerald-200 bg-emerald-50 text-emerald-800' : 'border border-blue-200 bg-blue-50 text-blue-800'}`} role="status" aria-live="polite">

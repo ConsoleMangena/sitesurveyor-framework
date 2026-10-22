@@ -5,6 +5,7 @@ import {
   DashboardShell,
 } from "@/components/dashboard/DashboardShell.tsx";
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { AdminPlatformDashboard } from "@/features/admin/dashboard/admin-platform-dashboard";
 import { DatabaseStorageCard } from "@/components/dashboard/DatabaseStorageCard.tsx";
@@ -77,11 +78,11 @@ export default function AdminOverviewPage({
         </div>
       )}
 
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       {loading && rows.length === 0 ? (
         <PageLoader compact />

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { RefreshCw, Loader2, ChevronDown } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -147,11 +148,11 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
         }
       />
 
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <Select value={filterWsId} onValueChange={(v) => setFilterWsId(v)}>

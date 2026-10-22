@@ -3,6 +3,7 @@ import { Banknote, Loader2, Plus, Download, CreditCard, Wallet } from "lucide-re
 
 import { cn } from "@/lib/utils";
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -473,11 +474,11 @@ export default function BillingPage({
                 </CardContent>
               </Card>
 
-              {recordPaymentError && (
-                <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {recordPaymentError ? (
+                <ErrorNotice tone="danger">
                   {recordPaymentError}
-                </div>
-              )}
+                </ErrorNotice>
+              ) : null}
 
               <Card>
                 <CardHeader>

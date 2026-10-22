@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import {
-  AlertCircle,
   Building2,
   Check,
   ChevronRight,
@@ -25,6 +24,7 @@ import {
   User,
   Wallet,
 } from "lucide-react";
+import ErrorNotice from "../../components/errors/ErrorNotice.tsx";
 import "../../styles/web3-auth.css";
 
 function SolanaNetworkIcon({ className }: { className?: string }) {
@@ -368,12 +368,11 @@ export default function WalletLoginPage() {
               </p>
             </div>
 
-            {error && (
-              <div className="web3-error-alert" role="alert">
-                <AlertCircle className="web3-alert-icon" />
-                <span>{error}</span>
-              </div>
-            )}
+            {error ? (
+              <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+                {error}
+              </ErrorNotice>
+            ) : null}
 
             <div className="web3-wallet-section">
               <div className="web3-section-label">
@@ -637,12 +636,11 @@ export default function WalletLoginPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {error && (
-            <div className="web3-error-alert" role="alert">
-              <AlertCircle className="web3-alert-icon" />
-              <span>{error}</span>
-            </div>
-          )}
+          {error ? (
+            <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+              {error}
+            </ErrorNotice>
+          ) : null}
 
           <div className="web3-wallet-list">
             {sortedWallets.length === 0 ? (

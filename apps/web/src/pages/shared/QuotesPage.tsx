@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
+import FieldError from "@/components/errors/FieldError.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { consumeQuoteCreateRequest } from "../../lib/navigationIntents.ts";
 import { Button } from "@/components/ui/button";
@@ -825,11 +827,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         footer={
           <div className="flex w-full items-center gap-4">
             <div className="min-w-0 flex-1">
-              {createError && (
-                <div role="alert" className="text-sm text-destructive">
-                  {createError}
-                </div>
-              )}
+              {createError ? <FieldError>{createError}</FieldError> : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -1086,11 +1084,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         footer={
           <div className="flex w-full items-center gap-2">
             <div className="min-w-0 flex-1">
-              {error && (
-                <div role="alert" className="text-sm text-destructive">
-                  {error}
-                </div>
-              )}
+              {error ? <FieldError>{error}</FieldError> : null}
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
               {isDraft && !editingDetails && (
@@ -1182,11 +1176,11 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
         }
       />
 
-      {error && (
-        <div className="rounded-none border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger">
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       <MetricStrip
         metrics={[

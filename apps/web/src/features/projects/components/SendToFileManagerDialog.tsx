@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import FieldError from "@/components/errors/FieldError.tsx";
 import { Loader2, CheckCircle2, FolderInput } from "lucide-react";
 import { uploadWorkspaceAttachment } from "../../../lib/repositories/attachments.ts";
 import type { ProjectOutput } from "../tools/calculators/projectOutputs.ts";
@@ -91,7 +92,7 @@ export function SendToFileManagerDialog({
           <p className="text-sm text-muted-foreground">
             The file will be stored securely in the workspace file manager.
           </p>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error ? <FieldError>{error}</FieldError> : null}
         </div>
       )}
     </DialogTemplate>

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card.tsx";
@@ -396,14 +397,11 @@ export function ProjectFilesManager({ projectId, workspaceId, onOpenInCad }: Pro
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {error && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-start justify-between gap-3">
-              <span>{error}</span>
-              <button type="button" onClick={() => setError(null)} aria-label="Dismiss error" className="text-lg leading-none">
-                ×
-              </button>
-            </div>
-          )}
+          {error ? (
+            <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+              {error}
+            </ErrorNotice>
+          ) : null}
 
           {notice && (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center justify-between gap-3">

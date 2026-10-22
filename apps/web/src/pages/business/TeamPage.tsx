@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -328,11 +329,11 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
         </div>
       )}
 
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {error ? (
+        <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
           {error}
-        </div>
-      )}
+        </ErrorNotice>
+      ) : null}
 
       <MetricStrip
         metrics={[
