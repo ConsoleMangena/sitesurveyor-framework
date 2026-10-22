@@ -40,6 +40,7 @@ interface WalletChoice {
   name: string;
   icon?: string;
   adapterName?: WalletName;
+  installUrl?: string;
   status: WalletChoiceStatus;
 }
 
@@ -170,14 +171,22 @@ export default function WalletLoginPage() {
             : "not-installed",
     }));
 
-    const hasMetaMask = sortedWallets.some((w) =>
-      /metamask/i.test(w.adapter.name),
-    );
-    if (!hasMetaMask) {
+    if (!sortedWallets.some((w) => /metamask/i.test(w.adapter.name))) {
       choices.push({
         key: "metamask",
         name: "MetaMask",
         icon: "/metamask.svg",
+        installUrl: "https://metamask.io/download/",
+        status: "install",
+      });
+    }
+
+    if (!sortedWallets.some((w) => /solflare/i.test(w.adapter.name))) {
+      choices.push({
+        key: "solflare",
+        name: "Solflare",
+        icon: "/solflare.svg",
+        installUrl: "https://solflare.com/download",
         status: "install",
       });
     }
@@ -638,9 +647,9 @@ export default function WalletLoginPage() {
                   type="button"
                   className={`web3-wallet-row ${isSelected ? "selected" : ""}`}
                   onClick={() => {
-                    if (isInstall) {
+                    if (choice.installUrl) {
                       window.open(
-                        "https://metamask.io/download/",
+                        choice.installUrl,
                         "_blank",
                         "noopener,noreferrer",
                       );

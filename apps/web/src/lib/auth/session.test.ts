@@ -65,6 +65,9 @@ describe("session", () => {
         chain: "solana",
         wallet: dummyWallet,
         statement: "Custom SIWS statement",
+        options: expect.objectContaining({
+          url: window.location.origin,
+        }),
       }),
     );
     expect(res.user?.id).toBe("sol-user-1");

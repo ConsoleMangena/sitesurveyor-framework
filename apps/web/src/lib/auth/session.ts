@@ -45,6 +45,7 @@ export function loadStoredSession(): Session | null {
 
 export interface SolanaSignInOptions {
   statement?: string;
+  url?: string;
   [key: string]: unknown;
 }
 
@@ -53,6 +54,11 @@ export interface SolanaSignUpInput {
   accountType: "personal" | "business";
   companyName?: string;
   email?: string;
+}
+
+function resolveWalletAuthUrl(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return window.location.origin;
 }
 
 /**
@@ -69,11 +75,16 @@ export async function signInWithSolanaWallet(
     options?.statement ??
     "Sign in to SiteSurveyor Framework with your Solana account.";
 
+  const requestOptions = {
+    ...options,
+    url: options?.url ?? resolveWalletAuthUrl(),
+  };
+
   const { data, error } = await supabase.auth.signInWithWeb3({
     chain: "solana",
     wallet,
     statement,
-    options,
+    options: requestOptions,
   } as never);
 
   if (error) {

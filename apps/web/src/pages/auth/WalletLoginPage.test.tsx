@@ -49,7 +49,7 @@ vi.mock("@solana/wallet-adapter-react", () => ({
       },
       {
         adapter: {
-          name: "Solflare",
+          name: "Backpack",
           icon: "data:image/svg+xml;base64,mock",
         },
         readyState: "Loadable",
@@ -150,7 +150,8 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("MetaMask")).toBeInTheDocument();
-    expect(screen.getByText("Install extension")).toBeInTheDocument();
+    expect(screen.getByText("Solflare")).toBeInTheDocument();
+    expect(screen.getAllByText("Install extension")).toHaveLength(2);
     expect(screen.getByText("SiteSurveyor Wallet")).toBeInTheDocument();
   });
 
@@ -159,12 +160,12 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     render(<WalletLoginPage />);
 
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^solflare/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^backpack/i }));
 
     expect(mockSelect).not.toHaveBeenCalled();
     expect(
       within(screen.getByRole("dialog")).getByText(
-        /solflare is not installed in this browser/i,
+        /backpack is not installed in this browser/i,
       ),
     ).toBeInTheDocument();
   });
