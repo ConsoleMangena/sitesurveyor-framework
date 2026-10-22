@@ -13,25 +13,7 @@ import {
   formatUsd,
 } from "../lib/format.ts";
 import type { SolanaMarketSnapshot } from "../data/solanaMarket.ts";
-
-/* ── Solana gradient logo (inline SVG, official gradient) ───── */
-function SolanaLogo({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <defs>
-        <linearGradient id="sol-tile-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#9945FF" />
-          <stop offset="50%" stopColor="#8752F3" />
-          <stop offset="100%" stopColor="#14F195" />
-        </linearGradient>
-      </defs>
-      <circle cx="200" cy="200" r="200" fill="url(#sol-tile-grad)" />
-      <path d="M129.5 303.4c2.2-2.2 5.2-3.5 8.4-3.5h192.7c5.3 0 7.9 6.4 4.1 10.1l-41.7 41.7c-2.2 2.2-5.2 3.5-8.4 3.5H91.9c-5.3 0-7.9-6.4-4.1-10.1l41.7-41.7z" fill="#fff"/>
-      <path d="M129.5 48.4c2.3-2.2 5.3-3.5 8.4-3.5h192.7c5.3 0 7.9 6.4 4.1 10.1l-41.7 41.7c-2.2 2.2-5.2 3.5-8.4 3.5H91.9c-5.3 0-7.9-6.4-4.1-10.1l41.7-41.7z" fill="#fff"/>
-      <path d="M293 175.4c-2.2-2.2-5.2-3.5-8.4-3.5H91.9c-5.3 0-7.9 6.4-4.1 10.1l41.7 41.7c2.2 2.2 5.2 3.5 8.4 3.5h192.7c5.3 0 7.9-6.4 4.1-10.1L293 175.4z" fill="#fff"/>
-    </svg>
-  );
-}
+import { SolanaLogoMark } from "./SolanaLogos.tsx";
 
 /* ── Mini sparkline SVG ──────────────────────────────────────── */
 function Sparkline({ change24h }: { change24h: number | null }) {
@@ -80,7 +62,7 @@ export function MarketStatTiles({
           ? `${formatPercent(snapshot.change24h)} · 24h`
           : "24h change unavailable",
       className: deltaClass(snapshot.change24h),
-      icon: <SolanaLogo size={18} />,
+      icon: <SolanaLogoMark size={18} />,
       iconClass: "web3-stat-icon-sol",
       sparkline: true,
     },

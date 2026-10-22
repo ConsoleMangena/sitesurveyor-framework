@@ -9,25 +9,7 @@ import {
   formatUsd,
 } from "../lib/format.ts";
 import type { SolanaMarketSnapshot } from "../data/solanaMarket.ts";
-
-/* ── Solana gradient logo (inline SVG, official gradient) ───── */
-function SolanaLogo({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <defs>
-        <linearGradient id="sol-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#9945FF" />
-          <stop offset="50%" stopColor="#8752F3" />
-          <stop offset="100%" stopColor="#14F195" />
-        </linearGradient>
-      </defs>
-      <circle cx="200" cy="200" r="200" fill="url(#sol-grad)" />
-      <path d="M129.5 303.4c2.2-2.2 5.2-3.5 8.4-3.5h192.7c5.3 0 7.9 6.4 4.1 10.1l-41.7 41.7c-2.2 2.2-5.2 3.5-8.4 3.5H91.9c-5.3 0-7.9-6.4-4.1-10.1l41.7-41.7z" fill="#fff"/>
-      <path d="M129.5 48.4c2.3-2.2 5.3-3.5 8.4-3.5h192.7c5.3 0 7.9 6.4 4.1 10.1l-41.7 41.7c-2.2 2.2-5.2 3.5-8.4 3.5H91.9c-5.3 0-7.9-6.4-4.1-10.1l41.7-41.7z" fill="#fff"/>
-      <path d="M293 175.4c-2.2-2.2-5.2-3.5-8.4-3.5H91.9c-5.3 0-7.9 6.4-4.1 10.1l41.7 41.7c2.2 2.2 5.2 3.5 8.4 3.5h192.7c5.3 0 7.9-6.4 4.1-10.1L293 175.4z" fill="#fff"/>
-    </svg>
-  );
-}
+import { SolanaLogoMark } from "./SolanaLogos.tsx";
 
 /* ── Mini candlestick sparkline ──────────────────────────────── */
 function MiniCandlesticks({ change24h }: { change24h: number | null }) {
@@ -74,7 +56,7 @@ export function MarketTicker({
     {
       label: "SOL price",
       value: formatUsd(snapshot.price),
-      icon: <SolanaLogo size={16} />,
+      icon: <SolanaLogoMark size={16} />,
     },
     {
       label: "24h",
@@ -114,7 +96,7 @@ export function MarketTicker({
       {/* Top bar with Solana identity */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--web3-border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <SolanaLogo size={20} />
+          <SolanaLogoMark size={20} />
           <span style={{ fontWeight: 650, fontSize: 13, color: "var(--web3-text)", letterSpacing: "-0.01em" }}>
             Solana Market Data
           </span>

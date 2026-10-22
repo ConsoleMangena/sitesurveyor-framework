@@ -53,6 +53,7 @@ import { getWorkspaceShellAccountLabel } from "../../features/workspace/account.
 import { MarketTicker } from "../../features/web3/components/MarketTicker.tsx";
 import { SolanaMarketChart } from "../../features/web3/components/SolanaMarketChart.tsx";
 import { MarketStatTiles } from "../../features/web3/components/MarketStatTiles.tsx";
+import { SolanaLogoMark } from "../../features/web3/components/SolanaLogos.tsx";
 import { useSolanaMarketFeed } from "../../features/web3/hooks/useSolanaMarketFeed.ts";
 import { formatUsd } from "../../features/web3/lib/format.ts";
 import {
@@ -682,7 +683,8 @@ export default function PublicMarketPage() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 web3-hero-scrim pb-8 pt-24 sm:pb-12 sm:pt-28">
               <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="web3-status-inline" style={{ fontSize: 12, color: "var(--web3-text-muted)" }}>
+                  <span className="web3-status-inline" style={{ fontSize: 12, color: "var(--web3-text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <SolanaLogoMark size={14} />
                     <span className="web3-live-dot" aria-hidden="true" />
                     Solana Mainnet
                   </span>
