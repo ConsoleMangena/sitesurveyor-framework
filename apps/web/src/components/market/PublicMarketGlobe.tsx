@@ -25,7 +25,7 @@ export default function PublicMarketGlobe({
   onSelect,
   onRetry,
   children,
-  heightClassName = "h-[48vh] min-h-[320px] sm:h-[68vh] sm:min-h-[480px]",
+  heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]",
 }: PublicMarketGlobeProps) {
   return (
     <LeafletGlobe

@@ -24,6 +24,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  ArrowUpRight,
   BadgeCheck,
   Briefcase,
   Building2,
@@ -35,16 +36,22 @@ import {
   GraduationCap,
   HardHat,
   LayoutGrid,
+  LayoutList,
   LogOut,
   MapPin,
   PackageSearch,
   RefreshCw,
   Search,
+  Sparkles,
+  Star,
+  Tag,
   UserRound,
   X,
   Bookmark,
   SlidersHorizontal,
 } from "lucide-react";
+import { cn } from "../../lib/utils.ts";
+import { portfolioMediaUrl } from "../../lib/repositories/portfolioMedia.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
@@ -112,8 +119,8 @@ type Scope = "all" | "listing" | "professional" | "job" | "firm" | "event";
 type SortKey = "newest" | "price-asc" | "price-desc";
 type ListingCategory = "all" | "instrument" | "accessory";
 
-/** Registry rows per page — keeps the list scannable instead of endless. */
-const REGISTRY_PAGE_SIZE = 5;
+/** Registry items per page — keeps grid rows balanced. */
+const REGISTRY_PAGE_SIZE = 6;
 
 const NEW_WINDOW_MS = 7 * 24 * 60 * 60_000;
 
@@ -178,6 +185,7 @@ export default function PublicMarketPage() {
   const [jobPage, setJobPage] = useState(1);
   const [firmPage, setFirmPage] = useState(1);
   const [eventPage, setEventPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const registryRef = useRef<HTMLDivElement | null>(null);
   const [selectedId, setSelectedId] = useState<{
     kind: MarketDotKind;
@@ -672,62 +680,61 @@ export default function PublicMarketPage() {
       </header>
 
       <main>
-        <Suspense fallback={<div className="h-[48vh] min-h-[320px] sm:h-[68vh] sm:min-h-[480px] w-full bg-muted/40" />}>
-          <PublicMarketGlobe
-            dots={dots}
-            totalPoints={totalPoints}
-            failed={failed}
-            onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
-            onRetry={retry}
-          >
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 web3-hero-scrim pb-8 pt-24 sm:pb-12 sm:pt-28">
-              <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="web3-status-inline" style={{ fontSize: 12, color: "var(--web3-text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <SolanaLogoMark size={14} />
-                    <span className="web3-live-dot" aria-hidden="true" />
-                    Solana Mainnet
-                  </span>
-                  <span
-                    className="web3-mono"
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "var(--web3-text)",
-                    }}
-                  >
-                    {formatUsd(market.snapshot.price)}
-                  </span>
-                  <span
-                    className={`web3-mono ${market.snapshot.change24h !== null && market.snapshot.change24h < 0 ? "web3-delta-down" : "web3-delta-up"}`}
-                    style={{ fontSize: 12 }}
-                  >
-                    {market.snapshot.change24h === null
-                      ? "—"
-                      : `${market.snapshot.change24h > 0 ? "+" : ""}${market.snapshot.change24h.toFixed(2)}%`}
-                  </span>
-                </div>
-                <h1 className="max-w-xl text-2xl font-bold leading-tight tracking-tight sm:text-5xl" style={{ color: "var(--web3-text)" }}>
-                  The Surveyor’s Market.
-                </h1>
-                <p className="mt-2 max-w-lg text-xs leading-relaxed sm:mt-3 sm:text-base" style={{ color: "var(--web3-text-muted)" }}>
-                  Instruments, professionals, jobs, firms, and training —
-                  published live by SiteSurveyor workspaces worldwide.
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-5">
-                  <button
-                    type="button"
-                    onClick={scrollToRegistry}
-                    className="web3-btn web3-btn-primary pointer-events-auto"
-                  >
-                    Browse the registry
-                    <ChevronDown className="size-4" aria-hidden="true" />
-                  </button>
-                </div>
+        {/* Dedicated Hero Header Banner - positioned cleanly above the map so text does not obscure map pins */}
+        <section className="mx-auto w-full max-w-7xl px-4 pt-10 pb-6 sm:px-6">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="max-w-3xl">
+              <div className="mb-3 flex flex-wrap items-center gap-2.5">
+                <span className="web3-status-inline" style={{ fontSize: 12, color: "var(--web3-text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <SolanaLogoMark size={14} />
+                  <span className="web3-live-dot" aria-hidden="true" />
+                  Solana Mainnet Live
+                </span>
+                <span className="web3-mono font-semibold" style={{ fontSize: 13, color: "var(--web3-text)" }}>
+                  {formatUsd(market.snapshot.price)}
+                </span>
+                <span
+                  className={`web3-mono text-xs font-semibold ${market.snapshot.change24h !== null && market.snapshot.change24h < 0 ? "web3-delta-down" : "web3-delta-up"}`}
+                >
+                  {market.snapshot.change24h === null
+                    ? "—"
+                    : `${market.snapshot.change24h > 0 ? "+" : ""}${market.snapshot.change24h.toFixed(2)}%`}
+                </span>
+                <span className="text-xs text-muted-foreground">· Global Marketplace</span>
               </div>
+              <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-5xl" style={{ color: "var(--web3-text)" }}>
+                The Surveyor’s Market.
+              </h1>
+              <p className="mt-2.5 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: "var(--web3-text-muted)" }}>
+                Instruments, professionals, jobs, firms, and training —
+                published live by SiteSurveyor workspaces worldwide.
+              </p>
             </div>
-          </PublicMarketGlobe>
-        </Suspense>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={scrollToRegistry}
+                className="web3-btn web3-btn-primary"
+              >
+                Browse the registry
+                <ChevronDown className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Map Section: clean, expansive viewport that fills well without any text blocking */}
+        <section aria-label="Interactive market map" className="relative w-full">
+          <Suspense fallback={<div className="h-[500px] sm:h-[600px] lg:h-[660px] w-full bg-muted/30 animate-pulse" />}>
+            <PublicMarketGlobe
+              dots={dots}
+              totalPoints={totalPoints}
+              failed={failed}
+              onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
+              onRetry={retry}
+            />
+          </Suspense>
+        </section>
 
         <section
           aria-label="Web3 market terminal"
@@ -839,6 +846,38 @@ export default function PublicMarketPage() {
                 <Button type="button" variant={savedSearch ? "default" : "outline"} size="icon" onClick={toggleSavedSearch} aria-label={savedSearch ? "Remove saved search" : "Save this search"} title={savedSearch ? "Saved search" : "Save this search"}>
                   <Bookmark className="size-4" fill={savedSearch ? "currentColor" : "none"} aria-hidden="true" />
                 </Button>
+                <div className="hidden sm:flex items-center rounded-lg border border-border/80 bg-card p-0.5 shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      viewMode === "grid"
+                        ? "bg-accent-bg font-semibold text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    aria-label="Grid view"
+                    title="Grid view"
+                  >
+                    <LayoutGrid className="size-3.5" />
+                    <span className="hidden sm:inline">Cards</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("table")}
+                    className={cn(
+                      "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      viewMode === "table"
+                        ? "bg-accent-bg font-semibold text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    aria-label="Table list view"
+                    title="Table list view"
+                  >
+                    <LayoutList className="size-3.5" />
+                    <span className="hidden sm:inline">Rows</span>
+                  </button>
+                </div>
                 <Button type="button" variant="outline" size="icon" className="sm:hidden" onClick={() => setMobileFiltersOpen((value) => !value)} aria-expanded={mobileFiltersOpen} aria-label="Toggle marketplace filters">
                   <SlidersHorizontal className="size-4" aria-hidden="true" />
                 </Button>
@@ -870,6 +909,43 @@ export default function PublicMarketPage() {
                       : "No listings match your search."
                   }
                   isEmpty={sortedListings.length === 0}
+                  viewMode={viewMode}
+                  filterHeader={
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {(
+                        [
+                          ["all", "Everything"],
+                          ["instrument", "Instruments"],
+                          ["accessory", "Accessories"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={listingCategory === value}
+                          onClick={() => {
+                            setListingCategory(value);
+                            setListingPage(1);
+                          }}
+                          className={cn(
+                            "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
+                            listingCategory === value
+                              ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                              : "border-border/80 bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          {label}
+                          <span className="ml-1.5 font-mono tabular-nums opacity-80">
+                            {value === "all"
+                              ? (data?.listings ?? []).length
+                              : (data?.listings ?? []).filter(
+                                  (row) => row.category === value,
+                                ).length}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  }
                   pagination={
                     <Pagination
                       page={Math.min(listingPage, listingPageCount)}
@@ -879,48 +955,25 @@ export default function PublicMarketPage() {
                     />
                   }
                 >
-                  <div className="flex gap-2 border-b border-border/60 bg-muted/40 px-4 py-2.5">
-                    {(
-                      [
-                        ["all", "Everything"],
-                        ["instrument", "Instruments"],
-                        ["accessory", "Accessories"],
-                      ] as const
-                    ).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-pressed={listingCategory === value}
-                        onClick={() => {
-                          setListingCategory(value);
-                          setListingPage(1);
-                        }}
-                        className={`rounded-none px-2.5 py-1 text-xs transition-colors ${
-                          listingCategory === value
-                            ? "bg-primary font-medium text-primary-foreground"
-                            : "border border-border bg-background text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {label}
-                        <span className="ml-1.5 font-mono tabular-nums opacity-70">
-                          {value === "all"
-                            ? (data?.listings ?? []).length
-                            : (data?.listings ?? []).filter(
-                                (row) => row.category === value,
-                              ).length}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  {listingSlice.map((row) => (
-                    <ListingRowItem
-                      key={row.id}
-                      row={row}
-                      onOpen={() =>
-                        setSelectedId({ kind: "listing", id: row.id })
-                      }
-                    />
-                  ))}
+                  {viewMode === "grid"
+                    ? listingSlice.map((row) => (
+                        <ListingCardItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "listing", id: row.id })
+                          }
+                        />
+                      ))
+                    : listingSlice.map((row) => (
+                        <ListingRowItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "listing", id: row.id })
+                          }
+                        />
+                      ))}
                 </RegistryPanel>
               ) : null}
 
@@ -934,6 +987,7 @@ export default function PublicMarketPage() {
                       : "No professionals match your search."
                   }
                   isEmpty={sortedProfessionals.length === 0}
+                  viewMode={viewMode}
                   pagination={
                     <Pagination
                       page={Math.min(professionalPage, professionalPageCount)}
@@ -943,15 +997,25 @@ export default function PublicMarketPage() {
                     />
                   }
                 >
-                  {professionalSlice.map((row) => (
-                    <ProfessionalRowItem
-                      key={row.id}
-                      row={row}
-                      onOpen={() =>
-                        setSelectedId({ kind: "professional", id: row.id })
-                      }
-                    />
-                  ))}
+                  {viewMode === "grid"
+                    ? professionalSlice.map((row) => (
+                        <ProfessionalCardItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "professional", id: row.id })
+                          }
+                        />
+                      ))
+                    : professionalSlice.map((row) => (
+                        <ProfessionalRowItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "professional", id: row.id })
+                          }
+                        />
+                      ))}
                 </RegistryPanel>
               ) : null}
 
@@ -965,6 +1029,7 @@ export default function PublicMarketPage() {
                       : "No jobs match your search."
                   }
                   isEmpty={sortedJobs.length === 0}
+                  viewMode={viewMode}
                   pagination={
                     <Pagination
                       page={Math.min(jobPage, jobPageCount)}
@@ -974,13 +1039,21 @@ export default function PublicMarketPage() {
                     />
                   }
                 >
-                  {jobSlice.map((row) => (
-                    <JobRowItem
-                      key={row.id}
-                      row={row}
-                      onOpen={() => setSelectedId({ kind: "job", id: row.id })}
-                    />
-                  ))}
+                  {viewMode === "grid"
+                    ? jobSlice.map((row) => (
+                        <JobCardItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() => setSelectedId({ kind: "job", id: row.id })}
+                        />
+                      ))
+                    : jobSlice.map((row) => (
+                        <JobRowItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() => setSelectedId({ kind: "job", id: row.id })}
+                        />
+                      ))}
                 </RegistryPanel>
               ) : null}
 
@@ -994,6 +1067,7 @@ export default function PublicMarketPage() {
                       : "No firms match your search."
                   }
                   isEmpty={sortedFirms.length === 0}
+                  viewMode={viewMode}
                   pagination={
                     <Pagination
                       page={Math.min(firmPage, firmPageCount)}
@@ -1003,15 +1077,25 @@ export default function PublicMarketPage() {
                     />
                   }
                 >
-                  {firmSlice.map((row) => (
-                    <FirmRowItem
-                      key={row.id}
-                      row={row}
-                      onOpen={() =>
-                        setSelectedId({ kind: "firm", id: row.id })
-                      }
-                    />
-                  ))}
+                  {viewMode === "grid"
+                    ? firmSlice.map((row) => (
+                        <FirmCardItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "firm", id: row.id })
+                          }
+                        />
+                      ))
+                    : firmSlice.map((row) => (
+                        <FirmRowItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "firm", id: row.id })
+                          }
+                        />
+                      ))}
                 </RegistryPanel>
               ) : null}
 
@@ -1025,6 +1109,7 @@ export default function PublicMarketPage() {
                       : "No training matches your search."
                   }
                   isEmpty={sortedEvents.length === 0}
+                  viewMode={viewMode}
                   pagination={
                     <Pagination
                       page={Math.min(eventPage, eventPageCount)}
@@ -1034,15 +1119,25 @@ export default function PublicMarketPage() {
                     />
                   }
                 >
-                  {eventSlice.map((row) => (
-                    <EventRowItem
-                      key={row.id}
-                      row={row}
-                      onOpen={() =>
-                        setSelectedId({ kind: "event", id: row.id })
-                      }
-                    />
-                  ))}
+                  {viewMode === "grid"
+                    ? eventSlice.map((row) => (
+                        <EventCardItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "event", id: row.id })
+                          }
+                        />
+                      ))
+                    : eventSlice.map((row) => (
+                        <EventRowItem
+                          key={row.id}
+                          row={row}
+                          onOpen={() =>
+                            setSelectedId({ kind: "event", id: row.id })
+                          }
+                        />
+                      ))}
                 </RegistryPanel>
               ) : null}
             </>
@@ -1241,7 +1336,7 @@ function RateBenchmarks({
 
 function NewBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-none bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+    <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
       New
     </span>
   );
@@ -1305,6 +1400,8 @@ function RegistryPanel({
   isEmpty,
   emptyLabel,
   pagination,
+  viewMode = "grid",
+  filterHeader,
   children,
 }: {
   title: string;
@@ -1312,19 +1409,26 @@ function RegistryPanel({
   isEmpty: boolean;
   emptyLabel: string;
   pagination: ReactNode;
+  viewMode?: "grid" | "table";
+  filterHeader?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section>
-      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold tracking-tight">
-        <span className="mr-1 size-2 rounded-full bg-primary" aria-hidden="true" />
-        {title}
-        <span className="ml-1 align-middle font-mono text-xs font-normal tabular-nums text-muted-foreground">
-          ({count})
-        </span>
-      </h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+          <span className="mr-1 size-2 rounded-full bg-primary" aria-hidden="true" />
+          {title}
+          <span className="ml-1 align-middle font-mono text-xs font-normal tabular-nums text-muted-foreground">
+            ({count})
+          </span>
+        </h2>
+      </div>
+
+      {filterHeader}
+
       {isEmpty ? (
-        <div className="rounded-none border border-dashed border-border px-6 py-12 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -1340,9 +1444,16 @@ function RegistryPanel({
           </svg>
           <p className="mt-3 text-sm text-muted-foreground">{emptyLabel}</p>
         </div>
+      ) : viewMode === "grid" ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {children}
+          </div>
+          {pagination}
+        </>
       ) : (
         <>
-          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
             {children}
           </ul>
           {pagination}
@@ -1662,5 +1773,519 @@ function EventRowItem({ row, onOpen }: { row: EventRow; onOpen: () => void }) {
         ) : null}
       </p>
     </RowShell>
+  );
+}
+
+// ── Registry Cards ──────────────────────────────────────────────────────────
+
+function ListingCardItem({
+  row,
+  onOpen,
+}: {
+  row: ListingRow;
+  onOpen: () => void;
+}) {
+  const photo = row.photos && row.photos.length > 0 ? row.photos[0] : null;
+  const photoUrl = photo ? portfolioMediaUrl(photo) : null;
+
+  return (
+    <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-0 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-amber-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      {photoUrl ? (
+        <div className="relative h-44 w-full overflow-hidden bg-muted">
+          <img
+            src={photoUrl}
+            alt={row.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+            <span className="rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-semibold text-foreground backdrop-blur-xs shadow-xs">
+              {row.category === "accessory" ? "Accessory" : row.type}
+            </span>
+            {row.listing_type === "hire" ? (
+              <span className="rounded-full bg-amber-500/90 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-xs">
+                For Hire
+              </span>
+            ) : null}
+          </div>
+          {isNew(row.created_at) ? (
+            <div className="absolute top-3 right-3">
+              <NewBadge />
+            </div>
+          ) : null}
+          <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white">
+            <span className="flex items-center gap-1 text-xs drop-shadow-xs font-medium">
+              <MapPin className="size-3" />
+              <span className="truncate">{row.location}</span>
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="relative border-b border-border/60 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent px-5 pt-5 pb-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                <Briefcase className="size-4" />
+              </span>
+              <span className="rounded-full border border-border/80 bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
+                {row.category === "accessory" ? "Accessory" : row.type}
+              </span>
+              {row.listing_type === "hire" ? (
+                <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+                  Hire
+                </span>
+              ) : null}
+            </div>
+            {isNew(row.created_at) ? <NewBadge /> : null}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 flex-col justify-between p-5">
+        <div>
+          {!photoUrl && (
+            <div className="mb-2 flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{row.location}</span>
+            </div>
+          )}
+          <h3 className="line-clamp-2 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-amber-700">
+            {row.name}
+          </h3>
+
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {row.condition ? (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                Condition: {row.condition}
+              </span>
+            ) : null}
+            {row.seller ? (
+              <span className="rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground truncate max-w-[180px]">
+                By {row.seller}
+              </span>
+            ) : null}
+          </div>
+
+          {row.specs && row.specs.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1">
+              {row.specs.slice(0, 2).map((s) => (
+                <span
+                  key={s}
+                  className="inline-flex items-center gap-1 rounded bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  <Tag className="size-2.5 text-muted-foreground/60" />
+                  <span className="truncate max-w-[140px]">{s}</span>
+                </span>
+              ))}
+              {row.specs.length > 2 ? (
+                <span className="text-[10px] text-muted-foreground self-center">
+                  +{row.specs.length - 2} more
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {row.listing_type === "hire" ? "Daily Rate" : "Price"}
+            </span>
+            <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+              {row.price.toLocaleString()}{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                {row.currency}
+                {row.listing_type === "hire" ? "/day" : ""}
+              </span>
+            </p>
+          </div>
+          <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+            View
+            <ArrowUpRight className="size-3.5" />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfessionalCardItem({
+  row,
+  onOpen,
+}: {
+  row: ProfessionalRow;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-cyan-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 font-mono text-sm font-bold text-cyan-700 ring-2 ring-cyan-500/20">
+              {initialsOf(row.name)}
+            </div>
+            <div className="min-w-0">
+              <h3 className="flex items-center gap-1.5 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-cyan-700">
+                <span className="truncate">{row.name}</span>
+                {row.is_verified ? (
+                  <BadgeCheck className="size-4 shrink-0 text-cyan-600" aria-label="Verified" />
+                ) : null}
+              </h3>
+              <p className="truncate text-xs font-medium text-muted-foreground">
+                {row.title}
+              </p>
+            </div>
+          </div>
+          {isNew(row.created_at) ? <NewBadge /> : null}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <MapPin className="size-3 shrink-0" />
+            <span className="truncate">{row.location}</span>
+          </span>
+          {row.rating != null && row.rating > 0 ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+              <Star className="size-3 fill-amber-500 text-amber-500" />
+              {row.rating.toFixed(1)}
+            </span>
+          ) : null}
+          {row.availability ? (
+            <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+              {row.availability}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
+            {row.discipline}
+          </span>
+          <span className="rounded-md bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground">
+            {row.experience}
+          </span>
+        </div>
+
+        {row.skills && row.skills.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {row.skills.slice(0, 3).map((skill) => (
+              <span
+                key={skill}
+                className="rounded-md bg-cyan-500/5 border border-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-800 dark:text-cyan-300"
+              >
+                {skill}
+              </span>
+            ))}
+            {row.skills.length > 3 ? (
+              <span className="text-[10px] text-muted-foreground self-center">
+                +{row.skills.length - 3} more
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Rate
+          </span>
+          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+            {row.rate.toLocaleString()}{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              {row.currency}/{row.rate_per}
+            </span>
+          </p>
+        </div>
+        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+          Profile
+          <ArrowUpRight className="size-3.5" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function JobCardItem({
+  row,
+  onOpen,
+}: {
+  row: JobRow;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-violet-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600">
+              <HardHat className="size-4" />
+            </span>
+            <span className="rounded-full bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 text-[11px] font-semibold capitalize text-violet-700">
+              {row.employment_type}
+            </span>
+          </div>
+          {isNew(row.created_at) ? <NewBadge /> : null}
+        </div>
+
+        <h3 className="mt-3 line-clamp-2 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-violet-700">
+          {row.title}
+        </h3>
+        <p className="mt-1 text-xs font-medium text-muted-foreground">
+          {row.discipline}
+        </p>
+
+        <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+          <MapPin className="size-3 shrink-0" />
+          <span className="truncate">{row.location}</span>
+        </div>
+
+        {row.description ? (
+          <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+            {row.description}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Compensation
+          </span>
+          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+            {row.rate != null ? (
+              <>
+                {row.rate.toLocaleString()}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {row.currency}/{row.rate_per ?? "day"}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-medium text-muted-foreground">Negotiable</span>
+            )}
+          </p>
+        </div>
+        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+          Opening
+          <ArrowUpRight className="size-3.5" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function FirmCardItem({
+  row,
+  onOpen,
+}: {
+  row: FirmRow;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 ring-2 ring-emerald-500/20">
+              <Building2 className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="flex items-center gap-1.5 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-emerald-700">
+                <span className="truncate">{row.name}</span>
+                {row.verified ? (
+                  <BadgeCheck className="size-4 shrink-0 text-emerald-600" aria-label="Verified" />
+                ) : null}
+              </h3>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="size-3 shrink-0" />
+                <span className="truncate">{row.location}</span>
+              </div>
+            </div>
+          </div>
+          {isNew(row.created_at) ? <NewBadge /> : null}
+        </div>
+
+        <div className="mt-3.5 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          {row.staff_count != null ? (
+            <span className="rounded-md bg-muted px-2 py-0.5 font-medium text-foreground">
+              {row.staff_count} Staff
+            </span>
+          ) : null}
+          {row.founded_year != null ? (
+            <span className="rounded-md bg-muted/60 px-2 py-0.5">
+              Est. {row.founded_year}
+            </span>
+          ) : null}
+        </div>
+
+        {row.about ? (
+          <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+            {row.about}
+          </p>
+        ) : null}
+
+        {row.services && row.services.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {row.services.slice(0, 3).map((service) => (
+              <span
+                key={service}
+                className="rounded-md bg-emerald-500/5 border border-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-300"
+              >
+                {service}
+              </span>
+            ))}
+            {row.services.length > 3 ? (
+              <span className="text-[10px] text-muted-foreground self-center">
+                +{row.services.length - 3} more
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
+        <span className="text-xs font-medium text-muted-foreground">
+          {row.services?.length ?? 0} Services listed
+        </span>
+        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+          View Firm
+          <ArrowUpRight className="size-3.5" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function EventCardItem({
+  row,
+  onOpen,
+}: {
+  row: EventRow;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-rose-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
+              <GraduationCap className="size-4" />
+            </span>
+            <span className="rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-[11px] font-semibold capitalize text-rose-700">
+              {row.kind}
+            </span>
+          </div>
+          {isNew(row.created_at) ? <NewBadge /> : null}
+        </div>
+
+        <h3 className="mt-3 line-clamp-2 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-rose-700">
+          {row.title}
+        </h3>
+        <p className="mt-1 text-xs font-medium text-muted-foreground">
+          By {row.provider}
+        </p>
+
+        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 font-medium text-foreground">
+            <CalendarDays className="size-3.5 text-rose-600" />
+            <span>{formatDate(row.starts_at)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <MapPin className="size-3 shrink-0" />
+            <span className="truncate">{row.location}</span>
+          </div>
+        </div>
+
+        {row.seats_left != null ? (
+          <div className="mt-3">
+            <span className="inline-flex rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-[11px] font-medium text-rose-700">
+              {row.seats_left} seats remaining
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Fee
+          </span>
+          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+            {row.price > 0 ? (
+              <>
+                {row.price.toLocaleString()}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {row.currency}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-semibold uppercase text-emerald-700">
+                Free
+              </span>
+            )}
+          </p>
+        </div>
+        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+          Register
+          <ArrowUpRight className="size-3.5" />
+        </span>
+      </div>
+    </div>
   );
 }

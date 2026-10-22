@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { RotateCcw } from "lucide-react";
 import { Button } from "../ui/button.tsx";
 import {
   MARKET_DOT_COLORS,
@@ -9,7 +10,7 @@ import {
 } from "./marketDots";
 
 const GLASS_PILL =
-  "rounded-none border border-border/60 bg-background/85 shadow-sm backdrop-blur-sm";
+  "rounded-full border border-border/80 bg-background/92 px-3 py-1.5 shadow-sm backdrop-blur-md";
 
 interface LeafletGlobeProps {
   dots: MarketDot[] | null;
@@ -39,7 +40,7 @@ export default function LeafletGlobe({
   onSelect,
   onRetry,
   children,
-  heightClassName = "h-[48vh] min-h-[320px] sm:h-[68vh] sm:min-h-[480px]",
+  heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]",
 }: LeafletGlobeProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -53,10 +54,10 @@ export default function LeafletGlobe({
     if (!mapContainerRef.current || mapRef.current) return;
 
     const map = L.map(mapContainerRef.current, {
-      center: [15, 15],
-      zoom: 2,
+      center: [20, 10],
+      zoom: 2.2,
       minZoom: 2,
-      maxZoom: 10,
+      maxZoom: 14,
       worldCopyJump: true,
       zoomControl: true,
     });
@@ -83,7 +84,21 @@ export default function LeafletGlobe({
 
     mapRef.current = map;
 
+    // Invalidate size to ensure tiles fill container completely
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 120);
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      clearTimeout(timer);
+      resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
     };
@@ -101,12 +116,33 @@ export default function LeafletGlobe({
     dots.forEach((dot) => {
       const color = MARKET_DOT_COLORS[dot.kind];
       const marker = L.circleMarker([dot.lat, dot.lng], {
-        radius: 6,
+        radius: 6.5,
         fillColor: color,
         color: "#ffffff",
-        weight: 1.5,
+        weight: 1.8,
         opacity: 1,
-        fillOpacity: 0.8,
+        fillOpacity: 0.85,
+      });
+
+      // Hover tooltip with name, kind, and location
+      const escapedName = dot.name.replace(/</g, "&lt;");
+      const escapedLocation = dot.location ? dot.location.replace(/</g, "&lt;") : "";
+      marker.bindTooltip(
+        `<div style="font-family: inherit; font-size: 12px; line-height: 1.35; padding: 2px;">
+          <div style="font-weight: 650; color: #111827;">${escapedName}</div>
+          <div style="font-size: 11px; color: #6b7280; text-transform: capitalize; margin-top: 2px;">
+            ${dot.kind}${escapedLocation ? ` · ${escapedLocation}` : ""}
+          </div>
+        </div>`,
+        { direction: "top", offset: [0, -7], opacity: 0.96 }
+      );
+
+      marker.on("mouseover", () => {
+        marker.setStyle({ radius: 9, weight: 2.5, fillOpacity: 1 });
+      });
+
+      marker.on("mouseout", () => {
+        marker.setStyle({ radius: 6.5, weight: 1.8, fillOpacity: 0.85 });
       });
 
       marker.on("click", () => {
@@ -118,10 +154,14 @@ export default function LeafletGlobe({
     });
   }, [dots, onSelect]);
 
+  const handleResetView = () => {
+    mapRef.current?.setView([20, 10], 2.2);
+  };
+
   return (
-    <section className="relative">
+    <section className="relative w-full">
       <div
-        className={`relative w-full overflow-hidden border-y border-border/60 bg-muted/40 ${heightClassName}`}
+        className={`relative w-full overflow-hidden border-y border-border/70 bg-muted/20 ${heightClassName}`}
       >
         <p className="sr-only">
           Interactive map of published listings, professionals, jobs, firms, and
@@ -132,18 +172,18 @@ export default function LeafletGlobe({
 
         {/* Overlay UI */}
         <div className="pointer-events-none absolute inset-0 z-10">
-          {/* Telemetry pill */}
-          <div className="absolute left-3 top-3 max-w-[calc(100%-1.5rem)] min-[480px]:max-w-[calc(100%-5rem)] sm:left-6 sm:top-6">
+          {/* Telemetry pill (top-left) */}
+          <div className="absolute left-3 top-3 max-w-[calc(100%-8rem)] sm:left-6 sm:top-6">
             <div
-              className={`px-3 py-1.5 ${GLASS_PILL}`}
+              className={GLASS_PILL}
               role="status"
               aria-live="polite"
             >
-              <p className="font-mono text-xs tabular-nums text-muted-foreground">
+              <p className="font-mono text-xs tabular-nums text-foreground/80">
                 {dots === null ? (
-                  <span>ACQUIRING FEED…</span>
+                  <span className="text-muted-foreground">ACQUIRING FEED…</span>
                 ) : plottedCount === 0 ? (
-                  <span>NO PINS IN VIEW</span>
+                  <span className="text-muted-foreground">NO PINS IN VIEW</span>
                 ) : (
                   <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     {(Object.keys(MARKET_DOT_COLORS) as MarketDotKind[]).map(
@@ -152,7 +192,7 @@ export default function LeafletGlobe({
                           dots?.filter((dot) => dot.kind === kind).length ?? 0;
                         if (count === 0) return null;
                         return (
-                          <span key={kind} className="flex items-center gap-1.5">
+                          <span key={kind} className="flex items-center gap-1.5 font-sans font-medium text-xs text-foreground">
                             <span
                               className="size-2 shrink-0 rounded-full"
                               style={{
@@ -173,10 +213,23 @@ export default function LeafletGlobe({
             </div>
           </div>
 
-          {/* Coordinate readout */}
+          {/* Map Controls (top-right) */}
+          <div className="absolute right-3 top-3 pointer-events-auto sm:right-6 sm:top-6">
+            <button
+              type="button"
+              onClick={handleResetView}
+              className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/92 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:bg-background hover:shadow"
+              title="Reset map view"
+            >
+              <RotateCcw className="size-3 text-muted-foreground" />
+              Reset view
+            </button>
+          </div>
+
+          {/* Coordinate readout (bottom-left) */}
           {cursorCoords && (
             <div className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6">
-              <div className={`px-3 py-1.5 ${GLASS_PILL}`}>
+              <div className={GLASS_PILL}>
                 <p className="font-mono text-xs tabular-nums text-muted-foreground">
                   {cursorCoords.lat >= 0 ? "+" : ""}
                   {cursorCoords.lat.toFixed(2)}°{" "}
@@ -187,16 +240,16 @@ export default function LeafletGlobe({
             </div>
           )}
 
-          {/* Custom children overlay */}
+          {/* Optional custom children overlay */}
           {children}
         </div>
 
         {/* Error state */}
         {failed && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="text-center">
-              <p className="mb-4 text-sm text-muted-foreground">
-                Failed to load market data
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/85 backdrop-blur-sm">
+            <div className="text-center rounded-xl border border-border bg-card p-6 shadow-lg">
+              <p className="mb-4 text-sm font-medium text-muted-foreground">
+                Failed to load market pins
               </p>
               <Button onClick={onRetry} variant="outline" size="sm">
                 Retry
