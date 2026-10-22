@@ -1,7 +1,4 @@
 .web3-auth-screen {
-  --web3-solana: #14f195;
-  --web3-solana-deep: #0d9960;
-  --web3-purple: #9945ff;
   --web3-glow: color-mix(in oklab, var(--accent) 38%, transparent);
   min-height: 100vh;
   min-height: 100dvh;
@@ -108,17 +105,24 @@
 }
 
 .web3-card-header {
-  padding: 28px 28px 18px;
+  padding: 26px 26px 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
+.web3-brand-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .web3-brand-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  gap: 11px;
+  min-width: 0;
 }
 
 .web3-brand-mark {
@@ -267,11 +271,45 @@
   color: var(--accent);
 }
 
+/* Sign-up path carries the Solana gradient so it reads as the colored action. */
+.web3-tab-btn.is-primary {
+  background: linear-gradient(
+    135deg,
+    var(--web3-solana) 0%,
+    var(--web3-purple) 100%
+  );
+  color: #05110c;
+  box-shadow:
+    0 10px 26px -14px var(--web3-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.web3-tab-btn.is-primary:hover {
+  color: #05110c;
+  filter: brightness(1.05);
+}
+
+.web3-tab-btn.is-primary .tab-icon {
+  color: #05110c;
+}
+
+.web3-tab-btn.is-primary.active {
+  background: linear-gradient(
+    135deg,
+    var(--web3-solana) 0%,
+    var(--web3-purple) 100%
+  );
+  color: #05110c;
+  box-shadow:
+    0 12px 28px -12px var(--web3-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
 .web3-card-body {
-  padding: 0 28px 26px;
+  padding: 0 26px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 15px;
 }
 
 .web3-mode-heading {
@@ -584,6 +622,33 @@
   box-shadow: none;
 }
 
+/* Slim secondary variant — the sign-in action stays compact and glassy so the
+   colored sign-up path keeps the visual weight. */
+.web3-action-btn--slim {
+  width: auto;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 8px 18px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 74%, transparent);
+  color: var(--text-h);
+  font-size: 12.5px;
+  font-weight: 650;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.web3-action-btn--slim:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: none;
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--border));
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  box-shadow:
+    0 10px 24px -16px var(--web3-glow),
+    0 0 0 3px var(--accent-bg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
 .web3-btn-icon {
   width: 15px;
   height: 15px;
@@ -867,6 +932,15 @@
   max-height: min(88dvh, 820px);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+[data-slot="dialog-content"].web3-signup-dialog {
+  padding: 26px;
+  gap: 18px;
+}
+
+.web3-signup-form {
+  gap: 15px;
 }
 
 .web3-dialog-kicker {

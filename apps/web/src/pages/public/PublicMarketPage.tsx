@@ -23,6 +23,7 @@ review, the verdict, and DESIGN.md.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useWallet } from "@solana/wallet-adapter-react";
 import {
   BadgeCheck,
   Briefcase,
@@ -50,6 +51,12 @@ import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
 import { signOut } from "../../lib/auth/session.ts";
 import { getWorkspaceShellAccountLabel } from "../../features/workspace/account.ts";
+import { MarketTicker } from "../../features/web3/components/MarketTicker.tsx";
+import { MarketStatTiles } from "../../features/web3/components/MarketStatTiles.tsx";
+import { PortfolioPanel } from "../../features/web3/components/PortfolioPanel.tsx";
+import { useSolanaMarketFeed } from "../../features/web3/hooks/useSolanaMarketFeed.ts";
+import { useWeb3Portfolio } from "../../features/web3/hooks/useWeb3Portfolio.ts";
+import { formatUsd } from "../../features/web3/lib/format.ts";
 import {
   Avatar,
   AvatarFallback,
@@ -99,6 +106,8 @@ import type {
 } from "../../components/market/marketFeed.ts";
 import { MarketDetailDialog } from "../../components/market/MarketDetailDialog.tsx";
 import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
+import "../../styles/web3.css";
+
 
 type Scope = "all" | "listing" | "professional" | "job" | "firm" | "event";
 type SortKey = "newest" | "price-asc" | "price-desc";
@@ -154,6 +163,10 @@ export default function PublicMarketPage() {
   const user = useAuthStore((s) => s.user);
   const avatarUrl = useMyAvatar();
   const navigate = useNavigate();
+  const { publicKey } = useWallet();
+  const walletAddress = publicKey ? publicKey.toBase58() : null;
+  const market = useSolanaMarketFeed();
+  const portfolio = useWeb3Portfolio(walletAddress);
   const [marketUserMenuOpen, setMarketUserMenuOpen] = useState(false);
   const [data, setData] = useState<MarketData | null>(null);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
@@ -558,24 +571,24 @@ export default function PublicMarketPage() {
     scope === "all" || scope === kind;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
+    <div className="web3-surface">
+      <header className="web3-header">
+        <div className="web3-header-inner">
           <span className="flex items-baseline gap-2">
             <Link
               to="/"
               aria-label="SiteSurveyor home"
-              className="flex items-center gap-2 text-base font-semibold tracking-tight transition-opacity hover:opacity-80"
+              className="web3-brand"
             >
               <img
                 src="/logo.svg"
                 alt=""
-                className="h-7 w-auto"
+                className="web3-brand-logo"
                 aria-hidden="true"
               />
-              SiteSurveyor
+              <span className="web3-brand-name">SiteSurveyor</span>
             </Link>
-            <span className="text-sm text-muted-foreground">/ Surveyor’s Market</span>
+            <span className="web3-brand-sub">/ Surveyor’s Market</span>
           </span>
           {user ? (
             <DropdownMenu
@@ -604,7 +617,11 @@ export default function PublicMarketPage() {
                   <ChevronDown className="hub-avatar-chevron" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" forceMount className="hub-profile-dropdown">
+              <DropdownMenuContent
+                align="end"
+                forceMount
+                className="hub-profile-dropdown web3-theme"
+              >
                 <div className="hub-profile-menu-header">
                   <Avatar className="hub-profile-menu-avatar">
                     {avatarUrl && (
@@ -651,9 +668,9 @@ export default function PublicMarketPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button size="sm" asChild>
-              <Link to="/login">Sign in</Link>
-            </Button>
+            <Link to="/login" className="web3-btn web3-btn-primary">
+              Sign in
+            </Link>
           )}
         </div>
       </header>
@@ -667,29 +684,77 @@ export default function PublicMarketPage() {
             onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
             onRetry={retry}
           >
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/30 to-transparent pb-8 pt-20 sm:pb-12 sm:pt-24">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 web3-hero-scrim pb-8 pt-24 sm:pb-12 sm:pt-28">
               <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="web3-status-inline" style={{ fontSize: 12, color: "var(--web3-text-muted)" }}>
+                    <span className="web3-live-dot" aria-hidden="true" />
+                    Solana Mainnet
+                  </span>
+                  <span
+                    className="web3-mono"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--web3-text)",
+                    }}
+                  >
+                    {formatUsd(market.snapshot.price)}
+                  </span>
+                  <span
+                    className={`web3-mono ${market.snapshot.change24h !== null && market.snapshot.change24h < 0 ? "web3-delta-down" : "web3-delta-up"}`}
+                    style={{ fontSize: 12 }}
+                  >
+                    {market.snapshot.change24h === null
+                      ? "—"
+                      : `${market.snapshot.change24h > 0 ? "+" : ""}${market.snapshot.change24h.toFixed(2)}%`}
+                  </span>
+                </div>
                 <h1 className="max-w-xl text-2xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
                   The Surveyor’s Market.
                 </h1>
-                <p className="mt-2 max-w-lg text-xs leading-relaxed text-white/85 sm:mt-3 sm:text-base">
+                <p className="mt-2 max-w-lg text-xs leading-relaxed text-white/80 sm:mt-3 sm:text-base">
                   Instruments, professionals, jobs, firms, and training —
                   published live by SiteSurveyor workspaces worldwide.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-5">
-                  <Button
-                    size="lg"
+                  <button
+                    type="button"
                     onClick={scrollToRegistry}
-                    className="pointer-events-auto bg-white font-semibold text-foreground shadow-lg hover:bg-white/90"
+                    className="web3-btn web3-btn-primary pointer-events-auto"
                   >
                     Browse the registry
                     <ChevronDown className="size-4" aria-hidden="true" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
           </PublicMarketGlobe>
         </Suspense>
+
+        <section
+          aria-label="Web3 market terminal"
+          className="mx-auto w-full max-w-7xl space-y-4 px-4 pt-8 sm:px-6"
+        >
+          <MarketTicker
+            snapshot={market.snapshot}
+            loading={market.loading}
+            error={market.error}
+            onRefresh={market.refresh}
+          />
+          <MarketStatTiles
+            snapshot={market.snapshot}
+            portfolioValue={portfolio.snapshot.totalValue}
+            portfolioLoading={portfolio.loading}
+          />
+          <PortfolioPanel
+            address={walletAddress}
+            snapshot={portfolio.snapshot}
+            loading={portfolio.loading}
+            error={portfolio.error}
+            onRefresh={portfolio.refresh}
+          />
+        </section>
 
         {failed ? null : loading ? (
           <MarketPulseStripSkeleton />
@@ -718,7 +783,7 @@ export default function PublicMarketPage() {
                     onClick={() => setScope(value)}
                     className={`shrink-0 whitespace-nowrap rounded-none px-3 py-1.5 text-sm transition-colors ${
                       scope === value
-                        ? "bg-background font-medium text-foreground shadow-sm"
+                        ? "bg-accent-bg font-medium text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -1025,7 +1090,8 @@ export default function PublicMarketPage() {
       </footer>
 
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl">
+          <SheetContent side="bottom" className="web3-theme max-h-[85vh] rounded-t-2xl">
+
           <SheetHeader className="px-0">
             <SheetTitle>Filter Surveyor’s Market</SheetTitle>
             <SheetDescription>Choose a section and sorting option.</SheetDescription>

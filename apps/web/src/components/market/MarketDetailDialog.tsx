@@ -166,6 +166,7 @@ export function MarketDetailDialog({
       <DialogContent
         disableAnimation={fullScreen}
         className={cn(
+          "web3-theme",
           fullScreen
             ? "flex h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)]! max-h-none! max-w-none! flex-col overflow-hidden! p-0"
             : "max-h-[85vh] overflow-y-auto sm:max-w-md",

@@ -31,6 +31,7 @@ import {
   CUSTOM_WALLET_NAME,
   customWalletAdapter,
 } from "../../features/phantom/lib/customWalletAdapter.ts";
+import "../../styles/web3.css";
 import "../../styles/web3-auth.css";
 
 type WalletChoiceStatus = "detected" | "not-installed" | "local" | "install";
@@ -410,29 +411,31 @@ export default function WalletLoginPage() {
       <div className="web3-auth-stage">
         <section className="web3-auth-card" aria-labelledby="web3-auth-title">
           <div className="web3-card-header">
-            <div className="web3-brand-row">
-              <div className="web3-brand-mark">
-                <span className="web3-brand-glow" aria-hidden="true" />
-                <img
-                  src="/logo.svg"
-                  alt="SiteSurveyor"
-                  className="web3-brand-logo"
-                />
+            <div className="web3-brand-bar">
+              <div className="web3-brand-row">
+                <div className="web3-brand-mark">
+                  <span className="web3-brand-glow" aria-hidden="true" />
+                  <img
+                    src="/logo.svg"
+                    alt="SiteSurveyor"
+                    className="web3-brand-logo"
+                  />
+                </div>
+                <div className="web3-brand-copy">
+                  <h1 id="web3-auth-title" className="web3-brand-title">
+                    SiteSurveyor
+                  </h1>
+                  <p className="web3-brand-subtitle">
+                    Solana Web3 Authentication
+                  </p>
+                </div>
               </div>
-              <div className="web3-brand-copy">
-                <h1 id="web3-auth-title" className="web3-brand-title">
-                  SiteSurveyor
-                </h1>
-                <p className="web3-brand-subtitle">
-                  Solana Web3 Authentication
-                </p>
-              </div>
-            </div>
 
-            <div className="web3-network-pill">
-              <span className="web3-network-dot" />
-              <SolanaNetworkIcon className="web3-network-icon" />
-              <span>Solana Mainnet</span>
+              <div className="web3-network-pill">
+                <span className="web3-network-dot" />
+                <SolanaNetworkIcon className="web3-network-icon" />
+                <span>Solana Mainnet</span>
+              </div>
             </div>
 
             <div
@@ -458,7 +461,9 @@ export default function WalletLoginPage() {
                 role="tab"
                 aria-selected={signupDialogOpen}
                 aria-haspopup="dialog"
-                className={`web3-tab-btn ${signupDialogOpen ? "active" : ""}`}
+                className={`web3-tab-btn is-primary ${
+                  signupDialogOpen ? "active" : ""
+                }`}
                 onClick={() => {
                   setError(null);
                   setSignupError(null);
@@ -580,7 +585,7 @@ export default function WalletLoginPage() {
                 type="button"
                 onClick={() => void handleSignIn()}
                 disabled={connecting || signing}
-                className="web3-action-btn"
+                className="web3-action-btn web3-action-btn--slim"
               >
                 {connecting || signing ? (
                   <>

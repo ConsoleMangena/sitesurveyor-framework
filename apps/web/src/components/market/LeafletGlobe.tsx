@@ -61,12 +61,18 @@ export default function LeafletGlobe({
       zoomControl: true,
     });
 
-    // Add tile layer - using OpenStreetMap
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      noWrap: false,
-    }).addTo(map);
+    // Add tile layer - CARTO dark basemap (free, CORS enabled) so the globe
+    // matches the dark web3 terminal.
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: "abcd",
+        maxZoom: 19,
+        noWrap: false,
+      },
+    ).addTo(map);
 
     // Track mouse movement
     map.on("mousemove", (e) => {

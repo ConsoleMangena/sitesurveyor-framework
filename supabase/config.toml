@@ -381,4 +381,9 @@ port = 54327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
 
-# Experimental features may be deprecated any time
+[functions.solana-data]
+# Public market data: the browser calls this function anonymously, so the JWT
+# check is disabled and the function applies its own per-IP rate limiting.
+verify_jwt = false
+
+# Experimental features may be deprecated at any time
