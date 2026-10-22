@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import WalletLoginPage from "./WalletLoginPage.tsx";
 
 const mockConnect = vi.fn();
@@ -46,7 +52,7 @@ vi.mock("@solana/wallet-adapter-react", () => ({
           name: "Solflare",
           icon: "data:image/svg+xml;base64,mock",
         },
-        readyState: "Installed",
+        readyState: "Loadable",
       },
       {
         adapter: {
@@ -146,6 +152,21 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     expect(screen.getByText("MetaMask")).toBeInTheDocument();
     expect(screen.getByText("Install extension")).toBeInTheDocument();
     expect(screen.getByText("SiteSurveyor Wallet")).toBeInTheDocument();
+  });
+
+  it("does not select or persist an uninstalled wallet", () => {
+    mockWalletState.connected = false;
+    render(<WalletLoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^solflare/i }));
+
+    expect(mockSelect).not.toHaveBeenCalled();
+    expect(
+      within(screen.getByRole("dialog")).getByText(
+        /solflare is not installed in this browser/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("creates a SiteSurveyor Wallet from the local vault dialog", async () => {

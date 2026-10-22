@@ -1,9 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
-import { type WalletError } from "@solana/wallet-adapter-base";
+import { type Adapter, type WalletError } from "@solana/wallet-adapter-base";
 import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { SOLANA_RPC_URL } from "./lib/config.ts";
 import { customWalletAdapter } from "./lib/customWalletAdapter.ts";
+import { shouldAutoConnectWallet } from "./lib/shouldAutoConnectWallet.ts";
 
 export function SolanaWalletProvider({ children }: { children: React.ReactNode }) {
   // Built-in SiteSurveyor encrypted vault adapter + standard hardware & extension adapters.
@@ -23,9 +24,18 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
     console.warn("[SolanaWalletProvider]", error?.name || "WalletError", error?.message);
   }, []);
 
+  const handleAutoConnect = useCallback(
+    async (adapter: Adapter) => shouldAutoConnectWallet(adapter),
+    [],
+  );
+
   return (
     <ConnectionProvider endpoint={SOLANA_RPC_URL} config={{ commitment: "confirmed" }}>
-      <WalletProvider wallets={wallets} autoConnect onError={handleError}>
+      <WalletProvider
+        wallets={wallets}
+        autoConnect={handleAutoConnect}
+        onError={handleError}
+      >
         {children}
       </WalletProvider>
     </ConnectionProvider>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
 import { signInWithSolanaWallet, signUpWithSolanaWallet } from "../../lib/auth/session.ts";
@@ -185,19 +185,6 @@ export default function WalletLoginPage() {
     return choices;
   }, [sortedWallets]);
 
-  useEffect(() => {
-    if (!wallet && wallets.length > 0) {
-      const installed = wallets.find((w) => w.readyState === "Installed");
-      const candidate =
-        installed ??
-        wallets.find((w) => w.readyState === "Loadable") ??
-        wallets[0];
-      if (candidate) {
-        select(candidate.adapter.name);
-      }
-    }
-  }, [wallet, wallets, select]);
-
   const handleCopy = () => {
     if (!address) return;
     void navigator.clipboard.writeText(address);
@@ -264,7 +251,6 @@ export default function WalletLoginPage() {
       return;
     }
     try {
-      select(walletName);
       const chosen = wallets.find((w) => w.adapter.name === walletName);
       if (!chosen) return;
 
@@ -274,6 +260,8 @@ export default function WalletLoginPage() {
         );
         return;
       }
+
+      select(walletName);
 
       if (!chosen.adapter.connected) {
         setSigning(true);
@@ -299,13 +287,9 @@ export default function WalletLoginPage() {
     let target = wallet;
     if (!target) {
       const installed = wallets.find((w) => w.readyState === "Installed");
-      target =
-        installed ??
-        wallets.find((w) => w.readyState === "Loadable") ??
-        wallets[0] ??
-        null;
-      if (target) {
-        select(target.adapter.name);
+      if (installed) {
+        select(installed.adapter.name);
+        target = installed;
       }
     }
 
@@ -323,7 +307,13 @@ export default function WalletLoginPage() {
       );
     }
 
-    if (target.readyState !== "Installed" && target.readyState !== "Loadable") {
+    if (target.adapter.name === CUSTOM_WALLET_NAME) {
+      throw new Error(
+        "Unlock your SiteSurveyor Wallet first. Choose SiteSurveyor Wallet to enter your PIN.",
+      );
+    }
+
+    if (target.readyState !== "Installed") {
       throw new Error(
         `${target.adapter.name} is not installed in your browser. Please install the ${target.adapter.name} extension or choose another wallet above.`,
       );
@@ -563,7 +553,11 @@ export default function WalletLoginPage() {
                     </span>
                     <span className="web3-wallet-field-sub">
                       {wallet
-                        ? "Detected in this browser"
+                        ? wallet.readyState === "Installed"
+                          ? "Detected in this browser"
+                          : wallet.adapter.name === CUSTOM_WALLET_NAME
+                            ? "Encrypted local vault"
+                            : "Not installed"
                         : "Phantom, Solflare, MetaMask & SiteSurveyor"}
                     </span>
                   </span>
