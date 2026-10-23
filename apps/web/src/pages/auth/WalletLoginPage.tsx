@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
 import { signInWithSolanaWallet, signUpWithSolanaWallet } from "../../lib/auth/session.ts";
@@ -45,6 +45,8 @@ interface WalletChoice {
   installUrl?: string;
   status: WalletChoiceStatus;
 }
+
+const MOBILE_WALLET_PENDING_KEY = "sitesurveyor:pending-mobile-wallet";
 
 const walletStatusLabels: Record<WalletChoiceStatus, string> = {
   detected: "Detected in this browser",
@@ -145,6 +147,9 @@ export default function WalletLoginPage() {
   const [siteSurveyorConfirmPin, setSiteSurveyorConfirmPin] = useState("");
   const [siteSurveyorError, setSiteSurveyorError] = useState<string | null>(null);
   const [siteSurveyorBusy, setSiteSurveyorBusy] = useState(false);
+  const [mobileWalletPending, setMobileWalletPending] = useState<string | null>(() =>
+    typeof localStorage === "undefined" ? null : localStorage.getItem(MOBILE_WALLET_PENDING_KEY),
+  );
 
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const address = publicKey ? publicKey.toBase58() : "";
@@ -256,6 +261,44 @@ export default function WalletLoginPage() {
     }
   };
 
+  useEffect(() => {
+    if (!isMobile || !mobileWalletPending || connected) return;
+    const selected = wallets.find(
+      (entry) => entry.adapter.name.toLowerCase() === mobileWalletPending.toLowerCase(),
+    );
+    if (!selected || selected.readyState !== "Installed") return;
+
+    let cancelled = false;
+    const resumeConnection = () => {
+      if (cancelled) return;
+      setSigning(true);
+      select(selected.adapter.name);
+      void selected.adapter.connect()
+        .then(() => {
+          if (cancelled) return;
+          localStorage.removeItem(MOBILE_WALLET_PENDING_KEY);
+          setMobileWalletPending(null);
+          setWalletDialogOpen(false);
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) {
+            setError(formatAuthUserFacingError(err, "Wallet connection was not approved."));
+            localStorage.removeItem(MOBILE_WALLET_PENDING_KEY);
+            setMobileWalletPending(null);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setSigning(false);
+        });
+    };
+    const resumeTimer = window.setTimeout(resumeConnection, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(resumeTimer);
+    };
+  }, [connected, isMobile, mobileWalletPending, select, wallets]);
   const handleWalletSelect = async (walletName: WalletName) => {
     setError(null);
     if (isMobile && /phantom|solflare/i.test(walletName)) {
