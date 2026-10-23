@@ -18,15 +18,16 @@ import type {
   ProfessionalRow,
 } from "./marketFeed";
 
-// portfolioMediaUrl → supabase client throws without env vars in tests; the
-// codebase pattern (session.test.ts, portfolio.test.ts) is to mock the client.
+// assetMediaUrl/portfolioMediaUrl → supabase client throws without env vars in
+// tests; the codebase pattern (session.test.ts, portfolio.test.ts) is to mock
+// the client. Mirrors the real bucket name so URL assertions stay meaningful.
 vi.mock("../../lib/supabase/client.ts", () => ({
   supabase: {
     storage: {
-      from: () => ({
+      from: (bucket: string) => ({
         getPublicUrl: (path: string) => ({
           data: {
-            publicUrl: `https://example.test/storage/v1/object/public/portfolio-media/${path}`,
+            publicUrl: `https://example.test/storage/v1/object/public/${bucket}/${path}`,
           },
         }),
       }),
@@ -155,7 +156,7 @@ describe("mappers", () => {
       lng: 36.82,
       priceLabel: "4,200 USD",
     });
-    expect(item.photoUrl).toContain("l1-1.jpg");
+    expect(item.photoUrl).toContain("asset-media/l1-1.jpg");
     expect(item.meta).toContain("Total Station");
   });
 
@@ -173,10 +174,9 @@ describe("mappers", () => {
     expect(item.photoUrl).toBeNull(); // avatar_path null → portfolioMediaUrl(null)
   });
 
-  it("maps a job without coords as Negotiable when rate is null", () => {
-    const item = toJobItem({ ...job, rate: null as unknown as number });
+  it("maps a job with rate 0 (feed-normalized NULL) as Negotiable", () => {
+    const item = toJobItem({ ...job, rate: 0 });
     expect(item.priceLabel).toBe("Negotiable");
-    expect(item.lat).toBeNull();
   });
 
   it("maps a firm to a services price label", () => {

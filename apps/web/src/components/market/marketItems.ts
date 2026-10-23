@@ -1,3 +1,4 @@
+import { assetMediaUrl } from "../../lib/repositories/assetMedia.ts";
 import { portfolioMediaUrl } from "../../lib/repositories/portfolioMedia.ts";
 import type {
   EventRow,
@@ -61,7 +62,7 @@ export function toListingItem(row: ListingRow): RailItem {
     priceLabel: `${row.price.toLocaleString()} ${row.currency}${
       row.listing_type === "hire" ? "/day" : ""
     }`,
-    photoUrl: portfolioMediaUrl(row.photos?.[0] ?? null),
+    photoUrl: assetMediaUrl(row.photos?.[0] ?? null),
     createdAt: row.created_at,
     lat: row.latitude,
     lng: row.longitude,
@@ -77,7 +78,7 @@ export function toProfessionalItem(row: ProfessionalRow): RailItem {
     title: row.name,
     meta: [row.title, row.discipline, row.experience].filter(Boolean).join(" · "),
     location: row.location,
-    priceLabel: `${row.rate.toLocaleString()} ${row.currency}/${row.rate_per}`,
+    priceLabel: `${row.rate.toLocaleString()} ${row.currency}/${row.rate_per ?? "day"}`,
     photoUrl: portfolioMediaUrl(row.avatar_path ?? null),
     createdAt: row.created_at,
     lat: row.latitude,
@@ -95,7 +96,8 @@ export function toJobItem(row: JobRow): RailItem {
     meta: [row.discipline, row.employment_type].filter(Boolean).join(" · "),
     location: row.location,
     priceLabel:
-      row.rate != null
+      // feed normalizes DB-NULL rates to 0 (marketFeed toJobRows); surface both as Negotiable
+      row.rate != null && row.rate > 0
         ? `${row.rate.toLocaleString()} ${row.currency}/${row.rate_per ?? "day"}`
         : "Negotiable",
     photoUrl: null,
@@ -213,7 +215,7 @@ export function buildRails(
       title: "Instruments & gear",
       accent: MARKET_DOT_COLORS.listing,
       kinds: ["listing"],
-      items: scoped(listings, "listing").sort(byCreatedDesc).slice(0, RAIL_CAP),
+      items: [...scoped(listings, "listing")].sort(byCreatedDesc).slice(0, RAIL_CAP),
     },
     {
       id: "professionals",
@@ -227,7 +229,7 @@ export function buildRails(
       title: "Open jobs",
       accent: MARKET_DOT_COLORS.job,
       kinds: ["job"],
-      items: scoped(jobs, "job").sort(byCreatedDesc).slice(0, RAIL_CAP),
+      items: [...scoped(jobs, "job")].sort(byCreatedDesc).slice(0, RAIL_CAP),
     },
     {
       id: "firms",
