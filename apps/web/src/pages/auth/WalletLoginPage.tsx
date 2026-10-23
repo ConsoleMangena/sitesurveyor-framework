@@ -302,6 +302,10 @@ export default function WalletLoginPage() {
   const handleWalletSelect = async (walletName: WalletName) => {
     setError(null);
     if (isMobile && /phantom|solflare/i.test(walletName)) {
+      localStorage.setItem(MOBILE_WALLET_PENDING_KEY, walletName);
+      setMobileWalletPending(walletName);
+      setWalletDialogOpen(false);
+      setError(`Opening ${walletName}. Approve the wallet connection, then return here and continue.`);
       openMobileWallet(/solflare/i.test(walletName) ? "Solflare" : "Phantom");
       return;
     }
@@ -703,6 +707,10 @@ export default function WalletLoginPage() {
                   onClick={() => {
                     if (choice.installUrl) {
                       if (isMobile && /phantom|solflare/i.test(choice.name)) {
+                        localStorage.setItem(MOBILE_WALLET_PENDING_KEY, choice.name);
+                        setMobileWalletPending(choice.name);
+                        setWalletDialogOpen(false);
+                        setError(`Opening ${choice.name}. Approve the wallet connection, then return here and continue.`);
                         openMobileWallet(/solflare/i.test(choice.name) ? "Solflare" : "Phantom");
                       } else {
                         window.open(choice.installUrl, "_blank", "noopener,noreferrer");
