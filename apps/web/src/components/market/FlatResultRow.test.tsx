@@ -49,6 +49,10 @@ describe("FlatResultRow", () => {
     expect(screen.getByText("350 USD/day")).toBeTruthy();
     expect(screen.getByText(/Nairobi/)).toBeTruthy();
     expect(screen.getByText(/Geodesist/)).toBeTruthy();
+    // Task 7 scroll-into-view queries this exact "kind:id" format
+    expect(
+      screen.getByRole("button", { name: /Amara Ochieng/i }).getAttribute("data-market-item"),
+    ).toBe("professional:p1");
   });
 
   it("calls onOpen on click and Enter", async () => {
