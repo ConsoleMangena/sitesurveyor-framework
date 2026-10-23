@@ -111,6 +111,7 @@ import type {
   ProfessionalRow,
 } from "../../components/market/marketFeed.ts";
 import { MarketDetailDialog } from "../../components/market/MarketDetailDialog.tsx";
+import type { MarketGlobeHandle } from "../../components/market/LeafletGlobe.tsx";
 import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
 import "../../styles/web3.css";
 
@@ -187,6 +188,7 @@ export default function PublicMarketPage() {
   const [eventPage, setEventPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const registryRef = useRef<HTMLDivElement | null>(null);
+  const globeRef = useRef<MarketGlobeHandle>(null);
   const [selectedId, setSelectedId] = useState<{
     kind: MarketDotKind;
     id: string;
@@ -723,17 +725,24 @@ export default function PublicMarketPage() {
           </div>
         </section>
 
-        {/* Map Section: clean, expansive viewport that fills well without any text blocking */}
-        <section aria-label="Interactive market map" className="relative w-full">
-          <Suspense fallback={<div className="h-[500px] sm:h-[600px] lg:h-[660px] w-full bg-muted/30 animate-pulse" />}>
-            <PublicMarketGlobe
-              dots={dots}
-              totalPoints={totalPoints}
-              failed={failed}
-              onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
-              onRetry={retry}
-            />
-          </Suspense>
+        {/* Map Section: contained, bordered card inside the page container */}
+        <section aria-label="Interactive market map" className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <Suspense
+              fallback={
+                <div className="h-[500px] w-full animate-pulse bg-muted/30 sm:h-[600px] lg:h-[660px]" />
+              }
+            >
+              <PublicMarketGlobe
+                ref={globeRef}
+                dots={dots}
+                totalPoints={totalPoints}
+                failed={failed}
+                onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
+                onRetry={retry}
+              />
+            </Suspense>
+          </div>
         </section>
 
         <section
