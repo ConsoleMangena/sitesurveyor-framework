@@ -39,7 +39,7 @@ export function KindIcon({
 
 export function NewBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+    <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
       New
     </span>
   );
@@ -63,7 +63,7 @@ function RailTile({
       data-highlighted={highlighted ? "true" : undefined}
       onClick={() => onSelect(item)}
       className={cn(
-        "group w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-border/80 bg-card text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-[240px] w-[80vw] max-w-[280px]",
+        "group w-[80vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-xl border border-border/80 bg-card text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-[240px]",
         highlighted && "ring-2 ring-amber-500/70",
       )}
       style={highlighted ? { borderColor: accent } : undefined}

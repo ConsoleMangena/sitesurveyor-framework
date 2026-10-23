@@ -68,9 +68,12 @@ describe("MarketRail", () => {
     expect(onSeeAll).toHaveBeenCalledWith(rail);
   });
 
-  it("marks the highlighted tile with data-highlighted", () => {
+  it("marks the highlighted tile with data-highlighted and carries the scroll-contract attribute", () => {
     render(<MarketRail rail={rail} highlightedId="l1" onSelect={() => {}} onSeeAll={() => {}} />);
-    expect(screen.getByTestId("market-tile-l1").getAttribute("data-highlighted")).toBe("true");
+    const tile = screen.getByTestId("market-tile-l1");
+    expect(tile.getAttribute("data-highlighted")).toBe("true");
+    // Task 7 scroll-into-view queries this exact "kind:id" format
+    expect(tile.getAttribute("data-market-item")).toBe("listing:l1");
   });
 
   it("renders nothing when items are empty", () => {
