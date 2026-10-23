@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RotateCcw } from "lucide-react";
@@ -22,6 +22,13 @@ interface LeafletGlobeProps {
   heightClassName?: string;
 }
 
+export interface MarketGlobeHandle {
+  /** Smoothly recenter/zoom the map (e.g. when a list item is activated). */
+  panTo: (lat: number, lng: number, zoom?: number) => void;
+  /** Brief highlight ring at a coordinate; auto-removes after 1.5s. */
+  flashAt: (lat: number, lng: number, color: string) => void;
+}
+
 // Fix default marker icon paths in Leaflet
 const defaultIcon = L.Icon.Default.prototype as {
   _getIconUrl?: unknown;
@@ -34,17 +41,15 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-export default function LeafletGlobe({
-  dots,
-  failed,
-  onSelect,
-  onRetry,
-  children,
-  heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]",
-}: LeafletGlobeProps) {
+const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
+  function LeafletGlobe(
+    { dots, failed, onSelect, onRetry, children, heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]" },
+    ref,
+  ) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.CircleMarker[]>([]);
+  const flashLayerRef = useRef<L.LayerGroup | null>(null);
   const [cursorCoords, setCursorCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const plottedCount = dots?.length ?? 0;
@@ -154,6 +159,35 @@ export default function LeafletGlobe({
     });
   }, [dots, onSelect]);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      panTo(lat: number, lng: number, zoom = 10) {
+        mapRef.current?.setView([lat, lng], zoom, { animate: true });
+      },
+      flashAt(lat: number, lng: number, color: string) {
+        const map = mapRef.current;
+        if (!map) return;
+        if (!flashLayerRef.current) {
+          flashLayerRef.current = L.layerGroup().addTo(map);
+        }
+        const layer = flashLayerRef.current;
+        layer.clearLayers();
+        const ring = L.circleMarker([lat, lng], {
+          radius: 14,
+          color,
+          weight: 3,
+          opacity: 1,
+          fillColor: color,
+          fillOpacity: 0.12,
+        });
+        ring.addTo(layer);
+        window.setTimeout(() => ring.remove(), 1500);
+      },
+    }),
+    [],
+  );
+
   const handleResetView = () => {
     mapRef.current?.setView([20, 10], 2.2);
   };
@@ -161,7 +195,7 @@ export default function LeafletGlobe({
   return (
     <section className="relative w-full">
       <div
-        className={`relative w-full overflow-hidden border-y border-border/70 bg-muted/20 ${heightClassName}`}
+        className={`relative w-full overflow-hidden bg-muted/20 ${heightClassName}`}
       >
         <p className="sr-only">
           Interactive map of published listings, professionals, jobs, firms, and
@@ -260,4 +294,6 @@ export default function LeafletGlobe({
       </div>
     </section>
   );
-}
+});
+
+export default LeafletGlobe;
