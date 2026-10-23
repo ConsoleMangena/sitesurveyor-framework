@@ -1382,8 +1382,81 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .web3-auth-stage,
+
+/* Mobile auth layout overrides */
+@media (max-width: 540px) {
+  .web3-auth-screen {
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 12px max(16px, env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+
+  .web3-auth-stage {
+    width: min(100%, 390px);
+    max-width: 390px;
+    margin: auto;
+    gap: 10px;
+  }
+
+  .web3-card-header { padding: 18px 16px 12px; gap: 12px; }
+  .web3-card-body { padding: 0 16px 16px; gap: 12px; }
+  .web3-auth-card { border-radius: 18px; }
+  .web3-brand-bar { align-items: flex-start; }
+  .web3-network-pill { padding: 3px 7px; font-size: 9px; }
+  .web3-mode-heading h2 { font-size: 18px; }
+  .web3-mode-heading p { font-size: 11.5px; }
+
+  .web3-wallet-field {
+    min-height: 58px;
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+
+  .web3-wallet-field-icon { width: 32px; height: 32px; border-radius: 9px; }
+  .web3-wallet-field-name { font-size: 12px; }
+  .web3-wallet-field-sub { font-size: 10px; }
+  .web3-btn-row { justify-content: center; }
+
+  .web3-action-btn,
+  .web3-action-btn--slim {
+    width: min(100%, 280px);
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 11px;
+    font-size: 12px;
+  }
+
+  .web3-type-selector { gap: 6px; }
+  .web3-type-card { min-height: 52px; padding: 8px; border-radius: 11px; }
+  .web3-type-icon { width: 25px; height: 25px; }
+  .web3-type-title { font-size: 11.5px; }
+  .web3-type-desc { font-size: 9px; }
+
+  [data-slot="dialog-content"].web3-wallet-dialog {
+    width: min(calc(100vw - 24px), 380px);
+    max-height: calc(100dvh - 24px);
+    padding: 16px;
+    gap: 12px;
+    border-radius: 18px;
+  }
+
+  .web3-wallet-list { gap: 6px; max-height: min(52dvh, 390px); }
+  .web3-wallet-row { min-height: 56px; gap: 9px; padding: 8px 9px; border-radius: 12px; }
+  .web3-wallet-row-icon { width: 34px; height: 34px; border-radius: 9px; }
+  .web3-wallet-row-name { font-size: 12px; }
+  .web3-wallet-row-sub { font-size: 10px; }
+  .web3-wallet-row-status { width: 24px; height: 24px; }
+  .web3-wallet-dialog-footnote { font-size: 10px; }
+
+  [data-slot="dialog-content"].web3-auth-dialog {
+    width: min(calc(100vw - 24px), 390px);
+    max-height: calc(100dvh - 24px);
+    padding: 18px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {  .web3-auth-stage,
   .web3-auth-card,
   .web3-brand-glow,
   .web3-status-dot,

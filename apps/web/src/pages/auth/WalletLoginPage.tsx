@@ -3,6 +3,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
 import { signInWithSolanaWallet, signUpWithSolanaWallet } from "../../lib/auth/session.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
+import { openMobileWallet } from "../../features/phantom/lib/provider.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 import {
   Dialog,
@@ -145,6 +146,7 @@ export default function WalletLoginPage() {
   const [siteSurveyorError, setSiteSurveyorError] = useState<string | null>(null);
   const [siteSurveyorBusy, setSiteSurveyorBusy] = useState(false);
 
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const address = publicKey ? publicKey.toBase58() : "";
   const truncatedAddress = address
     ? `${address.slice(0, 4)}...${address.slice(-4)}`
@@ -256,6 +258,10 @@ export default function WalletLoginPage() {
 
   const handleWalletSelect = async (walletName: WalletName) => {
     setError(null);
+    if (isMobile && /phantom|solflare/i.test(walletName)) {
+      openMobileWallet(/solflare/i.test(walletName) ? "Solflare" : "Phantom");
+      return;
+    }
     if (walletName === CUSTOM_WALLET_NAME) {
       openSiteSurveyorWallet();
       return;
@@ -653,11 +659,11 @@ export default function WalletLoginPage() {
                   className={`web3-wallet-row ${isSelected ? "selected" : ""}`}
                   onClick={() => {
                     if (choice.installUrl) {
-                      window.open(
-                        choice.installUrl,
-                        "_blank",
-                        "noopener,noreferrer",
-                      );
+                      if (isMobile && /phantom|solflare/i.test(choice.name)) {
+                        openMobileWallet(/solflare/i.test(choice.name) ? "Solflare" : "Phantom");
+                      } else {
+                        window.open(choice.installUrl, "_blank", "noopener,noreferrer");
+                      }
                       return;
                     }
                     if (choice.adapterName) {

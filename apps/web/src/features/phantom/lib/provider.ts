@@ -44,9 +44,23 @@ export function isMobileBrowser(): boolean {
 export function phantomMobileBrowseUrl(url = typeof window !== "undefined" ? window.location.href : ""): string {
   return `https://phantom.app/ul/browse/${encodeURIComponent(url)}`;
 }
-export function openPhantomMobile(): void {
-  if (typeof window !== "undefined") window.location.assign(phantomMobileBrowseUrl());
+export function openPhantomMobile(url = typeof window !== "undefined" ? window.location.href : ""): void {
+  if (typeof window !== "undefined") window.location.assign(phantomMobileBrowseUrl(url));
 }
+
+
+export type MobileWalletName = "Phantom" | "Solflare";
+
+export function openMobileWallet(name: MobileWalletName): void {
+  if (typeof window === "undefined") return;
+  const url = window.location.href;
+  if (name === "Solflare") {
+    window.location.assign(`https://solflare.com/ul/v1/browse/${encodeURIComponent(url)}`);
+    return;
+  }
+  openPhantomMobile(url);
+}
+
 export function detectProvider(): PhantomWalletProvider | null { return readProvider(); }
 
 export async function waitForProvider(timeoutMs = 3000, intervalMs = 200): Promise<PhantomWalletProvider | null> {

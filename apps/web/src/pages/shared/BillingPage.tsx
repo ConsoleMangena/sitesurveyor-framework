@@ -671,7 +671,13 @@ export default function BillingPage({
       />
 
       <div className="flex flex-col gap-4">
-        <PhantomWalletCard />
+        <PhantomWalletCard
+          workspaceId={workspaceId}
+          paymentMethods={paymentMethods}
+          canManageBilling={canManageBilling}
+          onMethodsChanged={fetchMethods}
+          onNotice={showNotice}
+        />
         <MarketplaceWalletCard
           workspaceId={workspaceId}
           phantomAddress={phantomWallet.address}

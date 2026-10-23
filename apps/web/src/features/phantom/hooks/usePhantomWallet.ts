@@ -6,7 +6,8 @@ import {
   getConnectedWalletAddress,
   isWalletConnected,
   isMobileBrowser,
-  openPhantomMobile,
+  openMobileWallet,
+  type MobileWalletName,
   subscribeWalletChanges,
 } from "../lib/provider.ts";
 
@@ -59,7 +60,7 @@ export function usePhantomWallet(): PhantomWalletState {
     shortAddress: address ? `${address.slice(0, 4)}…${address.slice(-4)}` : null,
     connecting,
     connect,
-    openMobile: openPhantomMobile,
+  openMobile: (name: MobileWalletName = "Phantom") => openMobileWallet(name),
     disconnect,
   };
 }

@@ -80,11 +80,17 @@ export interface BuildTransferResult {
   walletAddress: string;
 }
 
+export interface WalletPaymentAdapter {
+  publicKey: PublicKey | null;
+  sendTransaction(transaction: Transaction, connection: Connection): Promise<string>;
+}
+
 export interface InvoicePaymentRequest {
   /** Invoice total in USD (== USDC, 1:1). */
   amount: number;
   /** Opaque memo correlated server-side (e.g. invoice id). Optional. */
   invoiceId?: string;
+  walletAdapter?: WalletPaymentAdapter;
 }
 
 /**
@@ -188,12 +194,10 @@ export async function payInvoiceWithUsdc(
     );
   }
 
-  const { provider, walletAddress } = await connectWallet();
-  if (!provider.signAndSendTransaction) {
-    throw new Error(
-      "This wallet does not support sending transactions. Use Phantom.",
-    );
-  }
+  const walletAdapter = request.walletAdapter;
+  const legacyWallet = walletAdapter ? null : await connectWallet();
+  const walletAddress = walletAdapter?.publicKey?.toBase58() ?? legacyWallet?.walletAddress;
+  if (!walletAddress) throw new Error("Connect a blockchain wallet before paying.");
   const payer = new PublicKey(walletAddress);
 
   const treasury = new PublicKey(SOLANA_TREASURY_ADDRESS);
@@ -220,7 +224,9 @@ export async function payInvoiceWithUsdc(
   }
   tx.add(transferIx);
 
-  const signature = await sendWithProvider(provider, tx);
+  const signature = walletAdapter
+    ? await walletAdapter.sendTransaction(tx, conn)
+    : await sendWithProvider(legacyWallet!.provider, tx);
 
   return { signature, reference: reference.toBase58(), walletAddress };
 }
