@@ -21,37 +21,20 @@ unreviewed and undocumented is unfinished; this build ends with the finish
 review, the verdict, and DESIGN.md.
 */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowUpRight,
-  BadgeCheck,
-  Briefcase,
-  Building2,
-  CalendarDays,
+  Bookmark,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Globe2,
-  GraduationCap,
-  HardHat,
   LayoutGrid,
-  LayoutList,
   LogOut,
-  MapPin,
   PackageSearch,
   RefreshCw,
   Search,
-  Sparkles,
-  Star,
-  Tag,
-  UserRound,
-  X,
-  Bookmark,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { cn } from "../../lib/utils.ts";
-import { portfolioMediaUrl } from "../../lib/repositories/portfolioMedia.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
@@ -112,6 +95,15 @@ import type {
 } from "../../components/market/marketFeed.ts";
 import { MarketDetailDialog } from "../../components/market/MarketDetailDialog.tsx";
 import type { MarketGlobeHandle } from "../../components/market/LeafletGlobe.tsx";
+import MarketRail from "../../components/market/MarketRail.tsx";
+import FlatResultRow from "../../components/market/FlatResultRow.tsx";
+import {
+  buildRails,
+  isNew,
+  toItem,
+  type MarketRailData,
+  type RailItem,
+} from "../../components/market/marketItems.ts";
 import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
 import "../../styles/web3.css";
 
@@ -120,10 +112,8 @@ type Scope = "all" | "listing" | "professional" | "job" | "firm" | "event";
 type SortKey = "newest" | "price-asc" | "price-desc";
 type ListingCategory = "all" | "instrument" | "accessory";
 
-/** Registry items per page — keeps grid rows balanced. */
-const REGISTRY_PAGE_SIZE = 6;
-
-const NEW_WINDOW_MS = 7 * 24 * 60 * 60_000;
+/** Flat results batch size — "Load more" appends this many rows at a time. */
+const FLAT_PAGE_SIZE = 12;
 
 function matches(
   term: string,
@@ -138,23 +128,6 @@ function matches(
 function countryOf(location: string): string {
   const parts = location.split(",");
   return parts[parts.length - 1].trim();
-}
-
-function isNew(createdAt: string | null | undefined): boolean {
-  if (!createdAt) return false;
-  const time = Date.parse(createdAt);
-  if (!Number.isFinite(time)) return false;
-  const age = Date.now() - time;
-  return age >= 0 && age < NEW_WINDOW_MS;
-}
-
-function formatDate(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function initialsOf(name: string): string {
@@ -181,12 +154,9 @@ export default function PublicMarketPage() {
   const [scope, setScope] = useState<Scope>("all");
   const [sort, setSort] = useState<SortKey>("newest");
   const [listingCategory, setListingCategory] = useState<ListingCategory>("all");
-  const [listingPage, setListingPage] = useState(1);
-  const [professionalPage, setProfessionalPage] = useState(1);
-  const [jobPage, setJobPage] = useState(1);
-  const [firmPage, setFirmPage] = useState(1);
-  const [eventPage, setEventPage] = useState(1);
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [seeAll, setSeeAll] = useState<MarketRailData | null>(null);
+  const [flatLimit, setFlatLimit] = useState(FLAT_PAGE_SIZE);
+  const [highlighted, setHighlighted] = useState<{ kind: MarketDotKind; id: string } | null>(null);
   const registryRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<MarketGlobeHandle>(null);
   const [selectedId, setSelectedId] = useState<{
@@ -212,14 +182,6 @@ export default function PublicMarketPage() {
     setFailure(null);
     setAttempt((value) => value + 1);
   }, []);
-
-  const resetRegistryPages = () => {
-    setListingPage(1);
-    setProfessionalPage(1);
-    setJobPage(1);
-    setFirmPage(1);
-    setEventPage(1);
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -395,31 +357,40 @@ export default function PublicMarketPage() {
     return rows;
   }, [filteredEvents, sort, priceDir]);
 
-  // ── Derived: pagination (clamped during render; no effects) ──
+  // ── Derived: rails + flat mode ──
 
-  const pageCount = (total: number) =>
-    Math.max(1, Math.ceil(total / REGISTRY_PAGE_SIZE));
+  const flatMode = search.trim() !== "" || sort !== "newest" || seeAll !== null;
 
-  const listingPageCount = pageCount(sortedListings.length);
-  const professionalPageCount = pageCount(sortedProfessionals.length);
-  const jobPageCount = pageCount(sortedJobs.length);
-  const firmPageCount = pageCount(sortedFirms.length);
-  const eventPageCount = pageCount(sortedEvents.length);
-
-  const sliceFor = <T,>(rows: T[], rawPage: number, count: number): T[] => {
-    const page = Math.min(rawPage, count);
-    return rows.slice((page - 1) * REGISTRY_PAGE_SIZE, page * REGISTRY_PAGE_SIZE);
-  };
-
-  const listingSlice = sliceFor(sortedListings, listingPage, listingPageCount);
-  const professionalSlice = sliceFor(
-    sortedProfessionals,
-    professionalPage,
-    professionalPageCount,
+  const rails = useMemo(
+    () => (data ? buildRails(data, listingCategory, scope) : []),
+    [data, listingCategory, scope],
   );
-  const jobSlice = sliceFor(sortedJobs, jobPage, jobPageCount);
-  const firmSlice = sliceFor(sortedFirms, firmPage, firmPageCount);
-  const eventSlice = sliceFor(sortedEvents, eventPage, eventPageCount);
+
+  const flatItems: RailItem[] = useMemo(() => {
+    if (!data) return [];
+    const allowed = seeAll
+      ? new Set<string>(seeAll.kinds)
+      : scope === "all"
+        ? null
+        : new Set<string>([scope]);
+    const collect = (
+      kind: MarketDotKind,
+      rows: Array<ListingRow | ProfessionalRow | JobRow | FirmRow | EventRow>,
+    ) => (allowed === null || allowed.has(kind) ? rows.map((row) => toItem(kind, row)) : []);
+    return [
+      ...collect("listing", sortedListings),
+      ...collect("professional", sortedProfessionals),
+      ...collect("job", sortedJobs),
+      ...collect("firm", sortedFirms),
+      ...collect("event", sortedEvents),
+    ].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  }, [data, seeAll, scope, sortedListings, sortedProfessionals, sortedJobs, sortedFirms, sortedEvents]);
+
+  const visibleFlatItems = flatItems.slice(0, flatLimit);
+
+  useEffect(() => {
+    setFlatLimit(FLAT_PAGE_SIZE);
+  }, [search, sort, seeAll, scope, listingCategory]);
 
   // ── Derived: globe dots (scope + location; search stays a registry tool) ──
 
@@ -520,6 +491,25 @@ export default function PublicMarketPage() {
 
   const scrollToRegistry = () => {
     registryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleSeeAll = (rail: MarketRailData) => {
+    setSeeAll(rail);
+    setSearch("");
+    setFlatLimit(FLAT_PAGE_SIZE);
+    if (rail.kinds.length === 1) setScope(rail.kinds[0]);
+    requestAnimationFrame(() => registryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  const clearFlatMode = () => {
+    setSeeAll(null);
+    setSearch("");
+    setSort("newest");
+    setFlatLimit(FLAT_PAGE_SIZE);
+  };
+
+  const handleItemSelect = (item: RailItem) => {
+    setSelectedId({ kind: item.kind, id: item.id });
   };
 
   const selectedDot: MarketDot | null = useMemo(() => {
@@ -815,19 +805,13 @@ export default function PublicMarketPage() {
                   <Input
                     placeholder="Search instruments, people, places…"
                     value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      resetRegistryPages();
-                    }}
+                    onChange={(event) => setSearch(event.target.value)}
                     className="pl-9 pr-9"
                   />
                   {search ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        setSearch("");
-                        resetRegistryPages();
-                      }}
+                      onClick={() => setSearch("")}
                       aria-label="Clear search"
                       className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
@@ -855,38 +839,6 @@ export default function PublicMarketPage() {
                 <Button type="button" variant={savedSearch ? "default" : "outline"} size="icon" onClick={toggleSavedSearch} aria-label={savedSearch ? "Remove saved search" : "Save this search"} title={savedSearch ? "Saved search" : "Save this search"}>
                   <Bookmark className="size-4" fill={savedSearch ? "currentColor" : "none"} aria-hidden="true" />
                 </Button>
-                <div className="hidden sm:flex items-center rounded-lg border border-border/80 bg-card p-0.5 shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("grid")}
-                    className={cn(
-                      "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                      viewMode === "grid"
-                        ? "bg-accent-bg font-semibold text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    aria-label="Grid view"
-                    title="Grid view"
-                  >
-                    <LayoutGrid className="size-3.5" />
-                    <span className="hidden sm:inline">Cards</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("table")}
-                    className={cn(
-                      "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                      viewMode === "table"
-                        ? "bg-accent-bg font-semibold text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    aria-label="Table list view"
-                    title="Table list view"
-                  >
-                    <LayoutList className="size-3.5" />
-                    <span className="hidden sm:inline">Rows</span>
-                  </button>
-                </div>
                 <Button type="button" variant="outline" size="icon" className="sm:hidden" onClick={() => setMobileFiltersOpen((value) => !value)} aria-expanded={mobileFiltersOpen} aria-label="Toggle marketplace filters">
                   <SlidersHorizontal className="size-4" aria-hidden="true" />
                 </Button>
@@ -897,259 +849,97 @@ export default function PublicMarketPage() {
             {showPanel("listing") && !loading && benchmarks.length > 0 ? (
               <RateBenchmarks benchmarks={benchmarks} />
             ) : null}
+
+            {(scope === "all" || scope === "listing") && !loading ? (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {(
+                  [
+                    ["all", "Everything"],
+                    ["instrument", "Instruments"],
+                    ["accessory", "Accessories"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={listingCategory === value}
+                    onClick={() => setListingCategory(value)}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                      listingCategory === value
+                        ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                        : "border-border/80 bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {failed ? (
             <LoadErrorPanel failure={failure} onRetry={retry} />
           ) : loading ? (
-            <div className="space-y-10">
-              <SkeletonPanel label="Listings" />
-              <SkeletonPanel label="Professionals" />
+            <RailsSkeleton />
+          ) : flatMode ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground" aria-live="polite">
+                  {flatItems.length === 0
+                    ? "No results match your filters."
+                    : `Showing ${visibleFlatItems.length} of ${flatItems.length} results${seeAll ? ` in ${seeAll.title}` : ""}`}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={clearFlatMode}>
+                  ← Back to rails
+                </Button>
+              </div>
+              {flatItems.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Nothing matches — try a different search or clear filters.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
+                    {visibleFlatItems.map((item) => (
+                      <FlatResultRow
+                        key={`${item.kind}:${item.id}`}
+                        item={item}
+                        highlighted={highlighted?.kind === item.kind && highlighted.id === item.id}
+                        onOpen={() => handleItemSelect(item)}
+                      />
+                    ))}
+                  </ul>
+                  {visibleFlatItems.length < flatItems.length ? (
+                    <div className="flex justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setFlatLimit((value) => value + FLAT_PAGE_SIZE)}
+                      >
+                        Load more ({flatItems.length - visibleFlatItems.length} remaining)
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
           ) : (
-            <>
-              {showPanel("listing") ? (
-                <RegistryPanel
-                  title="Listings"
-                  count={sortedListings.length}
-                  emptyLabel={
-                    (data?.listings ?? []).length === 0
-                      ? "No instruments published yet."
-                      : "No listings match your search."
-                  }
-                  isEmpty={sortedListings.length === 0}
-                  viewMode={viewMode}
-                  filterHeader={
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {(
-                        [
-                          ["all", "Everything"],
-                          ["instrument", "Instruments"],
-                          ["accessory", "Accessories"],
-                        ] as const
-                      ).map(([value, label]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          aria-pressed={listingCategory === value}
-                          onClick={() => {
-                            setListingCategory(value);
-                            setListingPage(1);
-                          }}
-                          className={cn(
-                            "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border",
-                            listingCategory === value
-                              ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                              : "border-border/80 bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-                          )}
-                        >
-                          {label}
-                          <span className="ml-1.5 font-mono tabular-nums opacity-80">
-                            {value === "all"
-                              ? (data?.listings ?? []).length
-                              : (data?.listings ?? []).filter(
-                                  (row) => row.category === value,
-                                ).length}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  }
-                  pagination={
-                    <Pagination
-                      page={Math.min(listingPage, listingPageCount)}
-                      pageCount={listingPageCount}
-                      onPage={setListingPage}
-                      ariaLabel="Listings pagination"
-                    />
-                  }
-                >
-                  {viewMode === "grid"
-                    ? listingSlice.map((row) => (
-                        <ListingCardItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "listing", id: row.id })
-                          }
-                        />
-                      ))
-                    : listingSlice.map((row) => (
-                        <ListingRowItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "listing", id: row.id })
-                          }
-                        />
-                      ))}
-                </RegistryPanel>
-              ) : null}
-
-              {showPanel("professional") ? (
-                <RegistryPanel
-                  title="Professionals"
-                  count={sortedProfessionals.length}
-                  emptyLabel={
-                    (data?.professionals ?? []).length === 0
-                      ? "No professionals published yet."
-                      : "No professionals match your search."
-                  }
-                  isEmpty={sortedProfessionals.length === 0}
-                  viewMode={viewMode}
-                  pagination={
-                    <Pagination
-                      page={Math.min(professionalPage, professionalPageCount)}
-                      pageCount={professionalPageCount}
-                      onPage={setProfessionalPage}
-                      ariaLabel="Professionals pagination"
-                    />
-                  }
-                >
-                  {viewMode === "grid"
-                    ? professionalSlice.map((row) => (
-                        <ProfessionalCardItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "professional", id: row.id })
-                          }
-                        />
-                      ))
-                    : professionalSlice.map((row) => (
-                        <ProfessionalRowItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "professional", id: row.id })
-                          }
-                        />
-                      ))}
-                </RegistryPanel>
-              ) : null}
-
-              {showPanel("job") ? (
-                <RegistryPanel
-                  title="Open Jobs"
-                  count={sortedJobs.length}
-                  emptyLabel={
-                    (data?.jobs ?? []).length === 0
-                      ? "No jobs published yet."
-                      : "No jobs match your search."
-                  }
-                  isEmpty={sortedJobs.length === 0}
-                  viewMode={viewMode}
-                  pagination={
-                    <Pagination
-                      page={Math.min(jobPage, jobPageCount)}
-                      pageCount={jobPageCount}
-                      onPage={setJobPage}
-                      ariaLabel="Jobs pagination"
-                    />
-                  }
-                >
-                  {viewMode === "grid"
-                    ? jobSlice.map((row) => (
-                        <JobCardItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() => setSelectedId({ kind: "job", id: row.id })}
-                        />
-                      ))
-                    : jobSlice.map((row) => (
-                        <JobRowItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() => setSelectedId({ kind: "job", id: row.id })}
-                        />
-                      ))}
-                </RegistryPanel>
-              ) : null}
-
-              {showPanel("firm") ? (
-                <RegistryPanel
-                  title="Survey Firms"
-                  count={sortedFirms.length}
-                  emptyLabel={
-                    (data?.firms ?? []).length === 0
-                      ? "No firms listed yet."
-                      : "No firms match your search."
-                  }
-                  isEmpty={sortedFirms.length === 0}
-                  viewMode={viewMode}
-                  pagination={
-                    <Pagination
-                      page={Math.min(firmPage, firmPageCount)}
-                      pageCount={firmPageCount}
-                      onPage={setFirmPage}
-                      ariaLabel="Firms pagination"
-                    />
-                  }
-                >
-                  {viewMode === "grid"
-                    ? firmSlice.map((row) => (
-                        <FirmCardItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "firm", id: row.id })
-                          }
-                        />
-                      ))
-                    : firmSlice.map((row) => (
-                        <FirmRowItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "firm", id: row.id })
-                          }
-                        />
-                      ))}
-                </RegistryPanel>
-              ) : null}
-
-              {showPanel("event") ? (
-                <RegistryPanel
-                  title="Training & Events"
-                  count={sortedEvents.length}
-                  emptyLabel={
-                    (data?.events ?? []).length === 0
-                      ? "No training published yet."
-                      : "No training matches your search."
-                  }
-                  isEmpty={sortedEvents.length === 0}
-                  viewMode={viewMode}
-                  pagination={
-                    <Pagination
-                      page={Math.min(eventPage, eventPageCount)}
-                      pageCount={eventPageCount}
-                      onPage={setEventPage}
-                      ariaLabel="Training pagination"
-                    />
-                  }
-                >
-                  {viewMode === "grid"
-                    ? eventSlice.map((row) => (
-                        <EventCardItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "event", id: row.id })
-                          }
-                        />
-                      ))
-                    : eventSlice.map((row) => (
-                        <EventRowItem
-                          key={row.id}
-                          row={row}
-                          onOpen={() =>
-                            setSelectedId({ kind: "event", id: row.id })
-                          }
-                        />
-                      ))}
-                </RegistryPanel>
-              ) : null}
-            </>
+            <div className="space-y-10">
+              {rails
+                .filter((rail) => scope === "all" || rail.kinds.includes(scope as MarketDotKind))
+                .map((rail) => (
+                  <MarketRail
+                    key={rail.id}
+                    rail={rail}
+                    highlightedId={highlighted?.id ?? null}
+                    onSelect={handleItemSelect}
+                    onSeeAll={handleSeeAll}
+                  />
+                ))}
+            </div>
           )}
         </section>
       </main>
@@ -1192,7 +982,7 @@ export default function PublicMarketPage() {
           <div className="space-y-5 py-4">
             <div className="grid grid-cols-2 gap-2">
               {([['all','Everything'],['listing','Listings'],['professional','Professionals'],['job','Jobs'],['firm','Firms'],['event','Training']] as const).map(([value,label]) => (
-                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => { setScope(value); resetRegistryPages(); }}>
+                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => setScope(value)}>
                   {label}
                 </Button>
               ))}
@@ -1343,14 +1133,6 @@ function RateBenchmarks({
 
 // ── Shared bits ─────────────────────────────────────────────────────────────
 
-function NewBadge() {
-  return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-      New
-    </span>
-  );
-}
-
 function LoadErrorPanel({
   failure,
   onRetry,
@@ -1383,918 +1165,20 @@ function LoadErrorPanel({
   );
 }
 
-function SkeletonPanel({ label }: { label: string }) {
+function RailsSkeleton() {
   return (
-    <div aria-hidden="true">
-      <div className="mb-4 h-5 w-36 animate-pulse rounded bg-muted" />
-      <div className="overflow-hidden rounded-none border border-border">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between border-b border-border/60 px-4 py-4 last:border-b-0"
-          >
-            <div className="h-3.5 w-48 animate-pulse rounded bg-muted" />
-            <div className="h-3.5 w-24 animate-pulse rounded bg-muted" />
-          </div>
-        ))}
-      </div>
-      <span className="sr-only">Loading {label.toLowerCase()}…</span>
-    </div>
-  );
-}
-
-function RegistryPanel({
-  title,
-  count,
-  isEmpty,
-  emptyLabel,
-  pagination,
-  viewMode = "grid",
-  filterHeader,
-  children,
-}: {
-  title: string;
-  count: number;
-  isEmpty: boolean;
-  emptyLabel: string;
-  pagination: ReactNode;
-  viewMode?: "grid" | "table";
-  filterHeader?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-          <span className="mr-1 size-2 rounded-full bg-primary" aria-hidden="true" />
-          {title}
-          <span className="ml-1 align-middle font-mono text-xs font-normal tabular-nums text-muted-foreground">
-            ({count})
-          </span>
-        </h2>
-      </div>
-
-      {filterHeader}
-
-      {isEmpty ? (
-        <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.25"
-            strokeLinecap="round"
-            className="mx-auto size-7 text-muted-foreground/50"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="7" />
-            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-            <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
-          </svg>
-          <p className="mt-3 text-sm text-muted-foreground">{emptyLabel}</p>
-        </div>
-      ) : viewMode === "grid" ? (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {children}
-          </div>
-          {pagination}
-        </>
-      ) : (
-        <>
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
-            {children}
-          </ul>
-          {pagination}
-        </>
-      )}
-    </section>
-  );
-}
-
-function Pagination({
-  page,
-  pageCount,
-  onPage,
-  ariaLabel,
-}: {
-  page: number;
-  pageCount: number;
-  onPage: (page: number) => void;
-  ariaLabel: string;
-}) {
-  if (pageCount <= 1) return null;
-  return (
-    <nav
-      aria-label={ariaLabel}
-      className="mt-4 flex items-center justify-between gap-3"
-    >
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPage(page - 1)}
-        disabled={page <= 1}
-      >
-        <ChevronLeft className="mr-1 size-3.5" aria-hidden="true" />
-        Previous
-      </Button>
-      <p
-        className="font-mono text-xs tabular-nums text-muted-foreground"
-        aria-live="polite"
-      >
-        Page {page} of {pageCount}
-      </p>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPage(page + 1)}
-        disabled={page >= pageCount}
-      >
-        Next
-        <ChevronRight className="ml-1 size-3.5" aria-hidden="true" />
-      </Button>
-    </nav>
-  );
-}
-
-function RowShell({
-  onClick,
-  accent,
-  icon,
-  children,
-  ariaLabel,
-}: {
-  onClick: () => void;
-  accent: string;
-  icon: ReactNode;
-  children: ReactNode;
-  ariaLabel: string;
-}) {
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={ariaLabel}
-        className="group flex w-full items-center gap-3 border-l-2 border-transparent px-4 py-4 text-left transition-[background,border-color,transform] hover:-translate-y-px hover:border-l-current hover:bg-muted/60 focus-visible:bg-muted/60"
-      >
-        <span
-          className="size-2 shrink-0 rounded-full transition-transform group-hover:scale-125"
-          style={{ backgroundColor: accent }}
-          aria-hidden="true"
-        />
-        {children}
-        {icon}
-      </button>
-    </li>
-  );
-}
-
-// ── Registry rows ───────────────────────────────────────────────────────────
-
-function ListingRowItem({
-  row,
-  onOpen,
-}: {
-  row: ListingRow;
-  onOpen: () => void;
-}) {
-  return (
-    <RowShell
-      onClick={onOpen}
-      accent={MARKET_DOT_COLORS.listing}
-      icon={
-        <Briefcase
-          className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground"
-          aria-hidden="true"
-        />
-      }
-      ariaLabel={`${row.name}, ${row.type}, ${row.price.toLocaleString()} ${row.currency}${row.listing_type === "hire" ? " per day" : ""}, ${row.location}`}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 truncate font-medium transition-colors group-hover:text-amber-700">
-          <span className="truncate">{row.name}</span>
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {row.category === "accessory" ? "Accessory" : row.type}
-          {row.condition ? ` · ${row.condition}` : ""}
-          {row.listing_type === "hire" ? " · hire" : ""}
-          <span className="sm:hidden"> · {row.location}</span>
-        </p>
-      </div>
-      <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
-        <MapPin className="size-3 shrink-0" aria-hidden="true" />
-        <span className="truncate">{row.location}</span>
-      </div>
-      <p className="shrink-0 text-sm font-semibold tabular-nums">
-        {row.price.toLocaleString()}
-        <span className="ml-1 text-xs font-normal text-muted-foreground">{row.currency}</span>
-        {row.listing_type === "hire" ? (
-          <span className="text-xs font-normal text-muted-foreground">/day</span>
-        ) : null}
-      </p>
-    </RowShell>
-  );
-}
-
-function ProfessionalRowItem({
-  row,
-  onOpen,
-}: {
-  row: ProfessionalRow;
-  onOpen: () => void;
-}) {
-  return (
-    <RowShell
-      onClick={onOpen}
-      accent={MARKET_DOT_COLORS.professional}
-      icon={
-        <UserRound
-          className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground"
-          aria-hidden="true"
-        />
-      }
-      ariaLabel={`${row.name}, ${row.title}, ${row.rate.toLocaleString()} ${row.currency} per ${row.rate_per}, ${row.location}`}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 truncate font-medium transition-colors group-hover:text-cyan-700">
-          <span className="truncate">{row.name}</span>
-          {row.is_verified ? (
-            <BadgeCheck
-              className="size-3.5 shrink-0 text-cyan-600"
-              aria-label="Verified"
-            />
-          ) : null}
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {row.title} · {row.discipline} · {row.experience}
-          <span className="sm:hidden"> · {row.location}</span>
-        </p>
-      </div>
-      <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
-        <MapPin className="size-3 shrink-0" aria-hidden="true" />
-        <span className="truncate">{row.location}</span>
-      </div>
-      <p className="shrink-0 text-sm font-semibold tabular-nums">
-        {row.rating != null && row.rating > 0 ? `${row.rating.toFixed(1)}★ ` : ""}
-        {row.rate.toLocaleString()}
-        <span className="ml-1 text-xs font-normal text-muted-foreground">
-          {row.currency}/{row.rate_per}
-        </span>
-      </p>
-    </RowShell>
-  );
-}
-
-function JobRowItem({ row, onOpen }: { row: JobRow; onOpen: () => void }) {
-  return (
-    <RowShell
-      onClick={onOpen}
-      accent={MARKET_DOT_COLORS.job}
-      icon={
-        <HardHat
-          className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground"
-          aria-hidden="true"
-        />
-      }
-      ariaLabel={`${row.title}, ${row.discipline}, ${row.location}`}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 truncate font-medium transition-colors group-hover:text-violet-700">
-          <span className="truncate">{row.title}</span>
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </p>
-        <p className="mt-0.5 truncate text-xs capitalize text-muted-foreground">
-          {row.discipline} · {row.employment_type}
-          <span className="sm:hidden"> · {row.location}</span>
-        </p>
-      </div>
-      <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
-        <MapPin className="size-3 shrink-0" aria-hidden="true" />
-        <span className="truncate">{row.location}</span>
-      </div>
-      <p className="shrink-0 text-sm font-semibold tabular-nums">
-        {row.rate != null ? (
-          <>
-            {row.rate.toLocaleString()}
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
-              {row.currency}/{row.rate_per ?? "day"}
-            </span>
-          </>
-        ) : (
-          <span className="text-xs font-normal text-muted-foreground">
-            Negotiable
-          </span>
-        )}
-      </p>
-    </RowShell>
-  );
-}
-
-function FirmRowItem({ row, onOpen }: { row: FirmRow; onOpen: () => void }) {
-  return (
-    <RowShell
-      onClick={onOpen}
-      accent={MARKET_DOT_COLORS.firm}
-      icon={
-        <Building2
-          className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground"
-          aria-hidden="true"
-        />
-      }
-      ariaLabel={`${row.name}, ${(row.services ?? []).slice(0, 3).join(", ")}, ${row.location}`}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 truncate font-medium transition-colors group-hover:text-emerald-700">
-          <span className="truncate">{row.name}</span>
-          {row.verified ? (
-            <BadgeCheck
-              className="size-3.5 shrink-0 text-emerald-600"
-              aria-label="Verified"
-            />
-          ) : null}
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {(row.services ?? []).slice(0, 3).join(" · ")}
-          <span className="sm:hidden"> · {row.location}</span>
-        </p>
-      </div>
-      <div className="hidden min-w-0 shrink basis-40 items-center gap-1 text-xs text-muted-foreground sm:flex">
-        <MapPin className="size-3 shrink-0" aria-hidden="true" />
-        <span className="truncate">{row.location}</span>
-      </div>
-      <p className="shrink-0 hidden text-xs tabular-nums text-muted-foreground md:block">
-        {row.staff_count != null ? `${row.staff_count} staff` : ""}
-        {row.staff_count != null && row.founded_year != null ? " · " : ""}
-        {row.founded_year != null ? `est. ${row.founded_year}` : ""}
-      </p>
-    </RowShell>
-  );
-}
-
-function EventRowItem({ row, onOpen }: { row: EventRow; onOpen: () => void }) {
-  return (
-    <RowShell
-      onClick={onOpen}
-      accent={MARKET_DOT_COLORS.event}
-      icon={
-        <GraduationCap
-          className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground"
-          aria-hidden="true"
-        />
-      }
-      ariaLabel={`${row.title}, ${row.provider}, ${formatDate(row.starts_at)}, ${row.location}`}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 truncate font-medium transition-colors group-hover:text-rose-700">
-          <span className="truncate">{row.title}</span>
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </p>
-        <p className="mt-0.5 truncate text-xs capitalize text-muted-foreground">
-          {row.kind} · {row.provider}
-          <span className="sm:hidden"> · {row.location}</span>
-        </p>
-      </div>
-      <div className="hidden min-w-0 shrink basis-52 items-center gap-1 text-xs text-muted-foreground sm:flex">
-        <CalendarDays className="size-3 shrink-0" aria-hidden="true" />
-        <span className="truncate">{formatDate(row.starts_at)}</span>
-      </div>
-      <p className="shrink-0 text-sm font-semibold tabular-nums">
-        {row.price > 0 ? (
-          <>
-            {row.price.toLocaleString()}
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
-              {row.currency}
-            </span>
-          </>
-        ) : (
-          <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Free
-          </span>
-        )}
-        {row.seats_left != null ? (
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
-            {row.seats_left} seats
-          </span>
-        ) : null}
-      </p>
-    </RowShell>
-  );
-}
-
-// ── Registry Cards ──────────────────────────────────────────────────────────
-
-function ListingCardItem({
-  row,
-  onOpen,
-}: {
-  row: ListingRow;
-  onOpen: () => void;
-}) {
-  const photo = row.photos && row.photos.length > 0 ? row.photos[0] : null;
-  const photoUrl = photo ? portfolioMediaUrl(photo) : null;
-
-  return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-0 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-amber-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      {photoUrl ? (
-        <div className="relative h-44 w-full overflow-hidden bg-muted">
-          <img
-            src={photoUrl}
-            alt={row.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-            <span className="rounded-full bg-background/90 px-2.5 py-0.5 text-[11px] font-semibold text-foreground backdrop-blur-xs shadow-xs">
-              {row.category === "accessory" ? "Accessory" : row.type}
-            </span>
-            {row.listing_type === "hire" ? (
-              <span className="rounded-full bg-amber-500/90 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-xs">
-                For Hire
-              </span>
-            ) : null}
-          </div>
-          {isNew(row.created_at) ? (
-            <div className="absolute top-3 right-3">
-              <NewBadge />
-            </div>
-          ) : null}
-          <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white">
-            <span className="flex items-center gap-1 text-xs drop-shadow-xs font-medium">
-              <MapPin className="size-3" />
-              <span className="truncate">{row.location}</span>
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="relative border-b border-border/60 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent px-5 pt-5 pb-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
-                <Briefcase className="size-4" />
-              </span>
-              <span className="rounded-full border border-border/80 bg-background px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
-                {row.category === "accessory" ? "Accessory" : row.type}
-              </span>
-              {row.listing_type === "hire" ? (
-                <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
-                  Hire
-                </span>
-              ) : null}
-            </div>
-            {isNew(row.created_at) ? <NewBadge /> : null}
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-1 flex-col justify-between p-5">
-        <div>
-          {!photoUrl && (
-            <div className="mb-2 flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="size-3 shrink-0" />
-              <span className="truncate">{row.location}</span>
-            </div>
-          )}
-          <h3 className="line-clamp-2 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-amber-700">
-            {row.name}
-          </h3>
-
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {row.condition ? (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                Condition: {row.condition}
-              </span>
-            ) : null}
-            {row.seller ? (
-              <span className="rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground truncate max-w-[180px]">
-                By {row.seller}
-              </span>
-            ) : null}
-          </div>
-
-          {row.specs && row.specs.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1">
-              {row.specs.slice(0, 2).map((s) => (
-                <span
-                  key={s}
-                  className="inline-flex items-center gap-1 rounded bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground"
-                >
-                  <Tag className="size-2.5 text-muted-foreground/60" />
-                  <span className="truncate max-w-[140px]">{s}</span>
-                </span>
-              ))}
-              {row.specs.length > 2 ? (
-                <span className="text-[10px] text-muted-foreground self-center">
-                  +{row.specs.length - 2} more
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
-          <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {row.listing_type === "hire" ? "Daily Rate" : "Price"}
-            </span>
-            <p className="font-mono text-lg font-bold tabular-nums text-foreground">
-              {row.price.toLocaleString()}{" "}
-              <span className="text-xs font-normal text-muted-foreground">
-                {row.currency}
-                {row.listing_type === "hire" ? "/day" : ""}
-              </span>
-            </p>
-          </div>
-          <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-            View
-            <ArrowUpRight className="size-3.5" />
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProfessionalCardItem({
-  row,
-  onOpen,
-}: {
-  row: ProfessionalRow;
-  onOpen: () => void;
-}) {
-  return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-cyan-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      <div>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 font-mono text-sm font-bold text-cyan-700 ring-2 ring-cyan-500/20">
-              {initialsOf(row.name)}
-            </div>
-            <div className="min-w-0">
-              <h3 className="flex items-center gap-1.5 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-cyan-700">
-                <span className="truncate">{row.name}</span>
-                {row.is_verified ? (
-                  <BadgeCheck className="size-4 shrink-0 text-cyan-600" aria-label="Verified" />
-                ) : null}
-              </h3>
-              <p className="truncate text-xs font-medium text-muted-foreground">
-                {row.title}
-              </p>
-            </div>
-          </div>
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 text-muted-foreground">
-            <MapPin className="size-3 shrink-0" />
-            <span className="truncate">{row.location}</span>
-          </span>
-          {row.rating != null && row.rating > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-              <Star className="size-3 fill-amber-500 text-amber-500" />
-              {row.rating.toFixed(1)}
-            </span>
-          ) : null}
-          {row.availability ? (
-            <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-              {row.availability}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
-            {row.discipline}
-          </span>
-          <span className="rounded-md bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground">
-            {row.experience}
-          </span>
-        </div>
-
-        {row.skills && row.skills.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {row.skills.slice(0, 3).map((skill) => (
-              <span
-                key={skill}
-                className="rounded-md bg-cyan-500/5 border border-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-800 dark:text-cyan-300"
-              >
-                {skill}
-              </span>
+    <div className="space-y-10" aria-hidden="true">
+      {[0, 1, 2].map((i) => (
+        <div key={i}>
+          <div className="mb-4 h-5 w-48 animate-pulse rounded bg-muted" />
+          <div className="flex gap-4 overflow-hidden">
+            {[0, 1, 2, 3].map((j) => (
+              <div key={j} className="h-44 w-[240px] shrink-0 animate-pulse rounded-xl bg-muted" />
             ))}
-            {row.skills.length > 3 ? (
-              <span className="text-[10px] text-muted-foreground self-center">
-                +{row.skills.length - 3} more
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
-        <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Rate
-          </span>
-          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
-            {row.rate.toLocaleString()}{" "}
-            <span className="text-xs font-normal text-muted-foreground">
-              {row.currency}/{row.rate_per}
-            </span>
-          </p>
-        </div>
-        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-          Profile
-          <ArrowUpRight className="size-3.5" />
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function JobCardItem({
-  row,
-  onOpen,
-}: {
-  row: JobRow;
-  onOpen: () => void;
-}) {
-  return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-violet-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      <div>
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600">
-              <HardHat className="size-4" />
-            </span>
-            <span className="rounded-full bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 text-[11px] font-semibold capitalize text-violet-700">
-              {row.employment_type}
-            </span>
-          </div>
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </div>
-
-        <h3 className="mt-3 line-clamp-2 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-violet-700">
-          {row.title}
-        </h3>
-        <p className="mt-1 text-xs font-medium text-muted-foreground">
-          {row.discipline}
-        </p>
-
-        <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-          <MapPin className="size-3 shrink-0" />
-          <span className="truncate">{row.location}</span>
-        </div>
-
-        {row.description ? (
-          <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-            {row.description}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
-        <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Compensation
-          </span>
-          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
-            {row.rate != null ? (
-              <>
-                {row.rate.toLocaleString()}{" "}
-                <span className="text-xs font-normal text-muted-foreground">
-                  {row.currency}/{row.rate_per ?? "day"}
-                </span>
-              </>
-            ) : (
-              <span className="text-sm font-medium text-muted-foreground">Negotiable</span>
-            )}
-          </p>
-        </div>
-        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-          Opening
-          <ArrowUpRight className="size-3.5" />
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function FirmCardItem({
-  row,
-  onOpen,
-}: {
-  row: FirmRow;
-  onOpen: () => void;
-}) {
-  return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      <div>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 ring-2 ring-emerald-500/20">
-              <Building2 className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="flex items-center gap-1.5 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-emerald-700">
-                <span className="truncate">{row.name}</span>
-                {row.verified ? (
-                  <BadgeCheck className="size-4 shrink-0 text-emerald-600" aria-label="Verified" />
-                ) : null}
-              </h3>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="size-3 shrink-0" />
-                <span className="truncate">{row.location}</span>
-              </div>
-            </div>
-          </div>
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </div>
-
-        <div className="mt-3.5 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {row.staff_count != null ? (
-            <span className="rounded-md bg-muted px-2 py-0.5 font-medium text-foreground">
-              {row.staff_count} Staff
-            </span>
-          ) : null}
-          {row.founded_year != null ? (
-            <span className="rounded-md bg-muted/60 px-2 py-0.5">
-              Est. {row.founded_year}
-            </span>
-          ) : null}
-        </div>
-
-        {row.about ? (
-          <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-            {row.about}
-          </p>
-        ) : null}
-
-        {row.services && row.services.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {row.services.slice(0, 3).map((service) => (
-              <span
-                key={service}
-                className="rounded-md bg-emerald-500/5 border border-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-300"
-              >
-                {service}
-              </span>
-            ))}
-            {row.services.length > 3 ? (
-              <span className="text-[10px] text-muted-foreground self-center">
-                +{row.services.length - 3} more
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
-        <span className="text-xs font-medium text-muted-foreground">
-          {row.services?.length ?? 0} Services listed
-        </span>
-        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-          View Firm
-          <ArrowUpRight className="size-3.5" />
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function EventCardItem({
-  row,
-  onOpen,
-}: {
-  row: EventRow;
-  onOpen: () => void;
-}) {
-  return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-rose-500/30 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
-      <div>
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
-              <GraduationCap className="size-4" />
-            </span>
-            <span className="rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-[11px] font-semibold capitalize text-rose-700">
-              {row.kind}
-            </span>
-          </div>
-          {isNew(row.created_at) ? <NewBadge /> : null}
-        </div>
-
-        <h3 className="mt-3 line-clamp-2 text-base font-bold tracking-tight text-foreground transition-colors group-hover:text-rose-700">
-          {row.title}
-        </h3>
-        <p className="mt-1 text-xs font-medium text-muted-foreground">
-          By {row.provider}
-        </p>
-
-        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5 font-medium text-foreground">
-            <CalendarDays className="size-3.5 text-rose-600" />
-            <span>{formatDate(row.starts_at)}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <MapPin className="size-3 shrink-0" />
-            <span className="truncate">{row.location}</span>
           </div>
         </div>
-
-        {row.seats_left != null ? (
-          <div className="mt-3">
-            <span className="inline-flex rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-[11px] font-medium text-rose-700">
-              {row.seats_left} seats remaining
-            </span>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="mt-5 flex items-end justify-between border-t border-border/60 pt-3">
-        <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Fee
-          </span>
-          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
-            {row.price > 0 ? (
-              <>
-                {row.price.toLocaleString()}{" "}
-                <span className="text-xs font-normal text-muted-foreground">
-                  {row.currency}
-                </span>
-              </>
-            ) : (
-              <span className="text-sm font-semibold uppercase text-emerald-700">
-                Free
-              </span>
-            )}
-          </p>
-        </div>
-        <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-          Register
-          <ArrowUpRight className="size-3.5" />
-        </span>
-      </div>
+      ))}
+      <span className="sr-only">Loading market registry…</span>
     </div>
   );
 }
