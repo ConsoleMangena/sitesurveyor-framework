@@ -15,6 +15,14 @@ const NEW_WINDOW_MS = 7 * 24 * 60 * 60_000;
 /** Items shown per rail before "See all" takes over. */
 export const RAIL_CAP = 12;
 
+/**
+ * Flat editorial-rows mode replaces the Discovery Rails whenever the user has
+ * an active search, a non-default sort, or an explicit "See all" scope.
+ */
+export function isFlatMode(search: string, sort: string, seeAll: unknown): boolean {
+  return search.trim() !== "" || sort !== "newest" || seeAll !== null;
+}
+
 export function isNew(createdAt: string | null | undefined): boolean {
   if (!createdAt) return false;
   const time = Date.parse(createdAt);

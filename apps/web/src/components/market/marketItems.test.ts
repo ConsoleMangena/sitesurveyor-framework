@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildRails,
+  isFlatMode,
   isNew,
   RAIL_CAP,
   toFirmItem,
@@ -261,5 +262,32 @@ describe("buildRails", () => {
       "e1",
       "e2",
     ]);
+  });
+});
+
+describe("isFlatMode", () => {
+  it("is rails mode with default search, default sort, and no see-all", () => {
+    expect(isFlatMode("", "newest", null)).toBe(false);
+    expect(isFlatMode("   ", "newest", null)).toBe(false);
+  });
+
+  it("enters flat mode on active search (trimmed)", () => {
+    expect(isFlatMode("ts16", "newest", null)).toBe(true);
+    expect(isFlatMode("  ts16  ", "newest", null)).toBe(true);
+  });
+
+  it("enters flat mode on non-default sort", () => {
+    expect(isFlatMode("", "price-asc", null)).toBe(true);
+    expect(isFlatMode("", "price-desc", null)).toBe(true);
+  });
+
+  it("enters flat mode on see-all, regardless of other inputs", () => {
+    expect(isFlatMode("", "newest", { kinds: ["listing"], title: "All listings" })).toBe(true);
+    expect(isFlatMode("x", "price-asc", { kinds: ["job"], title: "Jobs" })).toBe(true);
+  });
+
+  it("whitespace-only search alone keeps rails mode", () => {
+    expect(isFlatMode("   ", "price-asc", null)).toBe(true);
+    expect(isFlatMode("   \t ", "newest", null)).toBe(false);
   });
 });

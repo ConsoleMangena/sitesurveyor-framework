@@ -24,10 +24,10 @@ export default function FlatResultRow({
         onClick={onOpen}
         aria-label={`${item.title}, ${item.priceLabel}, ${item.location}`}
         className={cn(
-          "group flex w-full items-center gap-4 border-l-4 border-transparent bg-card px-4 py-4 text-left transition-[background,border-color,box-shadow] hover:border-l-current hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+          "group flex w-full items-center gap-4 border-l-4 bg-card px-4 py-4 text-left transition-[background,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:bg-muted/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
           highlighted && "ring-2 ring-inset ring-amber-500/70",
         )}
-        style={{ borderLeftColor: highlighted ? accent : undefined }}
+        style={{ borderLeftColor: accent }}
       >
         {item.photoUrl ? (
           <img

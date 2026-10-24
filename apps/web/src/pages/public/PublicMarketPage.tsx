@@ -94,6 +94,7 @@ import MarketRail from "../../components/market/MarketRail.tsx";
 import FlatResultRow from "../../components/market/FlatResultRow.tsx";
 import {
   buildRails,
+  isFlatMode,
   isNew,
   toItem,
   type MarketRailData,
@@ -355,7 +356,7 @@ export default function PublicMarketPage() {
 
   // ── Derived: rails + flat mode ──
 
-  const flatMode = search.trim() !== "" || sort !== "newest" || seeAll !== null;
+  const flatMode = isFlatMode(search, sort, seeAll);
 
   const rails = useMemo(
     () => (data ? buildRails(data, listingCategory, scope) : []),
@@ -494,7 +495,10 @@ export default function PublicMarketPage() {
     setSeeAll(rail);
     setSearch("");
     setFlatLimit(FLAT_PAGE_SIZE);
-    if (rail.kinds.length === 1) setScope(rail.kinds[0]);
+    // Multi-kind rails (e.g. Fresh) show everything in flat mode, so the scope
+    // tab must reset to "Everything" too — otherwise the tab and map stay stale
+    // while the list shows all kinds.
+    setScope(rail.kinds.length === 1 ? rail.kinds[0] : "all");
     requestAnimationFrame(() => registryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
@@ -505,7 +509,6 @@ export default function PublicMarketPage() {
     setFlatLimit(FLAT_PAGE_SIZE);
   };
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handlePinSelect = useCallback((dot: MarketDot) => {
     setSelectedId({ kind: dot.kind, id: dot.id });
     setHighlighted({ kind: dot.kind, id: dot.id });
@@ -514,8 +517,17 @@ export default function PublicMarketPage() {
         .querySelector(`[data-market-item="${dot.kind}:${dot.id}"]`)
         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 60);
-    // Clear any pending timer so rapid pin clicks don't let an older
-    // timeout wipe the newer highlight early.
+    // The detail dialog opens on top of the map, so the highlight is HELD for
+    // as long as the dialog is open; the 2s clear timer starts in onClose
+    // below so the flash is actually visible to the user.
+    if (highlightTimerRef.current !== null) {
+      window.clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+  }, []);
+
+  const handleDialogClose = useCallback(() => {
+    setSelectedId(null);
     if (highlightTimerRef.current !== null) {
       window.clearTimeout(highlightTimerRef.current);
     }
@@ -1033,7 +1045,7 @@ export default function PublicMarketPage() {
         job={selectedJob}
         firm={selectedFirm}
         event={selectedEvent}
-        onClose={() => setSelectedId(null)}
+        onClose={handleDialogClose}
         allowRequest
         onOpenInApp={
           user
