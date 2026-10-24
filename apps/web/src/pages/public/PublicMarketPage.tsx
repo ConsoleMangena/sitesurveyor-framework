@@ -513,7 +513,23 @@ export default function PublicMarketPage() {
     setFlatLimit(FLAT_PAGE_SIZE);
   };
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const handlePinSelect = useCallback((dot: MarketDot) => {
+    setSelectedId({ kind: dot.kind, id: dot.id });
+    setHighlighted({ kind: dot.kind, id: dot.id });
+    window.setTimeout(() => {
+      document
+        .querySelector(`[data-market-item="${dot.kind}:${dot.id}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 60);
+    window.setTimeout(() => setHighlighted(null), 2000);
+  }, []);
+
   const handleItemSelect = (item: RailItem) => {
+    if (item.lat != null && item.lng != null) {
+      globeRef.current?.panTo(item.lat, item.lng);
+      globeRef.current?.flashAt(item.lat, item.lng, MARKET_DOT_COLORS[item.kind]);
+    }
     setSelectedId({ kind: item.kind, id: item.id });
   };
 
@@ -733,7 +749,7 @@ export default function PublicMarketPage() {
                 dots={dots}
                 totalPoints={totalPoints}
                 failed={failed}
-                onSelect={(dot) => setSelectedId({ kind: dot.kind, id: dot.id })}
+                onSelect={handlePinSelect}
                 onRetry={retry}
               />
             </Suspense>
