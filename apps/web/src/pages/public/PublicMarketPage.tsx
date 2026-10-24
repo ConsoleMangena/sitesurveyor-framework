@@ -389,10 +389,6 @@ export default function PublicMarketPage() {
 
   const visibleFlatItems = flatItems.slice(0, flatLimit);
 
-  useEffect(() => {
-    setFlatLimit(FLAT_PAGE_SIZE);
-  }, [search, sort, seeAll, scope, listingCategory]);
-
   // ── Derived: globe dots (scope + location; search stays a registry tool) ──
 
   const toSource = (
@@ -797,7 +793,7 @@ export default function PublicMarketPage() {
                     key={value}
                     type="button"
                     aria-pressed={scope === value}
-                    onClick={() => { setSeeAll(null); setScope(value); }}
+                    onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}
                     className={`shrink-0 whitespace-nowrap rounded-none px-3 py-1.5 text-sm transition-colors ${
                       scope === value
                         ? "bg-accent-bg font-medium text-foreground shadow-sm"
@@ -827,13 +823,19 @@ export default function PublicMarketPage() {
                   <Input
                     placeholder="Search instruments, people, places…"
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setFlatLimit(FLAT_PAGE_SIZE);
+                    }}
                     className="pl-9 pr-9"
                   />
                   {search ? (
                     <button
                       type="button"
-                      onClick={() => setSearch("")}
+                      onClick={() => {
+                        setSearch("");
+                        setFlatLimit(FLAT_PAGE_SIZE);
+                      }}
                       aria-label="Clear search"
                       className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
@@ -844,7 +846,10 @@ export default function PublicMarketPage() {
                 <div className="flex gap-2">
                   <Select
                   value={sort}
-                  onValueChange={(value) => setSort(value as SortKey)}
+                  onValueChange={(value) => {
+                    setSort(value as SortKey);
+                    setFlatLimit(FLAT_PAGE_SIZE);
+                  }}
                 >
                   <SelectTrigger
                     aria-label="Sort results"
@@ -885,7 +890,10 @@ export default function PublicMarketPage() {
                     key={value}
                     type="button"
                     aria-pressed={listingCategory === value}
-                    onClick={() => setListingCategory(value)}
+                    onClick={() => {
+                      setListingCategory(value);
+                      setFlatLimit(FLAT_PAGE_SIZE);
+                    }}
                     className={cn(
                       "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                       listingCategory === value
@@ -1004,12 +1012,12 @@ export default function PublicMarketPage() {
           <div className="space-y-5 py-4">
             <div className="grid grid-cols-2 gap-2">
               {([['all','Everything'],['listing','Listings'],['professional','Professionals'],['job','Jobs'],['firm','Firms'],['event','Training']] as const).map(([value,label]) => (
-                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => { setSeeAll(null); setScope(value); }}>
+                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}>
                   {label}
                 </Button>
               ))}
             </div>
-            <Select value={sort} onValueChange={(value) => setSort(value as SortKey)}>
+            <Select value={sort} onValueChange={(value) => { setSort(value as SortKey); setFlatLimit(FLAT_PAGE_SIZE); }}>
               <SelectTrigger aria-label="Mobile sort results"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="newest">Newest first</SelectItem><SelectItem value="price-asc">Price: low to high</SelectItem><SelectItem value="price-desc">Price: high to low</SelectItem></SelectContent>
             </Select>
