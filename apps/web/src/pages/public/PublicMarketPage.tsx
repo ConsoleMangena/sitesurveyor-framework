@@ -518,12 +518,14 @@ export default function PublicMarketPage() {
         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 60);
     // The detail dialog opens on top of the map, so the highlight is HELD for
-    // as long as the dialog is open; the 2s clear timer starts in onClose
-    // below so the flash is actually visible to the user.
+    // as long as the dialog is open; handleDialogClose re-arms a visible 2s
+    // clear on close. The long fallback only covers the rare case the dialog
+    // fails to open (e.g. the dot vanished from refreshed data), which would
+    // otherwise leave the highlight stuck until the next pin click.
     if (highlightTimerRef.current !== null) {
       window.clearTimeout(highlightTimerRef.current);
-      highlightTimerRef.current = null;
     }
+    highlightTimerRef.current = window.setTimeout(() => setHighlighted(null), 30_000);
   }, []);
 
   const handleDialogClose = useCallback(() => {

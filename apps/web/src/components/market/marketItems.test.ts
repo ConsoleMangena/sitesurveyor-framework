@@ -9,6 +9,7 @@ import {
   toListingItem,
   toProfessionalItem,
   toItem,
+  type MarketRailData,
 } from "./marketItems";
 import type {
   EventRow,
@@ -282,12 +283,29 @@ describe("isFlatMode", () => {
   });
 
   it("enters flat mode on see-all, regardless of other inputs", () => {
-    expect(isFlatMode("", "newest", { kinds: ["listing"], title: "All listings" })).toBe(true);
-    expect(isFlatMode("x", "price-asc", { kinds: ["job"], title: "Jobs" })).toBe(true);
+    const listingRail: MarketRailData = {
+      id: "fresh",
+      title: "All listings",
+      accent: "#000",
+      kinds: ["listing"],
+      items: [],
+    };
+    const jobRail: MarketRailData = {
+      id: "jobs",
+      title: "Jobs",
+      accent: "#000",
+      kinds: ["job"],
+      items: [],
+    };
+    expect(isFlatMode("", "newest", listingRail)).toBe(true);
+    expect(isFlatMode("x", "price-asc", jobRail)).toBe(true);
   });
 
-  it("whitespace-only search alone keeps rails mode", () => {
-    expect(isFlatMode("   ", "price-asc", null)).toBe(true);
+  it("whitespace-only search with default sort keeps rails mode", () => {
     expect(isFlatMode("   \t ", "newest", null)).toBe(false);
+  });
+
+  it("whitespace-only search with non-default sort still enters flat mode", () => {
+    expect(isFlatMode("   ", "price-asc", null)).toBe(true);
   });
 });

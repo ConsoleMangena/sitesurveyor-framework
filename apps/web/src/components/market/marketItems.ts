@@ -19,7 +19,11 @@ export const RAIL_CAP = 12;
  * Flat editorial-rows mode replaces the Discovery Rails whenever the user has
  * an active search, a non-default sort, or an explicit "See all" scope.
  */
-export function isFlatMode(search: string, sort: string, seeAll: unknown): boolean {
+export function isFlatMode(
+  search: string,
+  sort: string,
+  seeAll: MarketRailData | null,
+): boolean {
   return search.trim() !== "" || sort !== "newest" || seeAll !== null;
 }
 
