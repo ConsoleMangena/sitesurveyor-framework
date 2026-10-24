@@ -2,7 +2,7 @@
 
 export function formatUsd(
   value: number | null | undefined,
-  options: { compact?: boolean } = {},
+  options: { compact?: boolean; digits?: number } = {},
 ): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "—";
@@ -10,6 +10,9 @@ export function formatUsd(
   const compact = options.compact ?? false;
   if (compact && Math.abs(value) >= 1_000_000) {
     return `$${formatCompact(value)}`;
+  }
+  if (options.digits !== undefined) {
+    return `$${value.toFixed(options.digits)}`;
   }
   if (Math.abs(value) < 1 && value !== 0) {
     return `$${value.toFixed(4)}`;

@@ -123,3 +123,44 @@ export function SolanaWordmark({
     </svg>
   );
 }
+
+/**
+ * Official USDC (USD Coin) Logo Mark.
+ * Renders the circular brand blue (#2775CA) mark with crisp white currency glyph.
+ */
+export function UsdcLogoMark({
+  size = 20,
+  className,
+  style,
+  ...props
+}: SVGProps<SVGSVGElement> & { size?: number | string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={{ display: "inline-block", verticalAlign: "middle", ...style }}
+      aria-label="USDC"
+      {...props}
+    >
+      <circle cx="16" cy="16" r="16" fill="#2775CA" />
+      <path
+        d="M20.2 18.3c0-2-1.2-2.7-3.5-3-1.7-.3-2.1-.7-2.1-1.5 0-.8.6-1.3 1.8-1.3 1.2 0 1.8.4 2 1.4.1.3.3.5.6.5h1.2c.3 0 .6-.3.5-.6-.3-1.6-1.5-2.7-3.1-2.9V9.5c0-.3-.3-.6-.6-.6h-1.2c-.3 0-.6.3-.6.6v1.4c-1.8.3-3 1.5-3 3.1 0 2 1.2 2.7 3.5 3 1.6.3 2.1.8 2.1 1.6 0 .9-.8 1.4-1.9 1.4-1.4 0-2.1-.5-2.3-1.6-.1-.3-.3-.5-.6-.5h-1.3c-.3 0-.6.3-.5.6.3 1.8 1.6 2.9 3.4 3.2v1.4c0 .3.3.6.6.6h1.2c.3 0 .6-.3.6-.6v-1.4c1.9-.3 3.2-1.6 3.2-3.4z"
+        fill="#FFFFFF"
+      />
+      <path
+        d="M16 4.5C9.65 4.5 4.5 9.65 4.5 16c0 2.8.1 5.5.1 5.5.1.3.3.5.6.5.3 0 .5-.2.5-.5 0 0-.1-2.7-.1-5.5 0-5.8 4.7-10.5 10.4-10.5 5.7 0 10.4 4.7 10.4 10.5 0 2.8-.1 5.5-.1 5.5 0 .3.2.5.5.5.3 0 .5-.2.6-.5 0 0 .1-2.7.1-5.5 0-6.35-5.15-11.5-11.5-11.5z"
+        fill="#FFFFFF"
+        fillOpacity="0.45"
+      />
+      <path
+        d="M16 27.5c6.35 0 11.5-5.15 11.5-11.5 0-2.8-.1-5.5-.1-5.5 0-.3-.2-.5-.5-.5-.3 0-.5.2-.6.5 0 0 .1 2.7.1 5.5 0 5.8-4.7 10.5-10.4 10.5-5.7 0-10.4-4.7-10.4-10.5 0-2.8.1-5.5.1-5.5-.1-.3-.3-.5-.6-.5-.3 0-.5.2-.5.5 0 0 .1 2.7.1 5.5 0 6.35 5.15 11.5 11.5 11.5z"
+        fill="#FFFFFF"
+        fillOpacity="0.45"
+      />
+    </svg>
+  );
+}

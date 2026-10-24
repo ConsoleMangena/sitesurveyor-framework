@@ -12,7 +12,9 @@ import {
   formatUsd,
 } from "../lib/format.ts";
 import type { SolanaMarketSnapshot } from "../data/solanaMarket.ts";
-import { SolanaLogoMark } from "./SolanaLogos.tsx";
+import { SolanaLogoMark, UsdcLogoMark } from "./SolanaLogos.tsx";
+
+export type MarketToken = "SOL" | "USDC";
 
 type Timeframe = "1H" | "24H" | "7D" | "30D";
 type ChartMode = "candle" | "line";
@@ -27,19 +29,53 @@ interface CandleData {
   isUp: boolean;
 }
 
-interface SolanaMarketChartProps {
+export interface SolanaMarketChartProps {
   snapshot: SolanaMarketSnapshot;
+  selectedToken?: MarketToken;
+  onTokenChange?: (token: MarketToken) => void;
+  hideTokenSelector?: boolean;
 }
 
-export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
+export function SolanaMarketChart({
+  snapshot,
+  selectedToken,
+  onTokenChange,
+  hideTokenSelector = false,
+}: SolanaMarketChartProps) {
+  const [internalToken, setInternalToken] = useState<MarketToken>("SOL");
+  const activeToken = selectedToken ?? internalToken;
+
+  const handleTokenSelect = (token: MarketToken) => {
+    if (!selectedToken) {
+      setInternalToken(token);
+    }
+    onTokenChange?.(token);
+  };
+
+  const isUsdc = activeToken === "USDC";
+
   const [timeframe, setTimeframe] = useState<Timeframe>("24H");
   const [chartMode, setChartMode] = useState<ChartMode>("candle");
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const basePrice = snapshot.price ?? 140;
-  const change24h = snapshot.change24h ?? 2.4;
+  const basePrice = isUsdc
+    ? (snapshot.usdc?.price ?? 1.0)
+    : (snapshot.price ?? 140);
 
-  // Generate deterministic candlestick series based on current price and 24h trend
+  const change24h = isUsdc
+    ? (snapshot.usdc?.change24h ?? 0.02)
+    : (snapshot.change24h ?? 2.4);
+
+  const volume24h = isUsdc
+    ? (snapshot.usdc?.volume24h ?? 4_800_000_000)
+    : (snapshot.volume24h ?? 2_800_000_000);
+
+  const formatPrice = (val: number | null | undefined) => {
+    if (val === null || val === undefined || !Number.isFinite(val)) return "—";
+    return formatUsd(val, isUsdc ? { digits: 4 } : undefined);
+  };
+
+  // Generate deterministic candlestick series based on active token price and trend
   const candles: CandleData[] = useMemo(() => {
     const count = timeframe === "1H" ? 24 : timeframe === "24H" ? 24 : timeframe === "7D" ? 28 : 30;
     const now = Date.now();
@@ -52,7 +88,13 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
             ? (7 * 24 * 60 * 60 * 1000) / count
             : (30 * 24 * 60 * 60 * 1000) / count;
 
-    const startPrice = basePrice * (1 - (change24h / 100) * (timeframe === "1H" ? 0.15 : timeframe === "24H" ? 1 : timeframe === "7D" ? 1.8 : 2.5));
+    const trendMultiplier = isUsdc ? 0.0003 : 1;
+    const startPrice =
+      basePrice *
+      (1 -
+        (change24h / 100) *
+          trendMultiplier *
+          (timeframe === "1H" ? 0.15 : timeframe === "24H" ? 1 : timeframe === "7D" ? 1.8 : 2.5));
     let curPrice = startPrice;
 
     const list: CandleData[] = [];
@@ -68,21 +110,31 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
       const progress = i / (totalStep - 1);
       const target = basePrice;
       const pull = (target - curPrice) * (0.1 + progress * 0.15);
-      const noise = (Math.sin(i * 4.3 + 1.2) * 0.02 + Math.cos(i * 2.7) * 0.015) * basePrice;
+
+      // Stablecoins like USDC exhibit micro-movements around 1.0000; SOL fluctuates normally
+      const noise = isUsdc
+        ? (Math.sin(i * 4.3 + 1.2) * 0.0006 + Math.cos(i * 2.7) * 0.0004) * basePrice
+        : (Math.sin(i * 4.3 + 1.2) * 0.02 + Math.cos(i * 2.7) * 0.015) * basePrice;
+
       const open = curPrice;
       let close = i === totalStep - 1 ? basePrice : curPrice + pull + noise;
-      if (close < 0) close = basePrice * 0.9;
+      if (isUsdc) {
+        close = Math.min(1.003, Math.max(0.997, close));
+      } else if (close < 0) {
+        close = basePrice * 0.9;
+      }
 
-      const high = Math.max(open, close) + Math.abs(Math.sin(i * 3.1) * 0.012 * basePrice);
-      const low = Math.min(open, close) - Math.abs(Math.cos(i * 2.9) * 0.012 * basePrice);
-      const vol = (snapshot.volume24h ? snapshot.volume24h / totalStep : 85_000_000) * (0.6 + Math.abs(Math.sin(i * 1.7)) * 0.8);
+      const wickScale = isUsdc ? 0.0004 : 0.012;
+      const high = Math.max(open, close) + Math.abs(Math.sin(i * 3.1) * wickScale * basePrice);
+      const low = Math.min(open, close) - Math.abs(Math.cos(i * 2.9) * wickScale * basePrice);
+      const vol = (volume24h ? volume24h / totalStep : 85_000_000) * (0.6 + Math.abs(Math.sin(i * 1.7)) * 0.8);
       const isUp = close >= open;
 
       list.push({ timeStr, open, high, low, close, volume: vol, isUp });
       curPrice = close;
     }
     return list;
-  }, [timeframe, basePrice, change24h, snapshot.volume24h]);
+  }, [timeframe, basePrice, change24h, volume24h, isUsdc]);
 
   // Bounds for price and volume
   const { minPrice, maxPrice, maxVol } = useMemo(() => {
@@ -94,13 +146,13 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
       if (c.high > max) max = c.high;
       if (c.volume > maxV) maxV = c.volume;
     }
-    const pad = (max - min) * 0.08 || 1;
+    const pad = (max - min) * 0.08 || (isUsdc ? 0.0005 : 1);
     return {
       minPrice: min - pad,
       maxPrice: max + pad,
       maxVol: maxV || 1,
     };
-  }, [candles]);
+  }, [candles, isUsdc]);
 
   // Chart coordinate constants
   const svgWidth = 860;
@@ -109,7 +161,7 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
   const priceBottom = 200;
   const volTop = 225;
   const volBottom = 270;
-  const rightPad = 65;
+  const rightPad = isUsdc ? 75 : 65;
   const leftPad = 15;
   const chartW = svgWidth - leftPad - rightPad;
 
@@ -165,11 +217,11 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <SolanaLogoMark size={28} />
+          {isUsdc ? <UsdcLogoMark size={28} /> : <SolanaLogoMark size={28} />}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "var(--web3-text)", letterSpacing: "-0.01em" }}>
-                Solana
+                {isUsdc ? "USD Coin" : "Solana"}
               </span>
               <span
                 style={{
@@ -177,11 +229,11 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
                   fontWeight: 600,
                   padding: "1px 6px",
                   borderRadius: 4,
-                  background: "rgba(0,0,0,0.06)",
-                  color: "var(--web3-text-muted)",
+                  background: isUsdc ? "rgba(39, 117, 202, 0.12)" : "rgba(0,0,0,0.06)",
+                  color: isUsdc ? "#2775CA" : "var(--web3-text-muted)",
                 }}
               >
-                SOL / USD
+                {isUsdc ? "USDC / USD" : "SOL / USD"}
               </span>
               <span className="web3-status-inline" style={{ fontSize: 11 }}>
                 <span className="web3-live-dot" aria-hidden="true" />
@@ -190,7 +242,7 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
               <span className="web3-mono" style={{ fontSize: 20, fontWeight: 700, color: "var(--web3-text)" }}>
-                {formatUsd(activeCandle?.close ?? basePrice)}
+                {formatPrice(activeCandle?.close ?? basePrice)}
               </span>
               <span
                 className={`web3-mono ${change24h >= 0 ? "web3-delta-up" : "web3-delta-down"}`}
@@ -229,20 +281,20 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
               </span>
               <span>
                 <span style={{ opacity: 0.65 }}>O: </span>
-                <strong style={{ color: "var(--web3-text)" }}>{formatUsd(activeCandle.open)}</strong>
+                <strong style={{ color: "var(--web3-text)" }}>{formatPrice(activeCandle.open)}</strong>
               </span>
               <span>
                 <span style={{ opacity: 0.65 }}>H: </span>
-                <strong style={{ color: "#16a34a" }}>{formatUsd(activeCandle.high)}</strong>
+                <strong style={{ color: "#16a34a" }}>{formatPrice(activeCandle.high)}</strong>
               </span>
               <span>
                 <span style={{ opacity: 0.65 }}>L: </span>
-                <strong style={{ color: "#dc2626" }}>{formatUsd(activeCandle.low)}</strong>
+                <strong style={{ color: "#dc2626" }}>{formatPrice(activeCandle.low)}</strong>
               </span>
               <span>
                 <span style={{ opacity: 0.65 }}>C: </span>
                 <strong style={{ color: activeCandle.isUp ? "#16a34a" : "#dc2626" }}>
-                  {formatUsd(activeCandle.close)}
+                  {formatPrice(activeCandle.close)}
                 </strong>
               </span>
               <span>
@@ -253,8 +305,73 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
           )}
         </div>
 
-        {/* Chart Controls (Timeframe & Mode) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Chart Controls (Asset Switcher, Timeframe & Mode) */}
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          {/* Asset Switcher (SOL vs USDC) */}
+          {!hideTokenSelector && (
+            <div
+              role="tablist"
+              aria-label="Select market asset"
+              style={{
+                display: "inline-flex",
+                borderRadius: 8,
+                border: "1px solid var(--web3-border)",
+                padding: 2,
+                background: "var(--web3-bg-2)",
+                gap: 2,
+              }}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeToken === "SOL"}
+                onClick={() => handleTokenSelect("SOL")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "3px 9px",
+                  fontSize: 11,
+                  fontWeight: 650,
+                  borderRadius: 6,
+                  border: "none",
+                  cursor: "pointer",
+                  background: activeToken === "SOL" ? "var(--web3-panel)" : "transparent",
+                  color: activeToken === "SOL" ? "var(--web3-brand)" : "var(--web3-text-muted)",
+                  boxShadow: activeToken === "SOL" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <SolanaLogoMark size={13} />
+                <span>SOL</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeToken === "USDC"}
+                onClick={() => handleTokenSelect("USDC")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "3px 9px",
+                  fontSize: 11,
+                  fontWeight: 650,
+                  borderRadius: 6,
+                  border: "none",
+                  cursor: "pointer",
+                  background: activeToken === "USDC" ? "var(--web3-panel)" : "transparent",
+                  color: activeToken === "USDC" ? "#2775CA" : "var(--web3-text-muted)",
+                  boxShadow: activeToken === "USDC" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <UsdcLogoMark size={13} />
+                <span>USDC</span>
+              </button>
+            </div>
+          )}
+
           {/* Timeframe buttons */}
           <div
             style={{
@@ -370,7 +487,7 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
                 fontSize={10}
                 fontFamily="var(--web3-mono)"
               >
-                ${val.toFixed(val < 10 ? 2 : 1)}
+                {isUsdc ? `$${val.toFixed(4)}` : `$${val.toFixed(val < 10 ? 2 : 1)}`}
               </text>
             </g>
           ))}
@@ -553,19 +670,19 @@ export function SolanaMarketChart({ snapshot }: SolanaMarketChartProps) {
           <span>
             24h Range:{" "}
             <strong className="web3-mono" style={{ color: "var(--web3-text)" }}>
-              {formatUsd(minPrice)} – {formatUsd(maxPrice)}
+              {formatPrice(minPrice)} – {formatPrice(maxPrice)}
             </strong>
           </span>
           <span>
             24h Volume:{" "}
             <strong className="web3-mono" style={{ color: "var(--web3-text)" }}>
-              {formatUsd(snapshot.volume24h, { compact: true })}
+              {formatUsd(volume24h, { compact: true })}
             </strong>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 10, color: "var(--web3-text-dim)" }}>
-            Powered by Solana Mainnet Data Feed
+            Powered by Solana Mainnet Data Feed ({isUsdc ? "USDC SPL" : "SOL Native"})
           </span>
         </div>
       </div>

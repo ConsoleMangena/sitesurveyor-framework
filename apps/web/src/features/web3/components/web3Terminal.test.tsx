@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,7 @@ vi.mock("../../../lib/supabase/client.ts", () => ({
 import { MarketTicker } from "./MarketTicker.tsx";
 import { MarketStatTiles } from "./MarketStatTiles.tsx";
 import { SolanaMarketChart } from "./SolanaMarketChart.tsx";
+import { Web3MarketTerminal } from "./Web3MarketTerminal.tsx";
 import { PortfolioPanel } from "./PortfolioPanel.tsx";
 import { EMPTY_MARKET_SNAPSHOT } from "../data/solanaMarket.ts";
 import type { SolanaMarketSnapshot } from "../data/solanaMarket.ts";
@@ -163,5 +164,75 @@ describe("SolanaMarketChart", () => {
     expect(screen.getByRole("button", { name: "30D" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Candlestick Chart" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Line Area Chart" })).toBeInTheDocument();
+  });
+
+  it("switches to USDC candlesticks when USDC asset tab is clicked", () => {
+    render(<SolanaMarketChart snapshot={SNAPSHOT} />);
+
+    const usdcTab = screen.getByRole("tab", { name: /USDC/i });
+    expect(usdcTab).toBeInTheDocument();
+    fireEvent.click(usdcTab);
+
+    expect(screen.getByText("USD Coin")).toBeInTheDocument();
+    expect(screen.getByText("USDC / USD")).toBeInTheDocument();
+    expect(screen.getByText("Powered by Solana Mainnet Data Feed (USDC SPL)")).toBeInTheDocument();
+  });
+});
+
+describe("Web3MarketTerminal", () => {
+  it("renders unified terminal with SOL and USDC asset tabs", () => {
+    render(
+      <Web3MarketTerminal
+        snapshot={SNAPSHOT}
+        loading={false}
+        error={null}
+        onRefresh={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Web3 Market Terminal")).toBeInTheDocument();
+    expect(screen.getByText("Solana Mainnet")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /SOL/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /USDC/i })).toBeInTheDocument();
+    expect(screen.getByText("Solana On-Chain Telemetry")).toBeInTheDocument();
+    expect(screen.getByText("SiteSurveyor SPL Settlement")).toBeInTheDocument();
+  });
+
+  it("switches active token between SOL and USDC in terminal", () => {
+    render(
+      <Web3MarketTerminal
+        snapshot={SNAPSHOT}
+        loading={false}
+        error={null}
+        onRefresh={() => {}}
+      />,
+    );
+
+    const usdcTab = screen.getByRole("tab", { name: /USDC/i });
+    fireEvent.click(usdcTab);
+
+    expect(screen.getAllByText("USD Coin").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("USDC / USD").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("collapses and expands technical chart view", () => {
+    render(
+      <Web3MarketTerminal
+        snapshot={SNAPSHOT}
+        loading={false}
+        error={null}
+        onRefresh={() => {}}
+      />,
+    );
+
+    const toggleBtn = screen.getByRole("button", { name: /Collapse Chart/i });
+    fireEvent.click(toggleBtn);
+
+    expect(screen.getByText("Show Technical Candlestick Chart →")).toBeInTheDocument();
+
+    const expandBtn = screen.getByText("Show Technical Candlestick Chart →");
+    fireEvent.click(expandBtn);
+
+    expect(screen.getByText("Web3 Market Terminal")).toBeInTheDocument();
   });
 });

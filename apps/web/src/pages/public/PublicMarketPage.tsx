@@ -35,10 +35,8 @@ import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
 import { signOut } from "../../lib/auth/session.ts";
 import { getWorkspaceShellAccountLabel } from "../../features/workspace/account.ts";
-import { MarketTicker } from "../../features/web3/components/MarketTicker.tsx";
-import { SolanaMarketChart } from "../../features/web3/components/SolanaMarketChart.tsx";
-import { MarketStatTiles } from "../../features/web3/components/MarketStatTiles.tsx";
-import { SolanaLogoMark } from "../../features/web3/components/SolanaLogos.tsx";
+import { Web3MarketTerminal } from "../../features/web3/components/Web3MarketTerminal.tsx";
+import { SolanaLogoMark, UsdcLogoMark } from "../../features/web3/components/SolanaLogos.tsx";
 import { useSolanaMarketFeed } from "../../features/web3/hooks/useSolanaMarketFeed.ts";
 import { formatUsd } from "../../features/web3/lib/format.ts";
 import {
@@ -712,10 +710,10 @@ export default function PublicMarketPage() {
                 <span className="web3-status-inline" style={{ fontSize: 12, color: "var(--web3-text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <SolanaLogoMark size={14} />
                   <span className="web3-live-dot" aria-hidden="true" />
-                  Solana Mainnet Live
+                  Solana Live
                 </span>
                 <span className="web3-mono font-semibold" style={{ fontSize: 13, color: "var(--web3-text)" }}>
-                  {formatUsd(market.snapshot.price)}
+                  SOL {formatUsd(market.snapshot.price)}
                 </span>
                 <span
                   className={`web3-mono text-xs font-semibold ${market.snapshot.change24h !== null && market.snapshot.change24h < 0 ? "web3-delta-down" : "web3-delta-up"}`}
@@ -723,6 +721,11 @@ export default function PublicMarketPage() {
                   {market.snapshot.change24h === null
                     ? "—"
                     : `${market.snapshot.change24h > 0 ? "+" : ""}${market.snapshot.change24h.toFixed(2)}%`}
+                </span>
+                <span style={{ color: "var(--web3-border)" }}>•</span>
+                <span className="web3-mono font-semibold inline-flex items-center gap-1.5" style={{ fontSize: 13, color: "var(--web3-text)" }}>
+                  <UsdcLogoMark size={14} />
+                  USDC $1.00
                 </span>
                 <span className="text-xs text-muted-foreground">· Global Marketplace</span>
               </div>
@@ -769,17 +772,13 @@ export default function PublicMarketPage() {
 
         <section
           aria-label="Web3 market terminal"
-          className="mx-auto w-full max-w-7xl space-y-4 px-4 pt-8 sm:px-6"
+          className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6"
         >
-          <MarketTicker
+          <Web3MarketTerminal
             snapshot={market.snapshot}
             loading={market.loading}
             error={market.error}
             onRefresh={market.refresh}
-          />
-          <SolanaMarketChart snapshot={market.snapshot} />
-          <MarketStatTiles
-            snapshot={market.snapshot}
           />
         </section>
 

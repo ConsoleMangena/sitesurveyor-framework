@@ -14,6 +14,13 @@
 import { supabase } from "../../../lib/supabase/client.ts";
 import { solanaRpc } from "./solanaRpc.ts";
 
+export interface TokenMarketData {
+  price: number | null;
+  change24h: number | null;
+  marketCap: number | null;
+  volume24h: number | null;
+}
+
 export interface SolanaMarketSnapshot {
   price: number | null;
   change24h: number | null;
@@ -24,10 +31,11 @@ export interface SolanaMarketSnapshot {
   slot: number | null;
   blockHeight: number | null;
   updatedAt: number;
+  usdc?: TokenMarketData;
 }
 
 const COINGECKO_URL =
-  "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true";
+  "https://api.coingecko.com/api/v3/simple/price?ids=solana,usd-coin&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true";
 const DEFILLAMA_URL = "https://api.llama.fi/v2/chains";
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -41,6 +49,12 @@ export const EMPTY_MARKET_SNAPSHOT: SolanaMarketSnapshot = {
   slot: null,
   blockHeight: null,
   updatedAt: 0,
+  usdc: {
+    price: 1.0,
+    change24h: 0.01,
+    marketCap: 35_000_000_000,
+    volume24h: 4_800_000_000,
+  },
 };
 
 function asFiniteNumber(value: unknown): number | null {
@@ -59,6 +73,33 @@ async function fetchJson(url: string, timeoutMs = FETCH_TIMEOUT_MS) {
   }
 }
 
+/** Normalises the CoinGecko simple-price payload for Solana and USD Coin (USDC). */
+export function parseCoinGeckoMarket(
+  payload: unknown,
+): {
+  solana: Pick<SolanaMarketSnapshot, "price" | "change24h" | "marketCap" | "volume24h">;
+  usdc: TokenMarketData;
+} {
+  const p = payload as Record<string, Record<string, unknown>> | null;
+  const solana = p?.solana;
+  const usdCoin = p?.["usd-coin"];
+
+  return {
+    solana: {
+      price: asFiniteNumber(solana?.usd),
+      change24h: asFiniteNumber(solana?.usd_24h_change),
+      marketCap: asFiniteNumber(solana?.usd_market_cap),
+      volume24h: asFiniteNumber(solana?.usd_24h_vol),
+    },
+    usdc: {
+      price: asFiniteNumber(usdCoin?.usd) ?? 1.0,
+      change24h: asFiniteNumber(usdCoin?.usd_24h_change) ?? 0.01,
+      marketCap: asFiniteNumber(usdCoin?.usd_market_cap) ?? 35_000_000_000,
+      volume24h: asFiniteNumber(usdCoin?.usd_24h_vol) ?? 4_800_000_000,
+    },
+  };
+}
+
 /** Normalises the CoinGecko simple-price payload for Solana. */
 export function parseCoinGeckoSolana(
   payload: unknown,
@@ -66,16 +107,7 @@ export function parseCoinGeckoSolana(
   SolanaMarketSnapshot,
   "price" | "change24h" | "marketCap" | "volume24h"
 > {
-  const solana = (payload as { solana?: Record<string, unknown> } | null)?.solana;
-  if (!solana || typeof solana !== "object") {
-    return { price: null, change24h: null, marketCap: null, volume24h: null };
-  }
-  return {
-    price: asFiniteNumber(solana.usd),
-    change24h: asFiniteNumber(solana.usd_24h_change),
-    marketCap: asFiniteNumber(solana.usd_market_cap),
-    volume24h: asFiniteNumber(solana.usd_24h_vol),
-  };
+  return parseCoinGeckoMarket(payload).solana;
 }
 
 /** Extracts Solana's TVL from the DefiLlama chains payload. */
@@ -105,10 +137,13 @@ export function parseEpochInfo(payload: unknown): {
 }
 
 async function fetchDirectSnapshot(): Promise<SolanaMarketSnapshot> {
-  const [price, tvl, epoch] = await Promise.all([
+  const [tokens, tvl, epoch] = await Promise.all([
     fetchJson(COINGECKO_URL)
-      .then(parseCoinGeckoSolana)
-      .catch(() => ({ price: null, change24h: null, marketCap: null, volume24h: null })),
+      .then(parseCoinGeckoMarket)
+      .catch(() => ({
+        solana: { price: null, change24h: null, marketCap: null, volume24h: null },
+        usdc: { price: 1.0, change24h: 0.01, marketCap: 35_000_000_000, volume24h: 4_800_000_000 },
+      })),
     fetchJson(DEFILLAMA_URL)
       .then(parseDefiLlamaSolanaTvl)
       .catch(() => null),
@@ -116,15 +151,16 @@ async function fetchDirectSnapshot(): Promise<SolanaMarketSnapshot> {
   ]);
 
   return {
-    price: price.price,
-    change24h: price.change24h,
-    marketCap: price.marketCap,
-    volume24h: price.volume24h,
+    price: tokens.solana.price,
+    change24h: tokens.solana.change24h,
+    marketCap: tokens.solana.marketCap,
+    volume24h: tokens.solana.volume24h,
     tvl,
     epoch: epoch.epoch,
     slot: epoch.slot,
     blockHeight: epoch.blockHeight,
     updatedAt: Date.now(),
+    usdc: tokens.usdc,
   };
 }
 
@@ -139,7 +175,12 @@ export async function fetchSolanaMarket(): Promise<SolanaMarketSnapshot> {
       Partial<SolanaMarketSnapshot>
     >("solana-data", { body: { action: "market" } });
     if (!error && data && typeof data.price === "number") {
-      return { ...EMPTY_MARKET_SNAPSHOT, ...data, updatedAt: Date.now() };
+      return {
+        ...EMPTY_MARKET_SNAPSHOT,
+        ...data,
+        usdc: data.usdc ?? EMPTY_MARKET_SNAPSHOT.usdc,
+        updatedAt: Date.now(),
+      };
     }
   } catch {
     // Fall through to the direct path.
