@@ -377,14 +377,19 @@ export default function PublicMarketPage() {
       kind: MarketDotKind,
       rows: Array<ListingRow | ProfessionalRow | JobRow | FirmRow | EventRow>,
     ) => (allowed === null || allowed.has(kind) ? rows.map((row) => toItem(kind, row)) : []);
-    return [
+    const merged = [
       ...collect("listing", sortedListings),
       ...collect("professional", sortedProfessionals),
       ...collect("job", sortedJobs),
       ...collect("firm", sortedFirms),
       ...collect("event", sortedEvents),
-    ].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-  }, [data, seeAll, scope, sortedListings, sortedProfessionals, sortedJobs, sortedFirms, sortedEvents]);
+    ];
+    // Re-sort chronologically only for "newest"; price sorts keep the stable
+    // per-kind group order (cross-kind price comparators are meaningless).
+    return sort === "newest"
+      ? merged.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      : merged;
+  }, [data, seeAll, scope, sort, sortedListings, sortedProfessionals, sortedJobs, sortedFirms, sortedEvents]);
 
   const visibleFlatItems = flatItems.slice(0, flatLimit);
 
@@ -775,7 +780,7 @@ export default function PublicMarketPage() {
                     key={value}
                     type="button"
                     aria-pressed={scope === value}
-                    onClick={() => setScope(value)}
+                    onClick={() => { setSeeAll(null); setScope(value); }}
                     className={`shrink-0 whitespace-nowrap rounded-none px-3 py-1.5 text-sm transition-colors ${
                       scope === value
                         ? "bg-accent-bg font-medium text-foreground shadow-sm"
@@ -982,7 +987,7 @@ export default function PublicMarketPage() {
           <div className="space-y-5 py-4">
             <div className="grid grid-cols-2 gap-2">
               {([['all','Everything'],['listing','Listings'],['professional','Professionals'],['job','Jobs'],['firm','Firms'],['event','Training']] as const).map(([value,label]) => (
-                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => setScope(value)}>
+                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => { setSeeAll(null); setScope(value); }}>
                   {label}
                 </Button>
               ))}
