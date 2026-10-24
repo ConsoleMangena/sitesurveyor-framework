@@ -1,22 +1,17 @@
 /*
-Design contract — /market public surface (REVISED after user review: light
-theme pinned over the earlier mission-control dark world): THESIS: the open
-market as a live directory — an edge-to-edge light basemap globe carrying the
-headline over a legibility scrim, a market-pulse stat strip, then divided
-registry rows instead of card grids.
-OWN-WORLD: app shadcn tokens throughout (background, card, muted, border,
-primary); one accent hue per directory kind carried from data — amber =
-listings/instruments, cyan = professionals, violet = jobs, emerald = firms,
-rose = training — echoed in pins, ticks, legend, stat cards and hover tints;
-tabular numerals for prices/rates/counts; no custom display face. STORY:
-visitor sees Earth and its pinned activity in seconds, reads scale from the
-pulse strip and HUD pills, narrows by kind/location/sort, paginates through
-registry sections (Previous / Next), opens a detail dialog with a sign-in
-path. FIRST VIEWPORT: slim sticky header, then the full-width globe at ~68vh
-with the display heading bottom-left over a scrim, telemetry pill top-left,
-legend bottom-right, cursor coordinate pill top-right. SIGNATURE: live
-lat/lng readout tracking the cursor; pins reveal once like acquired plots;
-day-rate benchmark chips computed live from hire listings. FINISH:
+Design contract — /market public surface (REVISED 2026-10-23: contained map +
+Discovery Rails replacing the card grid): THESIS: the open market as a live
+directory — a contained, bordered basemap card carrying the pins, a market-pulse
+stat strip, then horizontal Discovery Rails (Fresh on the market, gear,
+professionals, jobs, firms, training) with snap-scroll tiles; searching or
+sorting flips the registry into a flat editorial-row results list with
+Load more. OWN-WORLD: app shadcn tokens throughout; one accent hue per
+directory kind carried from data — amber = listings, cyan = professionals,
+violet = jobs, emerald = firms, rose = training — echoed in pins, rail
+accents, legend and hover tints; tabular numerals for prices; no custom
+display face. STORY: visitor sees the bordered map and its pinned activity in
+seconds, browses rails, searches to flatten results, opens a detail dialog;
+rail items pan the map and pins scroll the list (two-way sync). FINISH:
 unreviewed and undocumented is unfinished; this build ends with the finish
 review, the verdict, and DESIGN.md.
 */
