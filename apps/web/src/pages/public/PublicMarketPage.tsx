@@ -159,6 +159,7 @@ export default function PublicMarketPage() {
   const [highlighted, setHighlighted] = useState<{ kind: MarketDotKind; id: string } | null>(null);
   const registryRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<MarketGlobeHandle>(null);
+  const highlightTimerRef = useRef<number | null>(null);
   const [selectedId, setSelectedId] = useState<{
     kind: MarketDotKind;
     id: string;
@@ -522,7 +523,12 @@ export default function PublicMarketPage() {
         .querySelector(`[data-market-item="${dot.kind}:${dot.id}"]`)
         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, 60);
-    window.setTimeout(() => setHighlighted(null), 2000);
+    // Clear any pending timer so rapid pin clicks don't let an older
+    // timeout wipe the newer highlight early.
+    if (highlightTimerRef.current !== null) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = window.setTimeout(() => setHighlighted(null), 2000);
   }, []);
 
   const handleItemSelect = (item: RailItem) => {
