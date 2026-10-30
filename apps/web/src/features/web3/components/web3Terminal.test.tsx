@@ -195,7 +195,6 @@ describe("Web3MarketTerminal", () => {
     expect(screen.getByRole("tab", { name: /SOL/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /USDC/i })).toBeInTheDocument();
     expect(screen.getByText("Solana On-Chain Telemetry")).toBeInTheDocument();
-    expect(screen.getByText("SiteSurveyor SPL Settlement")).toBeInTheDocument();
   });
 
   it("switches active token between SOL and USDC in terminal", () => {

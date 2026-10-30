@@ -5,7 +5,6 @@ import {
   ChevronUp,
   Landmark,
   RefreshCw,
-  ShieldCheck,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -457,39 +456,6 @@ export function Web3MarketTerminal({
                     </span>
                     <p className="font-mono font-bold text-[11px]" style={{ color: "var(--web3-text)" }}>
                       {formatSlot(snapshot.slot)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Settlement Guarantee Card */}
-              <div
-                className="rounded-xl p-3.5 transition-all"
-                style={{
-                  background:
-                    "linear-gradient(135deg, rgba(153, 69, 255, 0.06) 0%, rgba(39, 117, 202, 0.06) 100%)",
-                  border: "1px solid var(--web3-border)",
-                }}
-              >
-                <div className="flex items-start gap-2.5">
-                  <ShieldCheck
-                    className="size-4 shrink-0 text-primary mt-0.5"
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <p
-                      className="text-xs font-semibold leading-snug"
-                      style={{ color: "var(--web3-text)" }}
-                    >
-                      SiteSurveyor SPL Settlement
-                    </p>
-                    <p
-                      className="text-[11px] leading-relaxed mt-1"
-                      style={{ color: "var(--web3-text-muted)" }}
-                    >
-                      Escrow milestones, equipment listings, and professional invoices
-                      support instant finality with Phantom in <strong>SOL</strong> and{" "}
-                      <strong>USDC</strong>.
                     </p>
                   </div>
                 </div>
