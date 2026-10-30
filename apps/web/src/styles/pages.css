@@ -10325,7 +10325,8 @@
 
 @media (max-width: 768px) {
   .hub-main-content {
-    padding: 12px;
+    padding: 14px;
+    padding-bottom: max(48px, calc(24px + env(safe-area-inset-bottom, 0px)));
   }
 
   .page-header .header-actions,
@@ -10749,7 +10750,7 @@
 .hub-body {
   width: 100%;
   max-width: 100%;
-  padding: clamp(16px, 2.5vw, 28px);
+  padding: 0;
 }
 
 .page-header,

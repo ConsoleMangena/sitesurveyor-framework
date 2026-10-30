@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator.tsx";
+import "./dashboard.css";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ export function DashboardShell({ children, className }: DashboardShellProps) {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[1600px] flex-col gap-5 p-4 sm:gap-7 sm:p-6 xl:p-8 animate-in fade-in slide-in-from-bottom-2 duration-500",
+        "dash-shell mx-auto flex w-full max-w-[1680px] flex-col gap-5 sm:gap-6 animate-in fade-in slide-in-from-bottom-1 duration-400",
         className,
       )}
     >
@@ -37,32 +38,29 @@ export function DashboardHeader({
   actions,
   className,
 }: DashboardHeaderProps) {
+  const hasDescription = Boolean(description);
+  const metaText = hasDescription ? subtitle : undefined;
+  const lede = hasDescription ? description : subtitle;
+
   return (
-    <header
-      className={cn(
-        "relative flex flex-col gap-4 overflow-hidden border-b border-border/70 pb-5 sm:flex-row sm:items-end sm:justify-between sm:pb-6",
-        className,
-      )}
-    >
-      <div className="flex flex-col gap-1.5 min-w-0">
-        {badge && <div className="mb-0.5">{badge}</div>}
-        <h1 className="text-[clamp(22px,2.4vw,30px)] font-bold tracking-tight text-foreground">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-sm font-medium text-muted-foreground">{subtitle}</p>
-        )}
-        {description && (
-          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-            {description}
-          </p>
-        )}
-      </div>
-      {actions && (
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          {actions}
+    <header className={cn("dash-header", className)}>
+      <div className="dash-header-inner">
+        <div className="dash-header-main">
+          {(badge || metaText) && (
+            <div className="dash-meta">
+              {badge}
+              {badge && metaText ? (
+                <span className="dash-meta-divider" aria-hidden="true" />
+              ) : null}
+              {metaText ? <span>{metaText}</span> : null}
+            </div>
+          )}
+          <h1 className="dash-title">{title}</h1>
+          {lede ? <p className="dash-lede">{lede}</p> : null}
         </div>
-      )}
+        {actions ? <div className="dash-actions">{actions}</div> : null}
+      </div>
+      <div className="dash-datum" aria-hidden="true" />
     </header>
   );
 }
@@ -72,11 +70,12 @@ interface DashboardGridProps {
   className?: string;
 }
 
+/** Bento grid: one column on phones, 12 columns from md up so tiles can span. */
 export function DashboardGrid({ children, className }: DashboardGridProps) {
   return (
     <div
       className={cn(
-        "grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start",
+        "grid grid-cols-1 items-start gap-4 sm:gap-5 md:grid-cols-12",
         className,
       )}
     >
@@ -92,7 +91,7 @@ interface DashboardColumnProps {
 
 export function DashboardColumn({ children, className }: DashboardColumnProps) {
   return (
-    <div className={cn("flex flex-col gap-6 min-w-0", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-4 sm:gap-5", className)}>
       {children}
     </div>
   );
@@ -112,15 +111,12 @@ export function DashboardSection({
   className,
 }: DashboardSectionProps) {
   return (
-    <section className={cn("space-y-3", className)}>
+    <section className={cn("dash-section", className)}>
       {(title || action) && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          {title && (
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
-              {title}
-            </h2>
-          )}
-          {action && <div className="shrink-0">{action}</div>}
+        <div className="dash-section-head">
+          {title ? <h2 className="dash-section-title">{title}</h2> : null}
+          <span className="dash-section-line" aria-hidden="true" />
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       )}
       {children}

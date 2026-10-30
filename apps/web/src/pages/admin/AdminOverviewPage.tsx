@@ -1,10 +1,10 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
-  DashboardHeader,
+  DashboardGrid,
+  DashboardSection,
   DashboardShell,
 } from "@/components/dashboard/DashboardShell.tsx";
-import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { AdminPlatformDashboard } from "@/features/admin/dashboard/admin-platform-dashboard";
@@ -66,36 +66,29 @@ export default function AdminOverviewPage({
 
   return (
     <DashboardShell className="hub-body admin-console-page">
-      <DashboardHeader title="Admin console" subtitle="Platform-wide metrics and workspaces" />
+      {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 
-      {workspaceId && (
-        <ProfessionalPortfolioCard workspaceId={workspaceId} userName={userName} />
-      )}
+      <AdminPlatformDashboard
+        workspaces={rows}
+        userCount={userCount}
+        ownerLabels={ownerLabels}
+        loading={loading}
+        lastRefreshed={lastRefreshed}
+        onRefresh={load}
+      />
 
-      {workspaceId && (
-        <div className="max-w-sm">
-          <DatabaseStorageCard workspaceId={workspaceId} />
-        </div>
-      )}
-
-      {error ? (
-        <ErrorNotice tone="danger">
-          {error}
-        </ErrorNotice>
+      {workspaceId ? (
+        <DashboardSection title="Your operator workspace">
+          <DashboardGrid>
+            <div className="md:col-span-12 xl:col-span-8">
+              <ProfessionalPortfolioCard workspaceId={workspaceId} userName={userName} />
+            </div>
+            <div className="md:col-span-12 xl:col-span-4">
+              <DatabaseStorageCard workspaceId={workspaceId} />
+            </div>
+          </DashboardGrid>
+        </DashboardSection>
       ) : null}
-
-      {loading && rows.length === 0 ? (
-        <PageLoader compact />
-      ) : (
-        <AdminPlatformDashboard
-          workspaces={rows}
-          userCount={userCount}
-          ownerLabels={ownerLabels}
-          loading={loading}
-          lastRefreshed={lastRefreshed}
-          onRefresh={load}
-        />
-      )}
     </DashboardShell>
   );
 }

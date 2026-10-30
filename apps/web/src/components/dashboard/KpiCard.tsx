@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import "./dashboard.css";
 
 type KpiTone =
   | "neutral"
@@ -11,31 +12,13 @@ type KpiTone =
   | "warning"
   | "purple";
 
-const TONE_STYLES: Record<KpiTone, { chip: string; bar: string }> = {
-  neutral: {
-    chip: "bg-muted text-muted-foreground",
-    bar: "bg-border/60",
-  },
-  primary: {
-    chip: "bg-primary/10 text-primary",
-    bar: "bg-primary",
-  },
-  success: {
-    chip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    bar: "bg-emerald-500",
-  },
-  info: {
-    chip: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-    bar: "bg-sky-500",
-  },
-  warning: {
-    chip: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    bar: "bg-amber-500",
-  },
-  purple: {
-    chip: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-    bar: "bg-violet-500",
-  },
+const TONE_ACCENTS: Record<KpiTone, string> = {
+  neutral: "var(--text-muted)",
+  primary: "var(--accent)",
+  success: "var(--color-success)",
+  info: "var(--color-info)",
+  warning: "var(--color-warning)",
+  purple: "var(--accent-purple)",
 };
 
 interface KpiCardProps {
@@ -45,6 +28,8 @@ interface KpiCardProps {
   icon: React.ReactNode;
   badge?: React.ReactNode;
   tone?: KpiTone;
+  /** `compact` is the secondary rail: same language, less weight. */
+  size?: "default" | "compact";
   className?: string;
 }
 
@@ -55,46 +40,53 @@ export function KpiCard({
   icon,
   badge,
   tone = "neutral",
+  size = "default",
   className,
 }: KpiCardProps) {
-  const styles = TONE_STYLES[tone];
+  const accent = { "--kpi-accent": TONE_ACCENTS[tone] } as React.CSSProperties;
+
+  if (size === "compact") {
+    return (
+      <Card
+        style={accent}
+        className={cn("kpi-tile kpi-tile--compact", className)}
+      >
+        <span aria-hidden className="kpi-tile-rule" />
+        <CardContent className="kpi-tile-content">
+          <span aria-hidden className="kpi-tile-chip">
+            {icon}
+          </span>
+          <div className="kpi-tile-text">
+            <p className="kpi-tile-label">{title}</p>
+            <p className="kpi-tile-value">{value}</p>
+          </div>
+          {badge ? <div className="ml-auto shrink-0">{badge}</div> : null}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card
-      className={cn(
-        "group relative h-full overflow-hidden border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]",
-        "transition-[border-color,box-shadow] duration-300 ease-in-out",
-        "hover:border-border hover:shadow-[0_12px_30px_rgba(15,23,20,0.06)] hover:-translate-y-0.5",
-        className,
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-x-0 top-0 h-0.5 opacity-70 transition-opacity group-hover:opacity-100",
-          styles.bar,
-        )}
-      />
-      <CardContent className="flex h-full flex-col gap-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <span
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-md border border-border/60 transition-transform group-hover:scale-105",
-              styles.chip,
-            )}
-          >
+    <Card style={accent} className={cn("kpi-tile", className)}>
+      <span aria-hidden className="kpi-tile-rule" />
+      <CardContent className="kpi-tile-content">
+        <div className="kpi-tile-top">
+          <span aria-hidden className="kpi-tile-chip">
             {icon}
           </span>
           {badge}
         </div>
-        <div className="min-w-0 space-y-1">
-          <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="kpi-tile-text">
+          <p className="kpi-tile-label" title={title}>
             {title}
           </p>
-          <p className="truncate text-2xl font-bold leading-tight tabular-nums tracking-tight text-foreground">
+          <p className="kpi-tile-value" title={typeof value === "string" ? value : undefined}>
             {value}
           </p>
           {subtext ? (
-            <p className="truncate text-xs text-muted-foreground">{subtext}</p>
+            <p className="kpi-tile-sub" title={typeof subtext === "string" ? subtext : undefined}>
+              {subtext}
+            </p>
           ) : null}
         </div>
       </CardContent>

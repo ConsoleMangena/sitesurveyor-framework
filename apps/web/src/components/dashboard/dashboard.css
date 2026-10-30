@@ -1,0 +1,386 @@
+/* ════════════════════════════════════════════
+   SiteSurveyor — Dashboard system
+   Plan-sheet headers, instrument tiles, bento rhythm.
+   ════════════════════════════════════════════ */
+
+.dash-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+.dash-header-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .dash-header-inner {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 28px;
+  }
+}
+
+.dash-header-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dash-meta-divider {
+  width: 18px;
+  height: 1px;
+  background: var(--border-heavy);
+}
+
+.dash-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: color-mix(in oklab, var(--color-success) 78%, var(--text-h));
+}
+
+.dash-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-success) 16%, transparent);
+}
+
+.dash-title {
+  margin: 0;
+  font-family: var(--heading);
+  font-size: clamp(25px, 2.6vw, 36px);
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -0.032em;
+  color: var(--text-h);
+  text-wrap: balance;
+}
+
+.dash-lede {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.dash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 639px) {
+  .dash-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .dash-actions > * {
+    width: 100%;
+  }
+}
+
+/* Datum baseline: the survey starting line under every dashboard title. */
+.dash-datum {
+  position: relative;
+  height: 9px;
+  border-top: 1px solid var(--border);
+  background-image: repeating-linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--border-heavy) 85%, transparent) 0 1px,
+    transparent 1px 22px
+  );
+  background-size: 100% 5px;
+  background-repeat: no-repeat;
+  background-position: left top;
+  opacity: 0.9;
+}
+
+.dash-datum::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 54px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.dash-datum::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: 0;
+  width: 10px;
+  height: 2px;
+  background: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+
+/* ── Section labels ── */
+.dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dash-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dash-section-title {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dash-section-line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── KPI instrument tiles ── */
+.kpi-tile {
+  --kpi-accent: var(--accent);
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-color: color-mix(in oklab, var(--border) 84%, transparent);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 20, 0.03);
+  transition:
+    border-color var(--motion-base) var(--ease-standard),
+    box-shadow var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+}
+
+.kpi-tile:hover {
+  border-color: color-mix(in oklab, var(--kpi-accent) 26%, var(--border));
+  box-shadow: 0 10px 26px color-mix(in oklab, var(--kpi-accent) 8%, transparent);
+  transform: translateY(-2px);
+}
+
+.kpi-tile-rule {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--kpi-accent) 0 54px,
+    color-mix(in oklab, var(--kpi-accent) 16%, transparent) 54px 100%
+  );
+}
+
+.kpi-tile-content {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 15px;
+}
+
+.kpi-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kpi-tile-chip {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in oklab, var(--kpi-accent) 22%, transparent);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--kpi-accent) 10%, transparent);
+  color: var(--kpi-accent);
+}
+
+.kpi-tile-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.kpi-tile-label {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpi-tile-value {
+  overflow: hidden;
+  font-size: clamp(21px, 2vw, 27px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpi-tile-sub {
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Compact rail tile — secondary metrics stay glanceable, not equal-weight. */
+.kpi-tile--compact .kpi-tile-content {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.kpi-tile--compact .kpi-tile-chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+}
+
+.kpi-tile--compact .kpi-tile-label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.kpi-tile--compact .kpi-tile-value {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.kpi-tile--compact .kpi-tile-sub {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .kpi-tile-content {
+    gap: 9px;
+    padding: 11px 12px 12px;
+  }
+
+  .kpi-tile-chip {
+    width: 26px;
+    height: 26px;
+  }
+
+  .kpi-tile-value {
+    font-size: 20px;
+  }
+
+  .kpi-tile-label {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+
+  .kpi-tile-sub {
+    font-size: 10.5px;
+  }
+}
+
+/* ── Chart + table card polish shared by dashboards ── */
+.dash-card {
+  border-color: color-mix(in oklab, var(--border) 84%, transparent);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 20, 0.03);
+  transition:
+    border-color var(--motion-base) var(--ease-standard),
+    box-shadow var(--motion-base) var(--ease-standard);
+}
+
+.dash-card:hover {
+  border-color: var(--border-heavy);
+  box-shadow: 0 10px 26px rgba(15, 23, 20, 0.05);
+}
+
+.dash-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.dash-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 34px 18px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.dash-empty-icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-heavy);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+/* ── Skeleton blocks ── */
+.dash-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-tile,
+  .kpi-tile:hover,
+  .dash-card,
+  .dash-card:hover {
+    transform: none;
+    transition: none;
+  }
+}

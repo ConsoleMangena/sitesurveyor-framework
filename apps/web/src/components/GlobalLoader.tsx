@@ -1,3 +1,4 @@
+import SurveyLoader from "./SurveyLoader.tsx";
 import { useAuthStore } from "../lib/auth/auth-store";
 import "../styles/global-loader.css";
 
@@ -9,8 +10,8 @@ export default function GlobalLoader() {
   return (
     <div className="global-loader-overlay" role="status" aria-label="Loading">
       <div className="global-loader-card">
-        <div className="global-loader-spinner" />
-        <span className="global-loader-text">Please wait...</span>
+        <SurveyLoader size="md" />
+        <span className="global-loader-text">Restoring your session</span>
       </div>
     </div>
   );

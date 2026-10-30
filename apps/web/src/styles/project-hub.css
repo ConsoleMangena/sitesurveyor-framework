@@ -1083,33 +1083,22 @@
     }
 }
 
-/* ── Hub Body ── */
+/* ── Hub Body ──
+   Gutters live on .hub-main-content so every page shares one inset.
+   Body wrappers stay padding-free (safe-area + bottom space included there). */
 .hub-body {
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 24px 28px max(48px, calc(32px + env(safe-area-inset-bottom, 0px)));
+    padding: 0;
     box-sizing: border-box;
-}
-
-@media (max-width: 980px) {
-    .hub-body,
-    .project-hub-body {
-        padding-left: 20px;
-        padding-right: 20px;
-    }
-
-    .project-hub-body-fullscreen {
-        padding-left: 0;
-        padding-right: 0;
-    }
 }
 
 .project-hub-body {
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 24px 28px 32px;
+    padding: 0;
     box-sizing: border-box;
     overflow-x: hidden;
 }
@@ -1953,9 +1942,9 @@
     .project-tools-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
 
-/* Asset / Team pages need tighter vertical padding */
+/* Asset / Team pages inherit the shared .hub-main-content gutters. */
 .hub-body.ast-body {
-    padding: 20px 28px 48px;
+    padding: 0;
 }
 
 .hub-title-row {
@@ -2919,24 +2908,9 @@
         display: none !important;
     }
 
-    .hub-body {
-        padding: 24px 16px max(64px, calc(48px + env(safe-area-inset-bottom, 0px)));
-        width: 100%;
-    }
-
+    .hub-body,
     .project-hub-body {
-        padding: 18px 12px 24px;
         width: 100%;
-    }
-
-    @media (max-width: 480px) {
-        .hub-body {
-            padding: 16px 8px max(72px, calc(56px + env(safe-area-inset-bottom, 0px)));
-        }
-
-        .project-hub-body {
-            padding: 12px 8px 20px;
-        }
     }
 
     .project-hub-body-fullscreen {
@@ -3882,7 +3856,8 @@
 }
 
 .hub-main-content {
-    padding: clamp(14px, 2vw, 24px);
+    padding: clamp(16px, 2.2vw, 32px);
+    padding-bottom: max(clamp(32px, 4vw, 64px), calc(24px + env(safe-area-inset-bottom, 0px)));
     background: transparent;
 }
 

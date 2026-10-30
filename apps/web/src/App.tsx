@@ -190,7 +190,7 @@ export default function App() {
   }, [syncUser, setSessionExpired, setAuthLoading]);
 
   if (isLoading) {
-    return <SplashScreen onFinish={() => {}} />;
+    return <SplashScreen hold />;
   }
 
   return (

@@ -10,12 +10,11 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, Building2, MoreHorizontal } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -42,6 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import type { WorkspaceRowAdmin } from "@/lib/repositories/adminPlatform";
 
 type WorkspaceFilter = "All" | "Personal" | "Business" | "Archived";
@@ -122,7 +122,9 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
         accessorKey: "owner_user_id",
         header: "Owner",
         cell: ({ row }) => (
-          <span className="text-muted-foreground">{ownerLabels.get(row.original.owner_user_id) ?? "—"}</span>
+          <span className="block max-w-[180px] truncate text-muted-foreground">
+            {ownerLabels.get(row.original.owner_user_id) ?? "—"}
+          </span>
         ),
       },
       {
@@ -147,7 +149,9 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
           </div>
         ),
         cell: ({ row }) => (
-          <span className="text-muted-foreground">{format(parseISO(row.original.created_at), "MMM d, yyyy")}</span>
+          <span className="whitespace-nowrap text-muted-foreground">
+            {format(parseISO(row.original.created_at), "MMM d, yyyy")}
+          </span>
         ),
         sortingFn: "datetime",
       },
@@ -202,134 +206,127 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
   }, [currentPage, pageCount]);
 
   const selectedCount = Object.keys(rowSelection).length;
-  const description =
+  const subtitle =
     selectedCount > 0 ? `${selectedCount} selected` : `${table.getFilteredRowModel().rows.length} workspaces`;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-normal text-muted-foreground text-sm">Recent workspaces</CardTitle>
-        <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
-          {description}
-        </CardDescription>
-        <CardAction className="flex items-center gap-1">
-          <Button aria-label="Open all" size="icon" variant="outline" className="size-8">
-            <MoreHorizontal className="size-4" />
-          </Button>
-        </CardAction>
-      </CardHeader>
+    <DashboardCard
+      className="h-full"
+      title="Recent workspaces"
+      icon={<Building2 className="size-4" />}
+      titleAction={<Badge variant="outline">{subtitle}</Badge>}
+      contentClassName="flex flex-col gap-4 px-0"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5">
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(value) => {
+            if (!value) return;
+            setFilter(value as WorkspaceFilter);
+            table.setPageIndex(0);
+          }}
+          size="sm"
+          variant="outline"
+          className="flex-wrap"
+        >
+          {filters.map((f) => (
+            <ToggleGroupItem key={f} value={f}>
+              {f}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
 
-      <CardContent className="flex flex-col gap-4 px-0">
-        <div className="flex items-center justify-between gap-4 px-4">
-          <ToggleGroup
-            type="single"
-            value={filter}
-            onValueChange={(value) => {
-              if (!value) return;
-              setFilter(value as WorkspaceFilter);
-              table.setPageIndex(0);
-            }}
-            size="sm"
-            variant="outline"
-          >
-            {filters.map((f) => (
-              <ToggleGroupItem key={f} value={f}>
-                {f}
-              </ToggleGroupItem>
+      <div className="dash-table-scroll">
+        <Table className="min-w-[720px]">
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} colSpan={header.colSpan} className="whitespace-nowrap">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
             ))}
-          </ToggleGroup>
-        </div>
-
-        <div className="overflow-hidden">
-          <Table>
-            <TableHeader className="border-t">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                    ))}
-                  </TableRow>
-                )))
-                : (
-                <TableRow>
-                  <TableCell className="h-24 text-center" colSpan={columns.length}>
-                    No workspaces found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell className="h-24 text-center" colSpan={columns.length}>
+                  No workspaces found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-        <div className="flex items-center justify-between gap-4 px-4 pb-1">
-          <p className="text-muted-foreground text-sm">
-            Viewing {table.getRowModel().rows.length} of {table.getFilteredRowModel().rows.length}
-          </p>
+      <div className="flex flex-col gap-3 px-4 pb-1 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <p className="text-muted-foreground text-sm">
+          Viewing {table.getRowModel().rows.length} of {table.getFilteredRowModel().rows.length}
+        </p>
 
-          <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent className="gap-1.5">
+        <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+          <PaginationContent className="flex-wrap gap-1.5">
+            <PaginationItem>
+              <PaginationPrevious
+                className={!table.getCanPreviousPage() ? "pointer-events-none opacity-50" : undefined}
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
+                  table.previousPage();
+                }}
+              />
+            </PaginationItem>
+            {pageNumbers[0] > 1 ? (
               <PaginationItem>
-                <PaginationPrevious
-                  className={!table.getCanPreviousPage() ? "pointer-events-none opacity-50" : undefined}
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : null}
+            {pageNumbers.map((pageNumber) => (
+              <PaginationItem key={`page-${pageNumber}`}>
+                <PaginationLink
                   href="#"
+                  isActive={table.getState().pagination.pageIndex === pageNumber - 1}
                   onClick={(event) => {
                     event.preventDefault();
-                    table.previousPage();
+                    table.setPageIndex(pageNumber - 1);
                   }}
-                />
+                >
+                  {pageNumber}
+                </PaginationLink>
               </PaginationItem>
-              {pageNumbers[0] > 1 ? (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : null}
-              {pageNumbers.map((pageNumber) => (
-                <PaginationItem key={`page-${pageNumber}`}>
-                  <PaginationLink
-                    href="#"
-                    isActive={table.getState().pagination.pageIndex === pageNumber - 1}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      table.setPageIndex(pageNumber - 1);
-                    }}
-                  >
-                    {pageNumber}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              {pageNumbers[pageNumbers.length - 1] < pageCount ? (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : null}
+            ))}
+            {pageNumbers[pageNumbers.length - 1] < pageCount ? (
               <PaginationItem>
-                <PaginationNext
-                  className={!table.getCanNextPage() ? "pointer-events-none opacity-50" : undefined}
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    table.nextPage();
-                  }}
-                />
+                <PaginationEllipsis />
               </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      </CardContent>
-    </Card>
+            ) : null}
+            <PaginationItem>
+              <PaginationNext
+                className={!table.getCanNextPage() ? "pointer-events-none opacity-50" : undefined}
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
+                  table.nextPage();
+                }}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    </DashboardCard>
   );
 }

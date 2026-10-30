@@ -1,8 +1,10 @@
 import * as React from "react";
 import { format, parseISO, subDays } from "date-fns";
+import { TrendingUp } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import type { WorkspaceRowAdmin } from "@/lib/repositories/adminPlatform";
 
@@ -42,16 +44,48 @@ export function WorkspaceGrowthChart({ workspaces }: WorkspaceGrowthChartProps) 
     }));
   }, [workspaces]);
 
+  const total = data.reduce((sum, day) => sum + day.count, 0);
+  const peak = data.reduce((max, day) => Math.max(max, day.count), 0);
+  const average = total / (data.length || 1);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-normal text-muted-foreground text-sm">Workspace growth</CardTitle>
-        <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
-          Last 30 days
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-64 w-full">
+    <DashboardCard
+      className="h-full"
+      title="Workspace growth"
+      icon={<TrendingUp className="size-4" />}
+      titleAction={<Badge variant="outline">Last 30 days</Badge>}
+      contentClassName="flex flex-col gap-4"
+    >
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+        <div>
+          <p className="text-2xl font-semibold leading-none tracking-tight tabular-nums">
+            {total}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">new workspaces</p>
+        </div>
+        <div className="flex gap-6 text-xs text-muted-foreground">
+          <span>
+            <span className="block font-medium text-foreground tabular-nums">
+              {peak}
+            </span>
+            busiest day
+          </span>
+          <span>
+            <span className="block font-medium text-foreground tabular-nums">
+              {average.toFixed(1)}
+            </span>
+            per day
+          </span>
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <div className="dash-empty flex-1">
+          <TrendingUp className="dash-empty-icon" />
+          <p>No workspaces created in the last 30 days.</p>
+        </div>
+      ) : (
+        <ChartContainer config={chartConfig} className="h-[190px] w-full sm:h-60">
           <AreaChart data={data} margin={{ bottom: 0, left: 0, right: 0, top: 8 }}>
             <defs>
               <linearGradient id="fillWorkspaces" x1="0" x2="0" y1="0" y2="1">
@@ -69,7 +103,7 @@ export function WorkspaceGrowthChart({ workspaces }: WorkspaceGrowthChartProps) 
               tickMargin={8}
               ticks={[data[0]?.date, data[data.length - 1]?.date].filter(Boolean) as string[]}
             />
-            <YAxis axisLine={false} tickLine={false} tickMargin={6} width={36} allowDecimals={false} />
+            <YAxis axisLine={false} tickLine={false} tickMargin={6} width={32} allowDecimals={false} />
             <ChartTooltip
               content={
                 <ChartTooltipContent
@@ -89,7 +123,7 @@ export function WorkspaceGrowthChart({ workspaces }: WorkspaceGrowthChartProps) 
             />
           </AreaChart>
         </ChartContainer>
-      </CardContent>
-    </Card>
+      )}
+    </DashboardCard>
   );
 }

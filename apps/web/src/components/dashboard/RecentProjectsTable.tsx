@@ -10,12 +10,11 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, FolderKanban } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Pagination,
   PaginationContent,
@@ -34,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import type { ProjectWithOrg } from "@/lib/repositories/projects";
 
 type StatusFilter = "All" | "Active" | "Completed";
@@ -102,7 +102,9 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
           </div>
         ),
         cell: ({ row }) => (
-          <span className="text-muted-foreground">{format(parseISO(row.original.created_at), "MMM d, yyyy")}</span>
+          <span className="text-muted-foreground">
+            {format(parseISO(row.original.created_at), "MMM d, yyyy")}
+          </span>
         ),
         sortingFn: "datetime",
       },
@@ -133,18 +135,78 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
     return [currentPage - 1, currentPage, currentPage + 1];
   }, [currentPage, pageCount]);
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-normal text-muted-foreground text-sm">Recent projects</CardTitle>
-        <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
-          {table.getFilteredRowModel().rows.length} projects
-        </CardDescription>
-        <CardAction />
-      </CardHeader>
+  const footer = (
+    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-muted-foreground text-xs sm:text-sm">
+        Viewing {table.getRowModel().rows.length} of {table.getFilteredRowModel().rows.length}
+      </p>
 
-      <CardContent className="flex flex-col gap-4 px-0">
-        <div className="px-4">
+      <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+        <PaginationContent className="flex-wrap gap-1">
+          <PaginationItem>
+            <PaginationPrevious
+              className={!table.getCanPreviousPage() ? "pointer-events-none opacity-50" : undefined}
+              href="#"
+              onClick={(event) => {
+                event.preventDefault();
+                table.previousPage();
+              }}
+            />
+          </PaginationItem>
+          {pageNumbers[0] > 1 ? (
+            <PaginationItem>
+              <PaginationEllipsis />
+            </PaginationItem>
+          ) : null}
+          {pageNumbers.map((pageNumber) => (
+            <PaginationItem key={`page-${pageNumber}`}>
+              <PaginationLink
+                href="#"
+                isActive={table.getState().pagination.pageIndex === pageNumber - 1}
+                onClick={(event) => {
+                  event.preventDefault();
+                  table.setPageIndex(pageNumber - 1);
+                }}
+              >
+                {pageNumber}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          {pageNumbers[pageNumbers.length - 1] < pageCount ? (
+            <PaginationItem>
+              <PaginationEllipsis />
+            </PaginationItem>
+          ) : null}
+          <PaginationItem>
+            <PaginationNext
+              className={!table.getCanNextPage() ? "pointer-events-none opacity-50" : undefined}
+              href="#"
+              onClick={(event) => {
+                event.preventDefault();
+                table.nextPage();
+              }}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
+  );
+
+  return (
+    <DashboardCard
+      title="Recent projects"
+      icon={<FolderKanban size={16} />}
+      titleAction={
+        <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+          {table.getFilteredRowModel().rows.length} shown
+        </span>
+      }
+      contentClassName="px-0"
+      footer={footer}
+      className="h-full"
+    >
+      <div className="flex flex-col gap-4">
+        <div className="px-4 sm:px-5">
           <ToggleGroup
             type="single"
             value={filter}
@@ -164,8 +226,8 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
           </ToggleGroup>
         </div>
 
-        <div className="overflow-hidden">
-          <Table>
+        <div className="dash-table-scroll">
+          <Table className="min-w-[520px]">
             <TableHeader className="border-t">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -198,62 +260,7 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
             </TableBody>
           </Table>
         </div>
-
-        <div className="flex items-center justify-between gap-4 px-4 pb-1">
-          <p className="text-muted-foreground text-sm">
-            Viewing {table.getRowModel().rows.length} of {table.getFilteredRowModel().rows.length}
-          </p>
-
-          <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent className="gap-1.5">
-              <PaginationItem>
-                <PaginationPrevious
-                  className={!table.getCanPreviousPage() ? "pointer-events-none opacity-50" : undefined}
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    table.previousPage();
-                  }}
-                />
-              </PaginationItem>
-              {pageNumbers[0] > 1 ? (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : null}
-              {pageNumbers.map((pageNumber) => (
-                <PaginationItem key={`page-${pageNumber}`}>
-                  <PaginationLink
-                    href="#"
-                    isActive={table.getState().pagination.pageIndex === pageNumber - 1}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      table.setPageIndex(pageNumber - 1);
-                    }}
-                  >
-                    {pageNumber}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              {pageNumbers[pageNumbers.length - 1] < pageCount ? (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : null}
-              <PaginationItem>
-                <PaginationNext
-                  className={!table.getCanNextPage() ? "pointer-events-none opacity-50" : undefined}
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    table.nextPage();
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }

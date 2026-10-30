@@ -1,9 +1,10 @@
 import * as React from "react";
 import { format, parseISO, subDays } from "date-fns";
+import { TrendingUp } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { DashboardCard } from "@/components/dashboard/DashboardCard";
 
 interface ProjectTimelineChartProps {
   projects: { created_at: string }[];
@@ -40,16 +41,45 @@ export function ProjectTimelineChart({ projects, days = 30 }: ProjectTimelineCha
     }));
   }, [projects, days]);
 
+  const total = React.useMemo(
+    () => data.reduce((sum, entry) => sum + entry.count, 0),
+    [data],
+  );
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-normal text-muted-foreground text-sm">Project pipeline</CardTitle>
-        <CardDescription className="text-foreground text-xl tabular-nums leading-none tracking-tight">
+    <DashboardCard
+      title="Project pipeline"
+      icon={<TrendingUp size={16} />}
+      titleAction={
+        <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           Last {days} days
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-64 w-full">
+        </span>
+      }
+    >
+      <div className="flex items-end justify-between gap-4 pb-4">
+        <div>
+          <p className="text-2xl font-bold leading-none tracking-tight tabular-nums text-foreground sm:text-[28px]">
+            {total}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            projects created in this window
+          </p>
+        </div>
+        <p className="text-right text-xs text-muted-foreground">
+          {(total / days).toFixed(1)}
+          <span className="block text-[10px] uppercase tracking-[0.1em]">per day</span>
+        </p>
+      </div>
+
+      {total === 0 ? (
+        <div className="dash-empty">
+          <span className="dash-empty-icon">
+            <TrendingUp size={16} />
+          </span>
+          <span>No projects created in the last {days} days.</span>
+        </div>
+      ) : (
+        <ChartContainer config={chartConfig} className="h-[190px] w-full sm:h-60">
           <AreaChart data={data} margin={{ bottom: 0, left: 0, right: 0, top: 8 }}>
             <defs>
               <linearGradient id="fillProjects" x1="0" x2="0" y1="0" y2="1">
@@ -67,7 +97,7 @@ export function ProjectTimelineChart({ projects, days = 30 }: ProjectTimelineCha
               tickMargin={8}
               ticks={[data[0]?.date, data[data.length - 1]?.date].filter(Boolean) as string[]}
             />
-            <YAxis axisLine={false} tickLine={false} tickMargin={6} width={36} allowDecimals={false} />
+            <YAxis axisLine={false} tickLine={false} tickMargin={6} width={34} allowDecimals={false} />
             <ChartTooltip
               content={
                 <ChartTooltipContent
@@ -87,7 +117,7 @@ export function ProjectTimelineChart({ projects, days = 30 }: ProjectTimelineCha
             />
           </AreaChart>
         </ChartContainer>
-      </CardContent>
-    </Card>
+      )}
+    </DashboardCard>
   );
 }
