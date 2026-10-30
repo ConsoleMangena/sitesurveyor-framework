@@ -1,5 +1,8 @@
 import type { AppUserContext } from "../../lib/auth/app-user.ts";
-import { isRecognisedWalletAccount } from "../../lib/auth/wallet-recognition.ts";
+import {
+  isRecognisedWalletAccount,
+  resolveWalletIdentity,
+} from "../../lib/auth/wallet-recognition.ts";
 import type {
   AccountType,
   SignupAccountType,
@@ -131,24 +134,27 @@ export function mapAppUserToUiUser(input: AppUserContext): UiUser | null {
   >;
   const workspace =
     input.defaultWorkspace ?? input.workspaces[0]?.workspace ?? null;
-  const email = input.profile?.email ?? input.session.user.email ?? "";
 
-  const signupAccountType = resolveSignupAccountType({
+  // Profile rows can lag behind signup (SIWS used to swallow write errors), so
+  // identity falls back to the auth metadata that signup also stored.
+  const identity = resolveWalletIdentity({
     profile: input.profile,
     metadata,
+    sessionEmail: input.session.user.email,
   });
 
   // Block sessions whose wallet has no name, email, or account type on record.
   // Such wallets must complete the Create Account flow before using the app.
-  if (
-    !isRecognisedWalletAccount({
-      name: input.profile?.full_name,
-      email: input.profile?.email,
-      accountType: signupAccountType,
-    })
-  ) {
+  if (!isRecognisedWalletAccount(identity)) {
     return null;
   }
+
+  const email = identity.email ?? "";
+  const name = identity.name ?? (email.split("@")[0] || "User");
+  const signupAccountType = resolveSignupAccountType({
+    profile: input.profile,
+    metadata,
+  });
 
   const accountType: AccountType =
     workspace?.type === "business"
@@ -166,12 +172,7 @@ export function mapAppUserToUiUser(input: AppUserContext): UiUser | null {
     return {
       id: input.session.user.id,
       workspaceId: PLATFORM_ADMIN_FALLBACK_WORKSPACE_ID,
-      name:
-        input.profile?.full_name ||
-        (typeof metadata.full_name === "string" ? metadata.full_name : "") ||
-        (typeof metadata.name === "string" ? metadata.name : "") ||
-        email.split("@")[0] ||
-        "User",
+      name,
       email,
       company: "Platform operator",
       accountType,
@@ -183,12 +184,7 @@ export function mapAppUserToUiUser(input: AppUserContext): UiUser | null {
   return {
     id: input.session.user.id,
     workspaceId,
-    name:
-      input.profile?.full_name ||
-      (typeof metadata.full_name === "string" ? metadata.full_name : "") ||
-      (typeof metadata.name === "string" ? metadata.name : "") ||
-      email.split("@")[0] ||
-      "User",
+    name,
     email,
     company:
       accountType === "business"

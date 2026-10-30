@@ -2,14 +2,23 @@ import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import {
   signInWithSolanaWallet,
   signOut,
   signUpWithSolanaWallet,
 } from "../../lib/auth/session.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
-import { isRecognisedWalletAccount } from "../../lib/auth/wallet-recognition.ts";
-import { getSignInProfile } from "../../lib/repositories/profiles.ts";
+import {
+  isRecognisedWalletAccount,
+  missingWalletProfileFields,
+  resolveWalletIdentity,
+  type WalletAccountIdentity,
+} from "../../lib/auth/wallet-recognition.ts";
+import {
+  getSignInProfile,
+  repairSignInProfile,
+} from "../../lib/repositories/profiles.ts";
 import {
   isMobileBrowser,
   MWA_WALLET_NAME,
@@ -79,6 +88,21 @@ const walletStatusLabels: Record<WalletChoiceStatus, string> = {
 };
 
 const MWA_WALLET_NAME_TYPED = MWA_WALLET_NAME as WalletName;
+
+function unrecognisedWalletMessage(identity: WalletAccountIdentity): string {
+  const missing: string[] = [];
+  if (!identity.name) missing.push("name");
+  if (!identity.email) missing.push("contact email");
+  if (!identity.accountType) missing.push("account type");
+
+  if (missing.length === 3) {
+    return "Wallet not recognised. This wallet isn't linked to a SiteSurveyor account with a name, email, and account type. Create an account to continue.";
+  }
+
+  return `This wallet is linked to a SiteSurveyor account that is missing its ${missing.join(
+    ", ",
+  )}. Finish setting it up with the same wallet to continue.`;
+}
 
 // Phantom/MWA reject authorization when the wallet app's active network mode
 // doesn't match the cluster requested by the dapp.
@@ -176,6 +200,7 @@ export default function WalletLoginPage() {
   const [walletAppFallback, setWalletAppFallback] =
     useState<MobileWalletName | null>(null);
   const [walletUnrecognised, setWalletUnrecognised] = useState(false);
+  const [completingAccount, setCompletingAccount] = useState(false);
   const [selectedMobileApp, setSelectedMobileApp] =
     useState<MobileWalletName>("Phantom");
   const [signing, setSigning] = useState(false);
@@ -274,6 +299,30 @@ export default function WalletLoginPage() {
     setError(null);
     setWalletAppFallback(null);
     setWalletUnrecognised(false);
+  };
+
+  const prefillSignupFromAccount = (user: SupabaseUser) => {
+    const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const identity = resolveWalletIdentity({
+      metadata,
+      sessionEmail: user.email,
+    });
+
+    if (identity.name) setFullName(identity.name);
+    if (identity.email) setEmail(identity.email);
+    if (identity.accountType === "business" || identity.accountType === "personal") {
+      setAccountType(identity.accountType);
+    }
+
+    const company =
+      typeof metadata.company === "string"
+        ? metadata.company
+        : typeof metadata.workspace_name === "string"
+          ? metadata.workspace_name
+          : "";
+    if (company && company !== "Independent Surveyor") {
+      setCompanyName(company);
+    }
   };
 
   const describeWalletFailure = (
@@ -513,24 +562,46 @@ export default function WalletLoginPage() {
         statement: "Sign in to SiteSurveyor Framework with your Solana account.",
       });
 
-      const profile = user ? await getSignInProfile(user.id) : null;
-      if (
-        !isRecognisedWalletAccount({
-          name: profile?.full_name,
-          email: profile?.email,
-          accountType: profile?.auth_signup_account_type,
-        })
-      ) {
+      if (!user) {
+        throw new Error(
+          "Wallet authorization succeeded, but no account was returned. Please try signing in again.",
+        );
+      }
+
+      const profile = await getSignInProfile(user.id);
+      const identity = resolveWalletIdentity({
+        profile,
+        metadata: user.user_metadata as Record<string, unknown>,
+        sessionEmail: user.email,
+      });
+
+      if (!isRecognisedWalletAccount(identity)) {
         // SIWS creates a session for any wallet; discard it unless the wallet
         // already has a complete account.
         await signOut().catch(() => undefined);
         setSessionExpired(false);
         setAuthLoading(false);
-        setError(
-          "Wallet not recognised. This wallet isn't linked to a SiteSurveyor account with a name, email, and account type. Create an account to continue.",
+        const partialAccount = Boolean(
+          identity.name || identity.email || identity.accountType,
         );
+        setCompletingAccount(partialAccount);
+        if (partialAccount) prefillSignupFromAccount(user);
+        setError(unrecognisedWalletMessage(identity));
         setWalletUnrecognised(true);
         return;
+      }
+
+      // Older signups persisted identity to auth metadata but failed to save
+      // the profile row. Fill the gap so the account survives a full reload;
+      // sign-in itself already works from the merged identity.
+      const repair = missingWalletProfileFields(profile, identity);
+      if (Object.keys(repair).length > 0) {
+        await repairSignInProfile(user.id, repair).catch((err: unknown) => {
+          console.warn(
+            "[WalletLoginPage] Could not repair the account profile:",
+            err,
+          );
+        });
       }
     } catch (err) {
       setAuthLoading(false);
@@ -631,7 +702,7 @@ export default function WalletLoginPage() {
         setSignupDialogOpen(true);
       }}
     >
-      Create an account
+      {completingAccount ? "Finish account setup" : "Create an account"}
     </button>
   ) : (
     walletFallbackAction
@@ -701,6 +772,7 @@ export default function WalletLoginPage() {
                 onClick={() => {
                   clearError();
                   setSignupError(null);
+                  setCompletingAccount(false);
                   setSignupDialogOpen(true);
                 }}
               >
@@ -1006,10 +1078,12 @@ export default function WalletLoginPage() {
           <DialogHeader className="web3-wallet-dialog-header">
             <span className="web3-dialog-kicker">New field identity</span>
             <DialogTitle className="web3-dialog-title">
-              Create your account
+              {completingAccount ? "Finish your account" : "Create your account"}
             </DialogTitle>
             <DialogDescription className="web3-dialog-description">
-              Connect a wallet, then set up your personal or firm profile.
+              {completingAccount
+                ? "Add the missing details, then authorize the same wallet."
+                : "Connect a wallet, then set up your personal or firm profile."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1158,7 +1232,11 @@ export default function WalletLoginPage() {
                 ) : (
                   <>
                     <UserPlus className="web3-btn-icon" />
-                    <span>Create Account &amp; Authorize</span>
+                    <span>
+                      {completingAccount
+                        ? "Finish Setup & Authorize"
+                        : "Create Account & Authorize"}
+                    </span>
                   </>
                 )}
               </button>

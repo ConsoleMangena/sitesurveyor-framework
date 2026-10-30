@@ -1,4 +1,5 @@
 import { getCurrentUser } from "../auth/session.ts";
+import type { MissingWalletProfileFields } from "../auth/wallet-recognition.ts";
 import { supabase } from "../supabase/client.ts";
 import type { Tables, TablesUpdate } from "../supabase/types.ts";
 
@@ -42,6 +43,23 @@ export async function getSignInProfile(
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Fill profile columns that earlier signups failed to persist. These values
+ * come from the signed-in user's metadata, so no user input is involved.
+ */
+export async function repairSignInProfile(
+  userId: string,
+  patch: MissingWalletProfileFields,
+): Promise<void> {
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: userId, ...patch }, { onConflict: "id" });
+
+  if (error) throw error;
 }
 
 export async function updateMyProfile(

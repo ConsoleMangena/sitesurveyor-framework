@@ -1,6 +1,7 @@
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { isOnline, supabase } from "../supabase/client.ts";
 import { clearCachedUser } from "./authCache.ts";
+import { isRecognisedWalletAccount } from "./wallet-recognition.ts";
 
 /** Fallback to the Supabase localStorage session when offline. */
 export function loadStoredSession(): Session | null {
@@ -153,48 +154,75 @@ export async function signUpWithSolanaWallet(
     input.accountType === "personal"
       ? "Independent Surveyor"
       : input.companyName?.trim() || "My Company";
+  const contactEmail = input.email?.trim() || null;
+  const fullName = input.fullName.trim();
 
-  // 1. Update user auth metadata
-  try {
-    await supabase.auth.updateUser({
-      data: {
-        full_name: input.fullName.trim(),
-        account_type: input.accountType,
-        company: normalizedCompany,
-        workspace_name:
-          input.accountType === "business" ? normalizedCompany : undefined,
-        contact_email: input.email?.trim() || undefined,
-      },
-    });
-  } catch (err) {
-    console.warn("[signUpWithSolanaWallet] Metadata update warning:", err);
-  }
-
-  // 2. Upsert profile record
-  try {
-    await supabase.from("profiles").upsert(
+  // Persist the profile before metadata so a later USER_UPDATED auth event
+  // reloads an account that sign-in already treats as recognised. Supabase
+  // returns `{ error }` instead of throwing, so these writes must be checked.
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .upsert(
       {
         id: user.id,
-        full_name: input.fullName.trim(),
+        full_name: fullName,
         auth_signup_account_type: input.accountType,
         company_name: normalizedCompany,
-        email: input.email?.trim() || null,
+        email: contactEmail,
         onboarding_complete: true,
       },
       { onConflict: "id" },
+    )
+    .select("full_name, email, auth_signup_account_type")
+    .single();
+
+  if (profileError) {
+    throw new Error(
+      profileError.message?.trim() ||
+        "Could not save your SiteSurveyor account. Please try again.",
     );
-  } catch (err) {
-    console.warn("[signUpWithSolanaWallet] Profile upsert warning:", err);
   }
 
-  // 3. If business workspace requested, invoke create_business_workspace RPC
+  if (
+    !isRecognisedWalletAccount({
+      name: profile?.full_name,
+      email: profile?.email,
+      accountType: profile?.auth_signup_account_type,
+    })
+  ) {
+    throw new Error(
+      "Your wallet signed in, but the account profile could not be saved. Please try creating the account again.",
+    );
+  }
+
+  const { error: metadataError } = await supabase.auth.updateUser({
+    data: {
+      full_name: fullName,
+      account_type: input.accountType,
+      company: normalizedCompany,
+      workspace_name:
+        input.accountType === "business" ? normalizedCompany : undefined,
+      contact_email: contactEmail || undefined,
+    },
+  });
+
+  if (metadataError) {
+    throw new Error(
+      metadataError.message?.trim() ||
+        "Could not save your account details. Please try again.",
+    );
+  }
+
   if (input.accountType === "business") {
-    try {
-      await supabase.rpc("create_business_workspace", {
-        workspace_name: normalizedCompany,
-      });
-    } catch (err) {
-      console.warn("[signUpWithSolanaWallet] create_business_workspace RPC warning:", err);
+    const { error: workspaceError } = await supabase.rpc(
+      "create_business_workspace",
+      { workspace_name: normalizedCompany },
+    );
+    if (workspaceError) {
+      throw new Error(
+        workspaceError.message?.trim() ||
+          "Could not create your business workspace. Please try again.",
+      );
     }
   }
 

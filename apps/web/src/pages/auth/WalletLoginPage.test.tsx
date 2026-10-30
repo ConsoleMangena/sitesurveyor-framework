@@ -18,10 +18,12 @@ const mockSelect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockSignInWithSolanaWallet = vi.fn();
 const mockSignUpWithSolanaWallet = vi.fn();
-const { mockSignOut, mockGetSignInProfile } = vi.hoisted(() => ({
-  mockSignOut: vi.fn(),
-  mockGetSignInProfile: vi.fn(),
-}));
+const { mockSignOut, mockGetSignInProfile, mockRepairSignInProfile } =
+  vi.hoisted(() => ({
+    mockSignOut: vi.fn(),
+    mockGetSignInProfile: vi.fn(),
+    mockRepairSignInProfile: vi.fn(async (..._args: unknown[]) => undefined),
+  }));
 const { mockHasStoredWallet, mockCreateWallet, mockUnlockWallet } = vi.hoisted(
   () => ({
     mockHasStoredWallet: vi.fn(() => false),
@@ -144,6 +146,8 @@ vi.mock("../../lib/auth/session.ts", () => ({
 vi.mock("../../lib/repositories/profiles.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/repositories/profiles.ts")>()),
   getSignInProfile: (...args: unknown[]) => mockGetSignInProfile(...args),
+  repairSignInProfile: (...args: unknown[]) =>
+    mockRepairSignInProfile(...args),
 }));
 
 // A complete account lets the Sign In flow pass wallet recognition by default.
@@ -311,6 +315,81 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     fireEvent.click(screen.getByRole("button", { name: /create an account/i }));
 
     expect(await screen.findByText("Create your account")).toBeInTheDocument();
+  });
+
+  it("recovers an account whose profile row is missing but metadata is complete", async () => {
+    mockSignInWithSolanaWallet.mockResolvedValueOnce({
+      session: { access_token: "tok" },
+      user: {
+        id: "u-legacy",
+        email: null,
+        user_metadata: {
+          full_name: "Legacy Surveyor",
+          contact_email: "legacy@example.com",
+          account_type: "business",
+          company: "Legacy Surveying Ltd",
+        },
+      },
+    });
+    mockGetSignInProfile.mockResolvedValueOnce({
+      full_name: null,
+      email: null,
+      auth_signup_account_type: null,
+    });
+
+    renderPage();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /sign in with brave wallet/i }),
+    );
+
+    await waitFor(() =>
+      expect(mockRepairSignInProfile).toHaveBeenCalledWith("u-legacy", {
+        full_name: "Legacy Surveyor",
+        email: "legacy@example.com",
+        auth_signup_account_type: "business",
+      }),
+    );
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(screen.queryByText(/wallet not recognised/i)).not.toBeInTheDocument();
+  });
+
+  it("explains an incomplete account and prefills the finish-setup form", async () => {
+    mockSignInWithSolanaWallet.mockResolvedValueOnce({
+      session: { access_token: "tok" },
+      user: {
+        id: "u-partial",
+        email: null,
+        user_metadata: {
+          full_name: "Partial Surveyor",
+          account_type: "personal",
+        },
+      },
+    });
+    mockGetSignInProfile.mockResolvedValueOnce(null);
+
+    renderPage();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /sign in with brave wallet/i }),
+    );
+
+    expect(
+      await screen.findByText(/missing its contact email/i),
+    ).toBeInTheDocument();
+    expect(mockSignOut).toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /finish account setup/i }),
+    );
+
+    expect(await screen.findByText("Finish your account")).toBeInTheDocument();
+    expect(screen.getByLabelText(/full name/i)).toHaveValue(
+      "Partial Surveyor",
+    );
+    expect(
+      screen.getByRole("button", { name: /finish setup & authorize/i }),
+    ).toBeInTheDocument();
   });
 });
 

@@ -173,11 +173,12 @@ export default function App() {
         setSessionExpired(true);
         return;
       }
-      if (event === "SIGNED_IN") {
+      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         setSessionExpired(false);
-        // Keep the full-screen loader visible while the profile and workspace
-        // are fetched, so the login screen does not flash before the
-        // authenticated workspace is ready.
+        // SIGNED_IN fires as soon as SIWS succeeds, which is before signup
+        // finishes writing the profile. USER_UPDATED runs after that write so
+        // the session is mapped as a recognised account instead of bouncing
+        // the user back to "wallet not recognised".
         setAuthLoading(true);
         void syncUser().finally(() => setAuthLoading(false));
       }

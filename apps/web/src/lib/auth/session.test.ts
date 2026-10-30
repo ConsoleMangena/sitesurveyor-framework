@@ -111,7 +111,18 @@ describe("session", () => {
       error: null,
     });
     mockUpdateUser.mockResolvedValueOnce({ data: {}, error: null });
-    mockUpsert.mockResolvedValueOnce({ data: {}, error: null });
+    mockUpsert.mockReturnValueOnce({
+      select: () => ({
+        single: async () => ({
+          data: {
+            full_name: "Jane Doe, PLS",
+            email: "jane@acmesurvey.com",
+            auth_signup_account_type: "business",
+          },
+          error: null,
+        }),
+      }),
+    });
     mockRpc.mockResolvedValueOnce({ data: "ws-new-id", error: null });
 
     const dummyWallet = { publicKey: { toBase58: () => "9yL4..." } };
@@ -144,5 +155,31 @@ describe("session", () => {
       workspace_name: "Acme Surveying Ltd",
     });
     expect(res.user?.id).toBe("new-user-42");
+  });
+
+  it("signUpWithSolanaWallet throws when profile upsert returns an error", async () => {
+    mockSignInWithWeb3.mockResolvedValueOnce({
+      data: { session: { access_token: "tok" }, user: { id: "new-user-43" } },
+      error: null,
+    });
+    mockUpsert.mockReturnValueOnce({
+      select: () => ({
+        single: async () => ({
+          data: null,
+          error: { message: "new row violates row-level security policy" },
+        }),
+      }),
+    });
+
+    const dummyWallet = { publicKey: { toBase58: () => "9yL4..." } };
+    await expect(
+      signUpWithSolanaWallet(dummyWallet, {
+        fullName: "Jane Doe, PLS",
+        accountType: "personal",
+        email: "jane@acmesurvey.com",
+      }),
+    ).rejects.toThrow(/row-level security policy/i);
+
+    expect(mockUpdateUser).not.toHaveBeenCalled();
   });
 });

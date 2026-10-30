@@ -146,6 +146,40 @@ describe("workspace account access helpers", () => {
     expect(mapAppUserToUiUser(ctx)?.signupAccountType).toBe("business");
   });
 
+  it("maps an account whose profile row is empty but metadata has the identity", () => {
+    const ctx = {
+      session: {
+        user: {
+          id: "00000000-0000-0000-0000-000000000005",
+          email: null,
+          user_metadata: {
+            full_name: "Legacy Surveyor",
+            contact_email: "legacy@example.com",
+            account_type: "business",
+          },
+        },
+      },
+      profile: {
+        email: null,
+        full_name: null,
+        is_platform_admin: false,
+        auth_signup_account_type: null,
+      },
+      defaultWorkspace: {
+        id: "33333333-3333-3333-3333-333333333333",
+        type: "business",
+        name: "Legacy Surveying",
+      },
+      workspaces: [],
+    } as unknown as AppUserContext;
+
+    const user = mapAppUserToUiUser(ctx);
+    expect(user).not.toBeNull();
+    expect(user?.name).toBe("Legacy Surveyor");
+    expect(user?.email).toBe("legacy@example.com");
+    expect(user?.signupAccountType).toBe("business");
+  });
+
   it("refuses to map sessions whose wallet has no complete account record", () => {
     const base = {
       session: {
