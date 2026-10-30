@@ -236,6 +236,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("MetaMask")).toBeInTheDocument();
+    expect(screen.getByText("Phantom")).toBeInTheDocument();
     expect(screen.getByText("Solflare")).toBeInTheDocument();
     expect(screen.getAllByText("Install extension")).toHaveLength(2);
     expect(screen.getByText("SiteSurveyor Wallet")).toBeInTheDocument();
@@ -402,15 +403,17 @@ describe("WalletLoginPage (mobile handoff)", () => {
     mockHasStoredWallet.mockReturnValue(false);
   });
 
-  it("shows open-in-app rows for Phantom and Solflare on mobile", () => {
+  it("keeps Phantom off mobile and offers Solflare's app handoff", () => {
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
 
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     const dialog = screen.getByRole("dialog");
 
-    expect(within(dialog).getByText("Open in the Phantom app")).toBeInTheDocument();
-    expect(within(dialog).getByText("Open in the Solflare app")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Phantom")).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Open in the Solflare app"),
+    ).toBeInTheDocument();
   });
 
   it("hides the MetaMask install row on mobile", () => {
@@ -420,32 +423,26 @@ describe("WalletLoginPage (mobile handoff)", () => {
     expect(within(screen.getByRole("dialog")).queryByText("MetaMask")).not.toBeInTheDocument();
   });
 
-  it("hands off to the wallet app on tap", () => {
-    mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
-
+  it("opens Solflare's in-app browser on tap", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: /^phantom/i }),
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /^solflare/i,
+      }),
     );
 
-    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Phantom");
+    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Solflare");
   });
 
-  it("connects a detected Phantom in-page instead of handing off", async () => {
+  it("does not offer Phantom on mobile even when its adapter is detected", () => {
+    // The mock registers Phantom as installed, as it would be inside its own
+    // in-app browser.
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
-    const phantomRow = within(screen.getByRole("dialog")).getByRole("button", {
-      name: /^phantom/i,
-    });
-    expect(within(phantomRow).getByText("Detected in this browser")).toBeInTheDocument();
-
-    fireEvent.click(phantomRow);
-
-    expect(mockSelect).toHaveBeenCalledWith("Phantom");
-    await waitFor(() => expect(mockAdapterConnect).toHaveBeenCalled());
-    expect(mockOpenMobileWallet).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByText("Phantom")).not.toBeInTheDocument();
   });
 });
 
@@ -467,7 +464,7 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     });
   });
 
-  it("surfaces the wallet-app row and routes Phantom through MWA", async () => {
+  it("surfaces the wallet-app row and routes it through MWA", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
@@ -476,8 +473,9 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     expect(
       within(dialog).getByText(/no browser extension needed/i),
     ).toBeInTheDocument();
+    expect(within(dialog).queryByText("Phantom")).not.toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: /^phantom/i }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^wallet app/i }));
 
     expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter");
     await waitFor(() => expect(mockAdapterConnect).toHaveBeenCalled());
@@ -494,7 +492,7 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     ).toBeInTheDocument();
   });
 
-  it("explains a wallet network mismatch and offers the in-app browser", async () => {
+  it("explains a wallet-app network mismatch without a Phantom fallback", async () => {
     mockAdapterConnect.mockRejectedValueOnce(
       new Error(
         "Incorrect mode. You are trying to use devnet but Phantom is not in devnet mode.",
@@ -505,17 +503,14 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     const dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: /^phantom/i }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^wallet app/i }));
 
     expect(
       await within(dialog).findByText(/is on a different network/i),
     ).toBeInTheDocument();
-
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /continue in phantom/i }),
-    );
-
-    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Phantom");
+    expect(
+      within(dialog).queryByRole("button", { name: /continue in/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("prefers the wallet app over the missing-extension error when signing in", async () => {
@@ -558,7 +553,7 @@ describe("WalletLoginPage (mobile copy)", () => {
     fireEvent.click(screen.getByRole("button", { name: /connect wallet & sign in/i }));
 
     expect(
-      await screen.findByText(/open this page inside the phantom or solflare app/i),
+      await screen.findByText(/open this page inside the solflare app/i),
     ).toBeInTheDocument();
   });
 
@@ -576,7 +571,7 @@ describe("WalletLoginPage (mobile copy)", () => {
   it("omits MetaMask from the wallet field summary on mobile", () => {
     renderPage();
 
-    expect(screen.getByText("Phantom, Solflare & SiteSurveyor")).toBeInTheDocument();
+    expect(screen.getByText("Solflare & SiteSurveyor")).toBeInTheDocument();
     expect(screen.queryByText(/MetaMask/)).not.toBeInTheDocument();
   });
 

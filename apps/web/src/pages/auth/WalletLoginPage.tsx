@@ -201,8 +201,6 @@ export default function WalletLoginPage() {
     useState<MobileWalletName | null>(null);
   const [walletUnrecognised, setWalletUnrecognised] = useState(false);
   const [completingAccount, setCompletingAccount] = useState(false);
-  const [selectedMobileApp, setSelectedMobileApp] =
-    useState<MobileWalletName>("Phantom");
   const [signing, setSigning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
@@ -255,7 +253,10 @@ export default function WalletLoginPage() {
 
     for (const w of sortedWallets) {
       if (w.adapter.name === MWA_WALLET_NAME) continue;
-      const openApp = isMobile && /phantom|solflare/i.test(w.adapter.name);
+      // Phantom is a desktop extension here. Mobile wallets go through the
+      // wallet-app adapter (Android) or Solflare's in-app browser (iOS).
+      if (isMobile && /phantom/i.test(w.adapter.name)) continue;
+      const openApp = isMobile && /solflare/i.test(w.adapter.name);
       choices.push({
         key: w.adapter.name,
         name: w.adapter.name,
@@ -328,12 +329,14 @@ export default function WalletLoginPage() {
   const describeWalletFailure = (
     err: unknown,
     fallbackMessage: string,
-    app: MobileWalletName = selectedMobileApp,
+    app?: MobileWalletName,
   ): { message: string; fallback: MobileWalletName | null } => {
     if (isMobile && isWalletNetworkModeError(err)) {
       return {
-        message: `SiteSurveyor runs on Solana ${clusterLabel}, but ${app} is on a different network. Open ${app} → Settings → Developer Settings → Change Network → ${clusterLabel}, then try again — or continue in the ${app} browser.`,
-        fallback: app,
+        message: app
+          ? `SiteSurveyor runs on Solana ${clusterLabel}, but ${app} is on a different network. Open ${app} → Settings → Developer Settings → Change Network → ${clusterLabel}, then try again — or continue in the ${app} browser.`
+          : `SiteSurveyor runs on Solana ${clusterLabel}, but your wallet app is on a different network. Open your wallet app → Settings → Developer Settings → Change Network → ${clusterLabel}, then try again.`,
+        fallback: app ?? null,
       };
     }
     return {
@@ -345,8 +348,6 @@ export default function WalletLoginPage() {
   const connectViaMwa = async (app?: MobileWalletName) => {
     const target = mwaWallet;
     if (!target) return;
-    const appName = app ?? selectedMobileApp;
-    if (app) setSelectedMobileApp(app);
     setError(null);
     setWalletAppFallback(null);
     try {
@@ -360,7 +361,7 @@ export default function WalletLoginPage() {
       const failure = describeWalletFailure(
         err,
         "Could not open your wallet app.",
-        appName,
+        app,
       );
       setError(failure.message);
       setWalletAppFallback(failure.fallback);
@@ -433,14 +434,14 @@ export default function WalletLoginPage() {
     const chosen = wallets.find((w) => w.adapter.name === walletName);
     if (
       isMobile &&
-      /phantom|solflare/i.test(walletName) &&
+      /solflare/i.test(walletName) &&
       chosen?.readyState !== "Installed"
     ) {
       setWalletDialogOpen(false);
       setError(
         `Opening ${walletName}. Complete the connection inside the ${walletName} app.`,
       );
-      openMobileWallet(/solflare/i.test(walletName) ? "Solflare" : "Phantom");
+      openMobileWallet("Solflare");
       return;
     }
     if (walletName === CUSTOM_WALLET_NAME) {
@@ -475,9 +476,7 @@ export default function WalletLoginPage() {
       console.warn("[WalletLoginPage] Select error:", err);
       const app: MobileWalletName | undefined = /solflare/i.test(walletName)
         ? "Solflare"
-        : /phantom/i.test(walletName)
-          ? "Phantom"
-          : undefined;
+        : undefined;
       const failure = describeWalletFailure(
         err,
         "Failed to connect wallet.",
@@ -520,7 +519,7 @@ export default function WalletLoginPage() {
 
       throw new Error(
         isMobile
-          ? "No wallet detected. Open this page inside the Phantom or Solflare app, or choose SiteSurveyor Wallet."
+          ? "No wallet detected. Open this page inside the Solflare app, or choose SiteSurveyor Wallet."
           : "No Solana wallet detected. Please install Phantom, Solflare, or a Solana wallet extension.",
       );
     }
@@ -609,9 +608,7 @@ export default function WalletLoginPage() {
         wallet?.adapter.name ?? "",
       )
         ? "Solflare"
-        : /phantom/i.test(wallet?.adapter.name ?? "")
-          ? "Phantom"
-          : undefined;
+        : undefined;
       const failure = describeWalletFailure(
         err,
         "Wallet sign-in failed. Please verify your signature.",
@@ -668,9 +665,7 @@ export default function WalletLoginPage() {
         wallet?.adapter.name ?? "",
       )
         ? "Solflare"
-        : /phantom/i.test(wallet?.adapter.name ?? "")
-          ? "Phantom"
-          : undefined;
+        : undefined;
       const failure = describeWalletFailure(
         err,
         "Failed to create account with wallet signature.",
@@ -883,7 +878,9 @@ export default function WalletLoginPage() {
                             ? "Encrypted local vault"
                             : "Not installed"
                         : isMobile
-                          ? "Phantom, Solflare & SiteSurveyor"
+                          ? mwaWallet
+                            ? "Wallet app, Solflare & SiteSurveyor"
+                            : "Solflare & SiteSurveyor"
                           : "Phantom, Solflare, MetaMask & SiteSurveyor"}
                     </span>
                   </span>
@@ -988,11 +985,7 @@ export default function WalletLoginPage() {
                   onClick={() => {
                     if (choice.status === "mobile-app" && mwaWallet) {
                       void connectViaMwa(
-                        choice.key === "wallet-app"
-                          ? undefined
-                          : /solflare/i.test(choice.name)
-                            ? "Solflare"
-                            : "Phantom",
+                        /solflare/i.test(choice.name) ? "Solflare" : undefined,
                       );
                       return;
                     }
@@ -1001,9 +994,7 @@ export default function WalletLoginPage() {
                       setError(
                         `Opening ${choice.name}. Complete the connection inside the ${choice.name} app.`,
                       );
-                      openMobileWallet(
-                        /solflare/i.test(choice.name) ? "Solflare" : "Phantom",
-                      );
+                      openMobileWallet("Solflare");
                       return;
                     }
                     if (choice.installUrl) {
@@ -1029,7 +1020,7 @@ export default function WalletLoginPage() {
                         ? `Open in the ${choice.name} app`
                         : choice.status === "mobile-app" &&
                             choice.adapterName === MWA_WALLET_NAME
-                          ? "Phantom, Solflare, Backpack & more"
+                          ? "Installed wallet apps"
                           : walletStatusLabels[choice.status]}
                     </span>
                   </span>
@@ -1056,8 +1047,8 @@ export default function WalletLoginPage() {
             <span>
               {isMobile
                 ? mwaWallet
-                  ? "Android connects through your installed wallet app — Phantom, Solflare, Backpack and more."
-                  : "On iPhone, Phantom and Solflare open their in-app browser so the wallet can sign in."
+                  ? "Android connects through your installed wallet app."
+                  : "On iPhone, Solflare opens its in-app browser so the wallet can sign in."
                 : "Wallets are detected in this browser. MetaMask opens its official install page when the extension is missing."}
             </span>
           </div>
