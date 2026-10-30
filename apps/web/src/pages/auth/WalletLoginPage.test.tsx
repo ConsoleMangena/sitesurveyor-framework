@@ -7,6 +7,10 @@ import {
   within,
 } from "@testing-library/react";
 import WalletLoginPage from "./WalletLoginPage.tsx";
+import {
+  SOLANA_CLUSTER,
+  SOLANA_CLUSTER_LABEL,
+} from "../../features/phantom/lib/config.ts";
 
 const mockConnect = vi.fn();
 const mockSelect = vi.fn();
@@ -144,6 +148,14 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     expect(screen.getByRole("tab", { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /create account/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /sign in with brave wallet/i })).toBeInTheDocument();
+  });
+
+  it("shows the configured Solana cluster in the network pill", () => {
+    render(<WalletLoginPage />);
+
+    expect(
+      screen.getByText(SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]),
+    ).toBeInTheDocument();
   });
 
   it("displays connected address pill with truncate format and copy button", () => {
@@ -334,6 +346,40 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter");
     await waitFor(() => expect(mockAdapterConnect).toHaveBeenCalled());
     expect(mockOpenMobileWallet).not.toHaveBeenCalled();
+  });
+
+  it("tells the user which network the wallet app must be on", () => {
+    render(<WalletLoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(new RegExp(`change network → ${SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}`, "i")),
+    ).toBeInTheDocument();
+  });
+
+  it("explains a wallet network mismatch and offers the in-app browser", async () => {
+    mockAdapterConnect.mockRejectedValueOnce(
+      new Error(
+        "Incorrect mode. You are trying to use devnet but Phantom is not in devnet mode.",
+      ),
+    );
+
+    render(<WalletLoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^phantom/i }));
+
+    expect(
+      await within(dialog).findByText(/is on a different network/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: /continue in phantom/i }),
+    );
+
+    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Phantom");
   });
 
   it("prefers the wallet app over the missing-extension error when signing in", async () => {

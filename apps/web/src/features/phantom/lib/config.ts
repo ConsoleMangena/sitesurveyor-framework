@@ -30,6 +30,13 @@ const env = import.meta.env;
 export const SOLANA_CLUSTER: SolanaCluster =
   (env.VITE_SOLANA_CLUSTER as SolanaCluster) || "devnet";
 
+/** Human-readable label for the configured cluster (used in the auth UI). */
+export const SOLANA_CLUSTER_LABEL: Record<SolanaCluster, string> = {
+  devnet: "Devnet",
+  testnet: "Testnet",
+  "mainnet-beta": "Mainnet",
+};
+
 export const SOLANA_RPC_URL: string =
   env.VITE_SOLANA_RPC_URL || DEFAULT_RPC_URL[SOLANA_CLUSTER];
 

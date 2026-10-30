@@ -7,7 +7,12 @@ import {
   isMobileBrowser,
   MWA_WALLET_NAME,
   openMobileWallet,
+  type MobileWalletName,
 } from "../../features/phantom/lib/provider.ts";
+import {
+  SOLANA_CLUSTER,
+  SOLANA_CLUSTER_LABEL,
+} from "../../features/phantom/lib/config.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 import {
   Dialog,
@@ -66,6 +71,16 @@ const walletStatusLabels: Record<WalletChoiceStatus, string> = {
 };
 
 const MWA_WALLET_NAME_TYPED = MWA_WALLET_NAME as WalletName;
+
+// Phantom/MWA reject authorization when the wallet app's active network mode
+// doesn't match the cluster requested by the dapp.
+const NETWORK_MODE_ERROR_PATTERN =
+  /incorrect mode|wrong mode|wrong network|network mismatch|not in (?:devnet|testnet|mainnet) mode|trying to use (?:devnet|testnet) but/i;
+
+function isWalletNetworkModeError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return NETWORK_MODE_ERROR_PATTERN.test(message);
+}
 
 function SolanaNetworkIcon({ className }: { className?: string }) {
   return (
@@ -149,6 +164,10 @@ export default function WalletLoginPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
+  const [walletAppFallback, setWalletAppFallback] =
+    useState<MobileWalletName | null>(null);
+  const [selectedMobileApp, setSelectedMobileApp] =
+    useState<MobileWalletName>("Phantom");
   const [signing, setSigning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
@@ -161,6 +180,7 @@ export default function WalletLoginPage() {
   const [siteSurveyorBusy, setSiteSurveyorBusy] = useState(false);
 
   const isMobile = isMobileBrowser();
+  const clusterLabel = SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER];
   const address = publicKey ? publicKey.toBase58() : "";
   const truncatedAddress = address
     ? `${address.slice(0, 4)}...${address.slice(-4)}`
@@ -240,10 +260,35 @@ export default function WalletLoginPage() {
     return choices;
   }, [isMobile, mwaWallet, sortedWallets]);
 
-  const connectViaMwa = async () => {
+  const clearError = () => {
+    setError(null);
+    setWalletAppFallback(null);
+  };
+
+  const describeWalletFailure = (
+    err: unknown,
+    fallbackMessage: string,
+    app: MobileWalletName = selectedMobileApp,
+  ): { message: string; fallback: MobileWalletName | null } => {
+    if (isMobile && isWalletNetworkModeError(err)) {
+      return {
+        message: `SiteSurveyor runs on Solana ${clusterLabel}, but ${app} is on a different network. Open ${app} → Settings → Developer Settings → Change Network → ${clusterLabel}, then try again — or continue in the ${app} browser.`,
+        fallback: app,
+      };
+    }
+    return {
+      message: formatAuthUserFacingError(err, fallbackMessage),
+      fallback: null,
+    };
+  };
+
+  const connectViaMwa = async (app?: MobileWalletName) => {
     const target = mwaWallet;
     if (!target) return;
+    const appName = app ?? selectedMobileApp;
+    if (app) setSelectedMobileApp(app);
     setError(null);
+    setWalletAppFallback(null);
     try {
       setSigning(true);
       select(MWA_WALLET_NAME_TYPED);
@@ -252,9 +297,13 @@ export default function WalletLoginPage() {
       }
       setWalletDialogOpen(false);
     } catch (err) {
-      setError(
-        formatAuthUserFacingError(err, "Could not open your wallet app."),
+      const failure = describeWalletFailure(
+        err,
+        "Could not open your wallet app.",
+        appName,
       );
+      setError(failure.message);
+      setWalletAppFallback(failure.fallback);
     } finally {
       setSigning(false);
     }
@@ -304,7 +353,7 @@ export default function WalletLoginPage() {
       setSiteSurveyorDialogOpen(false);
       setSiteSurveyorPin("");
       setSiteSurveyorConfirmPin("");
-      setError(null);
+      clearError();
     } catch (err) {
       setSiteSurveyorError(
         formatAuthUserFacingError(
@@ -320,7 +369,7 @@ export default function WalletLoginPage() {
   };
 
   const handleWalletSelect = async (walletName: WalletName) => {
-    setError(null);
+    clearError();
     const chosen = wallets.find((w) => w.adapter.name === walletName);
     if (
       isMobile &&
@@ -364,7 +413,18 @@ export default function WalletLoginPage() {
       setWalletDialogOpen(false);
     } catch (err) {
       console.warn("[WalletLoginPage] Select error:", err);
-      setError(formatAuthUserFacingError(err, "Failed to connect wallet."));
+      const app: MobileWalletName | undefined = /solflare/i.test(walletName)
+        ? "Solflare"
+        : /phantom/i.test(walletName)
+          ? "Phantom"
+          : undefined;
+      const failure = describeWalletFailure(
+        err,
+        "Failed to connect wallet.",
+        app,
+      );
+      setError(failure.message);
+      setWalletAppFallback(failure.fallback);
     }
   };
 
@@ -428,7 +488,7 @@ export default function WalletLoginPage() {
   };
 
   const handleSignIn = async () => {
-    setError(null);
+    clearError();
     try {
       setSigning(true);
       setAuthLoading(true);
@@ -443,12 +503,20 @@ export default function WalletLoginPage() {
       });
     } catch (err) {
       setAuthLoading(false);
-      setError(
-        formatAuthUserFacingError(
-          err,
-          "Wallet sign-in failed. Please verify your signature.",
-        ),
+      const app: MobileWalletName | undefined = /solflare/i.test(
+        wallet?.adapter.name ?? "",
+      )
+        ? "Solflare"
+        : /phantom/i.test(wallet?.adapter.name ?? "")
+          ? "Phantom"
+          : undefined;
+      const failure = describeWalletFailure(
+        err,
+        "Wallet sign-in failed. Please verify your signature.",
+        app,
       );
+      setError(failure.message);
+      setWalletAppFallback(failure.fallback);
     } finally {
       setSigning(false);
     }
@@ -457,6 +525,7 @@ export default function WalletLoginPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignupError(null);
+    setWalletAppFallback(null);
 
     if (!fullName.trim()) {
       setSignupError("Please enter your full name or professional title.");
@@ -486,16 +555,34 @@ export default function WalletLoginPage() {
       setSignupDialogOpen(false);
     } catch (err) {
       setAuthLoading(false);
-      setSignupError(
-        formatAuthUserFacingError(
-          err,
-          "Failed to create account with wallet signature.",
-        ),
+      const app: MobileWalletName | undefined = /solflare/i.test(
+        wallet?.adapter.name ?? "",
+      )
+        ? "Solflare"
+        : /phantom/i.test(wallet?.adapter.name ?? "")
+          ? "Phantom"
+          : undefined;
+      const failure = describeWalletFailure(
+        err,
+        "Failed to create account with wallet signature.",
+        app,
       );
+      setSignupError(failure.message);
+      setWalletAppFallback(failure.fallback);
     } finally {
       setSigning(false);
     }
   };
+
+  const walletFallbackAction = walletAppFallback ? (
+    <button
+      type="button"
+      className="error-notice-link"
+      onClick={() => openMobileWallet(walletAppFallback)}
+    >
+      Continue in {walletAppFallback}
+    </button>
+  ) : undefined;
 
   return (
     <div className="web3-auth-screen">
@@ -522,12 +609,12 @@ export default function WalletLoginPage() {
                 </div>
               </div>
 
-              <div className="web3-network-pill">
+              <div className="web3-network-pill" data-cluster={SOLANA_CLUSTER}>
                 <span className="web3-network-dot" />
                 <SolanaNetworkIcon className="web3-network-icon" />
                 <span>
                   <span className="web3-network-label-prefix">Solana </span>
-                  Mainnet
+                  {clusterLabel}
                 </span>
               </div>
             </div>
@@ -543,7 +630,7 @@ export default function WalletLoginPage() {
                 aria-selected={!signupDialogOpen}
                 className={`web3-tab-btn ${!signupDialogOpen ? "active" : ""}`}
                 onClick={() => {
-                  setError(null);
+                  clearError();
                   setSignupDialogOpen(false);
                 }}
               >
@@ -559,7 +646,7 @@ export default function WalletLoginPage() {
                   signupDialogOpen ? "active" : ""
                 }`}
                 onClick={() => {
-                  setError(null);
+                  clearError();
                   setSignupError(null);
                   setSignupDialogOpen(true);
                 }}
@@ -577,7 +664,11 @@ export default function WalletLoginPage() {
             </div>
 
             {error ? (
-              <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+              <ErrorNotice
+                tone="danger"
+                onDismiss={clearError}
+                action={walletFallbackAction}
+              >
                 {error}
               </ErrorNotice>
             ) : null}
@@ -728,9 +819,24 @@ export default function WalletLoginPage() {
           </DialogHeader>
 
           {error ? (
-            <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+            <ErrorNotice
+              tone="danger"
+              onDismiss={clearError}
+              action={walletFallbackAction}
+            >
               {error}
             </ErrorNotice>
+          ) : null}
+
+          {isMobile && mwaWallet && SOLANA_CLUSTER !== "mainnet-beta" ? (
+            <div className="web3-network-note">
+              <SolanaNetworkIcon className="web3-network-note-icon" />
+              <span>
+                SiteSurveyor runs on <strong>{clusterLabel}</strong>. Switch your
+                wallet app to {clusterLabel} first: Settings → Developer
+                Settings → Change Network → {clusterLabel}.
+              </span>
+            </div>
           ) : null}
 
           <div className="web3-wallet-list">
@@ -750,7 +856,13 @@ export default function WalletLoginPage() {
                   className={`web3-wallet-row ${isSelected ? "selected" : ""}`}
                   onClick={() => {
                     if (choice.status === "mobile-app" && mwaWallet) {
-                      void connectViaMwa();
+                      void connectViaMwa(
+                        choice.key === "wallet-app"
+                          ? undefined
+                          : /solflare/i.test(choice.name)
+                            ? "Solflare"
+                            : "Phantom",
+                      );
                       return;
                     }
                     if (choice.status === "open-app") {
@@ -863,7 +975,14 @@ export default function WalletLoginPage() {
           </div>
 
           {signupError ? (
-            <ErrorNotice tone="danger" onDismiss={() => setSignupError(null)}>
+            <ErrorNotice
+              tone="danger"
+              onDismiss={() => {
+                setSignupError(null);
+                setWalletAppFallback(null);
+              }}
+              action={walletFallbackAction}
+            >
               {signupError}
             </ErrorNotice>
           ) : null}
