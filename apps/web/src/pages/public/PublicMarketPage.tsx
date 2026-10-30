@@ -3,9 +3,10 @@ Design contract — /market public surface (REVISED 2026-10-23: contained map +
 Discovery Rails replacing the card grid): THESIS: the open market as a live
 directory — a contained, bordered basemap card carrying the pins, a market-pulse
 stat strip, then horizontal Discovery Rails (Fresh on the market, gear,
-professionals, jobs, firms, training) with snap-scroll tiles; searching or
-sorting flips the registry into a flat editorial-row results list with
-Load more. OWN-WORLD: app shadcn tokens throughout; one accent hue per
+professionals, jobs, firms, training) with snap-scroll tiles; searching dims
+every non-matching pin on the map and flips the registry into a flat
+editorial-row results list with Load more; co-located pins collapse into
+numbered clusters that zoom in or open an in-map list. OWN-WORLD: app shadcn tokens throughout; one accent hue per
 directory kind carried from data — amber = listings, cyan = professionals,
 violet = jobs, emerald = firms, rose = training — echoed in pins, rail
 accents, legend and hover tints; tabular numerals for prices; no custom
@@ -289,6 +290,26 @@ export default function PublicMarketPage() {
     [data, search],
   );
 
+  // ── Derived: which pins the active search keeps in focus ──
+
+  const matchKeys = useMemo(() => {
+    if (!search.trim()) return null;
+    const keys = new Set<string>();
+    for (const row of filteredListings) keys.add(`listing:${row.id}`);
+    for (const row of filteredProfessionals) keys.add(`professional:${row.id}`);
+    for (const row of filteredJobs) keys.add(`job:${row.id}`);
+    for (const row of filteredFirms) keys.add(`firm:${row.id}`);
+    for (const row of filteredEvents) keys.add(`event:${row.id}`);
+    return keys;
+  }, [
+    search,
+    filteredListings,
+    filteredProfessionals,
+    filteredJobs,
+    filteredFirms,
+    filteredEvents,
+  ]);
+
   // ── Derived: sorting (price where it exists; events lead with schedule) ──
 
   const priceDir = sort === "price-asc" ? 1 : -1;
@@ -431,16 +452,12 @@ export default function PublicMarketPage() {
     () => (loading ? null : buildMarketDots(scopeGroups)),
     [loading, scopeGroups],
   );
-  const totalPoints = useMemo(() => {
-    if (!data) return 0;
-    return buildMarketDots([
-      { rows: data.listings.map(toSource), kind: "listing" },
-      { rows: data.professionals.map(toSource), kind: "professional" },
-      { rows: data.jobs.map(toSource), kind: "job" },
-      { rows: data.firms.map(toSource), kind: "firm" },
-      { rows: data.events.map(toSource), kind: "event" },
-    ]).length;
-  }, [data]);
+  // Pins that exist in the current scope. buildMarketDots caps what it plots,
+  // so count with an unbounded cap to keep the map's "showing X of Y" honest.
+  const totalPoints = useMemo(
+    () => buildMarketDots(scopeGroups, Number.POSITIVE_INFINITY).length,
+    [scopeGroups],
+  );
 
   // ── Derived: pulse stats + benchmarks ──
 
@@ -781,6 +798,8 @@ export default function PublicMarketPage() {
                 ref={globeRef}
                 dots={dots}
                 totalPoints={totalPoints}
+                matchKeys={matchKeys}
+                fitKey={scope}
                 failed={failed}
                 onSelect={handlePinSelect}
                 onRetry={retry}

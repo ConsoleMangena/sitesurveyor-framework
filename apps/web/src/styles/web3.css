@@ -591,6 +591,50 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+/* ── Market pin clusters ───────────────────────────────────── */
+
+.leaflet-container .market-cluster {
+  background: transparent;
+  border: 0;
+}
+
+.market-cluster-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  background: rgba(17, 24, 39, 0.88);
+  color: #ffffff;
+  font-family: var(--web3-mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.24);
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.market-cluster-bubble:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.3);
+}
+
+.market-cluster-bubble.is-match {
+  background: var(--web3-brand);
+  box-shadow:
+    0 0 0 4px rgba(217, 45, 32, 0.18),
+    0 4px 14px rgba(15, 23, 42, 0.24);
+}
+
+.market-cluster-bubble.is-dim {
+  opacity: 0.35;
+}
+
 /* ── Misc surfaces ─────────────────────────────────────────── */
 
 .web3-hero-scrim {

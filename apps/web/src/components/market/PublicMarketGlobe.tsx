@@ -5,11 +5,15 @@ import type { MarketDot } from "./marketDots";
 interface PublicMarketGlobeProps {
   /** null while the parent is fetching. Already filtered by scope/location. */
   dots: MarketDot[] | null;
-  /** Pins that exist in total (before scope/location filtering). */
+  /** Coordinate-bearing rows in the current scope; may exceed the plotted cap. */
   totalPoints: number;
   failed: boolean;
   onSelect: (dot: MarketDot) => void;
   onRetry: () => void;
+  /** "kind:id" keys matching the active registry search; null when not searching. */
+  matchKeys?: Set<string> | null;
+  /** Refit the map whenever this token changes (e.g. scope tabs). */
+  fitKey?: string;
   /** Rendered inside the map container (heading overlay etc.). */
   children?: ReactNode;
   /** Overrides the default hero height (e.g. embedded cards). */
@@ -20,7 +24,17 @@ interface PublicMarketGlobeProps {
  *  Wraps the LeafletGlobe component and passes through all props + ref. */
 const PublicMarketGlobe = forwardRef<MarketGlobeHandle, PublicMarketGlobeProps>(
   function PublicMarketGlobe(
-    { dots, totalPoints, failed, onSelect, onRetry, children, heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]" },
+    {
+      dots,
+      totalPoints,
+      failed,
+      onSelect,
+      matchKeys,
+      fitKey,
+      onRetry,
+      children,
+      heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]",
+    },
     ref,
   ) {
     return (
@@ -30,6 +44,8 @@ const PublicMarketGlobe = forwardRef<MarketGlobeHandle, PublicMarketGlobeProps>(
         totalPoints={totalPoints}
         failed={failed}
         onSelect={onSelect}
+        matchKeys={matchKeys}
+        fitKey={fitKey}
         onRetry={onRetry}
         heightClassName={heightClassName}
       >
