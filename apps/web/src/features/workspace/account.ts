@@ -1,4 +1,5 @@
 import type { AppUserContext } from "../../lib/auth/app-user.ts";
+import { isRecognisedWalletAccount } from "../../lib/auth/wallet-recognition.ts";
 import type {
   AccountType,
   SignupAccountType,
@@ -136,6 +137,18 @@ export function mapAppUserToUiUser(input: AppUserContext): UiUser | null {
     profile: input.profile,
     metadata,
   });
+
+  // Block sessions whose wallet has no name, email, or account type on record.
+  // Such wallets must complete the Create Account flow before using the app.
+  if (
+    !isRecognisedWalletAccount({
+      name: input.profile?.full_name,
+      email: input.profile?.email,
+      accountType: signupAccountType,
+    })
+  ) {
+    return null;
+  }
 
   const accountType: AccountType =
     workspace?.type === "business"

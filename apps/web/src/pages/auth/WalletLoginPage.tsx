@@ -1,8 +1,15 @@
 import React, { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
-import { signInWithSolanaWallet, signUpWithSolanaWallet } from "../../lib/auth/session.ts";
+import {
+  signInWithSolanaWallet,
+  signOut,
+  signUpWithSolanaWallet,
+} from "../../lib/auth/session.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
+import { isRecognisedWalletAccount } from "../../lib/auth/wallet-recognition.ts";
+import { getSignInProfile } from "../../lib/repositories/profiles.ts";
 import {
   isMobileBrowser,
   MWA_WALLET_NAME,
@@ -27,6 +34,7 @@ import {
   ChevronRight,
   Copy,
   Download,
+  Globe2,
   Loader2,
   Lock,
   LockKeyhole,
@@ -156,6 +164,7 @@ export default function WalletLoginPage() {
   } = useWallet();
 
   const setAuthLoading = useAuthStore((s) => s.setAuthLoading);
+  const setSessionExpired = useAuthStore((s) => s.setSessionExpired);
 
   const [accountType, setAccountType] = useState<"personal" | "business">("personal");
   const [fullName, setFullName] = useState("");
@@ -166,6 +175,7 @@ export default function WalletLoginPage() {
   const [signupError, setSignupError] = useState<string | null>(null);
   const [walletAppFallback, setWalletAppFallback] =
     useState<MobileWalletName | null>(null);
+  const [walletUnrecognised, setWalletUnrecognised] = useState(false);
   const [selectedMobileApp, setSelectedMobileApp] =
     useState<MobileWalletName>("Phantom");
   const [signing, setSigning] = useState(false);
@@ -263,6 +273,7 @@ export default function WalletLoginPage() {
   const clearError = () => {
     setError(null);
     setWalletAppFallback(null);
+    setWalletUnrecognised(false);
   };
 
   const describeWalletFailure = (
@@ -498,9 +509,29 @@ export default function WalletLoginPage() {
           ? wallet.adapter
           : await resolveAndConnectWallet();
 
-      await signInWithSolanaWallet(activeWallet, {
+      const { user } = await signInWithSolanaWallet(activeWallet, {
         statement: "Sign in to SiteSurveyor Framework with your Solana account.",
       });
+
+      const profile = user ? await getSignInProfile(user.id) : null;
+      if (
+        !isRecognisedWalletAccount({
+          name: profile?.full_name,
+          email: profile?.email,
+          accountType: profile?.auth_signup_account_type,
+        })
+      ) {
+        // SIWS creates a session for any wallet; discard it unless the wallet
+        // already has a complete account.
+        await signOut().catch(() => undefined);
+        setSessionExpired(false);
+        setAuthLoading(false);
+        setError(
+          "Wallet not recognised. This wallet isn't linked to a SiteSurveyor account with a name, email, and account type. Create an account to continue.",
+        );
+        setWalletUnrecognised(true);
+        return;
+      }
     } catch (err) {
       setAuthLoading(false);
       const app: MobileWalletName | undefined = /solflare/i.test(
@@ -534,6 +565,13 @@ export default function WalletLoginPage() {
 
     if (accountType === "business" && !companyName.trim()) {
       setSignupError("Please enter your surveying firm or company name.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setSignupError(
+        "Please enter your contact email — it's required to sign in.",
+      );
       return;
     }
 
@@ -583,6 +621,21 @@ export default function WalletLoginPage() {
       Continue in {walletAppFallback}
     </button>
   ) : undefined;
+
+  const errorAction = walletUnrecognised ? (
+    <button
+      type="button"
+      className="error-notice-link"
+      onClick={() => {
+        clearError();
+        setSignupDialogOpen(true);
+      }}
+    >
+      Create an account
+    </button>
+  ) : (
+    walletFallbackAction
+  );
 
   return (
     <div className="web3-auth-screen">
@@ -667,7 +720,7 @@ export default function WalletLoginPage() {
               <ErrorNotice
                 tone="danger"
                 onDismiss={clearError}
-                action={walletFallbackAction}
+                action={errorAction}
               >
                 {error}
               </ErrorNotice>
@@ -799,6 +852,12 @@ export default function WalletLoginPage() {
           </div>
         </section>
 
+        <Link to="/market" className="web3-market-link">
+          <Globe2 className="web3-market-link-icon" aria-hidden="true" />
+          <span>Go to public market</span>
+          <ChevronRight className="web3-market-link-chevron" aria-hidden="true" />
+        </Link>
+
         <p className="web3-auth-legal">
           By continuing you agree to SiteSurveyor&apos;s terms and privacy
           policy.
@@ -822,7 +881,7 @@ export default function WalletLoginPage() {
             <ErrorNotice
               tone="danger"
               onDismiss={clearError}
-              action={walletFallbackAction}
+              action={errorAction}
             >
               {error}
             </ErrorNotice>
@@ -1071,8 +1130,7 @@ export default function WalletLoginPage() {
 
             <div className="web3-form-group">
               <label className="web3-label" htmlFor="web3-email">
-                <span>Contact Email</span>
-                <span className="web3-label-optional">Optional</span>
+                Contact Email
               </label>
               <input
                 id="web3-email"
@@ -1082,6 +1140,7 @@ export default function WalletLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                required
               />
             </div>
 

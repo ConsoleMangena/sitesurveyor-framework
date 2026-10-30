@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import WalletLoginPage from "./WalletLoginPage.tsx";
 import {
   SOLANA_CLUSTER,
@@ -17,6 +18,10 @@ const mockSelect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockSignInWithSolanaWallet = vi.fn();
 const mockSignUpWithSolanaWallet = vi.fn();
+const { mockSignOut, mockGetSignInProfile } = vi.hoisted(() => ({
+  mockSignOut: vi.fn(),
+  mockGetSignInProfile: vi.fn(),
+}));
 const { mockHasStoredWallet, mockCreateWallet, mockUnlockWallet } = vi.hoisted(
   () => ({
     mockHasStoredWallet: vi.fn(() => false),
@@ -84,6 +89,14 @@ function setUserAgent(ua: string) {
   });
 }
 
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <WalletLoginPage />
+    </MemoryRouter>,
+  );
+}
+
 vi.mock("@solana/wallet-adapter-react", () => ({
   useWallet: () => ({
     wallet: mockWalletState.connected
@@ -125,7 +138,20 @@ vi.mock("../../features/phantom/lib/customWalletAdapter.ts", () => ({
 vi.mock("../../lib/auth/session.ts", () => ({
   signInWithSolanaWallet: (...args: unknown[]) => mockSignInWithSolanaWallet(...args),
   signUpWithSolanaWallet: (...args: unknown[]) => mockSignUpWithSolanaWallet(...args),
+  signOut: async (...args: unknown[]) => mockSignOut(...args),
 }));
+
+vi.mock("../../lib/repositories/profiles.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/repositories/profiles.ts")>()),
+  getSignInProfile: (...args: unknown[]) => mockGetSignInProfile(...args),
+}));
+
+// A complete account lets the Sign In flow pass wallet recognition by default.
+mockGetSignInProfile.mockResolvedValue({
+  full_name: "Sam Surveyor",
+  email: "sam@example.com",
+  auth_signup_account_type: "personal",
+});
 
 vi.mock("../../lib/auth/auth-store", () => ({
   useAuthStore: () => vi.fn(),
@@ -141,7 +167,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   });
 
   it("renders SiteSurveyor Web3 gateway branding and default Sign In tab", () => {
-    render(<WalletLoginPage />);
+    renderPage();
 
     expect(screen.getByText("SiteSurveyor")).toBeInTheDocument();
     expect(screen.getByText(/Solana Web3 Authentication/i)).toBeInTheDocument();
@@ -150,8 +176,16 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     expect(screen.getByRole("button", { name: /sign in with brave wallet/i })).toBeInTheDocument();
   });
 
+  it("links to the public market", () => {
+    renderPage();
+
+    expect(
+      screen.getByRole("link", { name: /go to public market/i }),
+    ).toHaveAttribute("href", "/market");
+  });
+
   it("shows the configured Solana cluster in the network pill", () => {
-    render(<WalletLoginPage />);
+    renderPage();
 
     expect(
       screen.getByText(SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]),
@@ -159,7 +193,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   });
 
   it("displays connected address pill with truncate format and copy button", () => {
-    render(<WalletLoginPage />);
+    renderPage();
 
     expect(screen.getByText("8xK3...4jP9")).toBeInTheDocument();
     expect(screen.getByLabelText("Copy wallet address")).toBeInTheDocument();
@@ -167,7 +201,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   });
 
   it("switches to Create Account tab and displays Personal / Business account options", () => {
-    render(<WalletLoginPage />);
+    renderPage();
 
     const createTab = screen.getByRole("tab", { name: /create account/i });
     fireEvent.click(createTab);
@@ -179,7 +213,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   });
 
   it("toggles business account scope and displays required firm name field", () => {
-    render(<WalletLoginPage />);
+    renderPage();
 
     fireEvent.click(screen.getByRole("tab", { name: /create account/i }));
 
@@ -192,7 +226,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
 
   it("lists MetaMask as an install fallback alongside detected wallets", () => {
     mockWalletState.connected = false;
-    render(<WalletLoginPage />);
+    renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
@@ -205,7 +239,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
 
   it("does not select or persist an uninstalled wallet", () => {
     mockWalletState.connected = false;
-    render(<WalletLoginPage />);
+    renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(screen.getByRole("button", { name: /^backpack/i }));
@@ -221,7 +255,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   it("creates a SiteSurveyor Wallet from the local vault dialog", async () => {
     mockWalletState.connected = false;
     mockCreateWallet.mockResolvedValueOnce("created-address");
-    render(<WalletLoginPage />);
+    renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
@@ -248,12 +282,35 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
       user: { id: "u-1" },
     });
 
-    render(<WalletLoginPage />);
+    renderPage();
 
     const signInBtn = screen.getByRole("button", { name: /sign in with brave wallet/i });
     fireEvent.click(signInBtn);
 
     expect(mockSignInWithSolanaWallet).toHaveBeenCalled();
+  });
+
+  it("rejects a wallet that has no recognised account", async () => {
+    mockSignInWithSolanaWallet.mockResolvedValueOnce({
+      session: { access_token: "tok" },
+      user: { id: "u-unknown" },
+    });
+    mockGetSignInProfile.mockResolvedValueOnce(null);
+
+    renderPage();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /sign in with brave wallet/i }),
+    );
+
+    expect(
+      await screen.findByText(/wallet not recognised/i),
+    ).toBeInTheDocument();
+    expect(mockSignOut).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /create an account/i }));
+
+    expect(await screen.findByText("Create your account")).toBeInTheDocument();
   });
 });
 
@@ -269,7 +326,7 @@ describe("WalletLoginPage (mobile handoff)", () => {
   it("shows open-in-app rows for Phantom and Solflare on mobile", () => {
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
 
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     const dialog = screen.getByRole("dialog");
 
@@ -278,7 +335,7 @@ describe("WalletLoginPage (mobile handoff)", () => {
   });
 
   it("hides the MetaMask install row on mobile", () => {
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     expect(within(screen.getByRole("dialog")).queryByText("MetaMask")).not.toBeInTheDocument();
@@ -287,7 +344,7 @@ describe("WalletLoginPage (mobile handoff)", () => {
   it("hands off to the wallet app on tap", () => {
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
 
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", { name: /^phantom/i }),
@@ -297,7 +354,7 @@ describe("WalletLoginPage (mobile handoff)", () => {
   });
 
   it("connects a detected Phantom in-page instead of handing off", async () => {
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     const phantomRow = within(screen.getByRole("dialog")).getByRole("button", {
@@ -332,7 +389,7 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
   });
 
   it("surfaces the wallet-app row and routes Phantom through MWA", async () => {
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     const dialog = screen.getByRole("dialog");
@@ -349,7 +406,7 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
   });
 
   it("tells the user which network the wallet app must be on", () => {
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     const dialog = screen.getByRole("dialog");
@@ -365,7 +422,7 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
       ),
     );
 
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     const dialog = screen.getByRole("dialog");
@@ -391,7 +448,7 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
       user: { id: "u-1" },
     });
 
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(
       screen.getByRole("button", { name: /connect wallet & sign in/i }),
     );
@@ -418,7 +475,7 @@ describe("WalletLoginPage (mobile copy)", () => {
       w.readyState = "Loadable";
     });
 
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /connect wallet & sign in/i }));
 
     expect(
@@ -429,7 +486,7 @@ describe("WalletLoginPage (mobile copy)", () => {
   it("keeps the desktop dialog footnote", () => {
     setUserAgent(DESKTOP_UA);
 
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     expect(
@@ -438,14 +495,14 @@ describe("WalletLoginPage (mobile copy)", () => {
   });
 
   it("omits MetaMask from the wallet field summary on mobile", () => {
-    render(<WalletLoginPage />);
+    renderPage();
 
     expect(screen.getByText("Phantom, Solflare & SiteSurveyor")).toBeInTheDocument();
     expect(screen.queryByText(/MetaMask/)).not.toBeInTheDocument();
   });
 
   it("shows the mobile uninstalled-wallet error inside the dialog", () => {
-    render(<WalletLoginPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", { name: /backpack/i }),

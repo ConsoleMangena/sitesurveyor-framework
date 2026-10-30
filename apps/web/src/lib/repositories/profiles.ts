@@ -25,6 +25,25 @@ export async function getMyProfile(): Promise<ProfileRow | null> {
   return data;
 }
 
+export type SignInProfileFields = Pick<
+  ProfileRow,
+  "full_name" | "email" | "auth_signup_account_type"
+>;
+
+/** Account fields used to recognise a wallet at sign-in, looked up by user id. */
+export async function getSignInProfile(
+  userId: string,
+): Promise<SignInProfileFields | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("full_name, email, auth_signup_account_type")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function updateMyProfile(
   patch: ProfileUpdate,
 ): Promise<ProfileRow> {

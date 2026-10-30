@@ -146,6 +146,33 @@ describe("workspace account access helpers", () => {
     expect(mapAppUserToUiUser(ctx)?.signupAccountType).toBe("business");
   });
 
+  it("refuses to map sessions whose wallet has no complete account record", () => {
+    const base = {
+      session: {
+        user: {
+          id: "00000000-0000-0000-0000-000000000004",
+          email: null,
+          user_metadata: {},
+        },
+      },
+      defaultWorkspace: { id: "w", type: "personal", name: "Personal" },
+      workspaces: [],
+    };
+
+    const incompleteProfiles = [
+      null,
+      { email: null, full_name: "No Email", auth_signup_account_type: "personal" },
+      { email: "a@b.com", full_name: "  ", auth_signup_account_type: "personal" },
+      { email: "a@b.com", full_name: "No Type", auth_signup_account_type: null },
+    ];
+
+    for (const profile of incompleteProfiles) {
+      expect(
+        mapAppUserToUiUser({ ...base, profile } as unknown as AppUserContext),
+      ).toBeNull();
+    }
+  });
+
   it("labels platform signup shell distinctly from personal/business", () => {
     const base: UiUser = {
       id: "11111111-1111-1111-1111-111111111111",

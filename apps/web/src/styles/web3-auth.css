@@ -869,6 +869,46 @@
   color: var(--text-muted);
 }
 
+.web3-market-link {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background: color-mix(in oklab, var(--surface-muted) 66%, transparent);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.web3-market-link:hover {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  background: color-mix(in oklab, var(--accent) 9%, var(--surface-muted));
+  color: var(--text-h);
+}
+
+.web3-market-link-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.web3-market-link-chevron {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
 [data-slot="dialog-content"].web3-wallet-dialog {
   display: flex;
   flex-direction: column;
@@ -1260,7 +1300,8 @@
     .web3-action-btn,
     .web3-type-card,
     .web3-input,
-    .web3-wallet-row
+    .web3-wallet-row,
+    .web3-market-link
   ):focus-visible {
   outline: 2px solid color-mix(in oklab, var(--accent) 82%, transparent);
   outline-offset: 2px;
