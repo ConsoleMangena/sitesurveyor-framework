@@ -70,6 +70,8 @@ const DESKTOP_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 const MOBILE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+const ANDROID_UA =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36";
 
 function setUserAgent(ua: string) {
   Object.defineProperty(window.navigator, "userAgent", {
@@ -129,7 +131,6 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetMockWallets();
-    localStorage.removeItem("sitesurveyor:pending-mobile-wallet");
     setUserAgent(DESKTOP_UA);
     mockWalletState.connected = true;
     mockHasStoredWallet.mockReturnValue(false);
@@ -248,7 +249,6 @@ describe("WalletLoginPage (mobile handoff)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetMockWallets();
-    localStorage.removeItem("sitesurveyor:pending-mobile-wallet");
     setUserAgent(MOBILE_UA);
     mockWalletState.connected = false;
     mockHasStoredWallet.mockReturnValue(false);
@@ -272,7 +272,7 @@ describe("WalletLoginPage (mobile handoff)", () => {
     expect(within(screen.getByRole("dialog")).queryByText("MetaMask")).not.toBeInTheDocument();
   });
 
-  it("hands off to the wallet app and persists the pending key on tap", () => {
+  it("hands off to the wallet app on tap", () => {
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
 
     render(<WalletLoginPage />);
@@ -282,7 +282,6 @@ describe("WalletLoginPage (mobile handoff)", () => {
     );
 
     expect(mockOpenMobileWallet).toHaveBeenCalledWith("Phantom");
-    expect(localStorage.getItem("sitesurveyor:pending-mobile-wallet")).toBe("Phantom");
   });
 
   it("connects a detected Phantom in-page instead of handing off", async () => {
@@ -299,7 +298,63 @@ describe("WalletLoginPage (mobile handoff)", () => {
     expect(mockSelect).toHaveBeenCalledWith("Phantom");
     await waitFor(() => expect(mockAdapterConnect).toHaveBeenCalled());
     expect(mockOpenMobileWallet).not.toHaveBeenCalled();
-    expect(localStorage.getItem("sitesurveyor:pending-mobile-wallet")).toBeNull();
+  });
+});
+
+describe("WalletLoginPage (Android wallet app via MWA)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMockWallets();
+    setUserAgent(ANDROID_UA);
+    mockWalletState.connected = false;
+    mockHasStoredWallet.mockReturnValue(false);
+    mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
+    mockWallets.push({
+      adapter: {
+        name: "Mobile Wallet Adapter",
+        icon: "data:image/svg+xml;base64,mock",
+        connect: mockAdapterConnect,
+      },
+      readyState: "Installed",
+    });
+  });
+
+  it("surfaces the wallet-app row and routes Phantom through MWA", async () => {
+    render(<WalletLoginPage />);
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Wallet app")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/no browser extension needed/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /^phantom/i }));
+
+    expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter");
+    await waitFor(() => expect(mockAdapterConnect).toHaveBeenCalled());
+    expect(mockOpenMobileWallet).not.toHaveBeenCalled();
+  });
+
+  it("prefers the wallet app over the missing-extension error when signing in", async () => {
+    mockWallets.forEach((w) => {
+      if (w.adapter.name !== "Mobile Wallet Adapter") w.readyState = "Loadable";
+    });
+    mockSignInWithSolanaWallet.mockResolvedValueOnce({
+      session: { access_token: "tok" },
+      user: { id: "u-1" },
+    });
+
+    render(<WalletLoginPage />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /connect wallet & sign in/i }),
+    );
+
+    await waitFor(() =>
+      expect(mockSignInWithSolanaWallet).toHaveBeenCalled(),
+    );
+    expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter");
+    expect(mockOpenMobileWallet).not.toHaveBeenCalled();
   });
 });
 
@@ -307,7 +362,6 @@ describe("WalletLoginPage (mobile copy)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetMockWallets();
-    localStorage.removeItem("sitesurveyor:pending-mobile-wallet");
     setUserAgent(MOBILE_UA);
     mockWalletState.connected = false;
     mockHasStoredWallet.mockReturnValue(false);

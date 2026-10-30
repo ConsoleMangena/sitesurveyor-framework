@@ -1,9 +1,13 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
 import { signInWithSolanaWallet, signUpWithSolanaWallet } from "../../lib/auth/session.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
-import { isMobileBrowser, openMobileWallet } from "../../features/phantom/lib/provider.ts";
+import {
+  isMobileBrowser,
+  MWA_WALLET_NAME,
+  openMobileWallet,
+} from "../../features/phantom/lib/provider.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 import {
   Dialog,
@@ -35,7 +39,13 @@ import {
 import "../../styles/web3.css";
 import "../../styles/web3-auth.css";
 
-type WalletChoiceStatus = "detected" | "not-installed" | "local" | "install" | "open-app";
+type WalletChoiceStatus =
+  | "detected"
+  | "not-installed"
+  | "local"
+  | "install"
+  | "open-app"
+  | "mobile-app";
 
 interface WalletChoice {
   key: string;
@@ -46,15 +56,16 @@ interface WalletChoice {
   status: WalletChoiceStatus;
 }
 
-const MOBILE_WALLET_PENDING_KEY = "sitesurveyor:pending-mobile-wallet";
-
 const walletStatusLabels: Record<WalletChoiceStatus, string> = {
   detected: "Detected in this browser",
   "not-installed": "Not installed",
   local: "Encrypted local vault",
   install: "Install extension",
   "open-app": "Open in app",
+  "mobile-app": "Connect through your wallet app",
 };
+
+const MWA_WALLET_NAME_TYPED = MWA_WALLET_NAME as WalletName;
 
 function SolanaNetworkIcon({ className }: { className?: string }) {
   return (
@@ -148,9 +159,6 @@ export default function WalletLoginPage() {
   const [siteSurveyorConfirmPin, setSiteSurveyorConfirmPin] = useState("");
   const [siteSurveyorError, setSiteSurveyorError] = useState<string | null>(null);
   const [siteSurveyorBusy, setSiteSurveyorBusy] = useState(false);
-  const [mobileWalletPending, setMobileWalletPending] = useState<string | null>(() =>
-    typeof localStorage === "undefined" ? null : localStorage.getItem(MOBILE_WALLET_PENDING_KEY),
-  );
 
   const isMobile = isMobileBrowser();
   const address = publicKey ? publicKey.toBase58() : "";
@@ -166,22 +174,48 @@ export default function WalletLoginPage() {
     });
   }, [wallets]);
 
+  // wallet-adapter-react registers this adapter automatically on Android, where
+  // wallet apps are reached via intents rather than browser extensions.
+  const mwaWallet = useMemo(
+    () =>
+      sortedWallets.find((w) => w.adapter.name === MWA_WALLET_NAME) ?? null,
+    [sortedWallets],
+  );
+
   const walletChoices = useMemo<WalletChoice[]>(() => {
-    const openApp = (name: string) => isMobile && /phantom|solflare/i.test(name);
-    const choices: WalletChoice[] = sortedWallets.map((w) => ({
-      key: w.adapter.name,
-      name: w.adapter.name,
-      icon: w.adapter.icon,
-      adapterName: w.adapter.name,
-      status:
-        w.adapter.name === CUSTOM_WALLET_NAME
-          ? "local"
-          : w.readyState === "Installed"
-            ? "detected"
-            : openApp(w.adapter.name)
-              ? "open-app"
-              : "not-installed",
-    }));
+    const mobileStatus: WalletChoiceStatus = mwaWallet
+      ? "mobile-app"
+      : "open-app";
+    const choices: WalletChoice[] = [];
+
+    if (mwaWallet) {
+      choices.push({
+        key: "wallet-app",
+        name: "Wallet app",
+        icon: mwaWallet.adapter.icon,
+        adapterName: mwaWallet.adapter.name,
+        status: "mobile-app",
+      });
+    }
+
+    for (const w of sortedWallets) {
+      if (w.adapter.name === MWA_WALLET_NAME) continue;
+      const openApp = isMobile && /phantom|solflare/i.test(w.adapter.name);
+      choices.push({
+        key: w.adapter.name,
+        name: w.adapter.name,
+        icon: w.adapter.icon,
+        adapterName: w.adapter.name,
+        status:
+          w.adapter.name === CUSTOM_WALLET_NAME
+            ? "local"
+            : w.readyState === "Installed"
+              ? "detected"
+              : openApp
+                ? mobileStatus
+                : "not-installed",
+      });
+    }
 
     if (!isMobile && !sortedWallets.some((w) => /metamask/i.test(w.adapter.name))) {
       choices.push({
@@ -199,12 +233,32 @@ export default function WalletLoginPage() {
         name: "Solflare",
         icon: "/solflare.svg",
         installUrl: "https://solflare.com/download",
-        status: isMobile ? "open-app" : "install",
+        status: isMobile ? mobileStatus : "install",
       });
     }
 
     return choices;
-  }, [isMobile, sortedWallets]);
+  }, [isMobile, mwaWallet, sortedWallets]);
+
+  const connectViaMwa = async () => {
+    const target = mwaWallet;
+    if (!target) return;
+    setError(null);
+    try {
+      setSigning(true);
+      select(MWA_WALLET_NAME_TYPED);
+      if (!target.adapter.connected) {
+        await target.adapter.connect();
+      }
+      setWalletDialogOpen(false);
+    } catch (err) {
+      setError(
+        formatAuthUserFacingError(err, "Could not open your wallet app."),
+      );
+    } finally {
+      setSigning(false);
+    }
+  };
 
   const handleCopy = () => {
     if (!address) return;
@@ -265,44 +319,6 @@ export default function WalletLoginPage() {
     }
   };
 
-  useEffect(() => {
-    if (!isMobile || !mobileWalletPending || connected) return;
-    const selected = wallets.find(
-      (entry) => entry.adapter.name.toLowerCase() === mobileWalletPending.toLowerCase(),
-    );
-    if (!selected || selected.readyState !== "Installed") return;
-
-    let cancelled = false;
-    const resumeConnection = () => {
-      if (cancelled) return;
-      setSigning(true);
-      select(selected.adapter.name);
-      void selected.adapter.connect()
-        .then(() => {
-          if (cancelled) return;
-          localStorage.removeItem(MOBILE_WALLET_PENDING_KEY);
-          setMobileWalletPending(null);
-          setWalletDialogOpen(false);
-          setError(null);
-        })
-        .catch((err: unknown) => {
-          if (!cancelled) {
-            setError(formatAuthUserFacingError(err, "Wallet connection was not approved."));
-            localStorage.removeItem(MOBILE_WALLET_PENDING_KEY);
-            setMobileWalletPending(null);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setSigning(false);
-        });
-    };
-    const resumeTimer = window.setTimeout(resumeConnection, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(resumeTimer);
-    };
-  }, [connected, isMobile, mobileWalletPending, select, wallets]);
   const handleWalletSelect = async (walletName: WalletName) => {
     setError(null);
     const chosen = wallets.find((w) => w.adapter.name === walletName);
@@ -311,10 +327,10 @@ export default function WalletLoginPage() {
       /phantom|solflare/i.test(walletName) &&
       chosen?.readyState !== "Installed"
     ) {
-      localStorage.setItem(MOBILE_WALLET_PENDING_KEY, walletName);
-      setMobileWalletPending(walletName);
       setWalletDialogOpen(false);
-      setError(`Opening ${walletName}. Approve the wallet connection, then return here and continue.`);
+      setError(
+        `Opening ${walletName}. Complete the connection inside the ${walletName} app.`,
+      );
       openMobileWallet(/solflare/i.test(walletName) ? "Solflare" : "Phantom");
       return;
     }
@@ -366,6 +382,13 @@ export default function WalletLoginPage() {
       }
     }
 
+    // On Android there is no extension to detect; the mobile wallet adapter
+    // opens the installed wallet app's authorization sheet directly.
+    if (!target && mwaWallet) {
+      select(MWA_WALLET_NAME_TYPED);
+      target = mwaWallet;
+    }
+
     if (!target) {
       const windowSolana =
         (window as unknown as { braveSolana?: unknown }).braveSolana ??
@@ -388,7 +411,10 @@ export default function WalletLoginPage() {
       );
     }
 
-    if (target.readyState !== "Installed") {
+    if (
+      target.adapter.name !== MWA_WALLET_NAME &&
+      target.readyState !== "Installed"
+    ) {
       throw new Error(
         `${target.adapter.name} is not installed in your browser. Please install the ${target.adapter.name} extension or choose another wallet above.`,
       );
@@ -499,7 +525,10 @@ export default function WalletLoginPage() {
               <div className="web3-network-pill">
                 <span className="web3-network-dot" />
                 <SolanaNetworkIcon className="web3-network-icon" />
-                <span>Solana Mainnet</span>
+                <span>
+                  <span className="web3-network-label-prefix">Solana </span>
+                  Mainnet
+                </span>
               </div>
             </div>
 
@@ -692,8 +721,9 @@ export default function WalletLoginPage() {
               Connect a wallet
             </DialogTitle>
             <DialogDescription className="web3-dialog-description">
-              Choose a detected Solana wallet to continue. SiteSurveyor never
-              stores your keys.
+              {isMobile && mwaWallet
+                ? "Pick a wallet app — no browser extension needed. SiteSurveyor never stores your keys."
+                : "Choose a detected Solana wallet to continue. SiteSurveyor never stores your keys."}
             </DialogDescription>
           </DialogHeader>
 
@@ -719,16 +749,22 @@ export default function WalletLoginPage() {
                   type="button"
                   className={`web3-wallet-row ${isSelected ? "selected" : ""}`}
                   onClick={() => {
+                    if (choice.status === "mobile-app" && mwaWallet) {
+                      void connectViaMwa();
+                      return;
+                    }
+                    if (choice.status === "open-app") {
+                      setWalletDialogOpen(false);
+                      setError(
+                        `Opening ${choice.name}. Complete the connection inside the ${choice.name} app.`,
+                      );
+                      openMobileWallet(
+                        /solflare/i.test(choice.name) ? "Solflare" : "Phantom",
+                      );
+                      return;
+                    }
                     if (choice.installUrl) {
-                      if (isMobile && /phantom|solflare/i.test(choice.name)) {
-                        localStorage.setItem(MOBILE_WALLET_PENDING_KEY, choice.name);
-                        setMobileWalletPending(choice.name);
-                        setWalletDialogOpen(false);
-                        setError(`Opening ${choice.name}. Approve the wallet connection, then return here and continue.`);
-                        openMobileWallet(/solflare/i.test(choice.name) ? "Solflare" : "Phantom");
-                      } else {
-                        window.open(choice.installUrl, "_blank", "noopener,noreferrer");
-                      }
+                      window.open(choice.installUrl, "_blank", "noopener,noreferrer");
                       return;
                     }
                     if (choice.adapterName) {
@@ -745,11 +781,14 @@ export default function WalletLoginPage() {
                   </span>
                   <span className="web3-wallet-row-meta">
                     <span className="web3-wallet-row-name">{choice.name}</span>
-                  <span className="web3-wallet-row-sub">
-                    {choice.status === "open-app"
-                      ? `Open in the ${choice.name} app`
-                      : walletStatusLabels[choice.status]}
-                  </span>
+                    <span className="web3-wallet-row-sub">
+                      {choice.status === "open-app"
+                        ? `Open in the ${choice.name} app`
+                        : choice.status === "mobile-app" &&
+                            choice.adapterName === MWA_WALLET_NAME
+                          ? "Phantom, Solflare, Backpack & more"
+                          : walletStatusLabels[choice.status]}
+                    </span>
                   </span>
                   <span
                     className={`web3-wallet-row-status ${
@@ -773,7 +812,9 @@ export default function WalletLoginPage() {
             <Lock />
             <span>
               {isMobile
-                ? "Phantom and Solflare open on your phone. Detected wallets connect in this page."
+                ? mwaWallet
+                  ? "Android connects through your installed wallet app — Phantom, Solflare, Backpack and more."
+                  : "On iPhone, Phantom and Solflare open their in-app browser so the wallet can sign in."
                 : "Wallets are detected in this browser. MetaMask opens its official install page when the extension is missing."}
             </span>
           </div>

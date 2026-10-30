@@ -120,6 +120,7 @@
 
 .web3-brand-row {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 11px;
   min-width: 0;
@@ -163,6 +164,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .web3-brand-title {
@@ -183,26 +185,35 @@
   letter-spacing: 0.17em;
   text-transform: uppercase;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .web3-network-pill {
   align-self: center;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 11px 0 9px;
   border-radius: 999px;
   border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
   background: color-mix(in oklab, var(--surface-muted) 72%, transparent);
   font-size: 10px;
   font-weight: 600;
+  line-height: 1;
   letter-spacing: 0.02em;
+  white-space: nowrap;
   color: var(--text);
 }
 
 .web3-network-dot {
   width: 6px;
   height: 6px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--web3-solana-deep);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--web3-solana) 22%, transparent);
@@ -211,6 +222,7 @@
 .web3-network-icon {
   width: 13px;
   height: 13px;
+  flex-shrink: 0;
 }
 
 .web3-tabs-nav {
@@ -229,7 +241,8 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 34px;
+  min-height: 38px;
+  height: 100%;
   padding: 8px 10px;
   border: none;
   border-radius: 10px;
@@ -238,6 +251,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background 0.18s ease,
@@ -271,38 +285,34 @@
   color: var(--accent);
 }
 
-/* Sign-up path carries the Solana gradient so it reads as the colored action. */
+/* Sign-up path reads as the colored action, in the brand accent. */
 .web3-tab-btn.is-primary {
-  background: linear-gradient(
-    135deg,
-    var(--web3-solana) 0%,
-    var(--web3-purple) 100%
-  );
-  color: #05110c;
-  box-shadow:
-    0 10px 26px -14px var(--web3-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  box-shadow: none;
 }
 
 .web3-tab-btn.is-primary:hover {
-  color: #05110c;
-  filter: brightness(1.05);
+  background: color-mix(in oklab, var(--accent-bg) 78%, var(--surface));
+  color: var(--accent);
 }
 
 .web3-tab-btn.is-primary .tab-icon {
-  color: #05110c;
+  color: var(--accent);
 }
 
 .web3-tab-btn.is-primary.active {
-  background: linear-gradient(
-    135deg,
-    var(--web3-solana) 0%,
-    var(--web3-purple) 100%
-  );
-  color: #05110c;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
   box-shadow:
-    0 12px 28px -12px var(--web3-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 10px 24px -14px var(--web3-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.web3-tab-btn.is-primary.active .tab-icon {
+  color: var(--accent-contrast);
 }
 
 .web3-card-body {
@@ -567,6 +577,7 @@
 
 .web3-btn-row {
   display: flex;
+  justify-content: center;
   width: 100%;
   padding-top: 2px;
 }
@@ -574,19 +585,16 @@
 .web3-action-btn {
   appearance: none;
   width: 100%;
-  min-height: 46px;
+  max-width: 340px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 18px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in oklab, var(--accent) 72%, transparent);
-  background: linear-gradient(
-    135deg,
-    var(--accent) 0%,
-    color-mix(in oklab, var(--accent) 62%, var(--web3-purple)) 100%
-  );
+  padding: 10px 18px;
+  border-radius: 13px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: var(--accent-contrast);
   font-family: var(--sans);
   font-size: 13.5px;
@@ -622,31 +630,25 @@
   box-shadow: none;
 }
 
-/* Slim secondary variant — the sign-in action stays compact and glassy so the
-   colored sign-up path keeps the visual weight. */
+/* Slim variant — keeps the branded fill but stays compact instead of
+   stretching to the full card width. */
 .web3-action-btn--slim {
   width: auto;
   max-width: 100%;
   min-height: 40px;
   padding: 8px 18px;
   border-radius: 12px;
-  border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
-  background: color-mix(in oklab, var(--surface-muted) 74%, transparent);
-  color: var(--text-h);
   font-size: 12.5px;
   font-weight: 650;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .web3-action-btn--slim:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: none;
-  border-color: color-mix(in oklab, var(--accent) 42%, var(--border));
-  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  filter: brightness(1.04);
   box-shadow:
-    0 10px 24px -16px var(--web3-glow),
+    0 18px 38px -14px var(--web3-glow),
     0 0 0 3px var(--accent-bg),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 .web3-btn-icon {
@@ -1402,16 +1404,20 @@
   .web3-card-header { padding: 18px 16px 12px; gap: 12px; }
   .web3-card-body { padding: 0 16px 16px; gap: 12px; }
   .web3-auth-card { border-radius: 18px; }
-  .web3-brand-bar { align-items: flex-start; }
-  .web3-network-pill { padding: 3px 7px; font-size: 9px; }
+  .web3-brand-bar { align-items: center; gap: 8px; }
+  .web3-brand-subtitle { font-size: 8.5px; letter-spacing: 0.12em; }
+  .web3-network-pill { height: 24px; padding: 0 9px 0 7px; gap: 4px; font-size: 9px; }
+  .web3-network-label-prefix { display: none; }
+  .web3-network-icon { width: 11px; height: 11px; }
+  .web3-network-dot { width: 5px; height: 5px; }
   .web3-mode-heading h2 { font-size: 18px; }
   .web3-mode-heading p { font-size: 11.5px; }
 
   .web3-tab-btn {
-    min-height: 30px;
-    padding: 6px 8px;
+    min-height: 38px;
+    padding: 8px 10px;
     gap: 5px;
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .web3-wallet-field {
@@ -1425,20 +1431,28 @@
   .web3-wallet-field-sub { font-size: 10px; }
   .web3-btn-row { justify-content: center; }
 
-  .web3-action-btn,
-  .web3-action-btn--slim {
-    width: min(100%, 280px);
-    min-height: 38px;
-    padding: 7px 12px;
-    border-radius: 10px;
-    font-size: 11.5px;
+  .web3-action-btn {
+    width: min(100%, 320px);
+    min-height: 42px;
+    padding: 9px 16px;
+    border-radius: 12px;
+    font-size: 12.5px;
   }
 
-  .web3-type-selector { gap: 6px; }
-  .web3-type-card { min-height: 52px; padding: 8px; border-radius: 11px; }
-  .web3-type-icon { width: 25px; height: 25px; }
-  .web3-type-title { font-size: 11.5px; }
-  .web3-type-desc { font-size: 9px; }
+  .web3-action-btn--slim {
+    width: auto;
+    max-width: 100%;
+    min-height: 40px;
+    padding: 8px 16px;
+    border-radius: 11px;
+    font-size: 12px;
+  }
+
+  .web3-type-selector { gap: 8px; align-items: stretch; }
+  .web3-type-card { min-height: 58px; padding: 9px 10px; border-radius: 12px; }
+  .web3-type-icon { width: 26px; height: 26px; }
+  .web3-type-title { font-size: 12px; white-space: normal; }
+  .web3-type-desc { font-size: 9.5px; white-space: normal; }
 
   [data-slot="dialog-content"].web3-wallet-dialog {
     width: min(calc(100vw - 24px), 380px);
@@ -1460,6 +1474,19 @@
     width: min(calc(100vw - 24px), 390px);
     max-height: calc(100dvh - 24px);
     padding: 18px 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .web3-tab-btn {
+    padding: 8px 6px;
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .web3-tab-btn .tab-icon {
+    width: 12px;
+    height: 12px;
   }
 }
 

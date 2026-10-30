@@ -38,11 +38,33 @@ function readProvider(): PhantomWalletProvider | null {
   return provider ? normalizeProvider(provider) : null;
 }
 
-export function isMobileBrowser(): boolean {
-  return typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+export function isAndroidBrowser(): boolean {
+  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
+export function isIosBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  // iPadOS 13+ reports a desktop Macintosh UA; touch points distinguish it.
+  return (
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
+  );
+}
+export function isMobileBrowser(): boolean {
+  return isAndroidBrowser() || isIosBrowser();
+}
+
+/**
+ * Wallet name used by @solana-mobile/wallet-adapter-mobile. wallet-adapter-react
+ * registers this adapter automatically on Android browsers so installed wallet
+ * apps (Phantom, Solflare, Backpack…) can authorize without a browser extension.
+ */
+export const MWA_WALLET_NAME = "Mobile Wallet Adapter";
+
 export function phantomMobileBrowseUrl(url = typeof window !== "undefined" ? window.location.href : ""): string {
-  return `https://phantom.app/ul/browse/${encodeURIComponent(url)}`;
+  const target = encodeURIComponent(url);
+  // ref lets Phantom show the requesting origin on its approval sheet.
+  return `https://phantom.app/ul/browse/${target}?ref=${target}`;
 }
 export function openPhantomMobile(url = typeof window !== "undefined" ? window.location.href : ""): void {
   if (typeof window !== "undefined") window.location.assign(phantomMobileBrowseUrl(url));

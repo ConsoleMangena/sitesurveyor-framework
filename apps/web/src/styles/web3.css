@@ -13,6 +13,10 @@
   --web3-brand-muted: rgba(217, 45, 32, 0.12);
   --web3-solana: #14f195;
   --web3-solana-deep: #0d9960;
+  /* Solana purple — used by the auth gradients (button, tab, screen glow).
+     Without this definition every declaration mixing it resolves to
+     "invalid at computed-value time" and drops its background entirely. */
+  --web3-purple: #dc1fff;
   --web3-bg: #fbfbfa;
   --web3-bg-2: #f5f5f4;
   --web3-panel: #ffffff;
