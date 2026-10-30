@@ -222,64 +222,64 @@ export function MarketDetailDialog({
       <DialogContent
         disableAnimation={fullScreen}
         className={cn(
-          "web3-theme rounded-2xl border border-border/80 bg-background p-0 shadow-2xl backdrop-blur-xl overflow-hidden",
+          "web3-theme flex flex-col rounded-2xl sm:rounded-2xl border border-border/80 bg-background p-0 sm:p-0 shadow-2xl backdrop-blur-xl overflow-hidden gap-0 sm:gap-0",
           fullScreen
-            ? "flex h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)]! max-h-none! max-w-none! flex-col"
-            : "max-h-[90vh] overflow-y-auto sm:max-w-xl md:max-w-2xl"
+            ? "h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)]! max-h-none! max-w-none!"
+            : "fixed inset-auto left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-xl md:max-w-2xl max-h-[88dvh] sm:max-h-[85dvh]"
         )}
       >
         {/* Top Accent Category Banner */}
-        <div className={cn("relative border-b px-6 py-5 bg-gradient-to-b", theme.bannerBg, theme.border)}>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold", theme.badgeBg, theme.badgeText)}>
+        <div className={cn("relative shrink-0 border-b px-4 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-b", theme.bannerBg, theme.border)}>
+          <div className="flex items-center justify-between gap-2 pr-9 sm:pr-12">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-xs font-semibold", theme.badgeBg, theme.badgeText)}>
                 <KindIcon className="size-3.5" aria-hidden="true" />
                 {theme.label}
               </span>
               {dot.location ? (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                  <MapPin className="size-3" aria-hidden="true" />
-                  {dot.location}
+                <span className="inline-flex min-w-0 items-center gap-1 text-[11px] sm:text-xs text-muted-foreground font-medium truncate">
+                  <MapPin className="size-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{dot.location}</span>
                 </span>
               ) : null}
             </div>
 
-            <div className="flex items-center gap-1.5 pr-6">
+            <div className="flex items-center gap-1.5 shrink-0">
               {user ? (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className={cn("size-8 rounded-full transition-colors", favoriteId ? "text-rose-500 hover:text-rose-600" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("size-7 sm:size-8 rounded-full transition-colors", favoriteId ? "text-rose-500 hover:text-rose-600" : "text-muted-foreground hover:text-foreground")}
                   onClick={toggleFavorite}
                   disabled={favoriteBusy}
                   aria-label={favoriteId ? "Remove favorite" : "Add favorite"}
                 >
-                  <Heart className="size-4" fill={favoriteId ? "currentColor" : "none"} aria-hidden="true" />
+                  <Heart className="size-3.5 sm:size-4" fill={favoriteId ? "currentColor" : "none"} aria-hidden="true" />
                 </Button>
               ) : null}
             </div>
           </div>
 
-          <DialogHeader className="mt-3 text-left">
-            <DialogTitle className="flex items-center gap-2 text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-              <span>{dot.name}</span>
+          <DialogHeader className="mt-2.5 sm:mt-3 text-left">
+            <DialogTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-xl font-bold tracking-tight text-foreground leading-snug">
+              <span className="line-clamp-2">{dot.name}</span>
               {professional?.is_verified || firm?.verified ? (
-                <BadgeCheck className="size-5 shrink-0 text-cyan-600" aria-label="Verified" />
+                <BadgeCheck className="size-4 sm:size-5 shrink-0 text-cyan-600" aria-label="Verified" />
               ) : null}
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              SiteSurveyor Verified Market Registry Item · Coordinates available below
+            <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
+              SiteSurveyor Verified Market Item · Real database coordinates
             </DialogDescription>
           </DialogHeader>
         </div>
 
         {/* Content Body */}
-        <div className="space-y-6 px-6 py-5">
+        <div className="flex-1 overflow-y-auto space-y-4 sm:space-y-5 px-4 py-3.5 sm:px-6 sm:py-5">
           {/* Price / Compensation Hero Card */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/80 bg-muted/30 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4 rounded-xl border border-border/80 bg-muted/30 p-3 sm:p-4">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {dot.kind === "listing"
                   ? listing?.listing_type === "hire"
                     ? "Hire Rate"
@@ -292,28 +292,28 @@ export function MarketDetailDialog({
                         ? "Registration Fee"
                         : "Firm Information"}
               </span>
-              <div className="mt-1 flex items-baseline gap-2">
+              <div className="mt-0.5 sm:mt-1 flex items-baseline gap-2">
                 {listing ? (
-                  <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
+                  <span className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {listing.price.toLocaleString()}{" "}
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                       {listing.currency}
                       {listing.listing_type === "hire" ? " / day" : ""}
                     </span>
                   </span>
                 ) : professional ? (
-                  <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
+                  <span className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {professional.rate.toLocaleString()}{" "}
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                       {professional.currency} / {professional.rate_per}
                     </span>
                   </span>
                 ) : job ? (
-                  <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
+                  <span className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {job.rate != null ? (
                       <>
                         {job.rate.toLocaleString()}{" "}
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                           {job.currency} / {job.rate_per ?? "day"}
                         </span>
                       </>
@@ -322,20 +322,20 @@ export function MarketDetailDialog({
                     )}
                   </span>
                 ) : event ? (
-                  <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
+                  <span className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {event.price > 0 ? (
                       <>
                         {event.price.toLocaleString()}{" "}
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                           {event.currency}
                         </span>
                       </>
                     ) : (
-                      <span className="text-emerald-600 font-semibold uppercase">Free Registration</span>
+                      <span className="text-emerald-600 font-semibold uppercase text-sm sm:text-base">Free Registration</span>
                     )}
                   </span>
                 ) : firm ? (
-                  <span className="text-lg font-bold text-foreground">
+                  <span className="text-base sm:text-lg font-bold text-foreground">
                     {firm.services?.length ?? 0} Core Services Offered
                   </span>
                 ) : null}
@@ -343,35 +343,35 @@ export function MarketDetailDialog({
             </div>
 
             {/* Status Pills */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {listing?.condition ? (
-                <span className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground">
+                <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] sm:text-xs font-medium text-foreground">
                   Condition: {listing.condition}
                 </span>
               ) : null}
               {listing?.listing_type ? (
-                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold capitalize text-amber-700">
+                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-[11px] sm:text-xs font-semibold capitalize text-amber-700">
                   {listing.listing_type}
                 </span>
               ) : null}
               {professional?.availability ? (
-                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700">
+                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] sm:text-xs font-medium text-emerald-700">
                   {professional.availability}
                 </span>
               ) : null}
               {professional?.rating != null && professional.rating > 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] sm:text-xs font-semibold text-amber-700">
                   <Star className="size-3 fill-amber-500 text-amber-500" />
                   {professional.rating.toFixed(1)}
                 </span>
               ) : null}
               {job?.employment_type ? (
-                <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-semibold capitalize text-violet-700">
+                <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-0.5 text-[11px] sm:text-xs font-semibold capitalize text-violet-700">
                   {job.employment_type}
                 </span>
               ) : null}
               {event?.seats_left != null ? (
-                <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-xs font-medium text-rose-700">
+                <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-0.5 text-[11px] sm:text-xs font-medium text-rose-700">
                   {event.seats_left} seats remaining
                 </span>
               ) : null}
@@ -386,7 +386,7 @@ export function MarketDetailDialog({
           ) : null}
 
           {/* Key Attribute Cards Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3">
             {listing ? (
               <>
                 <AttributeCard label="Category" value={listing.category === "accessory" ? "Accessory" : listing.type} />
@@ -431,14 +431,14 @@ export function MarketDetailDialog({
           {/* Tags (Specs / Skills / Services / Requirements) */}
           {listing?.specs && listing.specs.length > 0 ? (
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                 Technical Specifications
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {listing.specs.map((spec) => (
                   <span
                     key={spec}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border/80 bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground"
+                    className="inline-flex items-center gap-1 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-medium text-foreground"
                   >
                     <Tag className="size-3 text-muted-foreground" />
                     {spec}
@@ -450,14 +450,14 @@ export function MarketDetailDialog({
 
           {professional?.skills && professional.skills.length > 0 ? (
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                 Core Skills & Tools
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {professional.skills.map((skill) => (
                   <span
                     key={skill}
-                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-2.5 py-1 text-xs font-medium text-cyan-800 dark:text-cyan-300"
+                    className="inline-flex items-center gap-1 rounded-md border border-cyan-500/20 bg-cyan-500/5 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-medium text-cyan-800 dark:text-cyan-300"
                   >
                     <Sparkles className="size-3 text-cyan-500" />
                     {skill}
@@ -469,10 +469,10 @@ export function MarketDetailDialog({
 
           {job?.requirements && job.requirements.length > 0 ? (
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                 Job Requirements
               </h4>
-              <ul className="space-y-1 rounded-xl border border-border/70 bg-muted/20 p-3.5 text-xs text-foreground/90">
+              <ul className="space-y-1 rounded-lg sm:rounded-xl border border-border/70 bg-muted/20 p-3 text-xs text-foreground/90">
                 {job.requirements.map((req) => (
                   <li key={req} className="flex items-start gap-2">
                     <span className="mt-1 size-1.5 shrink-0 rounded-full bg-violet-600" />
@@ -485,14 +485,14 @@ export function MarketDetailDialog({
 
           {firm?.services && firm.services.length > 0 ? (
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                 Survey Services Offered
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {firm.services.map((svc) => (
                   <span
                     key={svc}
-                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-300"
+                    className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-medium text-emerald-800 dark:text-emerald-300"
                   >
                     {svc}
                   </span>
@@ -503,11 +503,11 @@ export function MarketDetailDialog({
 
           {/* Description / About text */}
           {listing?.description || professional?.bio || job?.description || firm?.about || event?.description ? (
-            <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            <div className="rounded-lg sm:rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-4">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                 Overview & Details
               </h4>
-              <p className="text-sm leading-relaxed text-foreground/85 whitespace-pre-line">
+              <p className="text-xs sm:text-sm leading-relaxed text-foreground/85 whitespace-pre-line">
                 {listing?.description || professional?.bio || job?.description || firm?.about || event?.description}
               </p>
             </div>
@@ -516,20 +516,20 @@ export function MarketDetailDialog({
           {/* Showcase Projects (for Professionals) */}
           {showcase.length > 0 ? (
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Recent Projects Portfolio
               </h4>
-              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                 {showcase.map((item) => (
-                  <div key={item.id} className="group relative overflow-hidden rounded-xl border border-border bg-card">
+                  <div key={item.id} className="group relative overflow-hidden rounded-lg sm:rounded-xl border border-border bg-card">
                     <img
                       src={portfolioMediaUrl(item.image_path) ?? undefined}
                       alt={item.title}
                       loading="lazy"
                       className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
-                    <div className="p-2 text-center">
-                      <p className="truncate text-xs font-semibold text-foreground">{item.title}</p>
+                    <div className="p-1.5 sm:p-2 text-center">
+                      <p className="truncate text-[11px] sm:text-xs font-semibold text-foreground">{item.title}</p>
                     </div>
                   </div>
                 ))}
@@ -539,27 +539,27 @@ export function MarketDetailDialog({
 
           {/* GPS Coordinates Readout Card */}
           {dot.lat != null && dot.lng != null ? (
-            <div className="flex items-center justify-between rounded-xl border border-border/80 bg-background p-3 text-xs">
-              <div className="flex items-center gap-2">
-                <MapPin className="size-4 text-muted-foreground" />
-                <span className="font-mono text-muted-foreground">
+            <div className="flex items-center justify-between rounded-lg sm:rounded-xl border border-border/80 bg-background p-2.5 sm:p-3 text-xs">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <MapPin className="size-3.5 sm:size-4 shrink-0 text-muted-foreground" />
+                <span className="font-mono text-muted-foreground text-[11px] sm:text-xs truncate">
                   {dot.lat >= 0 ? "+" : ""}{dot.lat.toFixed(4)}°, {dot.lng >= 0 ? "+" : ""}{dot.lng.toFixed(4)}°
                 </span>
               </div>
               <button
                 type="button"
                 onClick={copyCoordinates}
-                className="inline-flex items-center gap-1 font-medium text-xs text-foreground hover:text-primary transition-colors"
+                className="inline-flex shrink-0 items-center gap-1 text-[11px] sm:text-xs font-medium text-foreground hover:text-primary transition-colors pl-2"
               >
                 {coordsCopied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-                {coordsCopied ? "Copied!" : "Copy Lat/Lng"}
+                <span>{coordsCopied ? "Copied" : "Copy"}</span>
               </button>
             </div>
           ) : null}
         </div>
 
         {/* Action Footer */}
-        <div className="border-t border-border/80 bg-muted/20 px-6 py-4">
+        <div className="shrink-0 border-t border-border/80 bg-muted/30 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-3">
           {renderActions(dot)}
         </div>
       </DialogContent>
@@ -570,51 +570,99 @@ export function MarketDetailDialog({
     if (allowRequest && activeDot.kind === "listing") {
       if (!signedIn) {
         return (
-          <Button asChild className="w-full web3-btn web3-btn-primary h-10">
-            <Link to="/login">
-              {listing?.listing_type === "hire"
-                ? "Sign in to request this equipment"
-                : "Sign in to purchase this item"}
-            </Link>
-          </Button>
+          <DialogActionRow>
+            <CloseAction onClose={onClose} />
+            <Button asChild size="sm" className={primaryActionClass}>
+              <Link to="/login">
+                {listing?.listing_type === "hire"
+                  ? "Sign In to Hire"
+                  : "Sign In to Buy"}
+              </Link>
+            </Button>
+          </DialogActionRow>
         );
       }
       if (!listing || !user) return null;
-      return <ListingRequestPanel key={listing.id} listing={listing} user={user} />;
+      return <ListingRequestPanel key={listing.id} listing={listing} user={user} onClose={onClose} />;
     }
     if (onOpenInApp) {
       return (
-        <Button
-          className="w-full web3-btn web3-btn-primary h-10"
-          onClick={() => onOpenInApp(inAppView(activeDot.kind), activeDot.id)}
-        >
-          {inAppLabel(activeDot.kind)}
-        </Button>
+        <DialogActionRow>
+          <CloseAction onClose={onClose} />
+          <Button
+            size="sm"
+            className={primaryActionClass}
+            onClick={() => onOpenInApp(inAppView(activeDot.kind), activeDot.id)}
+          >
+            {inAppLabel(activeDot.kind)}
+          </Button>
+        </DialogActionRow>
       );
     }
     if (signedIn) {
       return (
-        <Button asChild className="w-full web3-btn web3-btn-primary h-10">
-          <Link to="/">Open in your workspace</Link>
-        </Button>
+        <DialogActionRow>
+          <CloseAction onClose={onClose} />
+          <Button asChild size="sm" className={primaryActionClass}>
+            <Link to="/">Open Workspace</Link>
+          </Button>
+        </DialogActionRow>
       );
     }
     return (
-      <Button asChild className="w-full web3-btn web3-btn-primary h-10">
-        <Link to="/login">{logInLabel(activeDot.kind)}</Link>
-      </Button>
+      <DialogActionRow>
+        <CloseAction onClose={onClose} />
+        <Button asChild size="sm" className={primaryActionClass}>
+          <Link to="/login">{logInLabel(activeDot.kind)}</Link>
+        </Button>
+      </DialogActionRow>
     );
   }
 }
 
+/** Compact, right-aligned action row shared by every dialog footer state. */
+function DialogActionRow({
+  children,
+  leading,
+}: {
+  children: React.ReactNode;
+  leading?: React.ReactNode;
+}) {
+  return (
+    <div className="flex w-full items-center justify-end gap-2">
+      {leading ? <div className="mr-auto min-w-0">{leading}</div> : null}
+      {children}
+    </div>
+  );
+}
+
+/** Quiet close affordance so primary actions stay the only filled button. */
+function CloseAction({ onClose }: { onClose?: () => void }) {
+  if (!onClose) return null;
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={onClose}
+      className="h-8 shrink-0 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+    >
+      Close
+    </Button>
+  );
+}
+
+const primaryActionClass =
+  "h-8 max-w-[70%] shrink-0 px-3 text-xs font-medium bg-[var(--web3-brand,#d92d20)] text-white shadow-sm hover:bg-[var(--web3-brand-deep,#b42318)]";
+
 function AttributeCard({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
-    <div className="rounded-xl border border-border/70 bg-card p-3">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-lg sm:rounded-xl border border-border/70 bg-card p-2.5 sm:p-3">
+      <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{value}</p>
+      <p className="mt-0.5 line-clamp-1 text-xs sm:text-sm font-semibold text-foreground" title={value}>{value}</p>
     </div>
   );
 }
@@ -623,9 +671,11 @@ function AttributeCard({ label, value }: { label: string; value?: string | null 
 function ListingRequestPanel({
   listing,
   user,
+  onClose,
 }: {
   listing: ListingRow;
   user: UiUser;
+  onClose?: () => void;
 }) {
   const [sellerWorkspaceId, setSellerWorkspaceId] = useState<string | null>(null);
   const [request, setRequest] = useState<MarketplaceRequestRow | null>(null);
@@ -656,14 +706,14 @@ function ListingRequestPanel({
   }, [listing.id]);
 
   const isHire = listing.listing_type === "hire";
-  const actionLabel = isHire ? "Request to hire equipment" : "Request to purchase";
+  const actionLabel = isHire ? "Request Hire" : "Request Purchase";
   const isOwner = sellerWorkspaceId != null && user.workspaceId === sellerWorkspaceId;
 
   if (isOwner) {
     return (
-      <p className="text-sm text-muted-foreground">
-        This is a listing from your own workspace.
-      </p>
+      <DialogActionRow leading={<span className="text-xs text-muted-foreground">Listing from your workspace</span>}>
+        <CloseAction onClose={onClose} />
+      </DialogActionRow>
     );
   }
 
@@ -710,12 +760,12 @@ function ListingRequestPanel({
   };
 
   const requestForm = (
-    <form onSubmit={handleSend} className="mt-3 space-y-3 rounded-xl border border-border bg-card p-4 text-left">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <form onSubmit={handleSend} className="mt-2.5 space-y-3 rounded-xl border border-border bg-card p-3 text-left sm:p-4">
+      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {actionLabel}
       </h4>
       {isHire ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <div>
             <Label htmlFor="start_date" className="text-xs">
               Start date
@@ -725,7 +775,7 @@ function ListingRequestPanel({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1"
+              className="mt-1 h-8 text-xs"
             />
           </div>
           <div>
@@ -737,32 +787,32 @@ function ListingRequestPanel({
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1"
+              className="mt-1 h-8 text-xs"
             />
           </div>
         </div>
       ) : null}
       <div>
         <Label htmlFor="message" className="text-xs">
-          Message for the seller (optional)
+          Message for seller (optional)
         </Label>
         <Textarea
           id="message"
-          rows={3}
+          rows={2}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Describe your project timeline, requirements, or delivery location…"
-          className="mt-1"
+          className="mt-1 text-xs"
         />
       </div>
       {error ? <FieldError>{error}</FieldError> : null}
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => setFormOpen(false)}>
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)} className="h-8 px-2.5 text-xs font-medium text-muted-foreground">
           Cancel
         </Button>
-        <Button type="submit" size="sm" className="web3-btn web3-btn-primary" disabled={sending}>
-          {sending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
-          Submit request
+        <Button type="submit" size="sm" className={primaryActionClass} disabled={sending}>
+          {sending ? <Loader2 className="mr-1.5 size-3 animate-spin" /> : null}
+          Submit Request
         </Button>
       </div>
     </form>
@@ -771,24 +821,33 @@ function ListingRequestPanel({
   if (request) {
     const declinedLike = request.status === "declined" || request.status === "cancelled";
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-          <div className="text-xs">
-            <span className="font-semibold text-foreground">Your Request: </span>
+      <div className="w-full space-y-2.5">
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-2.5 py-2">
+          <div className="min-w-0 truncate text-xs">
+            <span className="font-semibold text-foreground">Request: </span>
             <span className="capitalize text-muted-foreground">{request.status}</span>
           </div>
-          {request.status === "pending" ? (
-            <Button size="sm" variant="outline" onClick={handleCancel} disabled={cancelling}>
-              {cancelling ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Ban className="mr-2 h-3 w-3" />}
-              Cancel
-            </Button>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {request.status === "pending" ? (
+              <Button size="sm" variant="outline" onClick={handleCancel} disabled={cancelling} className="h-7 px-2 text-xs">
+                {cancelling ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Ban className="mr-1 size-3" />}
+                Cancel
+              </Button>
+            ) : null}
+            {onClose ? (
+              <Button variant="ghost" size="sm" onClick={onClose} className="h-7 px-2 text-xs text-muted-foreground">
+                Close
+              </Button>
+            ) : null}
+          </div>
         </div>
         {declinedLike ? (
           <>
-            <Button className="w-full web3-btn web3-btn-primary" onClick={() => setFormOpen((open) => !open)}>
-              Send a new request
-            </Button>
+            <DialogActionRow>
+              <Button size="sm" className={primaryActionClass} onClick={() => setFormOpen((open) => !open)}>
+                Send New Request
+              </Button>
+            </DialogActionRow>
             {formOpen ? requestForm : null}
           </>
         ) : null}
@@ -797,10 +856,17 @@ function ListingRequestPanel({
   }
 
   return (
-    <div className="space-y-3">
-      <Button className="w-full web3-btn web3-btn-primary" onClick={() => setFormOpen((open) => !open)}>
-        {actionLabel}
-      </Button>
+    <div className="w-full space-y-2.5">
+      <DialogActionRow>
+        <CloseAction onClose={onClose} />
+        <Button
+          size="sm"
+          className={primaryActionClass}
+          onClick={() => setFormOpen((open) => !open)}
+        >
+          {actionLabel}
+        </Button>
+      </DialogActionRow>
       {formOpen ? requestForm : null}
     </div>
   );
@@ -812,18 +878,18 @@ function inAppView(kind: MarketDot["kind"]): string {
 
 function inAppLabel(kind: MarketDot["kind"]): string {
   return kind === "job"
-    ? "Open in Job Board"
+    ? "Open Job Board"
     : kind === "professional"
-      ? "Open in Hire Directory"
-      : "Open in Marketplace";
+      ? "Open Directory"
+      : "Open Marketplace";
 }
 
 function logInLabel(kind: MarketDot["kind"]): string {
   return kind === "job"
-    ? "Sign in to apply"
+    ? "Sign In to Apply"
     : kind === "event"
-      ? "Sign in to register"
+      ? "Sign In to Register"
       : kind === "firm"
-        ? "Sign in to request services"
-        : "Sign in to contact the publisher";
+        ? "Sign In to Contact"
+        : "Sign In to Inquire";
 }

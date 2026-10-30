@@ -741,10 +741,10 @@ export default function PublicMarketPage() {
               <button
                 type="button"
                 onClick={scrollToRegistry}
-                className="web3-btn web3-btn-primary"
+                className="web3-btn web3-btn-primary h-8.5 sm:h-9 text-xs sm:text-sm px-3.5 sm:px-4"
               >
-                Browse the registry
-                <ChevronDown className="size-4" aria-hidden="true" />
+                Browse registry
+                <ChevronDown className="size-3.5 sm:size-4" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -791,7 +791,7 @@ export default function PublicMarketPage() {
         <section ref={registryRef} className="mx-auto w-full max-w-7xl scroll-mt-16 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div role="group" aria-label="Filter by kind" className="flex w-full flex-wrap gap-1 rounded-lg border border-border/70 bg-card p-1 shadow-sm sm:w-fit">
+              <div role="group" aria-label="Filter by kind" className="flex w-full sm:w-fit items-center gap-1 overflow-x-auto p-1 rounded-lg border border-border/70 bg-card shadow-sm scrollbar-none sm:flex-wrap">
                 {(
                   [
                     ["all", "Everything", true],
@@ -807,15 +807,15 @@ export default function PublicMarketPage() {
                     type="button"
                     aria-pressed={scope === value}
                     onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}
-                    className={`shrink-0 whitespace-nowrap rounded-none px-3 py-1.5 text-sm transition-colors ${
+                    className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm transition-colors ${
                       scope === value
-                        ? "bg-accent-bg font-medium text-foreground shadow-sm"
+                        ? "bg-accent-bg font-medium text-foreground shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {label}
                     {value !== "all" ? (
-                      <span className="ml-2 font-mono text-xs tabular-nums text-muted-foreground">
+                      <span className="ml-1.5 font-mono text-[11px] sm:text-xs tabular-nums text-muted-foreground">
                         {(value === "listing" && data?.listings.length) ||
                           (value === "professional" &&
                             data?.professionals.length) ||
@@ -840,7 +840,7 @@ export default function PublicMarketPage() {
                       setSearch(event.target.value);
                       setFlatLimit(FLAT_PAGE_SIZE);
                     }}
-                    className="pl-9 pr-9"
+                    className="h-9 pl-9 pr-9 text-xs sm:text-sm"
                   />
                   {search ? (
                     <button
@@ -856,7 +856,7 @@ export default function PublicMarketPage() {
                     </button>
                   ) : null}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Select
                   value={sort}
                   onValueChange={(value) => {
@@ -866,7 +866,7 @@ export default function PublicMarketPage() {
                 >
                   <SelectTrigger
                     aria-label="Sort results"
-                    className="w-full shrink-0 sm:w-[190px]"
+                    className="h-9 flex-1 sm:w-[190px] text-xs sm:text-sm shrink-0"
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -876,10 +876,10 @@ export default function PublicMarketPage() {
                     <SelectItem value="price-desc">Price: high to low</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button type="button" variant={savedSearch ? "default" : "outline"} size="icon" onClick={toggleSavedSearch} aria-label={savedSearch ? "Remove saved search" : "Save this search"} title={savedSearch ? "Saved search" : "Save this search"}>
+                <Button type="button" variant={savedSearch ? "default" : "outline"} size="icon" className="size-9 shrink-0" onClick={toggleSavedSearch} aria-label={savedSearch ? "Remove saved search" : "Save this search"} title={savedSearch ? "Saved search" : "Save this search"}>
                   <Bookmark className="size-4" fill={savedSearch ? "currentColor" : "none"} aria-hidden="true" />
                 </Button>
-                <Button type="button" variant="outline" size="icon" className="sm:hidden" onClick={() => setMobileFiltersOpen((value) => !value)} aria-expanded={mobileFiltersOpen} aria-label="Toggle marketplace filters">
+                <Button type="button" variant="outline" size="icon" className="size-9 shrink-0 sm:hidden" onClick={() => setMobileFiltersOpen((value) => !value)} aria-expanded={mobileFiltersOpen} aria-label="Toggle marketplace filters">
                   <SlidersHorizontal className="size-4" aria-hidden="true" />
                 </Button>
                 </div>
@@ -933,7 +933,7 @@ export default function PublicMarketPage() {
                     ? "No results match your filters."
                     : `Showing ${visibleFlatItems.length} of ${flatItems.length} results${seeAll ? ` in ${seeAll.title}` : ""}`}
                 </p>
-                <Button type="button" variant="outline" size="sm" onClick={clearFlatMode}>
+                <Button type="button" variant="outline" size="sm" onClick={clearFlatMode} className="h-8 text-xs">
                   ← Back to rails
                 </Button>
               </div>
@@ -960,6 +960,8 @@ export default function PublicMarketPage() {
                       <Button
                         type="button"
                         variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
                         onClick={() => setFlatLimit((value) => value + FLAT_PAGE_SIZE)}
                       >
                         Load more ({flatItems.length - visibleFlatItems.length} remaining)
@@ -1016,25 +1018,33 @@ export default function PublicMarketPage() {
       </footer>
 
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-          <SheetContent side="bottom" className="web3-theme max-h-[85vh] rounded-t-2xl">
-
-          <SheetHeader className="px-0">
-            <SheetTitle>Filter Surveyor’s Market</SheetTitle>
-            <SheetDescription>Choose a section and sorting option.</SheetDescription>
+        <SheetContent side="bottom" className="web3-theme max-h-[85vh] rounded-t-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <SheetHeader className="px-0 pr-8">
+            <SheetTitle className="text-base">Filter Surveyor’s Market</SheetTitle>
+            <SheetDescription className="text-xs">Choose a section and sorting option.</SheetDescription>
           </SheetHeader>
-          <div className="space-y-5 py-4">
+          <div className="space-y-3 pb-1">
             <div className="grid grid-cols-2 gap-2">
               {([['all','Everything'],['listing','Listings'],['professional','Professionals'],['job','Jobs'],['firm','Firms'],['event','Training']] as const).map(([value,label]) => (
-                <Button key={value} type="button" variant={scope === value ? "default" : "outline"} onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={scope === value ? "default" : "outline"}
+                  className="h-8 justify-start px-3 text-xs font-medium"
+                  onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}
+                >
                   {label}
                 </Button>
               ))}
             </div>
             <Select value={sort} onValueChange={(value) => { setSort(value as SortKey); setFlatLimit(FLAT_PAGE_SIZE); }}>
-              <SelectTrigger aria-label="Mobile sort results"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Mobile sort results" className="h-9 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="newest">Newest first</SelectItem><SelectItem value="price-asc">Price: low to high</SelectItem><SelectItem value="price-desc">Price: high to low</SelectItem></SelectContent>
             </Select>
-            <Button className="w-full" onClick={() => setMobileFiltersOpen(false)}>Show results</Button>
+            <div className="flex items-center justify-end pt-1">
+              <Button size="sm" className="h-8 px-3.5 text-xs font-medium" onClick={() => setMobileFiltersOpen(false)}>Show results</Button>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
