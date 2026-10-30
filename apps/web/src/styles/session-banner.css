@@ -1,0 +1,66 @@
+/* ════════════════════════════════════════════
+   SiteSurveyor — Session Expired Banner
+   ════════════════════════════════════════════ */
+
+.session-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-warning-bg);
+  border-bottom: 1px solid var(--color-warning-border);
+  color: var(--color-warning);
+  font-size: 13px;
+  font-family: var(--sans);
+  animation: session-banner-slide-down 0.2s ease-out;
+}
+
+@keyframes session-banner-slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.session-banner-text {
+  text-align: center;
+}
+
+.session-banner-link {
+  color: var(--color-warning);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.session-banner-link:hover {
+  color: var(--text-h);
+}
+
+.session-banner-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-warning);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.session-banner-dismiss:hover {
+  color: var(--text-h);
+  background: color-mix(in oklab, var(--text-h) 10%, transparent);
+}

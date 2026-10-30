@@ -1,0 +1,948 @@
+/* ────────────────────────────────────────────────────────────────
+   SiteSurveyor — Web3 design system (Light theme)
+   Clean, professional light surfaces with the SiteSurveyor brand
+   red (#D14141) accent.  Shared by the public market terminal
+   (/market) and the auth gateway (/login).
+   Namespaced so it can live next to the shadcn/Tailwind UI.
+   ──────────────────────────────────────────────────────────────── */
+
+:root {
+  --web3-brand: #d92d20;
+  --web3-brand-deep: #b42318;
+  --web3-brand-light: #fef3f2;
+  --web3-brand-muted: rgba(217, 45, 32, 0.12);
+  --web3-solana: #14f195;
+  --web3-solana-deep: #0d9960;
+  --web3-bg: #fbfbfa;
+  --web3-bg-2: #f5f5f4;
+  --web3-panel: #ffffff;
+  --web3-panel-strong: #fafafa;
+  --web3-border: #e5e7eb;
+  --web3-border-strong: #d1d5db;
+  --web3-text: #111827;
+  --web3-text-muted: #6b7280;
+  --web3-text-dim: #9ca3af;
+  --web3-glow: rgba(217, 45, 32, 0.15);
+  --web3-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ── Token remap ───────────────────────────────────────────────
+   The app's Tailwind theme is CSS-first (index.css maps --color-*
+   onto --bg / --surface / --text / --border …). Remapping those
+   raw variables inside a web3 scope re-skins every utility class
+   in that scope without touching a single component. The scope is
+   also applied to portalled surfaces (dialogs, sheets).          */
+
+.web3-theme,
+.web3-surface {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --surface-muted: #f3f4f3;
+  --border: #e5e7eb;
+  --border-heavy: #d1d5db;
+  --text: #6b7280;
+  --text-secondary: #4b5563;
+  --text-h: #111827;
+  --text-muted: #6b7280;
+  --muted-foreground: #6b7280;
+  --placeholder: #9ca3af;
+  --accent: #d92d20;
+  --accent-contrast: #ffffff;
+  --accent-bg: rgba(217, 45, 32, 0.08);
+  --accent-border: rgba(217, 45, 32, 0.35);
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warning: #d97706;
+  --color-info: #2563eb;
+  --shadow: rgba(0, 0, 0, 0.06) 0 4px 16px -4px;
+  --shadow-sm: rgba(0, 0, 0, 0.05) 0 1px 3px;
+  --shadow-hover: rgba(0, 0, 0, 0.1) 0 8px 24px;
+  --focus-ring: 0 0 0 3px rgba(217, 45, 32, 0.18);
+  --table-head-bg: #f9fafb;
+  --table-row-hover-bg: #f3f4f6;
+
+  /* ── Accent shades for market registry rows ── */
+  --color-amber-100: rgba(245, 158, 11, 0.12);
+  --color-amber-200: rgba(245, 158, 11, 0.2);
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-emerald-100: rgba(16, 185, 129, 0.1);
+  --color-emerald-200: rgba(16, 185, 129, 0.16);
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-cyan-600: #0891b2;
+  --color-cyan-700: #0e7490;
+}
+
+/* ── Page surface ─────────────────────────────────────────── */
+
+.web3-surface {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--web3-text);
+  font-family: var(--sans);
+  background: var(--web3-bg);
+}
+
+.web3-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(0, 0, 0, 0.025) 1px,
+    transparent 0
+  );
+  background-size: 32px 32px;
+  opacity: 0.4;
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 24%,
+    black 0%,
+    transparent 74%
+  );
+  mask-image: radial-gradient(circle at 50% 24%, black 0%, transparent 74%);
+}
+
+.web3-surface ::selection {
+  background: rgba(217, 45, 32, 0.16);
+  color: #111827;
+}
+
+.web3-mono {
+  font-family: var(--web3-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.web3-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--web3-text-dim);
+}
+
+/* ── Sticky header ─────────────────────────────────────────── */
+
+.web3-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid var(--web3-border);
+  background: rgba(251, 251, 250, 0.88);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.web3-header-inner {
+  margin: 0 auto;
+  display: flex;
+  min-height: 56px;
+  width: 100%;
+  max-width: 80rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px;
+}
+
+@media (min-width: 640px) {
+  .web3-header-inner {
+    padding: 0 24px;
+  }
+}
+
+.web3-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--web3-text);
+  text-decoration: none;
+}
+
+.web3-brand-logo {
+  height: 26px;
+  width: auto;
+  align-self: center;
+}
+
+.web3-brand-name {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.web3-brand-sub {
+  font-size: 13px;
+  color: var(--web3-text-muted);
+}
+
+/* ── Panels ────────────────────────────────────────────────── */
+
+.web3-panel {
+  border: 1px solid var(--web3-border);
+  border-radius: 16px;
+  background: var(--web3-panel);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 16px -4px rgba(0, 0, 0, 0.06);
+}
+
+.web3-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--web3-border);
+}
+
+.web3-panel-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--web3-text);
+}
+
+.web3-panel-sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--web3-text-muted);
+}
+
+.web3-panel-body {
+  padding: 16px 18px;
+}
+
+/* ── Stat tiles ────────────────────────────────────────────── */
+
+.web3-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--web3-border);
+  border-radius: 14px;
+  background: var(--web3-panel);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.web3-tile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.web3-tile-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--web3-text-dim);
+}
+
+.web3-tile-value {
+  font-family: var(--web3-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--web3-text);
+}
+
+.web3-tile-note {
+  font-size: 11px;
+  color: var(--web3-text-muted);
+}
+
+.web3-delta-up {
+  color: #16a34a;
+}
+
+.web3-delta-down {
+  color: #dc2626;
+}
+
+/* ── Stat icon badges ──────────────────────────────────────── */
+
+.web3-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.web3-stat-icon-sol {
+  background: rgba(153, 69, 255, 0.1);
+}
+
+.web3-stat-icon-cap {
+  background: rgba(217, 45, 32, 0.08);
+  color: var(--web3-brand);
+}
+
+.web3-stat-icon-vol {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+.web3-stat-icon-tvl {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+}
+
+.web3-stat-icon-chain {
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+}
+
+/* ── Candlesticks ──────────────────────────────────────────── */
+
+.web3-candlestick-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.web3-candle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.web3-candle:hover {
+  transform: scaleY(1.15);
+}
+
+.web3-candle-wick {
+  width: 1px;
+  border-radius: 0.5px;
+}
+
+.web3-candle-body {
+  border-radius: 1px;
+}
+
+.web3-candle-up .web3-candle-wick,
+.web3-candle-up .web3-candle-body {
+  background-color: #16a34a;
+}
+
+.web3-candle-down .web3-candle-wick,
+.web3-candle-down .web3-candle-body {
+  background-color: #dc2626;
+}
+
+/* ── Live indicator ────────────────────────────────────────── */
+
+.web3-live-dot {
+  position: relative;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #16a34a;
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.3);
+}
+
+.web3-live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #16a34a;
+  animation: web3-live-pulse 2.1s ease-out infinite;
+}
+
+@keyframes web3-live-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .web3-live-dot::after {
+    animation: none;
+  }
+}
+
+/* ── Ticker strip ──────────────────────────────────────────── */
+
+.web3-ticker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  overflow: hidden;
+}
+
+.web3-ticker-cell {
+  display: flex;
+  min-width: 8.5rem;
+  flex: 1 1 8.5rem;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-right: 1px solid var(--web3-border);
+}
+
+.web3-ticker-cell:last-child {
+  border-right: none;
+}
+
+.web3-ticker-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--web3-text-dim);
+}
+
+.web3-ticker-value {
+  font-family: var(--web3-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--web3-text);
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+
+.web3-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 11px;
+  border: 1px solid var(--web3-border-strong);
+  background: var(--web3-panel);
+  color: var(--web3-text);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.web3-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--web3-brand);
+  background: var(--web3-brand-light);
+  box-shadow: 0 4px 12px rgba(217, 45, 32, 0.1);
+}
+
+.web3-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.web3-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.web3-btn-primary {
+  border: 1px solid var(--web3-brand);
+  background: var(--web3-brand);
+  color: #ffffff;
+  box-shadow: 0 4px 14px -4px rgba(217, 45, 32, 0.35);
+}
+
+.web3-btn-primary:hover:not(:disabled) {
+  background: var(--web3-brand-deep);
+  border-color: var(--web3-brand-deep);
+  filter: brightness(1.05);
+  box-shadow: 0 6px 20px -4px rgba(217, 45, 32, 0.4);
+}
+
+.web3-btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--web3-text-muted);
+}
+
+.web3-btn-ghost:hover:not(:disabled) {
+  background: var(--web3-bg-2);
+  color: var(--web3-text);
+}
+
+.web3-icon-btn {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--web3-border);
+  background: var(--web3-panel);
+  color: var(--web3-text-muted);
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.web3-icon-btn:hover {
+  color: var(--web3-text);
+  border-color: var(--web3-border-strong);
+  background: var(--web3-bg-2);
+}
+
+.web3-icon-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Spinner ─────────────────────────────────────────────────── */
+
+.web3-spin {
+  animation: web3-spin 1s linear infinite;
+}
+
+@keyframes web3-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .web3-spin {
+    animation-duration: 3s;
+  }
+}
+
+/* ── Panel footer ───────────────────────────────────────────── */
+
+.web3-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--web3-border);
+}
+
+.web3-status-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Leaflet map on a light surface ───────────────────────── */
+
+.web3-surface .leaflet-container {
+  background: var(--web3-bg-2);
+  font-family: var(--sans);
+}
+
+.web3-surface .leaflet-control-zoom a,
+.web3-surface .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--web3-text-muted);
+  border-color: var(--web3-border);
+}
+
+.web3-surface .leaflet-control-zoom a:hover {
+  background: var(--web3-brand-light);
+  color: var(--web3-brand);
+}
+
+.web3-surface .leaflet-control-attribution a {
+  color: var(--web3-brand);
+}
+
+.web3-surface .leaflet-popup-content-wrapper,
+.web3-surface .leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--web3-text);
+  border: 1px solid var(--web3-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Misc surfaces ─────────────────────────────────────────── */
+
+.web3-hero-scrim {
+  position: absolute;
+  inset-x: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    rgba(251, 251, 250, 0.96) 0%,
+    rgba(251, 251, 250, 0.7) 42%,
+    transparent 100%
+  );
+}
+
+.web3-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 34px 18px;
+  text-align: center;
+  color: var(--web3-text-muted);
+}
+
+.web3-empty-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--web3-text);
+}
+
+.web3-empty-note {
+  max-width: 34rem;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.web3-link {
+  color: var(--web3-brand);
+  text-decoration: none;
+}
+
+.web3-link:hover {
+  text-decoration: underline;
+}
+
+.web3-divider {
+  height: 1px;
+  border: none;
+  background: var(--web3-border);
+}
+
+/* ── Candlestick chart ─────────────────────────────────────── */
+
+.web3-chart-container {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--web3-panel);
+  border: 1px solid var(--web3-border);
+}
+
+.web3-chart-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.web3-candlestick-wrap {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+  padding: 16px 12px 8px;
+}
+
+.web3-candle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  max-width: 14px;
+  position: relative;
+}
+
+.web3-candle-wick {
+  width: 1.5px;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.web3-candle-body {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 1.5px;
+  transition: opacity 0.2s ease;
+}
+
+.web3-candle:hover .web3-candle-body {
+  opacity: 0.85;
+}
+
+.web3-candle-up .web3-candle-body {
+  background: #16a34a;
+}
+
+.web3-candle-up .web3-candle-wick {
+  color: #16a34a;
+}
+
+.web3-candle-down .web3-candle-body {
+  background: #dc2626;
+}
+
+.web3-candle-down .web3-candle-wick {
+  color: #dc2626;
+}
+
+/* ── Sparkline / mini graph ─────────────────────────────────── */
+
+.web3-sparkline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.web3-sparkline-up {
+  color: #16a34a;
+}
+
+.web3-sparkline-down {
+  color: #dc2626;
+}
+
+/* ── Official token icons ──────────────────────────────────── */
+
+.web3-token-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.web3-token-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.web3-token-logo-sm {
+  width: 18px;
+  height: 18px;
+}
+
+.web3-token-logo-lg {
+  width: 32px;
+  height: 32px;
+}
+
+/* ── Solana brand icon inline ──────────────────────────────── */
+
+.web3-sol-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+  flex-shrink: 0;
+}
+
+.web3-sol-icon-sm {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Market stat card with icon ────────────────────────────── */
+
+.web3-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.web3-stat-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.web3-stat-icon-sol {
+  background: linear-gradient(135deg, rgba(153, 69, 255, 0.1) 0%, rgba(20, 241, 149, 0.1) 100%);
+  color: #9945FF;
+}
+
+.web3-stat-icon-cap {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.web3-stat-icon-vol {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.web3-stat-icon-tvl {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.web3-stat-icon-chain {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
+.web3-stat-icon-portfolio {
+  background: rgba(217, 45, 32, 0.1);
+  color: var(--web3-brand);
+}
+
+/* ── Token row (used by portfolio) ─────────────────────────── */
+
+.web3-token-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--web3-border);
+}
+
+.web3-token-row:last-child {
+  border-bottom: none;
+}
+
+.web3-token-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid var(--web3-border);
+  background: var(--web3-bg-2);
+  overflow: hidden;
+}
+
+.web3-token-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.web3-token-icon svg {
+  width: 15px;
+  height: 15px;
+  color: var(--web3-text-muted);
+}
+
+.web3-token-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.web3-token-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--web3-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.web3-token-sub {
+  display: block;
+  font-family: var(--web3-mono);
+  font-size: 11px;
+  color: var(--web3-text-dim);
+}
+
+.web3-token-value {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.web3-token-usd {
+  display: block;
+  font-family: var(--web3-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--web3-text);
+}
+
+.web3-token-amount {
+  display: block;
+  font-family: var(--web3-mono);
+  font-size: 11px;
+  color: var(--web3-text-dim);
+}
+
+.web3-alloc-bar {
+  height: 5px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--web3-bg-2);
+}
+
+.web3-alloc-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--web3-brand), #f59e0b);
+}
+
+.web3-alloc-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.web3-alloc-name {
+  font-size: 12px;
+  color: var(--web3-text);
+}
+
+.web3-alloc-pct {
+  font-family: var(--web3-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--web3-text-muted);
+}
+
+.web3-alloc-track {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 540px) {
+  .web3-btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+}

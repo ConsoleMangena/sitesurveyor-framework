@@ -1,0 +1,13 @@
+.git
+.github
+.vscode
+**/node_modules
+**/target
+**/dist
+apps/web/.vite
+templates
+supabase/.temp
+*.log
+.env
+.env.local
+tmp

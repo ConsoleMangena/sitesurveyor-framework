@@ -1,0 +1,30 @@
+{
+  "name": "sitesurveyorsdk",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "lint": "npm --prefix apps/web run lint",
+    "typecheck": "npm --prefix apps/web run typecheck",
+    "test": "npm --prefix apps/web run test",
+    "supabase": "npx supabase",
+    "db:push": "npx supabase db push",
+    "db:reset": "npx supabase db reset",
+    "functions:deploy": "npx supabase functions deploy",
+    "ai:eval": "node scripts/ai-eval/run.ts",
+    "ai:skills-check": "node scripts/ai-eval/skills-check.ts",
+    "ai:memory-check": "node scripts/ai-eval/memory-check.ts",
+    "ai:models-check": "node scripts/ai-eval/models-check.ts"
+  },
+  "devDependencies": {
+    "@noble/ed25519": "^3.2.0",
+    "@noble/hashes": "^2.4.0",
+    "@scure/base": "^2.4.0",
+    "@scure/bip39": "^2.4.0",
+    "supabase": "^2.98.0"
+  },
+  "allowScripts": {
+    "supabase@2.98.0": true
+  }
+}
