@@ -99,6 +99,9 @@ export function formatAuthUserFacingError(
     ) {
       return "Wallet authorization was cancelled. Please authorize the signature to continue.";
     }
+    if (lower.includes("no sign in result returned")) {
+      return "Your wallet didn't return a sign-in result. Try again, or open SiteSurveyor inside your wallet's in-app browser.";
+    }
     return raw;
   }
 

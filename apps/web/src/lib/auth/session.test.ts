@@ -73,6 +73,38 @@ describe("session", () => {
     expect(res.user?.id).toBe("sol-user-1");
   });
 
+  it("signInWithSolanaWallet hides wallet signIn so auth-js signs the SIWS message", async () => {
+    mockSignInWithWeb3.mockResolvedValueOnce({
+      data: { session: { access_token: "tok" }, user: { id: "mwa-user" } },
+      error: null,
+    });
+
+    const signIn = vi.fn(async () => {
+      throw new Error("Sign in failed, no sign in result returned by wallet");
+    });
+    const signMessage = vi.fn(async () => new Uint8Array([1, 2, 3]));
+    const publicKey = { toBase58: () => "MWAWalletAddress" };
+    const mwaAdapter = { publicKey, signIn, signMessage, name: "Mobile Wallet Adapter" };
+
+    await signInWithSolanaWallet(mwaAdapter);
+
+    const passedWallet = mockSignInWithWeb3.mock.calls[0]?.[0]?.wallet as {
+      publicKey: typeof publicKey;
+      signMessage: (message: Uint8Array, encoding?: string) => Promise<Uint8Array>;
+      signIn?: unknown;
+    };
+    expect(passedWallet).not.toBe(mwaAdapter);
+    expect(passedWallet.signIn).toBeUndefined();
+    expect(passedWallet.publicKey).toBe(publicKey);
+
+    const message = new Uint8Array([9, 9]);
+    await expect(passedWallet.signMessage(message, "utf8")).resolves.toEqual(
+      new Uint8Array([1, 2, 3]),
+    );
+    expect(signMessage).toHaveBeenCalledWith(message, "utf8");
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
   it("signUpWithSolanaWallet authorizes, updates metadata, and upserts profile", async () => {
     mockSignInWithWeb3.mockResolvedValueOnce({
       data: { session: { access_token: "tok" }, user: { id: "new-user-42" } },

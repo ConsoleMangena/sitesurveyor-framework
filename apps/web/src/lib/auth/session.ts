@@ -61,6 +61,36 @@ function resolveWalletAuthUrl(): string | undefined {
   return window.location.origin;
 }
 
+interface SignMessageWallet {
+  publicKey: { toBase58: () => string };
+  signMessage: (message: Uint8Array, encoding?: string) => Promise<unknown>;
+}
+
+/**
+ * Restrict a connected wallet to `publicKey` + `signMessage`.
+ *
+ * auth-js prefers a wallet's Wallet Standard `signIn` feature when present, but
+ * the Mobile Wallet Adapter exposes `signIn` and Phantom over MWA can answer an
+ * already-authorized request without a `sign_in_result`, which surfaces as
+ * "no sign in result returned by wallet". Signing the SIWS message through
+ * `signMessage` works on every adapter, so hide `signIn` when signing is
+ * available.
+ */
+function toSignMessageWallet(wallet: unknown): unknown {
+  if (!wallet || typeof wallet !== "object") return wallet;
+  const candidate = wallet as Partial<SignMessageWallet>;
+  const publicKey = candidate.publicKey;
+  if (
+    !publicKey ||
+    typeof publicKey.toBase58 !== "function" ||
+    typeof candidate.signMessage !== "function"
+  ) {
+    return wallet;
+  }
+  const signMessage = candidate.signMessage.bind(wallet);
+  return { publicKey, signMessage } satisfies SignMessageWallet;
+}
+
 /**
  * Signs in via a Solana wallet using Supabase Web3 auth (Sign-In With Solana).
  * Pass a wallet-standard compatible adapter or the `window.solana` object; when
@@ -82,7 +112,7 @@ export async function signInWithSolanaWallet(
 
   const { data, error } = await supabase.auth.signInWithWeb3({
     chain: "solana",
-    wallet,
+    wallet: toSignMessageWallet(wallet),
     statement,
     options: requestOptions,
   } as never);
