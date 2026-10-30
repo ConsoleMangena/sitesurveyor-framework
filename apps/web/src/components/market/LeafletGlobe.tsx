@@ -23,6 +23,19 @@ const DEFAULT_ZOOM = 2.2;
 const CLUSTER_CELL_PX = 58;
 const MAX_CLUSTER_ZOOM = 12;
 
+/**
+ * Keyless, near-monochrome basemap from Esri's public ArcGIS services. The
+ * base layer carries land/water shading and the reference layer adds quiet
+ * labels — the same restrained look as CARTO Positron without an API key.
+ */
+const BASEMAP_BASE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+const BASEMAP_LABELS_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}";
+const BASEMAP_ATTRIBUTION =
+  'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const BASEMAP_MAX_NATIVE_ZOOM = 16;
+
 interface LeafletGlobeProps {
   dots: MarketDot[] | null;
   /** Coordinate-bearing rows in the current scope; may exceed the plotted cap. */
@@ -270,17 +283,19 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
         zoomControl: false,
       });
 
-      // Quiet light basemap so the kind-coded pins stay the loudest thing.
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: "abcd",
-          maxZoom: 19,
-          noWrap: false,
-        },
-      ).addTo(map);
+      // Keyless light basemap so the kind-coded pins stay the loudest thing.
+      L.tileLayer(BASEMAP_BASE_URL, {
+        attribution: BASEMAP_ATTRIBUTION,
+        maxNativeZoom: BASEMAP_MAX_NATIVE_ZOOM,
+        maxZoom: 19,
+        noWrap: false,
+      }).addTo(map);
+
+      L.tileLayer(BASEMAP_LABELS_URL, {
+        maxNativeZoom: BASEMAP_MAX_NATIVE_ZOOM,
+        maxZoom: 19,
+        noWrap: false,
+      }).addTo(map);
 
       L.control.zoom({ position: "bottomright" }).addTo(map);
 
