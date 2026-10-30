@@ -69,7 +69,14 @@ export default function FlatResultRow({
         </span>
 
         <span className="shrink-0 text-right">
-          <span className="block font-mono text-sm font-bold tabular-nums text-foreground">
+          <span
+            className={cn(
+              "block text-sm",
+              item.kind === "firm"
+                ? "font-medium text-muted-foreground"
+                : "font-mono font-bold tabular-nums text-foreground",
+            )}
+          >
             {item.priceLabel}
           </span>
           <span className="mt-1 block text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">

@@ -36,9 +36,7 @@ import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
 import { signOut } from "../../lib/auth/session.ts";
 import { getWorkspaceShellAccountLabel } from "../../features/workspace/account.ts";
 import { Web3MarketTerminal } from "../../features/web3/components/Web3MarketTerminal.tsx";
-import { SolanaLogoMark, UsdcLogoMark } from "../../features/web3/components/SolanaLogos.tsx";
 import { useSolanaMarketFeed } from "../../features/web3/hooks/useSolanaMarketFeed.ts";
-import { formatUsd } from "../../features/web3/lib/format.ts";
 import {
   Avatar,
   AvatarFallback,
@@ -459,6 +457,22 @@ export default function PublicMarketPage() {
       .filter((row) => isNew(row.created_at)).length;
   }, [data]);
 
+  const liveTotals = useMemo(() => {
+    if (!data) return null;
+    const rows = [
+      ...data.listings,
+      ...data.professionals,
+      ...data.jobs,
+      ...data.firms,
+      ...data.events,
+    ];
+    return {
+      items: rows.length,
+      countries: new Set(rows.map((row) => countryOf(row.location)).filter(Boolean))
+        .size,
+    };
+  }, [data]);
+
   const benchmarks = useMemo(() => {
     const hireRows = filteredListings.filter(
       (row) => row.listing_type === "hire",
@@ -600,7 +614,7 @@ export default function PublicMarketPage() {
     <div className="web3-surface">
       <header className="web3-header">
         <div className="web3-header-inner">
-          <span className="flex items-baseline gap-2">
+          <span className="flex min-w-0 items-baseline gap-2">
             <Link
               to="/"
               aria-label="SiteSurveyor home"
@@ -614,7 +628,7 @@ export default function PublicMarketPage() {
               />
               <span className="web3-brand-name">SiteSurveyor</span>
             </Link>
-            <span className="web3-brand-sub">/ Surveyor’s Market</span>
+            <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor’s Market</span>
           </span>
           {user ? (
             <DropdownMenu
@@ -706,28 +720,33 @@ export default function PublicMarketPage() {
         <section className="mx-auto w-full max-w-7xl px-4 pt-10 pb-6 sm:px-6">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div className="max-w-3xl">
-              <div className="mb-3 flex flex-wrap items-center gap-2.5">
-                <span className="web3-status-inline" style={{ fontSize: 12, color: "var(--web3-text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <SolanaLogoMark size={14} />
+              <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
                   <span className="web3-live-dot" aria-hidden="true" />
-                  Solana Live
+                  Live marketplace
                 </span>
-                <span className="web3-mono font-semibold" style={{ fontSize: 13, color: "var(--web3-text)" }}>
-                  SOL {formatUsd(market.snapshot.price)}
+                <span aria-hidden="true">•</span>
+                <span>
+                  <span className="font-mono font-semibold tabular-nums text-foreground">
+                    {liveTotals ? liveTotals.items : "—"}
+                  </span>{" "}
+                  live items
                 </span>
-                <span
-                  className={`web3-mono text-xs font-semibold ${market.snapshot.change24h !== null && market.snapshot.change24h < 0 ? "web3-delta-down" : "web3-delta-up"}`}
-                >
-                  {market.snapshot.change24h === null
-                    ? "—"
-                    : `${market.snapshot.change24h > 0 ? "+" : ""}${market.snapshot.change24h.toFixed(2)}%`}
+                <span aria-hidden="true">•</span>
+                <span>
+                  <span className="font-mono font-semibold tabular-nums text-foreground">
+                    {liveTotals ? liveTotals.countries : "—"}
+                  </span>{" "}
+                  countries
                 </span>
-                <span style={{ color: "var(--web3-border)" }}>•</span>
-                <span className="web3-mono font-semibold inline-flex items-center gap-1.5" style={{ fontSize: 13, color: "var(--web3-text)" }}>
-                  <UsdcLogoMark size={14} />
-                  USDC $1.00
-                </span>
-                <span className="text-xs text-muted-foreground">· Global Marketplace</span>
+                {addedThisWeek > 0 ? (
+                  <>
+                    <span aria-hidden="true">•</span>
+                    <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                      {addedThisWeek} added this week
+                    </span>
+                  </>
+                ) : null}
               </div>
               <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-5xl" style={{ color: "var(--web3-text)" }}>
                 The Surveyor’s Market.
@@ -790,6 +809,14 @@ export default function PublicMarketPage() {
 
         <section ref={registryRef} className="mx-auto w-full max-w-7xl scroll-mt-16 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
           <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+                Browse the market
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+                Pick a section, or search to see every match in one list.
+              </p>
+            </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div role="group" aria-label="Filter by kind" className="flex w-full sm:w-fit items-center gap-1 overflow-x-auto p-1 rounded-lg border border-border/70 bg-card shadow-sm scrollbar-none sm:flex-wrap">
                 {(
@@ -891,7 +918,10 @@ export default function PublicMarketPage() {
             ) : null}
 
             {(scope === "all" || scope === "listing") && !loading ? (
-              <div className="mb-4 flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Gear category
+                </span>
                 {(
                   [
                     ["all", "Everything"],
@@ -908,7 +938,7 @@ export default function PublicMarketPage() {
                       setFlatLimit(FLAT_PAGE_SIZE);
                     }}
                     className={cn(
-                      "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                      "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
                       listingCategory === value
                         ? "border-primary bg-primary text-primary-foreground shadow-xs"
                         : "border-border/80 bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -1164,20 +1194,18 @@ function RateBenchmarks({
   benchmarks: { type: string; median: number; count: number }[];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-border/70 bg-muted/25 px-3 py-2">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Day-rate benchmarks
       </span>
       {benchmarks.map(({ type, median, count }) => (
-        <span
-          key={type}
-          className="rounded-none border border-amber-600/25 bg-amber-500/10 px-2.5 py-1 text-xs"
-        >
-          <span className="font-medium">{type}</span>{" "}
-          <span className="font-mono tabular-nums text-amber-800">
+        <span key={type} className="inline-flex items-baseline gap-1 text-xs">
+          <span className="font-medium text-foreground">{type}</span>
+          <span className="font-mono font-semibold tabular-nums text-amber-800 dark:text-amber-400">
             ${median.toLocaleString()}
           </span>
-          <span className="text-muted-foreground">/day · n={count}</span>
+          <span className="text-muted-foreground">/day</span>
+          <span className="text-[10px] text-muted-foreground/80">({count})</span>
         </span>
       ))}
     </div>

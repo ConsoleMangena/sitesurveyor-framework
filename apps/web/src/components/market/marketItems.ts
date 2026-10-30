@@ -15,6 +15,16 @@ const NEW_WINDOW_MS = 7 * 24 * 60 * 60_000;
 /** Items shown per rail before "See all" takes over. */
 export const RAIL_CAP = 12;
 
+/** Sentence-case a short DB label without touching acronyms or casing later in the string. */
+const cap = (value: string | null | undefined): string | null =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : null;
+
+/** Free-text experience is sometimes a bare number of years ("2"), sometimes prose ("16 years"). */
+const experienceLabel = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  return /^\d+(\.\d+)?$/.test(value.trim()) ? `${value.trim()} yrs` : value;
+};
+
 /**
  * Flat editorial-rows mode replaces the Discovery Rails whenever the user has
  * an active search, a non-default sort, or an explicit "See all" scope.
@@ -53,6 +63,8 @@ export interface RailItem {
 export interface MarketRailData {
   id: string;
   title: string;
+  /** One-line orientation under the rail heading. */
+  description?: string;
   accent: string;
   kinds: MarketDotKind[];
   items: RailItem[];
@@ -64,9 +76,9 @@ export function toListingItem(row: ListingRow): RailItem {
     id: row.id,
     title: row.name,
     meta: [
-      row.category === "accessory" ? "Accessory" : row.type,
-      row.condition,
-      row.listing_type === "hire" ? "hire" : null,
+      row.category === "accessory" ? "Accessory" : cap(row.type),
+      cap(row.condition),
+      row.listing_type === "hire" ? "For hire" : null,
     ]
       .filter(Boolean)
       .join(" · "),
@@ -88,9 +100,14 @@ export function toProfessionalItem(row: ProfessionalRow): RailItem {
     kind: "professional",
     id: row.id,
     title: row.name,
-    meta: [row.title, row.discipline, row.experience].filter(Boolean).join(" · "),
+    meta: [row.title, row.discipline, experienceLabel(row.experience)]
+      .filter(Boolean)
+      .join(" · "),
     location: row.location,
-    priceLabel: `${row.rate.toLocaleString()} ${row.currency}/${row.rate_per ?? "day"}`,
+    priceLabel:
+      row.rate > 0
+        ? `${row.rate.toLocaleString()} ${row.currency}/${row.rate_per ?? "day"}`
+        : "Rate on request",
     photoUrl: portfolioMediaUrl(row.avatar_path ?? null),
     createdAt: row.created_at,
     lat: row.latitude,
@@ -105,7 +122,7 @@ export function toJobItem(row: JobRow): RailItem {
     kind: "job",
     id: row.id,
     title: row.title ?? "",
-    meta: [row.discipline, row.employment_type].filter(Boolean).join(" · "),
+    meta: [row.discipline, cap(row.employment_type)].filter(Boolean).join(" · "),
     location: row.location,
     priceLabel:
       // feed normalizes DB-NULL rates to 0 (marketFeed toJobRows); surface both as Negotiable
@@ -143,7 +160,7 @@ export function toEventItem(row: EventRow): RailItem {
     kind: "event",
     id: row.id,
     title: row.title ?? "",
-    meta: [row.kind, row.provider].filter(Boolean).join(" · "),
+    meta: [cap(row.kind), row.provider].filter(Boolean).join(" · "),
     location: row.location,
     priceLabel: row.price > 0 ? `${row.price.toLocaleString()} ${row.currency}` : "Free",
     photoUrl: null,
@@ -218,6 +235,7 @@ export function buildRails(
     {
       id: "fresh",
       title: "Fresh on the market",
+      description: "Just published across every category.",
       accent: MARKET_DOT_COLORS.listing,
       kinds: ["listing", "professional", "job", "firm", "event"],
       items: fresh,
@@ -225,6 +243,7 @@ export function buildRails(
     {
       id: "gear",
       title: "Instruments & gear",
+      description: "Survey instruments and accessories, for sale or hire.",
       accent: MARKET_DOT_COLORS.listing,
       kinds: ["listing"],
       items: [...scoped(listings, "listing")].sort(byCreatedDesc).slice(0, RAIL_CAP),
@@ -232,6 +251,7 @@ export function buildRails(
     {
       id: "professionals",
       title: "Top rated professionals",
+      description: "Independent surveyors ranked by rating.",
       accent: MARKET_DOT_COLORS.professional,
       kinds: ["professional"],
       items: prosByRating.slice(0, RAIL_CAP),
@@ -239,6 +259,7 @@ export function buildRails(
     {
       id: "jobs",
       title: "Open jobs",
+      description: "Roles from firms hiring right now.",
       accent: MARKET_DOT_COLORS.job,
       kinds: ["job"],
       items: [...scoped(jobs, "job")].sort(byCreatedDesc).slice(0, RAIL_CAP),
@@ -246,6 +267,7 @@ export function buildRails(
     {
       id: "firms",
       title: "Survey firms",
+      description: "Companies and the services they offer.",
       accent: MARKET_DOT_COLORS.firm,
       kinds: ["firm"],
       items: firmsVerifiedFirst.slice(0, RAIL_CAP),
@@ -253,6 +275,7 @@ export function buildRails(
     {
       id: "events",
       title: "Training & events",
+      description: "Courses and events, soonest first.",
       accent: MARKET_DOT_COLORS.event,
       kinds: ["event"],
       // already sorted by starts_at ascending in the `events` pre-pass
