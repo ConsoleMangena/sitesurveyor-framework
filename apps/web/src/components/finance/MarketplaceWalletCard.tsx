@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TriangleAlert, Wallet } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
@@ -18,9 +18,12 @@ interface MarketplaceWalletCardProps {
   connectedAddress: string | null;
   connectedWalletName?: string | null;
   cryptoMethods: PaymentMethodRow[];
+  canManage?: boolean;
   onAddWallet?: () => void;
   onNotice?: (message: string) => void;
 }
+
+const NONE_VALUE = "__none__";
 
 function shortAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-6)}`;
@@ -31,24 +34,34 @@ export default function MarketplaceWalletCard({
   connectedAddress,
   connectedWalletName,
   cryptoMethods,
+  canManage = true,
   onAddWallet,
   onNotice,
 }: MarketplaceWalletCardProps) {
   const [wallet, setWallet] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onNoticeRef = useRef(onNotice);
+  useEffect(() => {
+    onNoticeRef.current = onNotice;
+  }, [onNotice]);
 
   const fetchWallet = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const address = await getMarketplaceWallet(workspaceId);
       setWallet(address);
     } catch (err: unknown) {
-      onNotice?.(err instanceof Error ? err.message : "Failed to load marketplace wallet");
+      setError(
+        err instanceof Error ? err.message : "Failed to load marketplace wallet",
+      );
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, onNotice]);
+  }, [workspaceId]);
 
   useAsyncAction(fetchWallet, [fetchWallet]);
 
@@ -68,19 +81,27 @@ export default function MarketplaceWalletCard({
       if (!method.detail) continue;
       add(method.detail, method.label);
     }
+    if (wallet) add(wallet, "Current wallet");
     return list;
-  }, [connectedAddress, connectedWalletName, cryptoMethods]);
+  }, [connectedAddress, connectedWalletName, cryptoMethods, wallet]);
 
   const handleChange = async (value: string) => {
-    const address = value || null;
+    if (!canManage) return;
+    const address = value === NONE_VALUE ? null : value;
+    const previous = wallet;
     setWallet(address);
     setSaving(true);
+    setError(null);
     try {
       await updateMarketplaceWallet(workspaceId, address);
-      onNotice?.(address ? "Marketplace receiving wallet saved." : "Marketplace wallet cleared.");
+      onNoticeRef.current?.(
+        address ? "Marketplace receiving wallet saved." : "Marketplace wallet cleared.",
+      );
     } catch (err: unknown) {
-      onNotice?.(err instanceof Error ? err.message : "Failed to save marketplace wallet.");
-      void getMarketplaceWallet(workspaceId).then(setWallet);
+      setWallet(previous);
+      setError(
+        err instanceof Error ? err.message : "Failed to save marketplace wallet.",
+      );
     } finally {
       setSaving(false);
     }
@@ -111,27 +132,46 @@ export default function MarketplaceWalletCard({
           </div>
         ) : (
           <>
-            <Select value={wallet ?? ""} onValueChange={handleChange} disabled={saving}>
-              <SelectTrigger className="marketplace-select" aria-label="Marketplace receiving wallet">
-                <SelectValue placeholder="Select a Solana wallet" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">— No wallet selected —</SelectItem>
-                {options.map((option) => (
-                  <SelectItem key={option.address} value={option.address}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {error ? (
+              <p className="marketplace-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+
+            {options.length > 0 ? (
+              <Select
+                value={wallet ?? ""}
+                onValueChange={handleChange}
+                disabled={saving || !canManage}
+              >
+                <SelectTrigger
+                  className="marketplace-select"
+                  aria-label="Marketplace receiving wallet"
+                  aria-busy={saving}
+                >
+                  <SelectValue placeholder="Select a Solana wallet" />
+                </SelectTrigger>
+                <SelectContent>
+                  {wallet ? (
+                    <SelectItem value={NONE_VALUE}>— Clear wallet —</SelectItem>
+                  ) : null}
+                  {options.map((option) => (
+                    <SelectItem key={option.address} value={option.address}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
 
             {!wallet && (
               <div className="marketplace-empty">
                 <TriangleAlert size={14} />
                 <span>
-                  No wallet assigned. Buyers see “Seller has no wallet” until you pick
-                  one.
-                  {onAddWallet ? (
+                  {canManage
+                    ? "No wallet assigned. Buyers see “Seller has no wallet” until you pick one."
+                    : "No wallet assigned. A finance manager can set the receiving wallet."}
+                  {canManage && onAddWallet ? (
                     <>
                       {" "}
                       <button

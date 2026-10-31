@@ -254,10 +254,10 @@ export default function BillingPage({
 
   useAsyncAction(fetchMembership, [fetchMembership]);
 
-  const showNotice = (message: string) => {
+  const showNotice = useCallback((message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(null), 2300);
-  };
+  }, []);
 
   const scrollToWalletMethods = () => {
     const target = document.getElementById("wallet-methods");
@@ -1272,6 +1272,7 @@ export default function BillingPage({
             cryptoMethods={paymentMethods.filter(
               (method) => method.type === "Crypto Wallet" && method.detail,
             )}
+            canManage={canManageBilling}
             onAddWallet={scrollToWalletMethods}
             onNotice={showNotice}
           />

@@ -1093,6 +1093,17 @@
   background: var(--surface);
 }
 
+.marketplace-error {
+  margin: 0 0 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
+  background: var(--color-error-bg);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-error);
+}
+
 .marketplace-empty {
   display: flex;
   align-items: flex-start;
