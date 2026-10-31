@@ -419,7 +419,7 @@ describe("WalletLoginPage (mobile app approval)", () => {
     mockResumeSolflare.mockReturnValue(null);
   });
 
-  it("keeps Phantom off mobile and offers Solflare's app approval", () => {
+  it("keeps desktop extensions off mobile and offers the mobile wallet app", () => {
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
 
     renderPage();
@@ -427,9 +427,8 @@ describe("WalletLoginPage (mobile app approval)", () => {
     const dialog = screen.getByRole("dialog");
 
     expect(within(dialog).queryByText("Phantom")).not.toBeInTheDocument();
-    expect(
-      within(dialog).getByText("Approve in the Solflare app"),
-    ).toBeInTheDocument();
+    expect(within(dialog).queryByText("Solflare")).not.toBeInTheDocument();
+    expect(within(dialog).getByText("Wallet app")).toBeInTheDocument();
   });
 
   it("hides the MetaMask install row on mobile", () => {
@@ -439,25 +438,17 @@ describe("WalletLoginPage (mobile app approval)", () => {
     expect(within(screen.getByRole("dialog")).queryByText("MetaMask")).not.toBeInTheDocument();
   });
 
-  it("starts Solflare's approval sheet instead of opening its browser", () => {
+  it("routes mobile wallet selection through the mobile wallet adapter", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: /^solflare/i,
+        name: /^wallet app/i,
       }),
     );
 
-    expect(mockStartSolflare).toHaveBeenCalledWith({
-      intent: "signin",
-      statement: SOLANA_SIGN_IN_STATEMENT,
-    });
-    expect(mockSelect).not.toHaveBeenCalled();
-    expect(
-      screen.getByText(
-        /opening solflare\. approve the connection and the signature request in the app/i,
-      ),
-    ).toBeInTheDocument();
+    expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter");
+    expect(mockStartSolflare).not.toHaveBeenCalled();
   });
 
   it("does not offer Phantom on mobile even when its adapter is detected", () => {
@@ -511,18 +502,12 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     expect(mockStartSolflare).not.toHaveBeenCalled();
   });
 
-  it("routes the Solflare row through the Solflare app on Android too", () => {
+  it("omits the Solflare desktop extension row on Android", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     const dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: /^solflare/i }));
-
-    expect(mockStartSolflare).toHaveBeenCalledWith({
-      intent: "signin",
-      statement: SOLANA_SIGN_IN_STATEMENT,
-    });
-    expect(mockSelect).not.toHaveBeenCalledWith("Mobile Wallet Adapter");
+    expect(within(dialog).queryByRole("button", { name: /^solflare/i })).not.toBeInTheDocument();
   });
 
   it("tells the user which network the wallet app must be on", () => {
@@ -768,24 +753,20 @@ describe("WalletLoginPage (mobile copy)", () => {
     mockResumeSolflare.mockReturnValue(null);
   });
 
-  it("sends a phone with no injected wallet to Solflare's app approval", async () => {
+  it("routes mobile sign-in directly to the mobile wallet adapter", async () => {
     mockWallets.forEach((w) => {
       w.readyState = "Loadable";
+    });
+    mockSignInWithSolanaWallet.mockResolvedValueOnce({
+      session: { access_token: "tok" },
+      user: { id: "mwa-user" },
     });
 
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /connect wallet & sign in/i }));
 
-    expect(
-      await screen.findByText(
-        /opening solflare\. approve the connection, then return here to finish/i,
-      ),
-    ).toBeInTheDocument();
-    expect(mockStartSolflare).toHaveBeenCalledWith({
-      intent: "signin",
-      statement: SOLANA_SIGN_IN_STATEMENT,
-    });
-    expect(mockSignInWithSolanaWallet).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter"));
+    expect(mockStartSolflare).not.toHaveBeenCalled();
   });
 
   it("keeps the desktop dialog footnote", () => {
@@ -799,15 +780,16 @@ describe("WalletLoginPage (mobile copy)", () => {
     ).toBeInTheDocument();
   });
 
-  it("omits MetaMask from the wallet field summary on mobile", () => {
+  it("omits MetaMask and Solflare extension from the wallet field summary on mobile", () => {
     renderPage();
 
-    expect(screen.getByText("Solflare")).toBeInTheDocument();
+    expect(screen.getByText("Wallet app (Phantom, Solflare, etc.)")).toBeInTheDocument();
     expect(screen.getByText(/^\d+ options?$/)).toBeInTheDocument();
     expect(screen.queryByText(/MetaMask/)).not.toBeInTheDocument();
   });
 
-  it("shows the mobile uninstalled-wallet error inside the dialog", () => {
+  it("shows the uninstalled-wallet error inside the dialog on desktop", () => {
+    setUserAgent(DESKTOP_UA);
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
@@ -815,7 +797,7 @@ describe("WalletLoginPage (mobile copy)", () => {
     );
 
     expect(
-      within(screen.getByRole("dialog")).getByText(/backpack isn't available here/i),
+      within(screen.getByRole("dialog")).getByText(/backpack is not installed in this browser/i),
     ).toBeInTheDocument();
   });
 });

@@ -74,7 +74,6 @@ type WalletChoiceStatus =
   | "detected"
   | "not-installed"
   | "install"
-  | "open-app"
   | "mobile-app";
 
 interface WalletChoice {
@@ -90,7 +89,6 @@ const walletStatusLabels: Record<WalletChoiceStatus, string> = {
   detected: "Detected in this browser",
   "not-installed": "Not installed",
   install: "Install extension",
-  "open-app": "Approve in the app",
   "mobile-app": "Connect through your wallet app",
 };
 
@@ -251,12 +249,12 @@ export default function WalletLoginPage() {
   const walletChoices = useMemo<WalletChoice[]>(() => {
     const choices: WalletChoice[] = [];
 
-    if (mwaWallet) {
+    if (mwaWallet || isMobile) {
       choices.push({
         key: "wallet-app",
         name: "Wallet app",
-        icon: mwaWallet.adapter.icon,
-        adapterName: mwaWallet.adapter.name,
+        icon: mwaWallet?.adapter.icon,
+        adapterName: mwaWallet ? mwaWallet.adapter.name : MWA_WALLET_NAME_TYPED,
         status: "mobile-app",
       });
     }
@@ -266,10 +264,9 @@ export default function WalletLoginPage() {
       // The local vault is managed from the wallet card in the workspace, not
       // offered as a way to sign in.
       if (w.adapter.name === CUSTOM_WALLET_NAME) continue;
-      // Phantom is a desktop extension here. Mobile wallets go through the
-      // wallet-app adapter (Android) or Solflare's app (iOS).
-      if (isMobile && /phantom/i.test(w.adapter.name)) continue;
-      const openApp = isMobile && /solflare/i.test(w.adapter.name);
+      // On mobile devices, desktop browser extensions are not available;
+      // all wallet interactions route through the Mobile Wallet Adapter.
+      if (isMobile) continue;
       choices.push({
         key: w.adapter.name,
         name: w.adapter.name,
@@ -278,9 +275,7 @@ export default function WalletLoginPage() {
         status:
           w.readyState === "Installed"
             ? "detected"
-            : openApp
-              ? "open-app"
-              : "not-installed",
+            : "not-installed",
       });
     }
 
@@ -294,13 +289,13 @@ export default function WalletLoginPage() {
       });
     }
 
-    if (!sortedWallets.some((w) => /solflare/i.test(w.adapter.name))) {
+    if (!isMobile && !sortedWallets.some((w) => /solflare/i.test(w.adapter.name))) {
       choices.push({
         key: "solflare",
         name: "Solflare",
         icon: "/solflare.svg",
         installUrl: "https://solflare.com/download",
-        status: isMobile ? "open-app" : "install",
+        status: "install",
       });
     }
 
@@ -348,15 +343,17 @@ export default function WalletLoginPage() {
   );
 
   const connectViaMwa = async () => {
-    const target = mwaWallet;
-    if (!target) return;
+    const target =
+      mwaWallet ??
+      wallets.find((w) => w.adapter.name === MWA_WALLET_NAME) ??
+      null;
     setError(null);
     cancelSolflareMobileAuth();
     setSolflareContinuation(false);
     try {
       setSigning(true);
       select(MWA_WALLET_NAME_TYPED);
-      if (!target.adapter.connected) {
+      if (target && !target.adapter.connected) {
         await target.adapter.connect();
       }
       setWalletDialogOpen(false);
@@ -379,26 +376,6 @@ export default function WalletLoginPage() {
     setSolflareContinuation(false);
     cancelSolflareMobileAuth();
     const chosen = wallets.find((w) => w.adapter.name === walletName);
-    if (
-      isMobile &&
-      /solflare/i.test(walletName) &&
-      chosen?.readyState !== "Installed"
-    ) {
-      setWalletDialogOpen(false);
-      if (
-        startSolflareMobileAuth({
-          intent: "signin",
-          statement: SOLANA_SIGN_IN_STATEMENT,
-        })
-      ) {
-        setWalletNotice(
-          "Opening Solflare. Approve the connection and the signature request in the app.",
-        );
-      } else {
-        setError("Solflare could not be opened. Please try again.");
-      }
-      return;
-    }
     try {
       if (!chosen) return;
 
@@ -450,11 +427,14 @@ export default function WalletLoginPage() {
       }
     }
 
-    // On Android there is no extension to detect; the mobile wallet adapter
-    // opens the installed wallet app's authorization sheet directly.
-    if (!target && mwaWallet) {
+    // On mobile devices, the mobile wallet adapter opens the installed
+    // wallet app (Phantom, Solflare, etc.) authorization sheet directly.
+    if (!target && (mwaWallet || isMobile)) {
       select(MWA_WALLET_NAME_TYPED);
-      target = mwaWallet;
+      target =
+        mwaWallet ??
+        wallets.find((w) => w.adapter.name === MWA_WALLET_NAME) ??
+        null;
     }
 
     if (!target) {
@@ -467,20 +447,10 @@ export default function WalletLoginPage() {
         return windowSolana;
       }
 
-      // No injected wallet: Solflare's deeplinks open its approval sheet and
-      // return here, so the flow never moves into Solflare's browser.
-      if (isMobile) {
-        setWalletNotice(
-          "Opening Solflare. Approve the connection, then return here to finish.",
-        );
-        if (startSolflareMobileAuth(solflareStart)) {
-          return null;
-        }
-        setWalletNotice(null);
-      }
-
       throw new Error(
-        "No Solana wallet detected. Please install Phantom, Solflare, or a Solana wallet extension.",
+        isMobile
+          ? "No wallet app detected. Please open SiteSurveyor inside your wallet's browser (e.g. Phantom or Solflare) or install a Solana wallet app."
+          : "No Solana wallet detected. Please install Phantom, Solflare, or a Solana wallet extension.",
       );
     }
 
@@ -974,9 +944,7 @@ export default function WalletLoginPage() {
                           ? "Detected in this browser"
                           : "Not installed"
                         : isMobile
-                          ? mwaWallet
-                            ? "Wallet app & Solflare"
-                            : "Solflare"
+                          ? "Wallet app (Phantom, Solflare, etc.)"
                           : "Phantom, Solflare & MetaMask"}
                     </span>
                   </span>
@@ -1079,28 +1047,8 @@ export default function WalletLoginPage() {
                   type="button"
                   className={`web3-wallet-row ${isSelected ? "selected" : ""}`}
                   onClick={() => {
-                    if (choice.status === "mobile-app" && mwaWallet) {
+                    if (choice.status === "mobile-app") {
                       void connectViaMwa();
-                      return;
-                    }
-                    if (choice.status === "open-app") {
-                      setWalletDialogOpen(false);
-                      setSolflareContinuation(false);
-                      cancelSolflareMobileAuth();
-                      if (
-                        startSolflareMobileAuth({
-                          intent: "signin",
-                          statement: SOLANA_SIGN_IN_STATEMENT,
-                        })
-                      ) {
-                        setWalletNotice(
-                          "Opening Solflare. Approve the connection and the signature request in the app.",
-                        );
-                      } else {
-                        setError(
-                          "Solflare could not be opened. Please try again.",
-                        );
-                      }
                       return;
                     }
                     if (choice.installUrl) {
@@ -1122,12 +1070,9 @@ export default function WalletLoginPage() {
                   <span className="web3-wallet-row-meta">
                     <span className="web3-wallet-row-name">{choice.name}</span>
                     <span className="web3-wallet-row-sub">
-                      {choice.status === "open-app"
-                        ? `Approve in the ${choice.name} app`
-                        : choice.status === "mobile-app" &&
-                            choice.adapterName === MWA_WALLET_NAME
-                          ? "Installed wallet apps"
-                          : walletStatusLabels[choice.status]}
+                      {choice.status === "mobile-app"
+                        ? "Installed wallet apps (Phantom, Solflare, etc.)"
+                        : walletStatusLabels[choice.status]}
                     </span>
                   </span>
                   <span
@@ -1152,9 +1097,7 @@ export default function WalletLoginPage() {
             <Lock />
             <span>
               {isMobile
-                ? mwaWallet
-                  ? "Wallet apps approve the connection inside their own app. Solflare includes its signature prompt there."
-                  : "Solflare approves the connection and signature in its app, then returns you here."
+                ? "Wallet apps approve the connection and sign inside their own app (Phantom, Solflare, Backpack, etc.). No extension required."
                 : "Wallets are detected in this browser. MetaMask opens its official install page when the extension is missing."}
             </span>
           </div>
