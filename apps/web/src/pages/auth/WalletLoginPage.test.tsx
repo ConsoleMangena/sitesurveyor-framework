@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import WalletLoginPage from "./WalletLoginPage.tsx";
+import { SOLANA_SIGN_IN_STATEMENT } from "../../lib/auth/session.ts";
 import {
   SOLANA_CLUSTER,
   SOLANA_CLUSTER_LABEL,
@@ -18,6 +19,8 @@ const mockSelect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockSignInWithSolanaWallet = vi.fn();
 const mockSignUpWithSolanaWallet = vi.fn();
+const mockSignInWithSolanaSignature = vi.fn();
+const mockSignUpWithSolanaSignature = vi.fn();
 const { mockSignOut, mockGetSignInProfile, mockRepairSignInProfile } =
   vi.hoisted(() => ({
     mockSignOut: vi.fn(),
@@ -26,7 +29,23 @@ const { mockSignOut, mockGetSignInProfile, mockRepairSignInProfile } =
   }));
 const mockWalletState = vi.hoisted(() => ({ connected: true }));
 
-const { mockWallets, mockAdapterConnect, resetMockWallets, mockOpenMobileWallet } =
+const {
+  mockStartSolflare,
+  mockContinueSolflare,
+  mockResumeSolflare,
+  mockShouldResumeSolflare,
+  mockHasPendingSolflare,
+  mockCancelSolflare,
+} = vi.hoisted(() => ({
+  mockStartSolflare: vi.fn(() => true),
+  mockContinueSolflare: vi.fn(() => true),
+  mockResumeSolflare: vi.fn<() => unknown>(() => null),
+  mockShouldResumeSolflare: vi.fn(() => false),
+  mockHasPendingSolflare: vi.fn(() => false),
+  mockCancelSolflare: vi.fn(),
+}));
+
+const { mockWallets, mockAdapterConnect, resetMockWallets } =
   vi.hoisted(() => {
     const mockAdapterConnect = vi.fn();
     const makeWallets = () => [
@@ -63,7 +82,6 @@ const { mockWallets, mockAdapterConnect, resetMockWallets, mockOpenMobileWallet 
     return {
       mockWallets,
       mockAdapterConnect,
-      mockOpenMobileWallet: vi.fn(),
       resetMockWallets: () => {
         mockWallets.splice(0, mockWallets.length, ...makeWallets());
       },
@@ -116,18 +134,27 @@ vi.mock("@solana/wallet-adapter-react", () => ({
   }),
 }));
 
-vi.mock("../../features/phantom/lib/provider.ts", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../features/phantom/lib/provider.ts")>()),
-  openMobileWallet: mockOpenMobileWallet,
+vi.mock("../../lib/auth/solflare-mobile.ts", () => ({
+  startSolflareMobileAuth: mockStartSolflare,
+  continueSolflareMobileAuth: mockContinueSolflare,
+  resumeSolflareMobileAuth: mockResumeSolflare,
+  shouldResumeSolflareAuth: mockShouldResumeSolflare,
+  hasPendingSolflareSignature: mockHasPendingSolflare,
+  cancelSolflareMobileAuth: mockCancelSolflare,
 }));
 
 vi.mock("../../features/phantom/lib/customWalletAdapter.ts", () => ({
   CUSTOM_WALLET_NAME: "SiteSurveyor Wallet",
 }));
 
-vi.mock("../../lib/auth/session.ts", () => ({
+vi.mock("../../lib/auth/session.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/auth/session.ts")>()),
   signInWithSolanaWallet: (...args: unknown[]) => mockSignInWithSolanaWallet(...args),
   signUpWithSolanaWallet: (...args: unknown[]) => mockSignUpWithSolanaWallet(...args),
+  signInWithSolanaSignature: (...args: unknown[]) =>
+    mockSignInWithSolanaSignature(...args),
+  signUpWithSolanaSignature: (...args: unknown[]) =>
+    mockSignUpWithSolanaSignature(...args),
   signOut: async (...args: unknown[]) => mockSignOut(...args),
 }));
 
@@ -155,6 +182,11 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     resetMockWallets();
     setUserAgent(DESKTOP_UA);
     mockWalletState.connected = true;
+    mockShouldResumeSolflare.mockReturnValue(false);
+    mockHasPendingSolflare.mockReturnValue(false);
+    mockStartSolflare.mockReturnValue(true);
+    mockContinueSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue(null);
   });
 
   it("renders SiteSurveyor Web3 gateway branding and default Sign In tab", () => {
@@ -266,7 +298,10 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     const signInBtn = screen.getByRole("button", { name: /sign in with brave wallet/i });
     fireEvent.click(signInBtn);
 
-    expect(mockSignInWithSolanaWallet).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockSignInWithSolanaWallet).toHaveBeenCalled(),
+    );
+    await waitFor(() => expect(mockGetSignInProfile).toHaveBeenCalled());
   });
 
   it("rejects a wallet that has no recognised account", async () => {
@@ -368,15 +403,20 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   });
 });
 
-describe("WalletLoginPage (mobile handoff)", () => {
+describe("WalletLoginPage (mobile app approval)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetMockWallets();
     setUserAgent(MOBILE_UA);
     mockWalletState.connected = false;
+    mockShouldResumeSolflare.mockReturnValue(false);
+    mockHasPendingSolflare.mockReturnValue(false);
+    mockStartSolflare.mockReturnValue(true);
+    mockContinueSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue(null);
   });
 
-  it("keeps Phantom off mobile and offers Solflare's app handoff", () => {
+  it("keeps Phantom off mobile and offers Solflare's app approval", () => {
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
 
     renderPage();
@@ -385,7 +425,7 @@ describe("WalletLoginPage (mobile handoff)", () => {
 
     expect(within(dialog).queryByText("Phantom")).not.toBeInTheDocument();
     expect(
-      within(dialog).getByText("Open in the Solflare app"),
+      within(dialog).getByText("Approve in the Solflare app"),
     ).toBeInTheDocument();
   });
 
@@ -396,7 +436,7 @@ describe("WalletLoginPage (mobile handoff)", () => {
     expect(within(screen.getByRole("dialog")).queryByText("MetaMask")).not.toBeInTheDocument();
   });
 
-  it("opens Solflare's in-app browser on tap", () => {
+  it("starts Solflare's approval sheet instead of opening its browser", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
@@ -405,7 +445,16 @@ describe("WalletLoginPage (mobile handoff)", () => {
       }),
     );
 
-    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Solflare");
+    expect(mockStartSolflare).toHaveBeenCalledWith({
+      intent: "signin",
+      statement: SOLANA_SIGN_IN_STATEMENT,
+    });
+    expect(mockSelect).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        /opening solflare\. approve the connection and the signature request in the app/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("does not offer Phantom on mobile even when its adapter is detected", () => {
@@ -425,6 +474,11 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     resetMockWallets();
     setUserAgent(ANDROID_UA);
     mockWalletState.connected = false;
+    mockShouldResumeSolflare.mockReturnValue(false);
+    mockHasPendingSolflare.mockReturnValue(false);
+    mockStartSolflare.mockReturnValue(true);
+    mockContinueSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue(null);
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
     mockWallets.push({
       adapter: {
@@ -451,17 +505,20 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
 
     expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter");
     await waitFor(() => expect(mockAdapterConnect).toHaveBeenCalled());
-    expect(mockOpenMobileWallet).not.toHaveBeenCalled();
+    expect(mockStartSolflare).not.toHaveBeenCalled();
   });
 
-  it("routes the Solflare row through its in-app browser on Android too", () => {
+  it("routes the Solflare row through the Solflare app on Android too", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     const dialog = screen.getByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /^solflare/i }));
 
-    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Solflare");
+    expect(mockStartSolflare).toHaveBeenCalledWith({
+      intent: "signin",
+      statement: SOLANA_SIGN_IN_STATEMENT,
+    });
     expect(mockSelect).not.toHaveBeenCalledWith("Mobile Wallet Adapter");
   });
 
@@ -514,7 +571,140 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
       expect(mockSignInWithSolanaWallet).toHaveBeenCalled(),
     );
     expect(mockSelect).toHaveBeenCalledWith("Mobile Wallet Adapter");
-    expect(mockOpenMobileWallet).not.toHaveBeenCalled();
+    expect(mockStartSolflare).not.toHaveBeenCalled();
+  });
+});
+
+describe("WalletLoginPage (Solflare mobile return)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMockWallets();
+    setUserAgent(MOBILE_UA);
+    mockWalletState.connected = false;
+    mockShouldResumeSolflare.mockReturnValue(false);
+    mockHasPendingSolflare.mockReturnValue(false);
+    mockStartSolflare.mockReturnValue(true);
+    mockContinueSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue(null);
+    mockGetSignInProfile.mockResolvedValue({
+      full_name: "Sam Surveyor",
+      email: "sam@example.com",
+      auth_signup_account_type: "personal",
+    });
+  });
+
+  it("finishes the session with the signature Solflare returned", async () => {
+    const message = "app.test wants you to sign in with your Solana account:\n9xQe";
+    const signature = new Uint8Array([1, 2, 3]);
+    mockShouldResumeSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue({
+      status: "completed",
+      intent: "signin",
+      message,
+      signature,
+    });
+    mockSignInWithSolanaSignature.mockResolvedValueOnce({
+      session: { access_token: "tok" },
+      user: { id: "sol-user-9" },
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(mockSignInWithSolanaSignature).toHaveBeenCalledWith(
+        message,
+        signature,
+      ),
+    );
+    expect(mockGetSignInProfile).toHaveBeenCalledWith("sol-user-9");
+  });
+
+  it("asks for the signature once Solflare has connected", async () => {
+    mockShouldResumeSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue({ status: "awaiting-signature" });
+
+    renderPage();
+
+    expect(await screen.findByText("Solflare is connected")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /approve in solflare/i }),
+    );
+
+    expect(mockContinueSolflare).toHaveBeenCalled();
+    expect(mockSignInWithSolanaSignature).not.toHaveBeenCalled();
+  });
+
+  it("restores the approval prompt when a reload lost the redirect", async () => {
+    mockHasPendingSolflare.mockReturnValue(true);
+
+    renderPage();
+
+    expect(await screen.findByText("Solflare is connected")).toBeInTheDocument();
+    expect(mockResumeSolflare).not.toHaveBeenCalled();
+  });
+
+  it("explains an expired request when the signature cannot be sent", async () => {
+    mockShouldResumeSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue({ status: "awaiting-signature" });
+    mockContinueSolflare.mockReturnValue(false);
+
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /approve in solflare/i }),
+    );
+
+    expect(
+      await screen.findByText(/this solflare request expired/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Solflare is connected")).not.toBeInTheDocument();
+  });
+
+  it("surfaces a cancelled authorization from the app", async () => {
+    mockShouldResumeSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue({
+      status: "error",
+      message: "Solflare authorization was cancelled.",
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText("Solflare authorization was cancelled."),
+    ).toBeInTheDocument();
+  });
+
+  it("completes a signup from the returned signature", async () => {
+    const signup = {
+      fullName: "Jane Doe, PLS",
+      accountType: "business" as const,
+      companyName: "Acme Surveying Ltd",
+      email: "jane@acmesurvey.com",
+    };
+    const message = "app.test wants you to sign in with your Solana account:\n9xQe";
+    const signature = new Uint8Array([4, 5, 6]);
+    mockShouldResumeSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue({
+      status: "completed",
+      intent: "signup",
+      signup,
+      message,
+      signature,
+    });
+    mockSignUpWithSolanaSignature.mockResolvedValueOnce({
+      session: { access_token: "tok" },
+      user: { id: "sol-user-10" },
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(mockSignUpWithSolanaSignature).toHaveBeenCalledWith(
+        message,
+        signature,
+        signup,
+      ),
+    );
+    expect(mockSignInWithSolanaSignature).not.toHaveBeenCalled();
   });
 });
 
@@ -524,9 +714,14 @@ describe("WalletLoginPage (mobile copy)", () => {
     resetMockWallets();
     setUserAgent(MOBILE_UA);
     mockWalletState.connected = false;
+    mockShouldResumeSolflare.mockReturnValue(false);
+    mockHasPendingSolflare.mockReturnValue(false);
+    mockStartSolflare.mockReturnValue(true);
+    mockContinueSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue(null);
   });
 
-  it("hands a phone with no injected wallet to Solflare's in-app browser", async () => {
+  it("sends a phone with no injected wallet to Solflare's app approval", async () => {
     mockWallets.forEach((w) => {
       w.readyState = "Loadable";
     });
@@ -535,9 +730,15 @@ describe("WalletLoginPage (mobile copy)", () => {
     fireEvent.click(screen.getByRole("button", { name: /connect wallet & sign in/i }));
 
     expect(
-      await screen.findByText(/opening solflare\. complete sign-in inside the solflare app/i),
+      await screen.findByText(
+        /opening solflare\. approve the connection, then return here to finish/i,
+      ),
     ).toBeInTheDocument();
-    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Solflare");
+    expect(mockStartSolflare).toHaveBeenCalledWith({
+      intent: "signin",
+      statement: SOLANA_SIGN_IN_STATEMENT,
+    });
+    expect(mockSignInWithSolanaWallet).not.toHaveBeenCalled();
   });
 
   it("keeps the desktop dialog footnote", () => {

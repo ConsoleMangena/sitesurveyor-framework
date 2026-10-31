@@ -1,13 +1,27 @@
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import {
+  buildSolanaSignUpStatement,
+  signInWithSolanaSignature,
   signInWithSolanaWallet,
   signOut,
+  signUpWithSolanaSignature,
   signUpWithSolanaWallet,
+  SOLANA_SIGN_IN_STATEMENT,
+  type SolanaSignUpInput,
 } from "../../lib/auth/session.ts";
+import {
+  cancelSolflareMobileAuth,
+  continueSolflareMobileAuth,
+  hasPendingSolflareSignature,
+  resumeSolflareMobileAuth,
+  shouldResumeSolflareAuth,
+  startSolflareMobileAuth,
+  type SolflareMobileStart,
+} from "../../lib/auth/solflare-mobile.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
 import {
   isRecognisedWalletAccount,
@@ -22,8 +36,6 @@ import {
 import {
   isMobileBrowser,
   MWA_WALLET_NAME,
-  openMobileWallet,
-  type MobileWalletName,
 } from "../../features/phantom/lib/provider.ts";
 import {
   SOLANA_CLUSTER,
@@ -77,7 +89,7 @@ const walletStatusLabels: Record<WalletChoiceStatus, string> = {
   detected: "Detected in this browser",
   "not-installed": "Not installed",
   install: "Install extension",
-  "open-app": "Open in app",
+  "open-app": "Approve in the app",
   "mobile-app": "Connect through your wallet app",
 };
 
@@ -191,14 +203,19 @@ export default function WalletLoginPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
-  const [walletAppFallback, setWalletAppFallback] =
-    useState<MobileWalletName | null>(null);
   const [walletUnrecognised, setWalletUnrecognised] = useState(false);
   const [completingAccount, setCompletingAccount] = useState(false);
-  const [signing, setSigning] = useState(false);
+  const [signing, setSigning] = useState(() =>
+    shouldResumeSolflareAuth(window.location.search),
+  );
   const [copied, setCopied] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
   const [signupDialogOpen, setSignupDialogOpen] = useState(false);
+  const [walletNotice, setWalletNotice] = useState<string | null>(null);
+  const [solflareContinuation, setSolflareContinuation] = useState(() =>
+    hasPendingSolflareSignature(),
+  );
+  const solflareResumeStarted = useRef(false);
 
   const isMobile = isMobileBrowser();
   const clusterLabel = SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER];
@@ -247,7 +264,7 @@ export default function WalletLoginPage() {
       // offered as a way to sign in.
       if (w.adapter.name === CUSTOM_WALLET_NAME) continue;
       // Phantom is a desktop extension here. Mobile wallets go through the
-      // wallet-app adapter (Android) or Solflare's in-app browser (iOS).
+      // wallet-app adapter (Android) or Solflare's app (iOS).
       if (isMobile && /phantom/i.test(w.adapter.name)) continue;
       const openApp = isMobile && /solflare/i.test(w.adapter.name);
       choices.push({
@@ -289,11 +306,11 @@ export default function WalletLoginPage() {
 
   const clearError = () => {
     setError(null);
-    setWalletAppFallback(null);
     setWalletUnrecognised(false);
+    setWalletNotice(null);
   };
 
-  const prefillSignupFromAccount = (user: SupabaseUser) => {
+  const prefillSignupFromAccount = useCallback((user: SupabaseUser) => {
     const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
     const identity = resolveWalletIdentity({
       metadata,
@@ -315,32 +332,24 @@ export default function WalletLoginPage() {
     if (company && company !== "Independent Surveyor") {
       setCompanyName(company);
     }
-  };
+  }, []);
 
-  const describeWalletFailure = (
-    err: unknown,
-    fallbackMessage: string,
-    app?: MobileWalletName,
-  ): { message: string; fallback: MobileWalletName | null } => {
-    if (isMobile && isWalletNetworkModeError(err)) {
-      return {
-        message: app
-          ? `SiteSurveyor runs on Solana ${clusterLabel}, but ${app} is on a different network. Open ${app} → Settings → Developer Settings → Change Network → ${clusterLabel}, then try again — or continue in the ${app} browser.`
-          : `SiteSurveyor runs on Solana ${clusterLabel}, but your wallet app is on a different network. Open your wallet app → Settings → Developer Settings → Change Network → ${clusterLabel}, then try again.`,
-        fallback: app ?? null,
-      };
-    }
-    return {
-      message: formatAuthUserFacingError(err, fallbackMessage),
-      fallback: null,
-    };
-  };
+  const describeWalletFailure = useCallback(
+    (err: unknown, fallbackMessage: string): string => {
+      if (isMobile && isWalletNetworkModeError(err)) {
+        return `SiteSurveyor runs on Solana ${clusterLabel}, but your wallet app is on a different network. Open your wallet app → Settings → Developer Settings → Change Network → ${clusterLabel}, then try again.`;
+      }
+      return formatAuthUserFacingError(err, fallbackMessage);
+    },
+    [clusterLabel, isMobile],
+  );
 
-  const connectViaMwa = async (app?: MobileWalletName) => {
+  const connectViaMwa = async () => {
     const target = mwaWallet;
     if (!target) return;
     setError(null);
-    setWalletAppFallback(null);
+    cancelSolflareMobileAuth();
+    setSolflareContinuation(false);
     try {
       setSigning(true);
       select(MWA_WALLET_NAME_TYPED);
@@ -349,13 +358,7 @@ export default function WalletLoginPage() {
       }
       setWalletDialogOpen(false);
     } catch (err) {
-      const failure = describeWalletFailure(
-        err,
-        "Could not open your wallet app.",
-        app,
-      );
-      setError(failure.message);
-      setWalletAppFallback(failure.fallback);
+      setError(describeWalletFailure(err, "Could not open your wallet app."));
     } finally {
       setSigning(false);
     }
@@ -370,6 +373,8 @@ export default function WalletLoginPage() {
 
   const handleWalletSelect = async (walletName: WalletName) => {
     clearError();
+    setSolflareContinuation(false);
+    cancelSolflareMobileAuth();
     const chosen = wallets.find((w) => w.adapter.name === walletName);
     if (
       isMobile &&
@@ -377,10 +382,18 @@ export default function WalletLoginPage() {
       chosen?.readyState !== "Installed"
     ) {
       setWalletDialogOpen(false);
-      setError(
-        `Opening ${walletName}. Complete the connection inside the ${walletName} app.`,
-      );
-      openMobileWallet("Solflare");
+      if (
+        startSolflareMobileAuth({
+          intent: "signin",
+          statement: SOLANA_SIGN_IN_STATEMENT,
+        })
+      ) {
+        setWalletNotice(
+          "Opening Solflare. Approve the connection and the signature request in the app.",
+        );
+      } else {
+        setError("Solflare could not be opened. Please try again.");
+      }
       return;
     }
     try {
@@ -409,20 +422,13 @@ export default function WalletLoginPage() {
       setWalletDialogOpen(false);
     } catch (err) {
       console.warn("[WalletLoginPage] Select error:", err);
-      const app: MobileWalletName | undefined = /solflare/i.test(walletName)
-        ? "Solflare"
-        : undefined;
-      const failure = describeWalletFailure(
-        err,
-        "Failed to connect wallet.",
-        app,
-      );
-      setError(failure.message);
-      setWalletAppFallback(failure.fallback);
+      setError(describeWalletFailure(err, "Failed to connect wallet."));
     }
   };
 
-  const resolveAndConnectWallet = async () => {
+  const resolveAndConnectWallet = async (
+    solflareStart: SolflareMobileStart,
+  ): Promise<unknown | null> => {
     if (authConnected && authWallet?.adapter) {
       return authWallet.adapter;
     }
@@ -458,14 +464,16 @@ export default function WalletLoginPage() {
         return windowSolana;
       }
 
-      // Phones with no injected wallet should land in Solflare's in-app
-      // browser instead of dead-ending on an error. The universal link only
-      // loads the dApp when it includes the encoded `ref` (see provider.ts).
+      // No injected wallet: Solflare's deeplinks open its approval sheet and
+      // return here, so the flow never moves into Solflare's browser.
       if (isMobile) {
-        openMobileWallet("Solflare");
-        throw new Error(
-          "Opening Solflare. Complete sign-in inside the Solflare app.",
+        setWalletNotice(
+          "Opening Solflare. Approve the connection, then return here to finish.",
         );
+        if (startSolflareMobileAuth(solflareStart)) {
+          return null;
+        }
+        setWalletNotice(null);
       }
 
       throw new Error(
@@ -489,21 +497,8 @@ export default function WalletLoginPage() {
     return target.adapter;
   };
 
-  const handleSignIn = async () => {
-    clearError();
-    try {
-      setSigning(true);
-      setAuthLoading(true);
-
-      const activeWallet =
-        authConnected && authWallet?.adapter
-          ? authWallet.adapter
-          : await resolveAndConnectWallet();
-
-      const { user } = await signInWithSolanaWallet(activeWallet, {
-        statement: "Sign in to SiteSurveyor Framework with your Solana account.",
-      });
-
+  const finishSignIn = useCallback(
+    async (user: SupabaseUser | null) => {
       if (!user) {
         throw new Error(
           "Wallet authorization succeeded, but no account was returned. Please try signing in again.",
@@ -545,29 +540,117 @@ export default function WalletLoginPage() {
           );
         });
       }
+    },
+    [prefillSignupFromAccount, setAuthLoading, setSessionExpired],
+  );
+
+  const handleSignIn = async () => {
+    clearError();
+    setSolflareContinuation(false);
+    cancelSolflareMobileAuth();
+    try {
+      setSigning(true);
+      setAuthLoading(true);
+
+      const activeWallet =
+        authConnected && authWallet?.adapter
+          ? authWallet.adapter
+          : await resolveAndConnectWallet({
+              intent: "signin",
+              statement: SOLANA_SIGN_IN_STATEMENT,
+            });
+
+      // Null means Solflare's app approval sheet is opening; the flow resumes
+      // on return instead of continuing in this page load.
+      if (!activeWallet) {
+        setAuthLoading(false);
+        return;
+      }
+
+      const { user } = await signInWithSolanaWallet(activeWallet, {
+        statement: SOLANA_SIGN_IN_STATEMENT,
+      });
+
+      await finishSignIn(user);
     } catch (err) {
       setAuthLoading(false);
-      const app: MobileWalletName | undefined = /solflare/i.test(
-        authWallet?.adapter.name ?? "",
-      )
-        ? "Solflare"
-        : undefined;
-      const failure = describeWalletFailure(
-        err,
-        "Wallet sign-in failed. Please verify your signature.",
-        app,
+      setError(
+        describeWalletFailure(
+          err,
+          "Wallet sign-in failed. Please verify your signature.",
+        ),
       );
-      setError(failure.message);
-      setWalletAppFallback(failure.fallback);
     } finally {
       setSigning(false);
     }
   };
 
+  // Solflare deeplinks reload the page twice: once after connect and once
+  // after the signature. Pick the flow back up from localStorage each time.
+  useEffect(() => {
+    if (solflareResumeStarted.current) return;
+    solflareResumeStarted.current = true;
+
+    const search = window.location.search;
+    if (!shouldResumeSolflareAuth(search)) {
+      return;
+    }
+
+    setAuthLoading(true);
+    void (async () => {
+      const outcome = resumeSolflareMobileAuth(search);
+      if (!outcome) {
+        setSigning(false);
+        setAuthLoading(false);
+        return;
+      }
+      if (outcome.status === "awaiting-signature") {
+        setSolflareContinuation(true);
+        setSigning(false);
+        setAuthLoading(false);
+        return;
+      }
+      if (outcome.status === "error") {
+        setError(outcome.message);
+        setSigning(false);
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        if (outcome.intent === "signup" && outcome.signup) {
+          await signUpWithSolanaSignature(
+            outcome.message,
+            outcome.signature,
+            outcome.signup,
+          );
+          setSignupDialogOpen(false);
+        } else {
+          const { user } = await signInWithSolanaSignature(
+            outcome.message,
+            outcome.signature,
+          );
+          await finishSignIn(user);
+        }
+      } catch (err) {
+        setAuthLoading(false);
+        setError(
+          describeWalletFailure(
+            err,
+            "Wallet sign-in failed. Please verify your signature.",
+          ),
+        );
+      } finally {
+        setSigning(false);
+      }
+    })();
+  }, [describeWalletFailure, finishSignIn, setAuthLoading]);
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignupError(null);
-    setWalletAppFallback(null);
+    setSolflareContinuation(false);
+    cancelSolflareMobileAuth();
 
     if (!fullName.trim()) {
       setSignupError("Please enter your full name or professional title.");
@@ -586,6 +669,13 @@ export default function WalletLoginPage() {
       return;
     }
 
+    const signupInput: SolanaSignUpInput = {
+      fullName: fullName.trim(),
+      accountType,
+      companyName: companyName.trim() || undefined,
+      email: email.trim() || undefined,
+    };
+
     try {
       setSigning(true);
       setAuthLoading(true);
@@ -593,43 +683,41 @@ export default function WalletLoginPage() {
       const activeWallet =
         authConnected && authWallet?.adapter
           ? authWallet.adapter
-          : await resolveAndConnectWallet();
+          : await resolveAndConnectWallet({
+              intent: "signup",
+              statement: buildSolanaSignUpStatement(signupInput),
+              signup: signupInput,
+            });
 
-      await signUpWithSolanaWallet(activeWallet, {
-        fullName: fullName.trim(),
-        accountType,
-        companyName: companyName.trim() || undefined,
-        email: email.trim() || undefined,
-      });
+      if (!activeWallet) {
+        setAuthLoading(false);
+        return;
+      }
+
+      await signUpWithSolanaWallet(activeWallet, signupInput);
       setSignupDialogOpen(false);
     } catch (err) {
       setAuthLoading(false);
-      const app: MobileWalletName | undefined = /solflare/i.test(
-        authWallet?.adapter.name ?? "",
-      )
-        ? "Solflare"
-        : undefined;
-      const failure = describeWalletFailure(
-        err,
-        "Failed to create account with wallet signature.",
-        app,
+      setSignupError(
+        describeWalletFailure(
+          err,
+          "Failed to create account with wallet signature.",
+        ),
       );
-      setSignupError(failure.message);
-      setWalletAppFallback(failure.fallback);
     } finally {
       setSigning(false);
     }
   };
 
-  const walletFallbackAction = walletAppFallback ? (
-    <button
-      type="button"
-      className="error-notice-link"
-      onClick={() => openMobileWallet(walletAppFallback)}
-    >
-      Continue in {walletAppFallback}
-    </button>
-  ) : undefined;
+  const handleSolflareContinue = () => {
+    clearError();
+    if (!continueSolflareMobileAuth()) {
+      setSolflareContinuation(false);
+      setError(
+        "This Solflare request expired. Sign in again to reconnect your wallet.",
+      );
+    }
+  };
 
   const errorAction = walletUnrecognised ? (
     <button
@@ -642,9 +730,7 @@ export default function WalletLoginPage() {
     >
       {completingAccount ? "Finish account setup" : "Create an account"}
     </button>
-  ) : (
-    walletFallbackAction
-  );
+  ) : undefined;
 
   return (
     <div className="web3-auth-screen">
@@ -733,6 +819,31 @@ export default function WalletLoginPage() {
                 action={errorAction}
               >
                 {error}
+              </ErrorNotice>
+            ) : null}
+
+            {solflareContinuation ? (
+              <ErrorNotice
+                tone="info"
+                title="Solflare is connected"
+                action={
+                  <button
+                    type="button"
+                    className="error-notice-link"
+                    onClick={handleSolflareContinue}
+                  >
+                    Approve in Solflare
+                  </button>
+                }
+              >
+                Approve the signature request in the Solflare app to continue.
+              </ErrorNotice>
+            ) : walletNotice ? (
+              <ErrorNotice
+                tone="info"
+                onDismiss={() => setWalletNotice(null)}
+              >
+                {walletNotice}
               </ErrorNotice>
             ) : null}
 
@@ -922,17 +1033,27 @@ export default function WalletLoginPage() {
                   className={`web3-wallet-row ${isSelected ? "selected" : ""}`}
                   onClick={() => {
                     if (choice.status === "mobile-app" && mwaWallet) {
-                      void connectViaMwa(
-                        /solflare/i.test(choice.name) ? "Solflare" : undefined,
-                      );
+                      void connectViaMwa();
                       return;
                     }
                     if (choice.status === "open-app") {
                       setWalletDialogOpen(false);
-                      setError(
-                        `Opening ${choice.name}. Complete the connection inside the ${choice.name} app.`,
-                      );
-                      openMobileWallet("Solflare");
+                      setSolflareContinuation(false);
+                      cancelSolflareMobileAuth();
+                      if (
+                        startSolflareMobileAuth({
+                          intent: "signin",
+                          statement: SOLANA_SIGN_IN_STATEMENT,
+                        })
+                      ) {
+                        setWalletNotice(
+                          "Opening Solflare. Approve the connection and the signature request in the app.",
+                        );
+                      } else {
+                        setError(
+                          "Solflare could not be opened. Please try again.",
+                        );
+                      }
                       return;
                     }
                     if (choice.installUrl) {
@@ -955,7 +1076,7 @@ export default function WalletLoginPage() {
                     <span className="web3-wallet-row-name">{choice.name}</span>
                     <span className="web3-wallet-row-sub">
                       {choice.status === "open-app"
-                        ? `Open in the ${choice.name} app`
+                        ? `Approve in the ${choice.name} app`
                         : choice.status === "mobile-app" &&
                             choice.adapterName === MWA_WALLET_NAME
                           ? "Installed wallet apps"
@@ -985,8 +1106,8 @@ export default function WalletLoginPage() {
             <span>
               {isMobile
                 ? mwaWallet
-                  ? "Android connects through your installed wallet app."
-                  : "On iPhone, Solflare opens its in-app browser so the wallet can sign in."
+                  ? "Wallet apps approve the connection inside their own app. Solflare includes its signature prompt there."
+                  : "Solflare approves the connection and signature in its app, then returns you here."
                 : "Wallets are detected in this browser. MetaMask opens its official install page when the extension is missing."}
             </span>
           </div>
@@ -1039,11 +1160,7 @@ export default function WalletLoginPage() {
           {signupError ? (
             <ErrorNotice
               tone="danger"
-              onDismiss={() => {
-                setSignupError(null);
-                setWalletAppFallback(null);
-              }}
-              action={walletFallbackAction}
+              onDismiss={() => setSignupError(null)}
             >
               {signupError}
             </ErrorNotice>

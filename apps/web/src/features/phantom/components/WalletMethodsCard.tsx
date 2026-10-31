@@ -124,8 +124,8 @@ export default function WalletMethodsCard({
     for (const entry of wallets) {
       const name = entry.adapter.name;
       if (name === MWA_WALLET_NAME || name === CUSTOM_WALLET_NAME) continue;
-      // Phantom signs in on desktop only; mobile uses the wallet app or
-      // Solflare's in-app browser, same as the auth screen.
+      // Phantom signs in on desktop only; on mobile the billing wallet uses
+      // the wallet app or Solflare's in-app browser.
       if (isMobile && /phantom/i.test(name)) continue;
       if (isMobile && /solflare/i.test(name)) {
         if (entry.readyState === "Installed") {

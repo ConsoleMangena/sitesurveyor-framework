@@ -57,6 +57,15 @@ export interface SolanaSignUpInput {
   email?: string;
 }
 
+export const SOLANA_SIGN_IN_STATEMENT =
+  "Sign in to SiteSurveyor Framework with your Solana account.";
+
+export function buildSolanaSignUpStatement(input: SolanaSignUpInput): string {
+  return `Create SiteSurveyor ${
+    input.accountType === "business" ? "Business" : "Personal"
+  } Account for ${input.fullName.trim()}`;
+}
+
 function resolveWalletAuthUrl(): string | undefined {
   if (typeof window === "undefined") return undefined;
   return window.location.origin;
@@ -102,9 +111,7 @@ export async function signInWithSolanaWallet(
   wallet?: unknown,
   options?: SolanaSignInOptions,
 ): Promise<{ session: Session | null; user: User | null }> {
-  const statement =
-    options?.statement ??
-    "Sign in to SiteSurveyor Framework with your Solana account.";
+  const statement = options?.statement ?? SOLANA_SIGN_IN_STATEMENT;
 
   const requestOptions = {
     ...options,
@@ -126,6 +133,27 @@ export async function signInWithSolanaWallet(
 }
 
 /**
+ * Complete SIWS with a signature produced outside this page load, such as
+ * Solflare's signMessage deeplink. The message must be signed verbatim.
+ */
+export async function signInWithSolanaSignature(
+  message: string,
+  signature: Uint8Array,
+): Promise<{ session: Session | null; user: User | null }> {
+  const { data, error } = await supabase.auth.signInWithWeb3({
+    chain: "solana",
+    message,
+    signature,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return { session: data.session, user: data.user };
+}
+
+/**
  * Onboards and signs up a new account via Solana wallet authentication.
  * Prompts the wallet for SIWS authorization, stores account preferences,
  * populates the user profile, and initializes personal or business workspaces.
@@ -135,15 +163,34 @@ export async function signUpWithSolanaWallet(
   input: SolanaSignUpInput,
   options?: SolanaSignInOptions,
 ): Promise<{ session: Session | null; user: User | null }> {
-  const statement =
-    options?.statement ??
-    `Create SiteSurveyor ${input.accountType === "business" ? "Business" : "Personal"} Account for ${input.fullName.trim()}`;
+  const statement = options?.statement ?? buildSolanaSignUpStatement(input);
 
   const { session, user } = await signInWithSolanaWallet(wallet, {
     ...options,
     statement,
   });
 
+  return persistSolanaSignUp(input, session, user);
+}
+
+/**
+ * Complete sign-up when SIWS was authorized outside this page load, such as
+ * Solflare's signMessage deeplink.
+ */
+export async function signUpWithSolanaSignature(
+  message: string,
+  signature: Uint8Array,
+  input: SolanaSignUpInput,
+): Promise<{ session: Session | null; user: User | null }> {
+  const { session, user } = await signInWithSolanaSignature(message, signature);
+  return persistSolanaSignUp(input, session, user);
+}
+
+async function persistSolanaSignUp(
+  input: SolanaSignUpInput,
+  session: Session | null,
+  user: User | null,
+): Promise<{ session: Session | null; user: User | null }> {
   if (!user || !session) {
     throw new Error(
       "Wallet authorization succeeded, but user session could not be established.",
