@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { type Adapter, type WalletError } from "@solana/wallet-adapter-base";
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { SOLANA_RPC_URL } from "./lib/config.ts";
 import { customWalletAdapter } from "./lib/customWalletAdapter.ts";
 import { shouldAutoConnectWallet } from "./lib/shouldAutoConnectWallet.ts";
@@ -11,7 +11,7 @@ export function SolanaWalletProvider({ children }: { children: React.ReactNode }
   // Wallets supporting the Solana Wallet Standard (including Brave Wallet and mobile apps)
   // are automatically detected and registered by WalletProvider.
   const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), customWalletAdapter],
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter(), customWalletAdapter],
     [],
   );
 

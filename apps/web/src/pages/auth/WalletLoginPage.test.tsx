@@ -250,17 +250,17 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     expect(screen.getByLabelText(/survey firm \/ organization name/i)).toBeInTheDocument();
   });
 
-  it("offers Phantom for desktop authentication and excludes other wallets", () => {
+  it("lists MetaMask as an install fallback alongside detected wallets", () => {
     mockWalletState.connected = false;
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
-    const dialog = screen.getByRole("dialog");
-    expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByText("Phantom")).toBeInTheDocument();
-    expect(within(dialog).queryByText("MetaMask")).not.toBeInTheDocument();
-    expect(within(dialog).queryByText("Solflare")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("MetaMask")).toBeInTheDocument();
+    expect(screen.getByText("Phantom")).toBeInTheDocument();
+    expect(screen.getByText("Solflare")).toBeInTheDocument();
+    expect(screen.getAllByText("Install extension")).toHaveLength(2);
   });
 
   it("does not offer the SiteSurveyor Wallet as a sign-in method", () => {
@@ -277,16 +277,15 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
 
   it("does not select or persist an uninstalled wallet", () => {
     mockWalletState.connected = false;
-    mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^phantom/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^backpack/i }));
 
     expect(mockSelect).not.toHaveBeenCalled();
     expect(
       within(screen.getByRole("dialog")).getByText(
-        /phantom is not installed in this browser/i,
+        /backpack is not installed in this browser/i,
       ),
     ).toBeInTheDocument();
   });
@@ -777,7 +776,7 @@ describe("WalletLoginPage (mobile copy)", () => {
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
 
     expect(
-      within(screen.getByRole("dialog")).getByText(/phantom opens its official/i),
+      within(screen.getByRole("dialog")).getByText(/metaMask opens its official/i),
     ).toBeInTheDocument();
   });
 
@@ -791,15 +790,14 @@ describe("WalletLoginPage (mobile copy)", () => {
 
   it("shows the uninstalled-wallet error inside the dialog on desktop", () => {
     setUserAgent(DESKTOP_UA);
-    mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
     fireEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: /phantom/i }),
+      within(screen.getByRole("dialog")).getByRole("button", { name: /backpack/i }),
     );
 
     expect(
-      within(screen.getByRole("dialog")).getByText(/phantom is not installed in this browser/i),
+      within(screen.getByRole("dialog")).getByText(/backpack is not installed in this browser/i),
     ).toBeInTheDocument();
   });
 });
