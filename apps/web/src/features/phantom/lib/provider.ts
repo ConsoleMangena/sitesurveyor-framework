@@ -61,26 +61,50 @@ export function isMobileBrowser(): boolean {
  */
 export const MWA_WALLET_NAME = "Mobile Wallet Adapter";
 
-export function phantomMobileBrowseUrl(url = typeof window !== "undefined" ? window.location.href : ""): string {
+/**
+ * Build a wallet-app browse universal link.
+ *
+ * Both the target URL and the referring origin are required, and each must be
+ * URL-encoded. Without `ref`, Solflare and Phantom launch on their home screen
+ * instead of loading the dApp in the in-app browser — the app "opens" but no
+ * connection or signature request ever appears.
+ */
+function walletBrowseUrl(base: string, url: string): string {
   const target = encodeURIComponent(url);
-  // ref lets Phantom show the requesting origin on its approval sheet.
-  return `https://phantom.app/ul/browse/${target}?ref=${target}`;
+  const ref = encodeURIComponent(
+    typeof window !== "undefined" ? window.location.origin : "",
+  );
+  return `${base}${target}?ref=${ref}`;
 }
-export function openPhantomMobile(url = typeof window !== "undefined" ? window.location.href : ""): void {
+
+export function phantomMobileBrowseUrl(
+  url = typeof window !== "undefined" ? window.location.href : "",
+): string {
+  return walletBrowseUrl("https://phantom.app/ul/browse/", url);
+}
+
+export function solflareMobileBrowseUrl(
+  url = typeof window !== "undefined" ? window.location.href : "",
+): string {
+  return walletBrowseUrl("https://solflare.com/ul/v1/browse/", url);
+}
+
+export function openPhantomMobile(
+  url = typeof window !== "undefined" ? window.location.href : "",
+): void {
   if (typeof window !== "undefined") window.location.assign(phantomMobileBrowseUrl(url));
 }
 
-
 export type MobileWalletName = "Phantom" | "Solflare";
 
-export function openMobileWallet(name: MobileWalletName): void {
+export function openMobileWallet(
+  name: MobileWalletName,
+  url = typeof window !== "undefined" ? window.location.href : "",
+): void {
   if (typeof window === "undefined") return;
-  const url = window.location.href;
-  if (name === "Solflare") {
-    window.location.assign(`https://solflare.com/ul/v1/browse/${encodeURIComponent(url)}`);
-    return;
-  }
-  openPhantomMobile(url);
+  window.location.assign(
+    name === "Solflare" ? solflareMobileBrowseUrl(url) : phantomMobileBrowseUrl(url),
+  );
 }
 
 export function detectProvider(): PhantomWalletProvider | null { return readProvider(); }

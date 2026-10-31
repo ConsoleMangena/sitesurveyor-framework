@@ -454,6 +454,17 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     expect(mockOpenMobileWallet).not.toHaveBeenCalled();
   });
 
+  it("routes the Solflare row through its in-app browser on Android too", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^solflare/i }));
+
+    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Solflare");
+    expect(mockSelect).not.toHaveBeenCalledWith("Mobile Wallet Adapter");
+  });
+
   it("tells the user which network the wallet app must be on", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
@@ -515,7 +526,7 @@ describe("WalletLoginPage (mobile copy)", () => {
     mockWalletState.connected = false;
   });
 
-  it("uses the mobile no-wallet error when no provider is present", async () => {
+  it("hands a phone with no injected wallet to Solflare's in-app browser", async () => {
     mockWallets.forEach((w) => {
       w.readyState = "Loadable";
     });
@@ -524,8 +535,9 @@ describe("WalletLoginPage (mobile copy)", () => {
     fireEvent.click(screen.getByRole("button", { name: /connect wallet & sign in/i }));
 
     expect(
-      await screen.findByText(/open this page inside the solflare app/i),
+      await screen.findByText(/opening solflare\. complete sign-in inside the solflare app/i),
     ).toBeInTheDocument();
+    expect(mockOpenMobileWallet).toHaveBeenCalledWith("Solflare");
   });
 
   it("keeps the desktop dialog footnote", () => {

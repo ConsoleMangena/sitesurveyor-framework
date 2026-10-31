@@ -229,9 +229,6 @@ export default function WalletLoginPage() {
   );
 
   const walletChoices = useMemo<WalletChoice[]>(() => {
-    const mobileStatus: WalletChoiceStatus = mwaWallet
-      ? "mobile-app"
-      : "open-app";
     const choices: WalletChoice[] = [];
 
     if (mwaWallet) {
@@ -262,7 +259,7 @@ export default function WalletLoginPage() {
           w.readyState === "Installed"
             ? "detected"
             : openApp
-              ? mobileStatus
+              ? "open-app"
               : "not-installed",
       });
     }
@@ -283,7 +280,7 @@ export default function WalletLoginPage() {
         name: "Solflare",
         icon: "/solflare.svg",
         installUrl: "https://solflare.com/download",
-        status: isMobile ? mobileStatus : "install",
+        status: isMobile ? "open-app" : "install",
       });
     }
 
@@ -453,6 +450,7 @@ export default function WalletLoginPage() {
 
     if (!target) {
       const windowSolana =
+        (window as unknown as { solflare?: unknown }).solflare ??
         (window as unknown as { braveSolana?: unknown }).braveSolana ??
         (window as unknown as { solana?: unknown }).solana;
 
@@ -460,10 +458,18 @@ export default function WalletLoginPage() {
         return windowSolana;
       }
 
+      // Phones with no injected wallet should land in Solflare's in-app
+      // browser instead of dead-ending on an error. The universal link only
+      // loads the dApp when it includes the encoded `ref` (see provider.ts).
+      if (isMobile) {
+        openMobileWallet("Solflare");
+        throw new Error(
+          "Opening Solflare. Complete sign-in inside the Solflare app.",
+        );
+      }
+
       throw new Error(
-        isMobile
-          ? "No wallet detected. Open this page inside the Solflare app."
-          : "No Solana wallet detected. Please install Phantom, Solflare, or a Solana wallet extension.",
+        "No Solana wallet detected. Please install Phantom, Solflare, or a Solana wallet extension.",
       );
     }
 
