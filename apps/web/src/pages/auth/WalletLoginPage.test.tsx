@@ -24,13 +24,6 @@ const { mockSignOut, mockGetSignInProfile, mockRepairSignInProfile } =
     mockGetSignInProfile: vi.fn(),
     mockRepairSignInProfile: vi.fn(async (..._args: unknown[]) => undefined),
   }));
-const { mockHasStoredWallet, mockCreateWallet, mockUnlockWallet } = vi.hoisted(
-  () => ({
-    mockHasStoredWallet: vi.fn(() => false),
-    mockCreateWallet: vi.fn(),
-    mockUnlockWallet: vi.fn(),
-  }),
-);
 const mockWalletState = vi.hoisted(() => ({ connected: true }));
 
 const { mockWallets, mockAdapterConnect, resetMockWallets, mockOpenMobileWallet } =
@@ -130,11 +123,6 @@ vi.mock("../../features/phantom/lib/provider.ts", async (importOriginal) => ({
 
 vi.mock("../../features/phantom/lib/customWalletAdapter.ts", () => ({
   CUSTOM_WALLET_NAME: "SiteSurveyor Wallet",
-  customWalletAdapter: {
-    hasStoredWallet: mockHasStoredWallet,
-    createWallet: mockCreateWallet,
-    unlockWallet: mockUnlockWallet,
-  },
 }));
 
 vi.mock("../../lib/auth/session.ts", () => ({
@@ -167,7 +155,6 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     resetMockWallets();
     setUserAgent(DESKTOP_UA);
     mockWalletState.connected = true;
-    mockHasStoredWallet.mockReturnValue(false);
   });
 
   it("renders SiteSurveyor Web3 gateway branding and default Sign In tab", () => {
@@ -239,7 +226,18 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
     expect(screen.getByText("Phantom")).toBeInTheDocument();
     expect(screen.getByText("Solflare")).toBeInTheDocument();
     expect(screen.getAllByText("Install extension")).toHaveLength(2);
-    expect(screen.getByText("SiteSurveyor Wallet")).toBeInTheDocument();
+  });
+
+  it("does not offer the SiteSurveyor Wallet as a sign-in method", () => {
+    mockWalletState.connected = false;
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
+
+    expect(
+      within(screen.getByRole("dialog")).queryByText("SiteSurveyor Wallet"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/encrypted local vault/i)).not.toBeInTheDocument();
   });
 
   it("does not select or persist an uninstalled wallet", () => {
@@ -255,30 +253,6 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
         /backpack is not installed in this browser/i,
       ),
     ).toBeInTheDocument();
-  });
-
-  it("creates a SiteSurveyor Wallet from the local vault dialog", async () => {
-    mockWalletState.connected = false;
-    mockCreateWallet.mockResolvedValueOnce("created-address");
-    renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: /choose a wallet/i }));
-    fireEvent.click(
-      screen.getByRole("button", { name: /^sitesurveyor wallet/i }),
-    );
-
-    expect(await screen.findByText("Create your wallet")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(/create a wallet pin/i), {
-      target: { value: "12345678" },
-    });
-    fireEvent.change(screen.getByLabelText(/confirm wallet pin/i), {
-      target: { value: "12345678" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /create wallet/i }));
-
-    await waitFor(() =>
-      expect(mockCreateWallet).toHaveBeenCalledWith("12345678"),
-    );
   });
 
   it("calls signInWithSolanaWallet when Sign In button clicked", async () => {
@@ -400,7 +374,6 @@ describe("WalletLoginPage (mobile handoff)", () => {
     resetMockWallets();
     setUserAgent(MOBILE_UA);
     mockWalletState.connected = false;
-    mockHasStoredWallet.mockReturnValue(false);
   });
 
   it("keeps Phantom off mobile and offers Solflare's app handoff", () => {
@@ -452,7 +425,6 @@ describe("WalletLoginPage (Android wallet app via MWA)", () => {
     resetMockWallets();
     setUserAgent(ANDROID_UA);
     mockWalletState.connected = false;
-    mockHasStoredWallet.mockReturnValue(false);
     mockWallets.find((w) => w.adapter.name === "Phantom")!.readyState = "Loadable";
     mockWallets.push({
       adapter: {
@@ -541,7 +513,6 @@ describe("WalletLoginPage (mobile copy)", () => {
     resetMockWallets();
     setUserAgent(MOBILE_UA);
     mockWalletState.connected = false;
-    mockHasStoredWallet.mockReturnValue(false);
   });
 
   it("uses the mobile no-wallet error when no provider is present", async () => {
@@ -571,7 +542,8 @@ describe("WalletLoginPage (mobile copy)", () => {
   it("omits MetaMask from the wallet field summary on mobile", () => {
     renderPage();
 
-    expect(screen.getByText("Solflare & SiteSurveyor")).toBeInTheDocument();
+    expect(screen.getByText("Solflare")).toBeInTheDocument();
+    expect(screen.getByText(/^\d+ options?$/)).toBeInTheDocument();
     expect(screen.queryByText(/MetaMask/)).not.toBeInTheDocument();
   });
 

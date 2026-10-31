@@ -46,7 +46,6 @@ import {
   Globe2,
   Loader2,
   Lock,
-  LockKeyhole,
   LogIn,
   LogOut,
   User,
@@ -54,17 +53,13 @@ import {
   Wallet,
 } from "lucide-react";
 import ErrorNotice from "../../components/errors/ErrorNotice.tsx";
-import {
-  CUSTOM_WALLET_NAME,
-  customWalletAdapter,
-} from "../../features/phantom/lib/customWalletAdapter.ts";
+import { CUSTOM_WALLET_NAME } from "../../features/phantom/lib/customWalletAdapter.ts";
 import "../../styles/web3.css";
 import "../../styles/web3-auth.css";
 
 type WalletChoiceStatus =
   | "detected"
   | "not-installed"
-  | "local"
   | "install"
   | "open-app"
   | "mobile-app";
@@ -81,7 +76,6 @@ interface WalletChoice {
 const walletStatusLabels: Record<WalletChoiceStatus, string> = {
   detected: "Detected in this browser",
   "not-installed": "Not installed",
-  local: "Encrypted local vault",
   install: "Install extension",
   "open-app": "Open in app",
   "mobile-app": "Connect through your wallet app",
@@ -205,16 +199,15 @@ export default function WalletLoginPage() {
   const [copied, setCopied] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
   const [signupDialogOpen, setSignupDialogOpen] = useState(false);
-  const [siteSurveyorDialogOpen, setSiteSurveyorDialogOpen] = useState(false);
-  const [siteSurveyorHasStored, setSiteSurveyorHasStored] = useState(false);
-  const [siteSurveyorPin, setSiteSurveyorPin] = useState("");
-  const [siteSurveyorConfirmPin, setSiteSurveyorConfirmPin] = useState("");
-  const [siteSurveyorError, setSiteSurveyorError] = useState<string | null>(null);
-  const [siteSurveyorBusy, setSiteSurveyorBusy] = useState(false);
 
   const isMobile = isMobileBrowser();
   const clusterLabel = SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER];
-  const address = publicKey ? publicKey.toBase58() : "";
+  // The local SiteSurveyor vault is not an auth method, even if it happens to
+  // stay connected from the billing wallet card.
+  const authWallet =
+    wallet && wallet.adapter.name !== CUSTOM_WALLET_NAME ? wallet : null;
+  const authConnected = connected && Boolean(authWallet);
+  const address = authConnected && publicKey ? publicKey.toBase58() : "";
   const truncatedAddress = address
     ? `${address.slice(0, 4)}...${address.slice(-4)}`
     : "";
@@ -253,6 +246,9 @@ export default function WalletLoginPage() {
 
     for (const w of sortedWallets) {
       if (w.adapter.name === MWA_WALLET_NAME) continue;
+      // The local vault is managed from the wallet card in the workspace, not
+      // offered as a way to sign in.
+      if (w.adapter.name === CUSTOM_WALLET_NAME) continue;
       // Phantom is a desktop extension here. Mobile wallets go through the
       // wallet-app adapter (Android) or Solflare's in-app browser (iOS).
       if (isMobile && /phantom/i.test(w.adapter.name)) continue;
@@ -263,13 +259,11 @@ export default function WalletLoginPage() {
         icon: w.adapter.icon,
         adapterName: w.adapter.name,
         status:
-          w.adapter.name === CUSTOM_WALLET_NAME
-            ? "local"
-            : w.readyState === "Installed"
-              ? "detected"
-              : openApp
-                ? mobileStatus
-                : "not-installed",
+          w.readyState === "Installed"
+            ? "detected"
+            : openApp
+              ? mobileStatus
+              : "not-installed",
       });
     }
 
@@ -377,58 +371,6 @@ export default function WalletLoginPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const openSiteSurveyorWallet = () => {
-    setWalletDialogOpen(false);
-    setSiteSurveyorHasStored(customWalletAdapter.hasStoredWallet());
-    setSiteSurveyorPin("");
-    setSiteSurveyorConfirmPin("");
-    setSiteSurveyorError(null);
-    setSiteSurveyorDialogOpen(true);
-  };
-
-  const handleSiteSurveyorSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSiteSurveyorError(null);
-
-    if (siteSurveyorPin.length < 8) {
-      setSiteSurveyorError("Use a wallet PIN of at least 8 characters.");
-      return;
-    }
-
-    if (
-      !siteSurveyorHasStored &&
-      siteSurveyorPin !== siteSurveyorConfirmPin
-    ) {
-      setSiteSurveyorError("The wallet PINs do not match.");
-      return;
-    }
-
-    setSiteSurveyorBusy(true);
-    try {
-      select(CUSTOM_WALLET_NAME);
-      if (siteSurveyorHasStored) {
-        await customWalletAdapter.unlockWallet(siteSurveyorPin);
-      } else {
-        await customWalletAdapter.createWallet(siteSurveyorPin);
-      }
-      setSiteSurveyorDialogOpen(false);
-      setSiteSurveyorPin("");
-      setSiteSurveyorConfirmPin("");
-      clearError();
-    } catch (err) {
-      setSiteSurveyorError(
-        formatAuthUserFacingError(
-          err,
-          siteSurveyorHasStored
-            ? "Could not unlock SiteSurveyor Wallet."
-            : "Could not create SiteSurveyor Wallet.",
-        ),
-      );
-    } finally {
-      setSiteSurveyorBusy(false);
-    }
-  };
-
   const handleWalletSelect = async (walletName: WalletName) => {
     clearError();
     const chosen = wallets.find((w) => w.adapter.name === walletName);
@@ -442,10 +384,6 @@ export default function WalletLoginPage() {
         `Opening ${walletName}. Complete the connection inside the ${walletName} app.`,
       );
       openMobileWallet("Solflare");
-      return;
-    }
-    if (walletName === CUSTOM_WALLET_NAME) {
-      openSiteSurveyorWallet();
       return;
     }
     try {
@@ -488,13 +426,18 @@ export default function WalletLoginPage() {
   };
 
   const resolveAndConnectWallet = async () => {
-    if (connected && wallet?.adapter) {
-      return wallet.adapter;
+    if (authConnected && authWallet?.adapter) {
+      return authWallet.adapter;
     }
 
-    let target = wallet;
+    let target =
+      wallet && wallet.adapter.name !== CUSTOM_WALLET_NAME ? wallet : null;
     if (!target) {
-      const installed = wallets.find((w) => w.readyState === "Installed");
+      const installed = wallets.find(
+        (w) =>
+          w.adapter.name !== CUSTOM_WALLET_NAME &&
+          w.readyState === "Installed",
+      );
       if (installed) {
         select(installed.adapter.name);
         target = installed;
@@ -519,14 +462,8 @@ export default function WalletLoginPage() {
 
       throw new Error(
         isMobile
-          ? "No wallet detected. Open this page inside the Solflare app, or choose SiteSurveyor Wallet."
+          ? "No wallet detected. Open this page inside the Solflare app."
           : "No Solana wallet detected. Please install Phantom, Solflare, or a Solana wallet extension.",
-      );
-    }
-
-    if (target.adapter.name === CUSTOM_WALLET_NAME) {
-      throw new Error(
-        "Unlock your SiteSurveyor Wallet first. Choose SiteSurveyor Wallet to enter your PIN.",
       );
     }
 
@@ -553,8 +490,8 @@ export default function WalletLoginPage() {
       setAuthLoading(true);
 
       const activeWallet =
-        connected && wallet?.adapter
-          ? wallet.adapter
+        authConnected && authWallet?.adapter
+          ? authWallet.adapter
           : await resolveAndConnectWallet();
 
       const { user } = await signInWithSolanaWallet(activeWallet, {
@@ -605,7 +542,7 @@ export default function WalletLoginPage() {
     } catch (err) {
       setAuthLoading(false);
       const app: MobileWalletName | undefined = /solflare/i.test(
-        wallet?.adapter.name ?? "",
+        authWallet?.adapter.name ?? "",
       )
         ? "Solflare"
         : undefined;
@@ -648,8 +585,8 @@ export default function WalletLoginPage() {
       setAuthLoading(true);
 
       const activeWallet =
-        connected && wallet?.adapter
-          ? wallet.adapter
+        authConnected && authWallet?.adapter
+          ? authWallet.adapter
           : await resolveAndConnectWallet();
 
       await signUpWithSolanaWallet(activeWallet, {
@@ -662,7 +599,7 @@ export default function WalletLoginPage() {
     } catch (err) {
       setAuthLoading(false);
       const app: MobileWalletName | undefined = /solflare/i.test(
-        wallet?.adapter.name ?? "",
+        authWallet?.adapter.name ?? "",
       )
         ? "Solflare"
         : undefined;
@@ -797,20 +734,22 @@ export default function WalletLoginPage() {
               <div className="web3-section-label">
                 <span>Solana wallet</span>
                 <span>
-                  {connected
+                  {authConnected
                     ? "Connected"
-                    : `${walletChoices.length} options`}
+                    : `${walletChoices.length} ${
+                        walletChoices.length === 1 ? "option" : "options"
+                      }`}
                 </span>
               </div>
 
-              {connected && publicKey ? (
+              {authConnected && publicKey ? (
                 <div className="web3-connected-pill">
                   <div className="web3-connected-left">
                     <span className="web3-connected-icon">
-                      {wallet?.adapter.icon ? (
+                      {authWallet?.adapter.icon ? (
                         <img
-                          src={wallet.adapter.icon}
-                          alt={wallet.adapter.name}
+                          src={authWallet.adapter.icon}
+                          alt={authWallet.adapter.name}
                         />
                       ) : (
                         <Wallet className="h-5 w-5" />
@@ -819,7 +758,7 @@ export default function WalletLoginPage() {
                     <div className="web3-connected-meta">
                       <span className="web3-connected-label">
                         <span className="web3-status-dot" />
-                        {wallet?.adapter.name || "Wallet"}
+                        {authWallet?.adapter.name || "Wallet"}
                       </span>
                       <span className="web3-address-text">
                         {truncatedAddress}
@@ -860,28 +799,26 @@ export default function WalletLoginPage() {
                   aria-haspopup="dialog"
                 >
                   <span className="web3-wallet-field-icon">
-                    {wallet?.adapter.icon ? (
-                      <img src={wallet.adapter.icon} alt="" />
+                    {authWallet?.adapter.icon ? (
+                      <img src={authWallet.adapter.icon} alt="" />
                     ) : (
                       <Wallet />
                     )}
                   </span>
                   <span className="web3-wallet-field-meta">
                     <span className="web3-wallet-field-name">
-                      {wallet?.adapter.name || "Choose a wallet"}
+                      {authWallet?.adapter.name || "Choose a wallet"}
                     </span>
                     <span className="web3-wallet-field-sub">
-                      {wallet
-                        ? wallet.readyState === "Installed"
+                      {authWallet
+                        ? authWallet.readyState === "Installed"
                           ? "Detected in this browser"
-                          : wallet.adapter.name === CUSTOM_WALLET_NAME
-                            ? "Encrypted local vault"
-                            : "Not installed"
+                          : "Not installed"
                         : isMobile
                           ? mwaWallet
-                            ? "Wallet app, Solflare & SiteSurveyor"
-                            : "Solflare & SiteSurveyor"
-                          : "Phantom, Solflare, MetaMask & SiteSurveyor"}
+                            ? "Wallet app & Solflare"
+                            : "Solflare"
+                          : "Phantom, Solflare & MetaMask"}
                     </span>
                   </span>
                   <ChevronRight className="web3-wallet-field-chevron" />
@@ -905,8 +842,8 @@ export default function WalletLoginPage() {
                   <>
                     <LogIn className="web3-btn-icon" />
                     <span>
-                      {connected
-                        ? `Sign In with ${wallet?.adapter.name || "Wallet"}`
+                      {authConnected
+                        ? `Sign In with ${authWallet?.adapter.name || "Wallet"}`
                         : "Connect Wallet & Sign In"}
                     </span>
                   </>
@@ -914,10 +851,6 @@ export default function WalletLoginPage() {
               </button>
             </div>
 
-            <div className="web3-security-footer">
-              <Lock className="web3-security-icon" />
-              <span>SIWS signature verification · Non-custodial · Gasless</span>
-            </div>
           </div>
         </section>
 
@@ -971,10 +904,9 @@ export default function WalletLoginPage() {
             {walletChoices.map((choice) => {
               const isSelected = Boolean(
                 choice.adapterName &&
-                  wallet?.adapter.name === choice.adapterName,
+                  authWallet?.adapter.name === choice.adapterName,
               );
-              const isReady =
-                choice.status === "detected" || choice.status === "local";
+              const isReady = choice.status === "detected";
               const isInstall = choice.status === "install";
 
               return (
@@ -1080,18 +1012,18 @@ export default function WalletLoginPage() {
 
           <div className="web3-dialog-wallet-hint">
             <span className="web3-dialog-wallet-icon">
-              {wallet?.adapter.icon ? (
-                <img src={wallet.adapter.icon} alt="" />
+              {authWallet?.adapter.icon ? (
+                <img src={authWallet.adapter.icon} alt="" />
               ) : (
                 <Wallet />
               )}
             </span>
             <span className="web3-dialog-wallet-copy">
               <span className="web3-dialog-wallet-name">
-                {wallet?.adapter.name ?? "No wallet selected"}
+                {authWallet?.adapter.name ?? "No wallet selected"}
               </span>
               <span className="web3-dialog-wallet-sub">
-                {connected
+                {authConnected
                   ? truncatedAddress
                   : "You'll be asked to connect when you continue."}
               </span>
@@ -1237,134 +1169,6 @@ export default function WalletLoginPage() {
           <div className="web3-security-footer">
             <Lock className="web3-security-icon" />
             <span>Your profile is signed locally · Non-custodial · Gasless</span>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={siteSurveyorDialogOpen}
-        onOpenChange={(open) => {
-          setSiteSurveyorDialogOpen(open);
-          if (!open) {
-            setSiteSurveyorError(null);
-            setSiteSurveyorPin("");
-            setSiteSurveyorConfirmPin("");
-          }
-        }}
-      >
-        <DialogContent
-          className="web3-wallet-dialog web3-auth-dialog web3-site-surveyor-dialog"
-          showCloseButton
-        >
-          <DialogHeader className="web3-wallet-dialog-header">
-            <div className="web3-site-surveyor-brand">
-              <span className="web3-site-surveyor-mark">
-                <span className="web3-brand-glow" aria-hidden="true" />
-                <img src="/logo.svg" alt="" />
-              </span>
-              <span className="web3-site-surveyor-brand-copy">
-                <span className="web3-site-surveyor-name">
-                  SiteSurveyor Wallet
-                </span>
-                <span className="web3-site-surveyor-sub">
-                  Encrypted local vault
-                </span>
-              </span>
-            </div>
-            <DialogTitle className="web3-dialog-title">
-              {siteSurveyorHasStored
-                ? "Unlock your wallet"
-                : "Create your wallet"}
-            </DialogTitle>
-            <DialogDescription className="web3-dialog-description">
-              {siteSurveyorHasStored
-                ? "Enter your PIN to unlock this browser's encrypted SiteSurveyor Wallet."
-                : "Set a PIN to create an encrypted SiteSurveyor Wallet on this device."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {siteSurveyorError ? (
-            <ErrorNotice
-              tone="danger"
-              onDismiss={() => setSiteSurveyorError(null)}
-            >
-              {siteSurveyorError}
-            </ErrorNotice>
-          ) : null}
-
-          <form
-            onSubmit={(e) => void handleSiteSurveyorSubmit(e)}
-            className="web3-form web3-site-surveyor-form"
-          >
-            <div className="web3-form-group">
-              <label className="web3-label" htmlFor="web3-site-pin">
-                {siteSurveyorHasStored ? "Wallet PIN" : "Create a wallet PIN"}
-              </label>
-              <input
-                id="web3-site-pin"
-                type="password"
-                className="web3-input"
-                placeholder="At least 8 characters"
-                value={siteSurveyorPin}
-                onChange={(e) => setSiteSurveyorPin(e.target.value)}
-                autoComplete={
-                  siteSurveyorHasStored ? "current-password" : "new-password"
-                }
-                autoFocus
-                required
-              />
-            </div>
-
-            {!siteSurveyorHasStored && (
-              <div className="web3-form-group">
-                <label className="web3-label" htmlFor="web3-site-pin-confirm">
-                  Confirm wallet PIN
-                </label>
-                <input
-                  id="web3-site-pin-confirm"
-                  type="password"
-                  className="web3-input"
-                  placeholder="Re-enter your PIN"
-                  value={siteSurveyorConfirmPin}
-                  onChange={(e) => setSiteSurveyorConfirmPin(e.target.value)}
-                  autoComplete="new-password"
-                  required
-                />
-              </div>
-            )}
-
-            <div className="web3-btn-row">
-              <button
-                type="submit"
-                disabled={siteSurveyorBusy}
-                className="web3-action-btn"
-              >
-                {siteSurveyorBusy ? (
-                  <>
-                    <Loader2 className="web3-btn-icon web3-spin" />
-                    <span>
-                      {siteSurveyorHasStored ? "Unlocking…" : "Creating…"}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <LockKeyhole className="web3-btn-icon" />
-                    <span>
-                      {siteSurveyorHasStored
-                        ? "Unlock Wallet"
-                        : "Create Wallet"}
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-
-          <div className="web3-security-footer">
-            <Lock className="web3-security-icon" />
-            <span>
-              Your PIN never leaves this device · Encrypted local vault
-            </span>
           </div>
         </DialogContent>
       </Dialog>
