@@ -61,6 +61,9 @@ export type SolflareMobileAuthOutcome =
 
 const EXPIRED_MESSAGE =
   "This Solflare request expired. Sign in again to reconnect your wallet.";
+export const SOLFLARE_EXPIRED_MESSAGE = EXPIRED_MESSAGE;
+const MISSING_FLOW_MESSAGE =
+  "Solflare approved this in a tab or browser that doesn't hold the pending sign-in — this happens when the wallet opens a new tab. Tap Sign In again in this tab to continue.";
 const UNVERIFIED_RESPONSE_MESSAGE =
   "Solflare returned a response SiteSurveyor couldn't verify. Please try again.";
 
@@ -216,11 +219,10 @@ export function resumeSolflareMobileAuth(
   }
 
   const pending = loadPendingFlow();
-  if (
-    !pending ||
-    (redirect.flowId && redirect.flowId !== pending.id) ||
-    !isFresh(pending)
-  ) {
+  if (!pending) {
+    return { status: "error", message: MISSING_FLOW_MESSAGE };
+  }
+  if ((redirect.flowId && redirect.flowId !== pending.id) || !isFresh(pending)) {
     clearPendingFlow();
     return { status: "error", message: EXPIRED_MESSAGE };
   }

@@ -370,6 +370,17 @@ describe("solflare-mobile", () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
+  it("explains an approval that arrived without the pending flow", () => {
+    expect(
+      resumeSolflareMobileAuth(
+        "?solflare_flow=flow-1&solflare_return=connect&nonce=N&data=D",
+      ),
+    ).toEqual({
+      status: "error",
+      message: expect.stringMatching(/tab or browser/i),
+    });
+  });
+
   it("rejects a flow older than fifteen minutes", () => {
     const { flow } = seedFlow({ createdAt: Date.now() - 16 * 60 * 1000 });
     const { search } = connectSearch(flow);

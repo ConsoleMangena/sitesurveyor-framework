@@ -19,6 +19,7 @@ import {
   hasPendingSolflareSignature,
   resumeSolflareMobileAuth,
   shouldResumeSolflareAuth,
+  SOLFLARE_EXPIRED_MESSAGE,
   startSolflareMobileAuth,
   type SolflareMobileStart,
 } from "../../lib/auth/solflare-mobile.ts";
@@ -615,6 +616,14 @@ export default function WalletLoginPage() {
         setSolflareContinuation(true);
         setSigning(false);
         setAuthLoading(false);
+        // Chain straight into the signature prompt: the user has just tapped
+        // Approve in Solflare, and making them notice a second button on a page
+        // they were bounced back to is where the flow usually stalls. The
+        // notice stays rendered as the fallback if the handoff is blocked.
+        if (!continueSolflareMobileAuth()) {
+          setSolflareContinuation(false);
+          setError(SOLFLARE_EXPIRED_MESSAGE);
+        }
         return;
       }
       if (outcome.status === "error") {
@@ -722,11 +731,25 @@ export default function WalletLoginPage() {
     clearError();
     if (!continueSolflareMobileAuth()) {
       setSolflareContinuation(false);
-      setError(
-        "This Solflare request expired. Sign in again to reconnect your wallet.",
-      );
+      setError(SOLFLARE_EXPIRED_MESSAGE);
     }
   };
+
+  // Mobile browsers often hand Solflare's approval back in a new tab, so a tab
+  // sitting in the background can keep offering a signature request that has
+  // already been answered. Re-read the stored flow whenever this tab wakes up.
+  useEffect(() => {
+    const syncContinuation = () => {
+      if (document.visibilityState !== "visible") return;
+      setSolflareContinuation(hasPendingSolflareSignature());
+    };
+    document.addEventListener("visibilitychange", syncContinuation);
+    window.addEventListener("pageshow", syncContinuation);
+    return () => {
+      document.removeEventListener("visibilitychange", syncContinuation);
+      window.removeEventListener("pageshow", syncContinuation);
+    };
+  }, []);
 
   const errorAction = walletUnrecognised ? (
     <button

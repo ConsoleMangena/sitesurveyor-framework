@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
+  act,
   render,
   screen,
   fireEvent,
@@ -141,6 +142,8 @@ vi.mock("../../lib/auth/solflare-mobile.ts", () => ({
   shouldResumeSolflareAuth: mockShouldResumeSolflare,
   hasPendingSolflareSignature: mockHasPendingSolflare,
   cancelSolflareMobileAuth: mockCancelSolflare,
+  SOLFLARE_EXPIRED_MESSAGE:
+    "This Solflare request expired. Sign in again to reconnect your wallet.",
 }));
 
 vi.mock("../../features/phantom/lib/customWalletAdapter.ts", () => ({
@@ -619,19 +622,52 @@ describe("WalletLoginPage (Solflare mobile return)", () => {
     expect(mockGetSignInProfile).toHaveBeenCalledWith("sol-user-9");
   });
 
-  it("asks for the signature once Solflare has connected", async () => {
+  it("continues straight into the signature prompt once Solflare connects", async () => {
     mockShouldResumeSolflare.mockReturnValue(true);
     mockResumeSolflare.mockReturnValue({ status: "awaiting-signature" });
 
     renderPage();
 
+    await waitFor(() => expect(mockContinueSolflare).toHaveBeenCalledTimes(1));
+    // The manual prompt has to stay as the fallback if the handoff is blocked.
     expect(await screen.findByText("Solflare is connected")).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: /approve in solflare/i }),
-    );
-
-    expect(mockContinueSolflare).toHaveBeenCalled();
     expect(mockSignInWithSolanaSignature).not.toHaveBeenCalled();
+  });
+
+  it("explains an approval that arrived without the pending request", async () => {
+    mockShouldResumeSolflare.mockReturnValue(true);
+    mockResumeSolflare.mockReturnValue({
+      status: "error",
+      message:
+        "Solflare approved this in a tab or browser that doesn't hold the pending sign-in — this happens when the wallet opens a new tab. Tap Sign In again in this tab to continue.",
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/tab or browser that doesn't hold the pending sign-in/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Solflare is connected")).not.toBeInTheDocument();
+  });
+
+  it("drops a stale approval prompt when another tab consumed the flow", async () => {
+    mockHasPendingSolflare.mockReturnValue(true);
+
+    renderPage();
+    expect(await screen.findByText("Solflare is connected")).toBeInTheDocument();
+
+    mockHasPendingSolflare.mockReturnValue(false);
+    await act(async () => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByText("Solflare is connected")).not.toBeInTheDocument(),
+    );
   });
 
   it("restores the approval prompt when a reload lost the redirect", async () => {
@@ -663,9 +699,6 @@ describe("WalletLoginPage (Solflare mobile return)", () => {
     mockContinueSolflare.mockReturnValue(false);
 
     renderPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: /approve in solflare/i }),
-    );
 
     expect(
       await screen.findByText(/this solflare request expired/i),
