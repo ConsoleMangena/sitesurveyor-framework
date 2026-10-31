@@ -58,6 +58,10 @@ export interface RailItem {
   lng: number | null;
   rating: number | null;
   verified: boolean;
+  /** Published as remote/online, so the location is not a travel requirement. */
+  remote: boolean;
+  /** How many signed-in visitors saved this item. */
+  saves: number;
 }
 
 export interface MarketRailData {
@@ -79,19 +83,22 @@ export function toListingItem(row: ListingRow): RailItem {
       row.category === "accessory" ? "Accessory" : cap(row.type),
       cap(row.condition),
       row.listing_type === "hire" ? "For hire" : null,
+      row.is_remote ? "Remote" : null,
     ]
       .filter(Boolean)
       .join(" · "),
     location: row.location,
     priceLabel: `${row.price.toLocaleString()} ${row.currency}${
       row.listing_type === "hire" ? "/day" : ""
-    }`,
+    }${row.negotiable ? " · negotiable" : ""}`,
     photoUrl: assetMediaUrl(row.photos?.[0] ?? null),
     createdAt: row.created_at,
     lat: row.latitude,
     lng: row.longitude,
     rating: null,
-    verified: false,
+    verified: Boolean(row.is_verified),
+    remote: Boolean(row.is_remote),
+    saves: row.saves,
   };
 }
 
@@ -100,7 +107,12 @@ export function toProfessionalItem(row: ProfessionalRow): RailItem {
     kind: "professional",
     id: row.id,
     title: row.name,
-    meta: [row.title, row.discipline, experienceLabel(row.experience)]
+    meta: [
+      row.title,
+      row.discipline,
+      experienceLabel(row.experience),
+      row.is_remote ? "Remote" : null,
+    ]
       .filter(Boolean)
       .join(" · "),
     location: row.location,
@@ -114,6 +126,8 @@ export function toProfessionalItem(row: ProfessionalRow): RailItem {
     lng: row.longitude,
     rating: row.rating ?? null,
     verified: Boolean(row.is_verified),
+    remote: Boolean(row.is_remote),
+    saves: row.saves,
   };
 }
 
@@ -122,7 +136,9 @@ export function toJobItem(row: JobRow): RailItem {
     kind: "job",
     id: row.id,
     title: row.title ?? "",
-    meta: [row.discipline, cap(row.employment_type)].filter(Boolean).join(" · "),
+    meta: [row.company, row.discipline, cap(row.employment_type), row.is_remote ? "Remote" : null]
+      .filter(Boolean)
+      .join(" · "),
     location: row.location,
     priceLabel:
       // feed normalizes DB-NULL rates to 0 (marketFeed toJobRows); surface both as Negotiable
@@ -135,6 +151,8 @@ export function toJobItem(row: JobRow): RailItem {
     lng: row.longitude,
     rating: null,
     verified: false,
+    remote: Boolean(row.is_remote),
+    saves: row.saves,
   };
 }
 
@@ -150,8 +168,10 @@ export function toFirmItem(row: FirmRow): RailItem {
     createdAt: row.created_at,
     lat: row.latitude,
     lng: row.longitude,
-    rating: null,
+    rating: row.rating > 0 ? row.rating : null,
     verified: Boolean(row.verified),
+    remote: Boolean(row.is_remote),
+    saves: row.saves,
   };
 }
 
@@ -160,7 +180,9 @@ export function toEventItem(row: EventRow): RailItem {
     kind: "event",
     id: row.id,
     title: row.title ?? "",
-    meta: [cap(row.kind), row.provider].filter(Boolean).join(" · "),
+    meta: [cap(row.kind), row.provider, row.is_remote ? "Online" : null]
+      .filter(Boolean)
+      .join(" · "),
     location: row.location,
     priceLabel: row.price > 0 ? `${row.price.toLocaleString()} ${row.currency}` : "Free",
     photoUrl: null,
@@ -169,6 +191,8 @@ export function toEventItem(row: EventRow): RailItem {
     lng: row.longitude,
     rating: null,
     verified: false,
+    remote: Boolean(row.is_remote),
+    saves: row.saves,
   };
 }
 
@@ -231,6 +255,17 @@ export function buildRails(
     (a, b) => Number(b.verified) - Number(a.verified),
   );
 
+  const mostSaved = [
+    ...scoped(listings, "listing"),
+    ...scoped(professionals, "professional"),
+    ...scoped(jobs, "job"),
+    ...scoped(firms, "firm"),
+    ...scoped(events, "event"),
+  ]
+    .filter((item) => item.saves > 0)
+    .sort((a, b) => b.saves - a.saves)
+    .slice(0, RAIL_CAP);
+
   const rails: MarketRailData[] = [
     {
       id: "fresh",
@@ -239,6 +274,14 @@ export function buildRails(
       accent: MARKET_DOT_COLORS.listing,
       kinds: ["listing", "professional", "job", "firm", "event"],
       items: fresh,
+    },
+    {
+      id: "saved",
+      title: "Most saved",
+      description: "What surveyors are bookmarking right now.",
+      accent: MARKET_DOT_COLORS.professional,
+      kinds: ["listing", "professional", "job", "firm", "event"],
+      items: mostSaved,
     },
     {
       id: "gear",

@@ -84,7 +84,7 @@ import "../../styles/web3.css";
 
 
 type Scope = "all" | "listing" | "professional" | "job" | "firm" | "event";
-type SortKey = "newest" | "price-asc" | "price-desc";
+type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
 type ListingCategory = "all" | "instrument" | "accessory";
 
 /** Flat results batch size — "Load more" appends this many rows at a time. */
@@ -103,6 +103,35 @@ function matches(
 function countryOf(location: string): string {
   const parts = location.split(",");
   return parts[parts.length - 1].trim();
+}
+
+const MARKET_KINDS = ["listing", "professional", "job", "firm", "event"] as const;
+
+function isMarketKind(value: string): value is MarketDotKind {
+  return (MARKET_KINDS as readonly string[]).includes(value);
+}
+
+/** Item referenced by ?item=<kind>:<id>, for shareable detail links. */
+function readItemParam(): { kind: MarketDotKind; id: string } | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("item");
+  if (!raw) return null;
+  const [kind, id] = raw.split(":");
+  if (!id || !isMarketKind(kind)) return null;
+  return { kind, id };
+}
+
+/** Keep the open item in the URL so a listing can be linked or shared. */
+function syncItemParam(kind: MarketDotKind | null, id?: string): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (kind && id) url.searchParams.set("item", `${kind}:${id}`);
+  else url.searchParams.delete("item");
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${url.pathname}${url.search}${url.hash}`,
+  );
 }
 
 function initialsOf(name: string): string {
@@ -129,16 +158,20 @@ export default function PublicMarketPage() {
   const [scope, setScope] = useState<Scope>("all");
   const [sort, setSort] = useState<SortKey>("newest");
   const [listingCategory, setListingCategory] = useState<ListingCategory>("all");
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [country, setCountry] = useState("");
   const [seeAll, setSeeAll] = useState<MarketRailData | null>(null);
   const [flatLimit, setFlatLimit] = useState(FLAT_PAGE_SIZE);
-  const [highlighted, setHighlighted] = useState<{ kind: MarketDotKind; id: string } | null>(null);
+  const [highlighted, setHighlighted] = useState<{ kind: MarketDotKind; id: string } | null>(
+    readItemParam,
+  );
   const registryRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<MarketGlobeHandle>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const [selectedId, setSelectedId] = useState<{
     kind: MarketDotKind;
     id: string;
-  } | null>(null);
+  } | null>(readItemParam);
 
   const load = useCallback(async () => {
     try {
@@ -205,10 +238,17 @@ export default function PublicMarketPage() {
 
   // ── Derived: registry rows (search [+ category]) ──
 
+  const matchesPlace = useCallback(
+    (row: { is_remote: boolean | null; country: string | null }) =>
+      (!remoteOnly || Boolean(row.is_remote)) && (!country || row.country === country),
+    [remoteOnly, country],
+  );
+
   const filteredListings = useMemo(
     () =>
       (data?.listings ?? [])
         .filter((row) => listingCategory === "all" || row.category === listingCategory)
+        .filter(matchesPlace)
         .filter((row) =>
           matches(search, [
             row.name,
@@ -218,12 +258,13 @@ export default function PublicMarketPage() {
             row.description,
           ]),
         ),
-    [data, search, listingCategory],
+    [data, search, listingCategory, matchesPlace],
   );
 
   const filteredProfessionals = useMemo(
     () =>
       (data?.professionals ?? [])
+        .filter(matchesPlace)
         .filter((row) =>
           matches(search, [
             row.name,
@@ -233,33 +274,37 @@ export default function PublicMarketPage() {
             row.bio,
           ]),
         ),
-    [data, search],
+    [data, search, matchesPlace],
   );
 
   const filteredJobs = useMemo(
     () =>
       (data?.jobs ?? [])
+        .filter(matchesPlace)
         .filter((row) =>
           matches(search, [
             row.title,
             row.discipline,
             row.location,
             row.description,
+            row.company,
           ]),
         ),
-    [data, search],
+    [data, search, matchesPlace],
   );
 
   const filteredFirms = useMemo(
     () =>
       (data?.firms ?? [])
+        .filter(matchesPlace)
         .filter((row) => matches(search, [row.name, row.location, row.about])),
-    [data, search],
+    [data, search, matchesPlace],
   );
 
   const filteredEvents = useMemo(
     () =>
       (data?.events ?? [])
+        .filter(matchesPlace)
         .filter((row) =>
           matches(search, [
             row.title,
@@ -269,8 +314,22 @@ export default function PublicMarketPage() {
             row.description,
           ]),
         ),
-    [data, search],
+    [data, search, matchesPlace],
   );
+
+  const countries = useMemo(() => {
+    const found = new Set<string>();
+    for (const row of [
+      ...(data?.listings ?? []),
+      ...(data?.professionals ?? []),
+      ...(data?.jobs ?? []),
+      ...(data?.firms ?? []),
+      ...(data?.events ?? []),
+    ]) {
+      if (row.country) found.add(row.country);
+    }
+    return [...found].sort((a, b) => a.localeCompare(b));
+  }, [data]);
 
   // ── Derived: which pins the active search keeps in focus ──
 
@@ -298,7 +357,13 @@ export default function PublicMarketPage() {
 
   const sortedListings = useMemo(() => {
     const rows = [...filteredListings];
-    if (sort === "newest") {
+    if (sort === "popular") {
+      rows.sort(
+        (a, b) =>
+          b.saves - a.saves ||
+          Date.parse(b.updated_at ?? b.created_at) - Date.parse(a.updated_at ?? a.created_at),
+      );
+    } else if (sort === "newest") {
       rows.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     } else {
       rows.sort((a, b) => (a.price - b.price) * priceDir);
@@ -308,7 +373,12 @@ export default function PublicMarketPage() {
 
   const sortedProfessionals = useMemo(() => {
     const rows = [...filteredProfessionals];
-    if (sort === "newest") {
+    if (sort === "popular") {
+      rows.sort(
+        (a, b) =>
+          b.saves - a.saves || (b.rating ?? 0) - (a.rating ?? 0),
+      );
+    } else if (sort === "newest") {
       rows.sort((a, b) =>
         (b.created_at ? Date.parse(b.created_at) : 0) -
         (a.created_at ? Date.parse(a.created_at) : 0),
@@ -321,7 +391,13 @@ export default function PublicMarketPage() {
 
   const sortedJobs = useMemo(() => {
     const rows = [...filteredJobs];
-    if (sort === "newest") {
+    if (sort === "popular") {
+      rows.sort(
+        (a, b) =>
+          b.saves - a.saves ||
+          Date.parse(b.updated_at ?? b.created_at) - Date.parse(a.updated_at ?? a.created_at),
+      );
+    } else if (sort === "newest") {
       rows.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     } else {
       rows.sort(
@@ -335,7 +411,9 @@ export default function PublicMarketPage() {
 
   const sortedFirms = useMemo(() => {
     const rows = [...filteredFirms];
-    if (sort === "newest") {
+    if (sort === "popular") {
+      rows.sort((a, b) => b.saves - a.saves || b.rating - a.rating);
+    } else if (sort === "newest") {
       rows.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     } else {
       rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -345,7 +423,9 @@ export default function PublicMarketPage() {
 
   const sortedEvents = useMemo(() => {
     const rows = [...filteredEvents];
-    if (sort === "newest") {
+    if (sort === "popular") {
+      rows.sort((a, b) => b.saves - a.saves);
+    } else if (sort === "newest") {
       rows.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
     } else {
       rows.sort((a, b) => (a.price - b.price) * priceDir);
@@ -526,6 +606,7 @@ export default function PublicMarketPage() {
   const handlePinSelect = useCallback((dot: MarketDot) => {
     setSelectedId({ kind: dot.kind, id: dot.id });
     setHighlighted({ kind: dot.kind, id: dot.id });
+    syncItemParam(dot.kind, dot.id);
     window.setTimeout(() => {
       document
         .querySelector(`[data-market-item="${dot.kind}:${dot.id}"]`)
@@ -544,6 +625,7 @@ export default function PublicMarketPage() {
 
   const handleDialogClose = useCallback(() => {
     setSelectedId(null);
+    syncItemParam(null);
     if (highlightTimerRef.current !== null) {
       window.clearTimeout(highlightTimerRef.current);
     }
@@ -556,6 +638,7 @@ export default function PublicMarketPage() {
       globeRef.current?.flashAt(item.lat, item.lng, MARKET_DOT_COLORS[item.kind]);
     }
     setSelectedId({ kind: item.kind, id: item.id });
+    syncItemParam(item.kind, item.id);
   };
 
   const selectedDot: MarketDot | null = useMemo(() => {
@@ -839,6 +922,7 @@ export default function PublicMarketPage() {
                     </SelectTrigger>
                     <SelectContent align="end">
                       <SelectItem value="newest">Newest first</SelectItem>
+                      <SelectItem value="popular">Most saved</SelectItem>
                       <SelectItem value="price-asc">Price: low to high</SelectItem>
                       <SelectItem value="price-desc">Price: high to low</SelectItem>
                     </SelectContent>
@@ -908,6 +992,64 @@ export default function PublicMarketPage() {
                   <RateBenchmarks benchmarks={benchmarks} />
                 ) : null}
 
+                {!loading ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={remoteOnly}
+                      onClick={() => {
+                        setRemoteOnly((value) => !value);
+                        setFlatLimit(FLAT_PAGE_SIZE);
+                      }}
+                      className={cn(
+                        "inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-medium transition-colors",
+                        remoteOnly
+                          ? "border-sky-600 bg-sky-600 text-white"
+                          : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <Globe2 className="size-3.5" aria-hidden="true" />
+                      Remote only
+                    </button>
+                    {countries.length > 0 ? (
+                      <Select
+                        value={country || "all"}
+                        onValueChange={(value) => {
+                          setCountry(value === "all" ? "" : value);
+                          setFlatLimit(FLAT_PAGE_SIZE);
+                        }}
+                      >
+                        <SelectTrigger
+                          aria-label="Filter by country"
+                          className="h-10 w-[190px] rounded-full text-xs"
+                        >
+                          <SelectValue placeholder="All countries" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All countries</SelectItem>
+                          {countries.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
+                    {remoteOnly || country ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRemoteOnly(false);
+                          setCountry("");
+                        }}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        Clear location filters
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {(scope === "all" || scope === "listing") && !loading ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="mr-1 text-xs font-medium text-muted-foreground">Gear category</span>
@@ -970,6 +1112,8 @@ export default function PublicMarketPage() {
                       clearFlatMode();
                       setScope("all");
                       setListingCategory("all");
+                      setRemoteOnly(false);
+                      setCountry("");
                     }}
                   >
                     Clear search and filters
@@ -1028,6 +1172,8 @@ export default function PublicMarketPage() {
                   clearFlatMode();
                   setScope("all");
                   setListingCategory("all");
+                  setRemoteOnly(false);
+                  setCountry("");
                 }}
               >
                 Reset filters
@@ -1118,12 +1264,47 @@ export default function PublicMarketPage() {
               </fieldset>
             ) : null}
 
+            <fieldset>
+              <legend className="mb-3 text-sm font-semibold text-foreground">Location</legend>
+              <div className="space-y-2.5">
+                <Button
+                  type="button"
+                  variant={remoteOnly ? "default" : "outline"}
+                  className="min-h-11 w-full justify-start px-3.5 text-sm font-medium"
+                  aria-pressed={remoteOnly}
+                  onClick={() => setRemoteOnly((value) => !value)}
+                >
+                  <Globe2 className="mr-2 size-4" aria-hidden="true" />
+                  Remote only
+                </Button>
+                {countries.length > 0 ? (
+                  <Select
+                    value={country || "all"}
+                    onValueChange={(value) => setCountry(value === "all" ? "" : value)}
+                  >
+                    <SelectTrigger aria-label="Filter by country" className="h-11 w-full text-sm">
+                      <SelectValue placeholder="All countries" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All countries</SelectItem>
+                      {countries.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+              </div>
+            </fieldset>
+
             <div>
               <label className="mb-3 block text-sm font-semibold text-foreground">Sort results</label>
               <Select value={sort} onValueChange={(value) => { setSort(value as SortKey); setFlatLimit(FLAT_PAGE_SIZE); }}>
                 <SelectTrigger aria-label="Mobile sort results" className="h-11 w-full text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="newest">Newest first</SelectItem>
+                  <SelectItem value="popular">Most saved</SelectItem>
                   <SelectItem value="price-asc">Price: low to high</SelectItem>
                   <SelectItem value="price-desc">Price: high to low</SelectItem>
                 </SelectContent>

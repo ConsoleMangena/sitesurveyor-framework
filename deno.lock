@@ -1,0 +1,20 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.111.0"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.111.0": "276104e20b7318fac2be1c67eb9be93f4280f5ec9f2fc5ac7b32e1f0ed6f31ba"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@noble/ed25519@^3.2.0",
+        "npm:@noble/hashes@^2.4.0",
+        "npm:@scure/base@^2.4.0",
+        "npm:@scure/bip39@^2.4.0",
+        "npm:supabase@^2.98.0"
+      ]
+    }
+  }
+}

@@ -19,7 +19,7 @@ type DbPortfolioItem =
 
 export type ListingRow = Omit<
   DbListing,
-  "id" | "name" | "price" | "location" | "created_at"
+  "id" | "name" | "price" | "location" | "created_at" | "saves"
 > & {
   id: string;
   name: string;
@@ -27,41 +27,51 @@ export type ListingRow = Omit<
   location: string;
   created_at: string;
   photos: string[];
+  saves: number;
 };
 export type ProfessionalRow = Omit<
   DbProfessional,
-  "id" | "name" | "rate" | "location" | "created_at"
+  "id" | "name" | "rate" | "location" | "created_at" | "saves"
 > & {
   id: string;
   name: string;
   rate: number;
   location: string;
   created_at: string;
+  saves: number;
 };
-export type JobRow = Omit<DbJob, "id" | "rate" | "location" | "created_at"> & {
+export type JobRow = Omit<
+  DbJob,
+  "id" | "rate" | "location" | "created_at" | "saves"
+> & {
   id: string;
   rate: number;
   location: string;
   created_at: string;
+  saves: number;
 };
 export type FirmRow = Omit<
   DbFirm,
-  "id" | "name" | "location" | "created_at"
+  "id" | "name" | "location" | "created_at" | "rating" | "reviews" | "saves"
 > & {
   id: string;
   name: string;
   location: string;
   created_at: string;
+  rating: number;
+  reviews: number;
+  saves: number;
 };
 export type EventRow = Omit<
   DbEvent,
-  "id" | "starts_at" | "price" | "location" | "created_at"
+  "id" | "starts_at" | "price" | "location" | "created_at" | "saves"
 > & {
   id: string;
   starts_at: string;
   price: number;
   location: string;
   created_at: string;
+  saves: number;
 };
 
 export interface MarketData {
@@ -95,6 +105,7 @@ const toListingRows = (rows: DbListing[]): ListingRow[] =>
     location: r.location ?? "",
     created_at: r.created_at ?? "",
     photos: r.photos ?? [],
+    saves: r.saves ?? 0,
   }));
 const toProfessionalRows = (rows: DbProfessional[]): ProfessionalRow[] =>
   rows.map((r) => ({
@@ -104,6 +115,7 @@ const toProfessionalRows = (rows: DbProfessional[]): ProfessionalRow[] =>
     rate: r.rate ?? 0,
     location: r.location ?? "",
     created_at: r.created_at ?? "",
+    saves: r.saves ?? 0,
   }));
 const toJobRows = (rows: DbJob[]): JobRow[] =>
   rows.map((r) => ({
@@ -112,6 +124,7 @@ const toJobRows = (rows: DbJob[]): JobRow[] =>
     rate: r.rate ?? 0,
     location: r.location ?? "",
     created_at: r.created_at ?? "",
+    saves: r.saves ?? 0,
   }));
 export const toPortfolioItemRows = (rows: DbPortfolioItem[]): ShowcaseItemRow[] =>
   rows
@@ -130,6 +143,9 @@ const toFirmRows = (rows: DbFirm[]): FirmRow[] =>
     name: r.name ?? "",
     location: r.location ?? "",
     created_at: r.created_at ?? "",
+    rating: Number(r.rating ?? 0),
+    reviews: Number(r.reviews ?? 0),
+    saves: r.saves ?? 0,
   }));
 const toEventRows = (rows: DbEvent[]): EventRow[] =>
   rows.map((r) => ({
@@ -139,6 +155,7 @@ const toEventRows = (rows: DbEvent[]): EventRow[] =>
     price: r.price ?? 0,
     location: r.location ?? "",
     created_at: r.created_at ?? "",
+    saves: r.saves ?? 0,
   }));
 
 export const EMPTY_MARKET_DATA: MarketData = {

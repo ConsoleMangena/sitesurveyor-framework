@@ -55,6 +55,22 @@ const listing: ListingRow = {
   longitude: 36.82,
   created_at: new Date().toISOString(),
   photos: ["l1-1.jpg"],
+  status: "available",
+  updated_at: new Date().toISOString(),
+  serial_number: null,
+  city: "Nairobi",
+  country: "Kenya",
+  delivery: null,
+  expires_at: null,
+  available_from: null,
+  available_to: null,
+  is_remote: false,
+  is_verified: false,
+  manufacture_year: null,
+  negotiable: false,
+  quantity: 1,
+  warranty_months: null,
+  saves: 0,
 };
 
 const professional: ProfessionalRow = {
@@ -79,6 +95,15 @@ const professional: ProfessionalRow = {
   latitude: -1.29,
   longitude: 36.82,
   created_at: new Date(Date.now() - 60_000).toISOString(),
+  updated_at: new Date(Date.now() - 60_000).toISOString(),
+  city: "Nairobi",
+  country: "Kenya",
+  is_remote: false,
+  languages: [],
+  travel_radius_km: null,
+  credential_issuer: null,
+  credential_expires_on: null,
+  saves: 0,
 };
 
 const job: JobRow = {
@@ -95,6 +120,19 @@ const job: JobRow = {
   latitude: null,
   longitude: null,
   created_at: new Date(Date.now() - 86_400_000).toISOString(),
+  status: "open",
+  updated_at: new Date(Date.now() - 86_400_000).toISOString(),
+  city: "Kigali",
+  country: "Rwanda",
+  is_remote: false,
+  company: null,
+  closes_at: null,
+  starts_on: null,
+  seniority: null,
+  benefits: [],
+  apply_url: null,
+  photo_path: null,
+  saves: 0,
 };
 
 const firm: FirmRow = {
@@ -109,6 +147,18 @@ const firm: FirmRow = {
   latitude: null,
   longitude: null,
   created_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+  updated_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+  city: "Kigali",
+  country: "Rwanda",
+  is_remote: false,
+  accreditations: [],
+  service_areas: [],
+  website: null,
+  contact_email: null,
+  logo_path: null,
+  rating: 0,
+  reviews: 0,
+  saves: 0,
 };
 
 const event: EventRow = {
@@ -127,6 +177,20 @@ const event: EventRow = {
   latitude: null,
   longitude: null,
   created_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+  updated_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+  agenda: [],
+  capacity: null,
+  city: "Nairobi",
+  country: "Kenya",
+  cpd_points: null,
+  instructor: null,
+  is_remote: false,
+  photo_path: null,
+  registration_deadline: null,
+  registration_url: null,
+  timezone: "UTC",
+  venue_address: null,
+  saves: 0,
 };
 
 const data: MarketData = {
@@ -194,10 +258,11 @@ describe("mappers", () => {
 });
 
 describe("buildRails", () => {
-  it("returns 6 rails in fixed order; fresh leads and caps at RAIL_CAP", () => {
+  it("returns 7 rails in fixed order; fresh leads and caps at RAIL_CAP", () => {
     const rails = buildRails(data, "all", "all");
     expect(rails.map((r) => r.id)).toEqual([
       "fresh",
+      "saved",
       "gear",
       "professionals",
       "jobs",
@@ -215,6 +280,22 @@ describe("buildRails", () => {
     };
     const fresh = buildRails(many, "all", "all")[0];
     expect(fresh.items.length).toBe(RAIL_CAP);
+  });
+
+  it("only fills the saved rail when an item has saves", () => {
+    const withoutSaves = buildRails(data, "all", "all").find((r) => r.id === "saved")!;
+    expect(withoutSaves.items).toHaveLength(0);
+
+    const saved = buildRails(
+      {
+        ...data,
+        listings: [{ ...listing, saves: 4 }],
+        professionals: [{ ...professional, saves: 9 }],
+      },
+      "all",
+      "all",
+    ).find((r) => r.id === "saved")!;
+    expect(saved.items.map((item) => item.id)).toEqual(["p1", "l1"]);
   });
 
   it("filters the gear rail by listingCategory", () => {

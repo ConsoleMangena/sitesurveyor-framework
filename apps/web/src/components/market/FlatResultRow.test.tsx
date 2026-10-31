@@ -36,6 +36,8 @@ const item: RailItem = {
   lng: 36.82,
   rating: 4.9,
   verified: true,
+  remote: false,
+  saves: 0,
 };
 
 describe("FlatResultRow", () => {

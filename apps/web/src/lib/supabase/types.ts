@@ -1256,21 +1256,34 @@ export type Database = {
       }
       market_events: {
         Row: {
+          agenda: string[]
+          capacity: number | null
           certification_body: string | null
+          city: string | null
+          country: string | null
+          cpd_points: number | null
           created_at: string
           currency: string
           description: string | null
           ends_at: string | null
           id: string
+          instructor: string | null
+          is_remote: boolean
           kind: string
           latitude: number | null
           location: string
           longitude: number | null
+          photo_path: string | null
           price: number
           provider: string
+          registration_deadline: string | null
+          registration_url: string | null
           seats_left: number | null
           starts_at: string
+          timezone: string
           title: string
+          updated_at: string
+          venue_address: string | null
           workspace_id: string
         }
         Insert: {
@@ -1322,17 +1335,26 @@ export type Database = {
       market_firms: {
         Row: {
           about: string | null
+          accreditations: string[]
+          city: string | null
+          contact_email: string | null
+          country: string | null
           created_at: string
           founded_year: number | null
           id: string
           is_global: boolean
+          is_remote: boolean
           latitude: number | null
           location: string
+          logo_path: string | null
           longitude: number | null
           name: string
+          service_areas: string[]
           services: string[]
           staff_count: number | null
+          updated_at: string
           verified: boolean
+          website: string | null
           workspace_id: string
         }
         Insert: {
@@ -1375,8 +1397,98 @@ export type Database = {
           },
         ]
       }
+      market_inquiries: {
+        Row: {
+          created_at: string
+          desired_start_date: string | null
+          id: string
+          intent: string
+          item_id: string
+          kind: string
+          message: string | null
+          requester_email: string | null
+          requester_name: string | null
+          requester_user_id: string
+          requester_workspace_id: string | null
+          responded_at: string | null
+          seats: number | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          desired_start_date?: string | null
+          id?: string
+          intent?: string
+          item_id: string
+          kind: string
+          message?: string | null
+          requester_email?: string | null
+          requester_name?: string | null
+          requester_user_id: string
+          requester_workspace_id?: string | null
+          responded_at?: string | null
+          seats?: number | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          desired_start_date?: string | null
+          id?: string
+          intent?: string
+          item_id?: string
+          kind?: string
+          message?: string | null
+          requester_email?: string | null
+          requester_name?: string | null
+          requester_user_id?: string
+          requester_workspace_id?: string | null
+          responded_at?: string | null
+          seats?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
+      market_reviews: {
+        Row: {
+          author_user_id: string
+          body: string | null
+          created_at: string
+          id: string
+          item_id: string
+          kind: string
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          author_user_id: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          kind: string
+          rating: number
+          updated_at?: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          kind?: string
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       market_job_posts: {
         Row: {
+          apply_url: string | null
+          benefits: string[]
+          city: string | null
+          closes_at: string | null
+          company: string | null
+          country: string | null
           created_at: string
           currency: string
           description: string | null
@@ -1384,12 +1496,17 @@ export type Database = {
           employment_type: string
           id: string
           is_global: boolean
+          is_remote: boolean
           latitude: number | null
           location: string
           longitude: number | null
+          photo_path: string | null
           rate: number | null
           rate_per: string | null
           requirements: string[] | null
+          seniority: string | null
+          starts_on: string | null
+          status: string
           title: string
           updated_at: string
           workspace_id: string
@@ -1443,24 +1560,38 @@ export type Database = {
       marketplace_listings: {
         Row: {
           asset_id: string | null
+          available_from: string | null
+          available_to: string | null
           category: string
+          city: string | null
           condition: string
+          country: string | null
           created_at: string
           currency: string
+          delivery: string | null
           description: string | null
+          expires_at: string | null
           id: string
           is_global: boolean
+          is_remote: boolean
+          is_verified: boolean
           latitude: number | null
           listing_type: string | null
           location: string
           longitude: number | null
+          manufacture_year: number | null
           name: string
+          negotiable: boolean
           price: number
+          quantity: number
           seller: string
           seller_wallet_address: string | null
+          serial_number: string | null
           specs: string[] | null
+          status: string
           type: string
           updated_at: string
+          warranty_months: number | null
           workspace_id: string
         }
         Insert: {
@@ -1964,13 +2095,19 @@ export type Database = {
           banner_path: string | null
           bio: string | null
           certifications: string[] | null
+          city: string | null
+          country: string | null
           created_at: string
+          credential_expires_on: string | null
+          credential_issuer: string | null
           currency: string
           discipline: string
           experience: string
           id: string
           is_global: boolean
+          is_remote: boolean
           is_verified: boolean
+          languages: string[]
           latitude: number | null
           location: string
           longitude: number | null
@@ -1981,6 +2118,7 @@ export type Database = {
           reviews: number | null
           skills: string[] | null
           title: string
+          travel_radius_km: number | null
           updated_at: string
           workspace_id: string
         }
@@ -2980,202 +3118,367 @@ export type Database = {
     Views: {
       public_market_events: {
         Row: {
+          agenda: string[] | null
+          capacity: number | null
           certification_body: string | null
+          city: string | null
+          country: string | null
+          cpd_points: number | null
           created_at: string | null
           currency: string | null
           description: string | null
           ends_at: string | null
           id: string | null
+          instructor: string | null
+          is_remote: boolean | null
           kind: string | null
           latitude: number | null
           location: string | null
           longitude: number | null
+          photo_path: string | null
           price: number | null
           provider: string | null
+          registration_deadline: string | null
+          registration_url: string | null
+          saves: number | null
           seats_left: number | null
           starts_at: string | null
+          timezone: string | null
           title: string | null
+          updated_at: string | null
+          venue_address: string | null
         }
         Insert: {
+          agenda?: string[] | null
+          capacity?: number | null
           certification_body?: string | null
+          city?: string | null
+          country?: string | null
+          cpd_points?: number | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
           ends_at?: string | null
           id?: string | null
+          instructor?: string | null
+          is_remote?: boolean | null
           kind?: string | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
+          photo_path?: string | null
           price?: number | null
           provider?: string | null
+          registration_deadline?: string | null
+          registration_url?: string | null
+          saves?: number | null
           seats_left?: number | null
           starts_at?: string | null
+          timezone?: string | null
           title?: string | null
+          updated_at?: string | null
+          venue_address?: string | null
         }
         Update: {
+          agenda?: string[] | null
+          capacity?: number | null
           certification_body?: string | null
+          city?: string | null
+          country?: string | null
+          cpd_points?: number | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
           ends_at?: string | null
           id?: string | null
+          instructor?: string | null
+          is_remote?: boolean | null
           kind?: string | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
+          photo_path?: string | null
           price?: number | null
           provider?: string | null
+          registration_deadline?: string | null
+          registration_url?: string | null
+          saves?: number | null
           seats_left?: number | null
           starts_at?: string | null
+          timezone?: string | null
           title?: string | null
+          updated_at?: string | null
+          venue_address?: string | null
         }
         Relationships: []
       }
       public_market_firms: {
         Row: {
           about: string | null
+          accreditations: string[] | null
+          city: string | null
+          contact_email: string | null
+          country: string | null
           created_at: string | null
           founded_year: number | null
           id: string | null
+          is_remote: boolean | null
           latitude: number | null
           location: string | null
+          logo_path: string | null
           longitude: number | null
           name: string | null
+          rating: number | null
+          reviews: number | null
+          saves: number | null
+          service_areas: string[] | null
           services: string[] | null
           staff_count: number | null
+          updated_at: string | null
           verified: boolean | null
+          website: string | null
         }
         Insert: {
           about?: string | null
+          accreditations?: string[] | null
+          city?: string | null
+          contact_email?: string | null
+          country?: string | null
           created_at?: string | null
           founded_year?: number | null
           id?: string | null
+          is_remote?: boolean | null
           latitude?: number | null
           location?: string | null
+          logo_path?: string | null
           longitude?: number | null
           name?: string | null
+          rating?: number | null
+          reviews?: number | null
+          saves?: number | null
+          service_areas?: string[] | null
           services?: string[] | null
           staff_count?: number | null
+          updated_at?: string | null
           verified?: boolean | null
+          website?: string | null
         }
         Update: {
           about?: string | null
+          accreditations?: string[] | null
+          city?: string | null
+          contact_email?: string | null
+          country?: string | null
           created_at?: string | null
           founded_year?: number | null
           id?: string | null
+          is_remote?: boolean | null
           latitude?: number | null
           location?: string | null
+          logo_path?: string | null
           longitude?: number | null
           name?: string | null
+          rating?: number | null
+          reviews?: number | null
+          saves?: number | null
+          service_areas?: string[] | null
           services?: string[] | null
           staff_count?: number | null
+          updated_at?: string | null
           verified?: boolean | null
+          website?: string | null
         }
         Relationships: []
       }
       public_market_jobs: {
         Row: {
+          apply_url: string | null
+          benefits: string[] | null
+          city: string | null
+          closes_at: string | null
+          company: string | null
+          country: string | null
           created_at: string | null
           currency: string | null
           description: string | null
           discipline: string | null
           employment_type: string | null
           id: string | null
+          is_remote: boolean | null
           latitude: number | null
           location: string | null
           longitude: number | null
+          photo_path: string | null
           rate: number | null
           rate_per: string | null
           requirements: string[] | null
+          saves: number | null
+          seniority: string | null
+          starts_on: string | null
+          status: string | null
           title: string | null
+          updated_at: string | null
         }
         Insert: {
+          apply_url?: string | null
+          benefits?: string[] | null
+          city?: string | null
+          closes_at?: string | null
+          company?: string | null
+          country?: string | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
           discipline?: string | null
           employment_type?: string | null
           id?: string | null
+          is_remote?: boolean | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
+          photo_path?: string | null
           rate?: number | null
           rate_per?: string | null
           requirements?: string[] | null
+          saves?: number | null
+          seniority?: string | null
+          starts_on?: string | null
+          status?: string | null
           title?: string | null
+          updated_at?: string | null
         }
         Update: {
+          apply_url?: string | null
+          benefits?: string[] | null
+          city?: string | null
+          closes_at?: string | null
+          company?: string | null
+          country?: string | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
           discipline?: string | null
           employment_type?: string | null
           id?: string | null
+          is_remote?: boolean | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
+          photo_path?: string | null
           rate?: number | null
           rate_per?: string | null
           requirements?: string[] | null
+          saves?: number | null
+          seniority?: string | null
+          starts_on?: string | null
+          status?: string | null
           title?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       public_market_listings: {
         Row: {
+          available_from: string | null
+          available_to: string | null
           category: string | null
+          city: string | null
           condition: string | null
+          country: string | null
           created_at: string | null
           currency: string | null
+          delivery: string | null
           description: string | null
+          expires_at: string | null
           id: string | null
+          is_remote: boolean | null
+          is_verified: boolean | null
           latitude: number | null
           listing_type: string | null
           location: string | null
           longitude: number | null
+          manufacture_year: number | null
           name: string | null
+          negotiable: boolean | null
           photos: string[] | null
           price: number | null
+          quantity: number | null
+          saves: number | null
           seller: string | null
+          serial_number: string | null
           specs: string[] | null
+          status: string | null
           type: string | null
+          updated_at: string | null
+          warranty_months: number | null
         }
         Insert: {
+          available_from?: string | null
+          available_to?: string | null
           category?: string | null
+          city?: string | null
           condition?: string | null
+          country?: string | null
           created_at?: string | null
           currency?: string | null
+          delivery?: string | null
           description?: string | null
+          expires_at?: string | null
           id?: string | null
+          is_remote?: boolean | null
+          is_verified?: boolean | null
           latitude?: number | null
           listing_type?: string | null
           location?: string | null
           longitude?: number | null
+          manufacture_year?: number | null
           name?: string | null
+          negotiable?: boolean | null
           photos?: string[] | null
           price?: number | null
+          quantity?: number | null
+          saves?: number | null
           seller?: string | null
+          serial_number?: string | null
           specs?: string[] | null
+          status?: string | null
           type?: string | null
+          updated_at?: string | null
+          warranty_months?: number | null
         }
         Update: {
+          available_from?: string | null
+          available_to?: string | null
           category?: string | null
+          city?: string | null
           condition?: string | null
+          country?: string | null
           created_at?: string | null
           currency?: string | null
+          delivery?: string | null
           description?: string | null
+          expires_at?: string | null
           id?: string | null
+          is_remote?: boolean | null
+          is_verified?: boolean | null
           latitude?: number | null
           listing_type?: string | null
           location?: string | null
           longitude?: number | null
+          manufacture_year?: number | null
           name?: string | null
+          negotiable?: boolean | null
           photos?: string[] | null
           price?: number | null
+          quantity?: number | null
+          saves?: number | null
           seller?: string | null
+          serial_number?: string | null
           specs?: string[] | null
+          status?: string | null
           type?: string | null
+          updated_at?: string | null
+          warranty_months?: number | null
         }
         Relationships: []
       }
@@ -3234,12 +3537,18 @@ export type Database = {
           banner_path: string | null
           bio: string | null
           certifications: string[] | null
+          city: string | null
+          country: string | null
           created_at: string | null
+          credential_expires_on: string | null
+          credential_issuer: string | null
           currency: string | null
           discipline: string | null
           experience: string | null
           id: string | null
+          is_remote: boolean | null
           is_verified: boolean | null
+          languages: string[] | null
           latitude: number | null
           location: string | null
           longitude: number | null
@@ -3248,8 +3557,11 @@ export type Database = {
           rate_per: string | null
           rating: number | null
           reviews: number | null
+          saves: number | null
           skills: string[] | null
           title: string | null
+          travel_radius_km: number | null
+          updated_at: string | null
         }
         Insert: {
           availability?: string | null
@@ -3257,12 +3569,18 @@ export type Database = {
           banner_path?: string | null
           bio?: string | null
           certifications?: string[] | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
+          credential_expires_on?: string | null
+          credential_issuer?: string | null
           currency?: string | null
           discipline?: string | null
           experience?: string | null
           id?: string | null
+          is_remote?: boolean | null
           is_verified?: boolean | null
+          languages?: string[] | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
@@ -3271,8 +3589,11 @@ export type Database = {
           rate_per?: string | null
           rating?: number | null
           reviews?: number | null
+          saves?: number | null
           skills?: string[] | null
           title?: string | null
+          travel_radius_km?: number | null
+          updated_at?: string | null
         }
         Update: {
           availability?: string | null
@@ -3280,12 +3601,18 @@ export type Database = {
           banner_path?: string | null
           bio?: string | null
           certifications?: string[] | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
+          credential_expires_on?: string | null
+          credential_issuer?: string | null
           currency?: string | null
           discipline?: string | null
           experience?: string | null
           id?: string | null
+          is_remote?: boolean | null
           is_verified?: boolean | null
+          languages?: string[] | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
@@ -3294,8 +3621,38 @@ export type Database = {
           rate_per?: string | null
           rating?: number | null
           reviews?: number | null
+          saves?: number | null
           skills?: string[] | null
           title?: string | null
+          travel_radius_km?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      public_market_reviews: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          id: string | null
+          item_id: string | null
+          kind: string | null
+          rating: number | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          id?: string | null
+          item_id?: string | null
+          kind?: string | null
+          rating?: number | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          id?: string | null
+          item_id?: string | null
+          kind?: string | null
+          rating?: number | null
         }
         Relationships: []
       }

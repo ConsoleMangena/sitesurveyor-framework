@@ -36,6 +36,8 @@ const item: RailItem = {
   lng: 36.82,
   rating: null,
   verified: false,
+  remote: false,
+  saves: 0,
 };
 
 const rail: MarketRailData = {
