@@ -257,44 +257,28 @@ export default function WalletLoginPage() {
         adapterName: mwaWallet ? mwaWallet.adapter.name : MWA_WALLET_NAME_TYPED,
         status: "mobile-app",
       });
+      return choices;
     }
 
-    for (const w of sortedWallets) {
-      if (w.adapter.name === MWA_WALLET_NAME) continue;
-      // The local vault is managed from the wallet card in the workspace, not
-      // offered as a way to sign in.
-      if (w.adapter.name === CUSTOM_WALLET_NAME) continue;
-      // On mobile devices, desktop browser extensions are not available;
-      // all wallet interactions route through the Mobile Wallet Adapter.
-      if (isMobile) continue;
+    // On desktop, SiteSurveyor supports Phantom exclusively.
+    const phantom = sortedWallets.find((w) => /phantom/i.test(w.adapter.name));
+    if (phantom) {
       choices.push({
-        key: w.adapter.name,
-        name: w.adapter.name,
-        icon: w.adapter.icon,
-        adapterName: w.adapter.name,
+        key: phantom.adapter.name,
+        name: phantom.adapter.name,
+        icon: phantom.adapter.icon,
+        adapterName: phantom.adapter.name,
         status:
-          w.readyState === "Installed"
+          phantom.readyState === "Installed"
             ? "detected"
             : "not-installed",
       });
-    }
-
-    if (!isMobile && !sortedWallets.some((w) => /metamask/i.test(w.adapter.name))) {
+    } else {
       choices.push({
-        key: "metamask",
-        name: "MetaMask",
-        icon: "/metamask.svg",
-        installUrl: "https://metamask.io/download/",
-        status: "install",
-      });
-    }
-
-    if (!isMobile && !sortedWallets.some((w) => /solflare/i.test(w.adapter.name))) {
-      choices.push({
-        key: "solflare",
-        name: "Solflare",
-        icon: "/solflare.svg",
-        installUrl: "https://solflare.com/download",
+        key: "phantom",
+        name: "Phantom",
+        icon: "/solanaLogoMark.svg",
+        installUrl: "https://phantom.app/download",
         status: "install",
       });
     }
@@ -419,6 +403,7 @@ export default function WalletLoginPage() {
       const installed = wallets.find(
         (w) =>
           w.adapter.name !== CUSTOM_WALLET_NAME &&
+          /phantom/i.test(w.adapter.name) &&
           w.readyState === "Installed",
       );
       if (installed) {
@@ -438,19 +423,18 @@ export default function WalletLoginPage() {
     }
 
     if (!target) {
-      const windowSolana =
-        (window as unknown as { solflare?: unknown }).solflare ??
-        (window as unknown as { braveSolana?: unknown }).braveSolana ??
-        (window as unknown as { solana?: unknown }).solana;
+      const windowPhantom =
+        (window as unknown as { phantom?: { solana?: unknown } })?.phantom?.solana ??
+        (window as unknown as { solana?: unknown })?.solana;
 
-      if (windowSolana) {
-        return windowSolana;
+      if (windowPhantom) {
+        return windowPhantom;
       }
 
       throw new Error(
         isMobile
           ? "No wallet app detected. Please open SiteSurveyor inside your wallet's browser (e.g. Phantom or Solflare) or install a Solana wallet app."
-          : "No Solana wallet detected. Please install Phantom, Solflare, or a Solana wallet extension.",
+          : "No Solana wallet detected. Please install the Phantom wallet extension.",
       );
     }
 
@@ -945,7 +929,7 @@ export default function WalletLoginPage() {
                           : "Not installed"
                         : isMobile
                           ? "Wallet app (Phantom, Solflare, etc.)"
-                          : "Phantom, Solflare & MetaMask"}
+                          : "Phantom"}
                     </span>
                   </span>
                   <ChevronRight className="web3-wallet-field-chevron" />
@@ -1007,7 +991,7 @@ export default function WalletLoginPage() {
             <DialogDescription className="web3-dialog-description">
               {isMobile && mwaWallet
                 ? "Pick a wallet app — no browser extension needed. SiteSurveyor never stores your keys."
-                : "Choose a detected Solana wallet to continue. SiteSurveyor never stores your keys."}
+                : "Connect with your Phantom wallet to continue. SiteSurveyor never stores your keys."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1098,7 +1082,7 @@ export default function WalletLoginPage() {
             <span>
               {isMobile
                 ? "Wallet apps approve the connection and sign inside their own app (Phantom, Solflare, Backpack, etc.). No extension required."
-                : "Wallets are detected in this browser. MetaMask opens its official install page when the extension is missing."}
+                : "Wallets are detected in this browser. Phantom opens its official install page when the extension is missing."}
             </span>
           </div>
         </DialogContent>
