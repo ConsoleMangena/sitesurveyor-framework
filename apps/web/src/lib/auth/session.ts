@@ -2,6 +2,7 @@ import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { isOnline, supabase } from "../supabase/client.ts";
 import { clearCachedUser } from "./authCache.ts";
 import { isRecognisedWalletAccount } from "./wallet-recognition.ts";
+import { isMobileBrowser } from "../../features/phantom/lib/provider.ts";
 
 /** Fallback to the Supabase localStorage session when offline. */
 export function loadStoredSession(): Session | null {
@@ -71,34 +72,133 @@ function resolveWalletAuthUrl(): string | undefined {
   return window.location.origin;
 }
 
+/**
+ * Generate a cryptographically secure random alphanumeric nonce for SIWS.
+ * Phantom's SIWS parser strictly requires the `nonce` parameter.
+ */
+export function generateSiwsNonce(length = 16): string {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = new Uint8Array(length);
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.getRandomValues === "function"
+  ) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
 interface SignMessageWallet {
   publicKey: { toBase58: () => string };
   signMessage: (message: Uint8Array, encoding?: string) => Promise<unknown>;
+  signIn?: (input: unknown) => Promise<unknown>;
+  name?: string;
+}
+
+function isMwaWallet(wallet: unknown): boolean {
+  if (!wallet || typeof wallet !== "object") return false;
+  const name = (wallet as { name?: unknown }).name;
+  return typeof name === "string" && /mobile wallet adapter/i.test(name);
+}
+
+function resolveDesktopSignIn(
+  wallet: unknown,
+): ((input: unknown) => Promise<unknown>) | null {
+  if (!wallet || typeof wallet !== "object") return null;
+  const candidate = wallet as any;
+
+  // 1. Direct signIn on the adapter
+  if (typeof candidate.signIn === "function") {
+    return candidate.signIn.bind(candidate);
+  }
+
+  // 2. Underlying wallet on adapter (e.g. PhantomWalletAdapter._wallet.signIn)
+  if (candidate._wallet && typeof candidate._wallet.signIn === "function") {
+    return candidate._wallet.signIn.bind(candidate._wallet);
+  }
+
+  // 3. window.phantom.solana.signIn
+  if (
+    typeof window !== "undefined" &&
+    (window as any).phantom?.solana &&
+    typeof (window as any).phantom.solana.signIn === "function"
+  ) {
+    return (window as any).phantom.solana.signIn.bind(
+      (window as any).phantom.solana,
+    );
+  }
+
+  // 4. window.solana.signIn
+  if (
+    typeof window !== "undefined" &&
+    (window as any).solana &&
+    typeof (window as any).solana.signIn === "function"
+  ) {
+    return (window as any).solana.signIn.bind((window as any).solana);
+  }
+
+  return null;
 }
 
 /**
- * Restrict a connected wallet to `publicKey` + `signMessage`.
+ * Configure wallet interface for Supabase auth-js.
  *
- * auth-js prefers a wallet's Wallet Standard `signIn` feature when present, but
- * the Mobile Wallet Adapter exposes `signIn` and Phantom over MWA can answer an
- * already-authorized request without a `sign_in_result`, which surfaces as
- * "no sign in result returned by wallet". Signing the SIWS message through
- * `signMessage` works on every adapter, so hide `signIn` when signing is
- * available.
+ * auth-js prefers a wallet's Wallet Standard `signIn` feature when present.
+ * On mobile devices (MWA), Phantom over MWA can answer without `sign_in_result`,
+ * so we strip `signIn` and route through `signMessage`.
+ *
+ * On desktop devices (e.g. Phantom browser extension), Phantom validates SIWS
+ * strictly. If `signMessage` is used with manual strings, line formatting differences
+ * trigger "The app's signature request cannot be shown due to invalid formatting".
+ * Exposing native `signIn` with a valid `nonce` allows Phantom to render the standard
+ * SIWS prompt smoothly.
  */
-function toSignMessageWallet(wallet: unknown): unknown {
+function toAuthWallet(wallet: unknown): unknown {
   if (!wallet || typeof wallet !== "object") return wallet;
-  const candidate = wallet as Partial<SignMessageWallet>;
+  const candidate = wallet as any;
   const publicKey = candidate.publicKey;
-  if (
-    !publicKey ||
-    typeof publicKey.toBase58 !== "function" ||
-    typeof candidate.signMessage !== "function"
-  ) {
+  if (!publicKey || typeof publicKey.toBase58 !== "function") {
     return wallet;
   }
-  const signMessage = candidate.signMessage.bind(wallet);
-  return { publicKey, signMessage } satisfies SignMessageWallet;
+
+  const isMobile = isMobileBrowser();
+  const isMwa = isMwaWallet(wallet);
+
+  // On Mobile Wallet Adapter, Phantom over MWA can answer without sign_in_result.
+  // Strip signIn so auth-js routes through signMessage.
+  if (isMobile || isMwa) {
+    if (typeof candidate.signMessage === "function") {
+      const signMessage = candidate.signMessage.bind(wallet);
+      return { publicKey, signMessage };
+    }
+    return wallet;
+  }
+
+  // On desktop, prefer native SIWS (signIn) where available (Phantom, etc.)
+  const nativeSignIn = resolveDesktopSignIn(candidate);
+  const signMessage =
+    typeof candidate.signMessage === "function"
+      ? candidate.signMessage.bind(wallet)
+      : undefined;
+
+  if (nativeSignIn) {
+    return {
+      publicKey,
+      signIn: nativeSignIn,
+      ...(signMessage ? { signMessage } : {}),
+    };
+  }
+
+  if (signMessage) {
+    return { publicKey, signMessage };
+  }
+
+  return wallet;
 }
 
 /**
@@ -113,14 +213,23 @@ export async function signInWithSolanaWallet(
 ): Promise<{ session: Session | null; user: User | null }> {
   const statement = options?.statement ?? SOLANA_SIGN_IN_STATEMENT;
 
+  const customSignIn = options?.signInWithSolana as
+    | Record<string, unknown>
+    | undefined;
+  const nonce = (customSignIn?.nonce as string) || generateSiwsNonce();
+
   const requestOptions = {
     ...options,
     url: options?.url ?? resolveWalletAuthUrl(),
+    signInWithSolana: {
+      nonce,
+      ...customSignIn,
+    },
   };
 
   const { data, error } = await supabase.auth.signInWithWeb3({
     chain: "solana",
-    wallet: toSignMessageWallet(wallet),
+    wallet: toAuthWallet(wallet),
     statement,
     options: requestOptions,
   } as never);

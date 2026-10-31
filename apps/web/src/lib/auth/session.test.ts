@@ -105,6 +105,40 @@ describe("session", () => {
     expect(signIn).not.toHaveBeenCalled();
   });
 
+  it("signInWithSolanaWallet preserves native signIn on desktop and attaches SIWS nonce", async () => {
+    mockSignInWithWeb3.mockResolvedValueOnce({
+      data: { session: { access_token: "tok" }, user: { id: "phantom-user" } },
+      error: null,
+    });
+
+    const signIn = vi.fn(async () => ({ signedMessage: "msg", signature: new Uint8Array([1]) }));
+    const signMessage = vi.fn(async () => new Uint8Array([1, 2, 3]));
+    const publicKey = { toBase58: () => "PhantomDesktopAddress" };
+    const phantomAdapter = {
+      publicKey,
+      signMessage,
+      name: "Phantom",
+      _wallet: { signIn },
+    };
+
+    await signInWithSolanaWallet(phantomAdapter);
+
+    expect(mockSignInWithWeb3).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chain: "solana",
+        wallet: expect.objectContaining({
+          publicKey,
+          signIn: expect.any(Function),
+        }),
+        options: expect.objectContaining({
+          signInWithSolana: expect.objectContaining({
+            nonce: expect.stringMatching(/^[A-Za-z0-9]{16,}$/),
+          }),
+        }),
+      }),
+    );
+  });
+
   it("signUpWithSolanaWallet authorizes, updates metadata, and upserts profile", async () => {
     mockSignInWithWeb3.mockResolvedValueOnce({
       data: { session: { access_token: "tok" }, user: { id: "new-user-42" } },
