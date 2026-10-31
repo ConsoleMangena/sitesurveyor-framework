@@ -149,6 +149,7 @@ export function renderBusinessView(
           <BillingPage
             workspaceId={user.workspaceId}
             isPlatformAdmin={user.isPlatformAdmin}
+            onNavigate={onNavigate}
           />
         </Suspense>
       );

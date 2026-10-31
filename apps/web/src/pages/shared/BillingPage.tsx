@@ -22,8 +22,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
 import { PageForm } from "@/components/templates/PageForm.tsx";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
-import WalletBalancesStrip from "../../features/phantom/components/WalletBalancesStrip.tsx";
 import WalletMethodsCard from "../../features/phantom/components/WalletMethodsCard.tsx";
+import PaymentRails from "../../components/finance/PaymentRails.tsx";
 import MetricsTiles from "../../components/finance/MetricsTiles.tsx";
 import TransactionTable from "../../components/finance/TransactionTable.tsx";
 import MarketplaceWalletCard from "../../components/finance/MarketplaceWalletCard.tsx";
@@ -52,6 +52,7 @@ import {
 } from "../../lib/repositories/workspaces.ts";
 import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
 import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
+import { useSolanaBalances } from "../../features/phantom/hooks/useSolanaBalances.ts";
 import { CUSTOM_WALLET_NAME } from "../../features/phantom/lib/customWalletAdapter.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import {
@@ -73,10 +74,22 @@ interface BillingPageProps {
   workspaceId: string;
   /** Workspace managers and platform admins may record/manage payments. */
   isPlatformAdmin?: boolean;
+  onNavigate?: (view: string) => void;
 }
+
+type PaymentMode = "rails" | "offline";
+type PaymentSource = "crypto" | "pesepay";
 
 function shorten(value: string, lead = 6, tail = 6): string {
   return `${value.slice(0, lead)}…${value.slice(-tail)}`;
+}
+
+function formatAmount(value: number | null, maxDp: number): string {
+  if (value === null) return "—";
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: maxDp,
+  });
 }
 
 function methodIcon(method: PaymentMethodRow) {
@@ -96,6 +109,7 @@ function clusterLabelFor(expiry: string | null): string {
 export default function BillingPage({
   workspaceId,
   isPlatformAdmin = false,
+  onNavigate,
 }: BillingPageProps) {
   const phantomWallet = useSiteSurveyorWallet();
   const {
@@ -103,6 +117,7 @@ export default function BillingPage({
     publicKey: activePublicKey,
     sendTransaction: sendAdapterTransaction,
   } = phantomWallet;
+  const solanaBalances = useSolanaBalances(phantomWallet.address);
 
   const [notice, setNotice] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRow[]>([]);
@@ -113,7 +128,9 @@ export default function BillingPage({
   const [invoices, setInvoices] = useState<InvoiceWithDetails[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [membership, setMembership] = useState<WorkspaceMemberRow | null>(null);
-  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("rails");
+  const [paymentSource, setPaymentSource] = useState<PaymentSource>("crypto");
   const [recordPaymentError, setRecordPaymentError] = useState<string | null>(null);
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [pesepayBusy, setPesepayBusy] = useState(false);
@@ -241,6 +258,33 @@ export default function BillingPage({
     });
   };
 
+  const openPaymentComposer = () => {
+    setPaymentMode("rails");
+    setPaymentSource(phantomWallet.address ? "crypto" : "pesepay");
+    setRecordPaymentError(null);
+    setSolanaStatus("idle");
+    setIsPaymentOpen(true);
+  };
+
+  const openPesepaySettings = () => {
+    if (onNavigate) {
+      onNavigate("settings");
+      return;
+    }
+    window.location.assign(`${window.location.pathname}?view=settings`);
+  };
+
+  const manageWalletsFromComposer = () => {
+    setIsPaymentOpen(false);
+    window.setTimeout(scrollToWalletMethods, 80);
+  };
+
+  const openOfflineRecording = () => {
+    setPaymentMode("offline");
+    setRecordPaymentError(null);
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+  };
+
   const copyTreasuryAddress = async () => {
     if (!SOLANA_TREASURY_ADDRESS) return;
     try {
@@ -349,7 +393,7 @@ export default function BillingPage({
         notes: paymentNotes.trim() || null,
       });
       await fetchHistory();
-      setIsRecordPaymentOpen(false);
+      setIsPaymentOpen(false);
       resetRecordPaymentForm();
       showNotice("Payment recorded.");
     } catch (err: unknown) {
@@ -359,7 +403,16 @@ export default function BillingPage({
     }
   };
 
-  const selectedInvoice = invoices.find((inv) => inv.id === paymentInvoiceId);
+  const payableInvoices = invoices.filter(
+    (invoice) => invoice.status !== "paid" && invoice.status !== "cancelled",
+  );
+  const selectedInvoice = payableInvoices.find((inv) => inv.id === paymentInvoiceId);
+  const pesepayBalanceValue = Number(pesepayBalance?.balance ?? 0);
+  const invoiceAmount = selectedInvoice ? Number(selectedInvoice.total) : 0;
+  const invoiceCurrency = selectedInvoice?.currency_code ?? null;
+  const balanceCoversInvoice = Boolean(
+    selectedInvoice && invoiceCurrency === "USD" && pesepayBalanceValue + 0.0001 >= invoiceAmount,
+  );
 
   const payWithPesepay = async () => {
     if (!selectedInvoice) {
@@ -390,6 +443,10 @@ export default function BillingPage({
       setRecordPaymentError("The PesePay balance currently supports USD invoices only.");
       return;
     }
+    if (!balanceCoversInvoice) {
+      setRecordPaymentError("Your PesePay balance does not cover this invoice. Add funds first.");
+      return;
+    }
     setRecordPaymentError(null);
     setBalancePaymentBusy(true);
     try {
@@ -398,7 +455,7 @@ export default function BillingPage({
         workspaceId,
       });
       await Promise.all([fetchHistory(), fetchInvoices(), fetchPesepayBalance()]);
-      setIsRecordPaymentOpen(false);
+      setIsPaymentOpen(false);
       resetRecordPaymentForm();
       showNotice("Invoice paid from your PesePay balance.");
     } catch (err: unknown) {
@@ -421,6 +478,10 @@ export default function BillingPage({
   const payWithSolana = async () => {
     if (!selectedInvoice) {
       setRecordPaymentError("Please select an invoice to pay.");
+      return;
+    }
+    if (selectedInvoice.currency_code !== "USD") {
+      setRecordPaymentError("Crypto wallets settle USD invoices. Use PesePay checkout for this invoice.");
       return;
     }
     setRecordPaymentError(null);
@@ -446,7 +507,7 @@ export default function BillingPage({
         wallet_address: walletAddress,
       });
       await fetchHistory();
-      setIsRecordPaymentOpen(false);
+      setIsPaymentOpen(false);
       resetRecordPaymentForm();
       showNotice("Solana payment sent and recorded.");
     } catch (err: unknown) {
@@ -456,25 +517,26 @@ export default function BillingPage({
     }
   };
 
-  const estimateFee = useCallback(async () => {
-    if (!selectedInvoice || !solanaConfigured) {
-      setSolanaFeeEstimate(null);
-      return;
-    }
-    setSolanaFeeEstimate("…");
-    try {
-      const fee = await estimateUsdcTransferFee(selectedInvoice.total);
-      setSolanaFeeEstimate(
-        fee > 0
-          ? `~${fee.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`
-          : null,
-      );
-    } catch {
-      setSolanaFeeEstimate(null);
-    }
-  }, [selectedInvoice, solanaConfigured]);
-
-  useAsyncAction(estimateFee, [estimateFee]);
+  useAsyncAction(
+    async () => {
+      if (!selectedInvoice || !solanaConfigured) {
+        setSolanaFeeEstimate(null);
+        return;
+      }
+      setSolanaFeeEstimate("…");
+      try {
+        const fee = await estimateUsdcTransferFee(selectedInvoice.total);
+        setSolanaFeeEstimate(
+          fee > 0
+            ? `~${fee.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`
+            : null,
+        );
+      } catch {
+        setSolanaFeeEstimate(null);
+      }
+    },
+    [selectedInvoice, solanaConfigured],
+  );
 
   const canManageBilling = canManageFinance(membership?.role) || isPlatformAdmin;
 
@@ -494,26 +556,36 @@ export default function BillingPage({
       return new Date(b.paid_on).getTime() - new Date(a.paid_on).getTime();
     });
 
-  if (isRecordPaymentOpen) {
+  if (isPaymentOpen) {
+    const railsMode = paymentMode === "rails";
+    const cryptoReady = Boolean(phantomWallet.address);
+    const currencySupported = invoiceCurrency === "USD";
+
     return (
       <PageForm
-        title="Record Payment"
-        description="Record an offline payment or pay an invoice on-chain with Solana."
-        onBack={() => setIsRecordPaymentOpen(false)}
+        title={railsMode ? "Make a payment" : "Record an offline payment"}
+        description={
+          railsMode
+            ? "Pay an invoice from a Solana wallet or your PesePay balance."
+            : "Add a cash, bank, or card payment to the ledger."
+        }
+        onBack={() => setIsPaymentOpen(false)}
         footer={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => setIsRecordPaymentOpen(false)}
-              disabled={recordingPayment || solanaBusy}
-            >
-              Cancel
-            </Button>
-            <Button onClick={submitRecordPayment} disabled={recordingPayment || solanaBusy}>
-              {recordingPayment && <Loader2 size={14} className="mr-2 animate-spin" />}
-              {recordingPayment ? "Saving..." : "Save Payment"}
-            </Button>
-          </>
+          railsMode ? undefined : (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setIsPaymentOpen(false)}
+                disabled={recordingPayment}
+              >
+                Cancel
+              </Button>
+              <Button onClick={submitRecordPayment} disabled={recordingPayment}>
+                {recordingPayment && <Loader2 size={14} className="mr-2 animate-spin" />}
+                {recordingPayment ? "Saving..." : "Save payment"}
+              </Button>
+            </>
+          )
         }
       >
         <div className="mx-auto w-full max-w-6xl">
@@ -526,79 +598,42 @@ export default function BillingPage({
                       <Banknote size={15} />
                     </div>
                     <div>
-                      <CardTitle className="text-base">Payment details</CardTitle>
+                      <CardTitle className="text-base">Invoice</CardTitle>
                       <CardDescription>
-                        Choose the invoice, then pay on-chain or record an offline payment.
+                        {railsMode
+                          ? "Choose the invoice to settle. The rail you pick sends the full total."
+                          : "Choose the invoice this payment belongs to."}
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <ComboboxField
-                        label="Invoice"
-                        value={paymentInvoiceId}
-                        onChange={(val) => setPaymentInvoiceId(val)}
-                        options={invoices.map((inv) => ({
-                          value: inv.id,
-                          label: `${inv.invoice_number} - ${formatCurrency(inv.total)}`,
-                        }))}
-                        placeholder="Select invoice"
-                        emptyText="No invoices found."
-                        optional
-                        optionalLabel="Select invoice"
-                      />
+                  <ComboboxField
+                    label="Invoice"
+                    value={paymentInvoiceId}
+                    onChange={(val) => setPaymentInvoiceId(val)}
+                    options={payableInvoices.map((inv) => ({
+                      value: inv.id,
+                      label: `${inv.invoice_number} - ${formatCurrency(inv.total)}`,
+                    }))}
+                    placeholder="Select invoice"
+                    emptyText="No open invoices found."
+                    optional
+                    optionalLabel="Select invoice"
+                  />
+
+                  {selectedInvoice ? (
+                    <div className="payment-ticket">
+                      <div>
+                        <p className="payment-ticket-name">{selectedInvoice.invoice_number}</p>
+                        <span className="payment-ticket-flag">{selectedInvoice.status}</span>
+                      </div>
+                      <p className="payment-ticket-amount">
+                        {formatCurrency(selectedInvoice.total)}
+                        <span>{selectedInvoice.currency_code}</span>
+                      </p>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="payment-date">Date</Label>
-                      <Input
-                        id="payment-date"
-                        type="date"
-                        value={paymentDate}
-                        onChange={(e) => setPaymentDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="payment-amount">Amount</Label>
-                      <Input
-                        id="payment-amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Amount"
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="payment-method">Method</Label>
-                      <Input
-                        id="payment-method"
-                        placeholder="Payment method (optional)"
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="payment-reference">Reference</Label>
-                      <Input
-                        id="payment-reference"
-                        placeholder="Reference (optional)"
-                        value={paymentReference}
-                        onChange={(e) => setPaymentReference(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <Label htmlFor="payment-notes">Notes</Label>
-                      <Input
-                        id="payment-notes"
-                        placeholder="Notes (optional)"
-                        value={paymentNotes}
-                        onChange={(e) => setPaymentNotes(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -606,162 +641,350 @@ export default function BillingPage({
                 <ErrorNotice tone="danger">{recordPaymentError}</ErrorNotice>
               ) : null}
 
-              {solanaConfigured && (
-                <Card className="rounded-2xl border-border/60">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <SolanaLogo size={16} />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base">Pay on-chain</CardTitle>
-                        <CardDescription>
-                          Send USDC on Solana {clusterLabel} directly to the workspace
-                          treasury.
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
-                        Pay from any wallet you sign in with — Phantom, Solflare,
-                        MetaMask, or a wallet app. SiteSurveyor builds the USDC
-                        transfer; you approve it in your wallet.
-                      </p>
-                      <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-                        <div className="rounded-lg border bg-muted/30 p-3">
-                          <strong className="block text-foreground">1. Connect</strong>
-                          Use your sign-in wallet.
+              {railsMode ? (
+                <>
+                  <Card className="rounded-2xl border-border/60">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <CreditCard size={15} />
                         </div>
-                        <div className="rounded-lg border bg-muted/30 p-3">
-                          <strong className="block text-foreground">2. Review</strong>
-                          Check the invoice, treasury, and amount.
-                        </div>
-                        <div className="rounded-lg border bg-muted/30 p-3">
-                          <strong className="block text-foreground">3. Confirm</strong>
-                          Approve only the expected transaction.
+                        <div>
+                          <CardTitle className="text-base">Payment rail</CardTitle>
+                          <CardDescription>
+                            Wallets settle in USDC; the PesePay balance settles in USD.
+                          </CardDescription>
                         </div>
                       </div>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <Button
-                        type="button"
-                        className="w-full gap-2"
-                        onClick={payWithSolana}
-                        disabled={solanaBusy || recordingPayment || !selectedInvoice}
-                        aria-busy={solanaBusy}
-                      >
-                        {solanaBusy && <Loader2 size={16} className="animate-spin" />}
-                        <SolanaLogo size={18} />
-                        {solanaButtonLabel}
-                      </Button>
-                      <p className="text-center text-xs text-muted-foreground">
-                        {selectedInvoice
-                          ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC on Solana ${clusterLabel}${
-                              solanaFeeEstimate
-                                ? `. Estimated network cost: ${solanaFeeEstimate}.`
-                                : "."
-                            }`
-                          : "Select an invoice to pay it directly with your wallet."}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="rail-choice-grid" role="group" aria-label="Payment rail">
+                        <button
+                          type="button"
+                          className="rail-choice"
+                          data-selected={paymentSource === "crypto" || undefined}
+                          aria-pressed={paymentSource === "crypto"}
+                          onClick={() => setPaymentSource("crypto")}
+                        >
+                          <span className="rail-choice-head">
+                            <span className="rail-choice-mark" aria-hidden="true">
+                              <Wallet size={15} />
+                            </span>
+                            <span className="rail-choice-title">Crypto wallet</span>
+                            <span className="rail-choice-check" aria-hidden="true">
+                              {paymentSource === "crypto" ? <Check size={11} /> : null}
+                            </span>
+                          </span>
+                          <span className="rail-choice-meta">
+                            {phantomWallet.address
+                              ? `${connectedWalletName ?? "Connected wallet"} · ${shorten(phantomWallet.address, 4, 4)}`
+                              : "No wallet connected"}
+                          </span>
+                          <span className="rail-choice-figure">
+                            {solanaBalances.usdc === null
+                              ? solanaBalances.loading
+                                ? "…"
+                                : "— USDC"
+                              : `${formatAmount(solanaBalances.usdc, 2)} USDC`}
+                          </span>
+                        </button>
 
-              <Card className="rounded-2xl border-border/60">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <CreditCard size={15} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Pay with Pesepay</CardTitle>
-                      <CardDescription>
-                        Use EcoCash, InnBucks, cards, Zimswitch, or other supported
-                        Zimbabwe payment methods.
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-3 rounded-lg border bg-muted/25 p-3">
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="text-muted-foreground">Available PesePay balance</span>
-                      {pesepayBalanceLoading ? (
-                        <span className="inline-flex items-center gap-2 text-muted-foreground">
-                          <Loader2 size={14} className="animate-spin" /> Loading…
-                        </span>
+                        <button
+                          type="button"
+                          className="rail-choice"
+                          data-selected={paymentSource === "pesepay" || undefined}
+                          aria-pressed={paymentSource === "pesepay"}
+                          onClick={() => setPaymentSource("pesepay")}
+                        >
+                          <span className="rail-choice-head">
+                            <span className="rail-choice-mark" aria-hidden="true">
+                              <CreditCard size={15} />
+                            </span>
+                            <span className="rail-choice-title">PesePay balance</span>
+                            <span className="rail-choice-check" aria-hidden="true">
+                              {paymentSource === "pesepay" ? <Check size={11} /> : null}
+                            </span>
+                          </span>
+                          <span className="rail-choice-meta">
+                            {pesepayBalanceLoading
+                              ? "Loading balance…"
+                              : "Prepaid USD · invoices and storage"}
+                          </span>
+                          <span className="rail-choice-figure">
+                            {pesepayBalanceLoading ? "—" : formatCurrency(pesepayBalanceValue)}
+                          </span>
+                        </button>
+                      </div>
+
+                      {paymentSource === "crypto" ? (
+                        <div className="rail-panel">
+                          {cryptoReady ? (
+                            <>
+                              <div className="rail-panel-row">
+                                <span>Pay from</span>
+                                <strong>
+                                  {connectedWalletName ?? "Connected wallet"} ·{" "}
+                                  {shorten(phantomWallet.address ?? "", 4, 4)}
+                                </strong>
+                              </div>
+                              <div className="rail-panel-row">
+                                <span>USDC available</span>
+                                <span className="rail-panel-figure">
+                                  {formatAmount(solanaBalances.usdc, 2)} USDC
+                                </span>
+                              </div>
+                              <div className="rail-panel-row">
+                                <span>Network fee</span>
+                                <span className="rail-panel-figure">{solanaFeeEstimate ?? "—"}</span>
+                              </div>
+                              <Button
+                                type="button"
+                                className="w-full gap-2"
+                                onClick={payWithSolana}
+                                disabled={
+                                  solanaBusy ||
+                                  recordingPayment ||
+                                  !selectedInvoice ||
+                                  !currencySupported
+                                }
+                                aria-busy={solanaBusy}
+                              >
+                                {solanaBusy ? (
+                                  <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                  <SolanaLogo size={16} />
+                                )}
+                                {solanaButtonLabel}
+                              </Button>
+                              <p className="rail-panel-note">
+                                {!selectedInvoice
+                                  ? "Select an invoice to pay with a wallet."
+                                  : !currencySupported
+                                    ? "Crypto wallets settle USD invoices in USDC. Use PesePay checkout for this currency."
+                                    : `Sends ${formatCurrency(selectedInvoice.total)} in USDC on Solana ${clusterLabel} to the workspace treasury.${
+                                        solanaFeeEstimate && solanaFeeEstimate !== "…"
+                                          ? ` Estimated network cost: ${solanaFeeEstimate}.`
+                                          : ""
+                                      }`}
+                              </p>
+                            </>
+                          ) : (
+                            <div className="rail-panel-empty">
+                              <p>Connect a Solana wallet to pay with USDC.</p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="gap-2"
+                                onClick={manageWalletsFromComposer}
+                              >
+                                <Wallet size={15} />
+                                Manage wallets
+                              </Button>
+                              <p className="rail-panel-note">
+                                Connect in the Payment rails section, then come back — your
+                                invoice stays selected.
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <strong className="tabular-nums">
-                          {formatCurrency(Number(pesepayBalance?.balance ?? 0))}
-                        </strong>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      className="w-full gap-2"
-                      onClick={payFromPesepayBalance}
-                      disabled={
-                        balancePaymentBusy ||
-                        pesepayBusy ||
-                        solanaBusy ||
-                        !selectedInvoice ||
-                        selectedInvoice.currency_code !== "USD"
-                      }
-                      aria-busy={balancePaymentBusy}
-                    >
-                      {balancePaymentBusy && <Loader2 size={16} className="animate-spin" />}
-                      <Wallet size={16} />
-                      {balancePaymentBusy ? "Paying…" : "Pay from PesePay balance"}
-                    </Button>
-                    <p className="text-center text-xs text-muted-foreground">
-                      {selectedInvoice
-                        ? selectedInvoice.currency_code === "USD"
-                          ? `Uses ${formatCurrency(Number(selectedInvoice.total))} from your prepaid SiteSurveyor balance. Deposits cannot be refunded or withdrawn.`
-                          : "This balance currently supports USD invoices only."
-                        : "Select a USD invoice to pay it from your balance."}
-                    </p>
-                    {pesepayBalanceError && (
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-destructive">{pesepayBalanceError}</span>
-                        <Button variant="outline" size="sm" onClick={() => void fetchPesepayBalance()}>
-                          Retry
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                        <div className="rail-panel">
+                          <div className="rail-panel-row">
+                            <span>PesePay balance</span>
+                            <span className="rail-panel-figure">
+                              {pesepayBalanceLoading
+                                ? "Loading…"
+                                : formatCurrency(pesepayBalanceValue)}
+                            </span>
+                          </div>
+                          <div className="rail-panel-row">
+                            <span>Invoice amount</span>
+                            <span className="rail-panel-figure">
+                              {selectedInvoice
+                                ? `${formatCurrency(selectedInvoice.total)} ${selectedInvoice.currency_code}`
+                                : "—"}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            className="w-full gap-2"
+                            onClick={payFromPesepayBalance}
+                            disabled={
+                              balancePaymentBusy ||
+                              pesepayBusy ||
+                              solanaBusy ||
+                              recordingPayment ||
+                              !selectedInvoice ||
+                              !currencySupported ||
+                              !balanceCoversInvoice
+                            }
+                            aria-busy={balancePaymentBusy}
+                          >
+                            {balancePaymentBusy ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Wallet size={16} />
+                            )}
+                            {balancePaymentBusy ? "Paying…" : "Pay from PesePay balance"}
+                          </Button>
+                          <p className="rail-panel-note">
+                            {!selectedInvoice
+                              ? "Select a USD invoice to pay from your balance."
+                              : !currencySupported
+                                ? "The PesePay balance settles USD invoices only. Use checkout for this invoice."
+                                : balanceCoversInvoice
+                                  ? `Uses ${formatCurrency(invoiceAmount)} from your prepaid balance. Deposits cannot be refunded or withdrawn.`
+                                  : `Your balance covers ${formatCurrency(pesepayBalanceValue)} of ${formatCurrency(invoiceAmount)}. Add funds to pay this invoice.`}
+                          </p>
+                          {selectedInvoice &&
+                          currencySupported &&
+                          !balanceCoversInvoice &&
+                          !pesepayBalanceLoading ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 self-start"
+                              onClick={openPesepaySettings}
+                            >
+                              <Plus size={14} />
+                              Add funds
+                            </Button>
+                          ) : null}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={payWithPesepay}
-                    disabled={
-                      pesepayBusy ||
-                      balancePaymentBusy ||
-                      solanaBusy ||
-                      recordingPayment ||
-                      !selectedInvoice
-                    }
-                  >
-                    {pesepayBusy && <Loader2 size={16} className="animate-spin" />}
-                    <CreditCard size={16} />
-                    {pesepayBusy ? "Opening Pesepay…" : "Pay with Pesepay"}
-                  </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    {selectedInvoice
-                      ? `Opens a ${formatCurrency(Number(selectedInvoice.total))} ${selectedInvoice.currency_code} Pesepay checkout for ${selectedInvoice.invoice_number}.`
-                      : "Select an invoice to continue."}
-                  </p>
-                  {pesepayReference && (
-                    <p className="text-center text-xs text-muted-foreground">
-                      Reference: {pesepayReference}
+                          <div className="rail-panel-divider">or pay another way</div>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full gap-2"
+                            onClick={payWithPesepay}
+                            disabled={
+                              pesepayBusy ||
+                              balancePaymentBusy ||
+                              solanaBusy ||
+                              recordingPayment ||
+                              !selectedInvoice
+                            }
+                          >
+                            {pesepayBusy ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <CreditCard size={16} />
+                            )}
+                            {pesepayBusy ? "Opening PesePay…" : "Pay with PesePay checkout"}
+                          </Button>
+                          <p className="rail-panel-note">
+                            EcoCash, InnBucks, cards, and Zimswitch open in a secure PesePay
+                            checkout.
+                          </p>
+                          {pesepayReference ? (
+                            <p className="rail-panel-note">Reference: {pesepayReference}</p>
+                          ) : null}
+                          {pesepayBalanceError ? (
+                            <div className="rail-panel-error">
+                              <span>{pesepayBalanceError}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => void fetchPesepayBalance()}
+                              >
+                                Retry
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {canManageBilling ? (
+                    <p className="rail-offline-link">
+                      Received cash or a bank transfer?{" "}
+                      <button type="button" onClick={openOfflineRecording}>
+                        Record an offline payment
+                      </button>
                     </p>
-                  )}
-                </CardContent>
-              </Card>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <Card className="rounded-2xl border-border/60">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <Banknote size={15} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">Offline payment</CardTitle>
+                          <CardDescription>
+                            Cash, bank transfer, or a card taken outside SiteSurveyor.
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="payment-date">Date</Label>
+                          <Input
+                            id="payment-date"
+                            type="date"
+                            value={paymentDate}
+                            onChange={(e) => setPaymentDate(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="payment-amount">Amount</Label>
+                          <Input
+                            id="payment-amount"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Amount"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="payment-method">Method</Label>
+                          <Input
+                            id="payment-method"
+                            placeholder="Payment method (optional)"
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="payment-reference">Reference</Label>
+                          <Input
+                            id="payment-reference"
+                            placeholder="Reference (optional)"
+                            value={paymentReference}
+                            onChange={(e) => setPaymentReference(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <Label htmlFor="payment-notes">Notes</Label>
+                          <Input
+                            id="payment-notes"
+                            placeholder="Notes (optional)"
+                            value={paymentNotes}
+                            onChange={(e) => setPaymentNotes(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <p className="rail-offline-link">
+                    <button type="button" onClick={() => setPaymentMode("rails")}>
+                      Pay an invoice with a wallet or balance instead
+                    </button>
+                  </p>
+                </>
+              )}
             </div>
 
             <aside className="h-fit space-y-6 lg:sticky lg:top-0">
@@ -781,24 +1004,45 @@ export default function BillingPage({
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Amount</dt>
                       <dd className="font-semibold tabular-nums">
-                        {formatCurrency(Number(paymentAmount || 0))}
+                        {railsMode
+                          ? selectedInvoice
+                            ? formatCurrency(selectedInvoice.total)
+                            : "—"
+                          : formatCurrency(Number(paymentAmount || 0))}
                       </dd>
                     </div>
+                    {railsMode ? (
+                      <div className="flex items-center justify-between gap-3">
+                        <dt className="text-muted-foreground">Rail</dt>
+                        <dd className="truncate font-medium">
+                          {paymentSource === "crypto" ? "Crypto wallet" : "PesePay balance"}
+                        </dd>
+                      </div>
+                    ) : null}
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Date</dt>
                       <dd className="truncate font-medium">{paymentDate || "—"}</dd>
                     </div>
-                    {selectedInvoice && (
+                    {selectedInvoice ? (
                       <div className="border-t pt-3">
                         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                           Invoice total
                         </p>
                         <p className="mt-0.5 text-lg font-semibold tabular-nums">
-                          {formatCurrency(selectedInvoice.total)}
+                          {formatCurrency(selectedInvoice.total)}{" "}
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {selectedInvoice.currency_code}
+                          </span>
                         </p>
                       </div>
-                    )}
+                    ) : null}
                   </dl>
+                  {railsMode ? (
+                    <p className="rail-summary-note">
+                      Crypto payments settle wallet to wallet. PesePay checkout returns to
+                      Treasury once the network confirms.
+                    </p>
+                  ) : null}
                 </CardContent>
               </Card>
             </aside>
@@ -818,8 +1062,8 @@ export default function BillingPage({
           </span>
         }
         title="Treasury"
-        subtitle={`Solana ${clusterLabel} · USDC`}
-        description="Wallets, balances, and payment records for this workspace."
+        subtitle="Crypto wallets · PesePay balance"
+        description="Pay with a Solana wallet or your PesePay balance. One ledger for both."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -834,15 +1078,12 @@ export default function BillingPage({
             {canManageBilling && (
               <Button
                 size="sm"
-                onClick={() => {
-                  resetRecordPaymentForm();
-                  setIsRecordPaymentOpen(true);
-                }}
-                disabled={invoicesLoading || invoices.length === 0}
+                onClick={openPaymentComposer}
+                disabled={invoicesLoading || payableInvoices.length === 0}
                 className="gap-2 rounded-lg"
               >
                 <Plus size={16} />
-                Record Payment
+                Make a payment
               </Button>
             )}
           </div>
@@ -855,11 +1096,16 @@ export default function BillingPage({
         </div>
       )}
 
-      <WalletBalancesStrip
+      <PaymentRails
         address={phantomWallet.address}
-        connected={Boolean(phantomWallet.address)}
         walletName={connectedWalletName}
-        onConnect={scrollToWalletMethods}
+        solana={solanaBalances}
+        pesepayBalance={pesepayBalance}
+        pesepayLoading={pesepayBalanceLoading}
+        pesepayError={pesepayBalanceError}
+        onManageWallets={scrollToWalletMethods}
+        onOpenBalance={openPesepaySettings}
+        onRetryPesepay={() => void fetchPesepayBalance()}
       />
 
       <MetricsTiles

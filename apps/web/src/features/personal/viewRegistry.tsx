@@ -115,6 +115,7 @@ export function renderPersonalView(
           <BillingPage
             workspaceId={user.workspaceId}
             isPlatformAdmin={user.isPlatformAdmin}
+            onNavigate={onNavigate}
           />
         </Suspense>
       );

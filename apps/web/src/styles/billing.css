@@ -323,6 +323,262 @@
   padding: 10px 20px 14px;
 }
 
+/* ── Payment rails ───────────────────────────────────────── */
+
+.payment-rails {
+  overflow: hidden;
+  border: 1px solid var(--treasury-line);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--surface-muted) 38%, transparent),
+      transparent 55%
+    ),
+    var(--treasury-paper);
+  box-shadow: var(--shadow-sm);
+}
+
+.payment-rails-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+  padding: 13px 20px 12px;
+  border-bottom: 1px solid var(--treasury-line);
+}
+
+.payment-rails-hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.payment-rails-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.payment-rail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 16px 20px 15px;
+  border-top: 1px solid var(--treasury-line);
+}
+
+.payment-rail:first-child {
+  border-top: 0;
+}
+
+.payment-rail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.payment-rail-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--treasury-line);
+  border-radius: 8px;
+  background: var(--treasury-shade);
+  color: var(--text);
+}
+
+.payment-rail-title {
+  margin: 0;
+  font-family: var(--heading);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text-h);
+}
+
+.payment-rail-sub {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.payment-rail-wallet {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.payment-rail-wallet-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--treasury-line-strong);
+}
+
+.payment-rail-wallet-dot[data-connected] {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-success) 15%, transparent);
+}
+
+.payment-rail-wallet-name {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.payment-rail-wallet-meta {
+  margin: 1px 0 0;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-rail-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 22px;
+  margin-top: 14px;
+}
+
+.payment-rail-figure {
+  min-width: 0;
+}
+
+.payment-rail-figure + .payment-rail-figure {
+  padding-left: 20px;
+  border-left: 1px solid var(--treasury-line);
+}
+
+.payment-rail-figure-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.payment-rail-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-family: var(--mono);
+  font-size: clamp(20px, 2.1vw, 25px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+.payment-rail-figures .treasury-refresh {
+  margin-left: auto;
+}
+
+.payment-rail-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 11px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.payment-rail-note svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--color-success);
+}
+
+.payment-rail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 12px;
+}
+
+.payment-rail-actions .btn,
+.payment-rail-actions button {
+  white-space: nowrap;
+}
+
+.payment-rail-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.payment-rail-link:hover {
+  color: var(--text-h);
+}
+
+.payment-rail-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+
+.payment-rail-error .field-error {
+  flex: 1 1 220px;
+}
+
+@media (min-width: 900px) {
+  .payment-rails-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payment-rail {
+    border-top: 0;
+    border-left: 1px solid var(--treasury-line);
+  }
+
+  .payment-rail:first-child {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .payment-rails-head,
+  .payment-rail {
+    padding-inline: 16px;
+  }
+
+  .payment-rail-figures {
+    gap: 10px 16px;
+  }
+
+  .payment-rail-figure + .payment-rail-figure {
+    padding-left: 14px;
+  }
+}
+
 /* ── Totals ledger strip ─────────────────────────────────── */
 
 .treasury-ledger {
@@ -1263,6 +1519,302 @@
   }
 }
 
+/* ── Payment composer rails ──────────────────────────────── */
+
+.payment-ticket {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--treasury-line);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--surface-muted) 45%, transparent);
+}
+
+.payment-ticket-name {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.payment-ticket-flag {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--treasury-line);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.payment-ticket-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-h);
+}
+
+.payment-ticket-amount span {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.rail-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rail-choice {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 13px 11px;
+  border: 1px solid var(--treasury-line);
+  border-radius: 10px;
+  background: var(--treasury-paper);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.rail-choice:hover {
+  border-color: var(--treasury-line-strong);
+}
+
+.rail-choice[data-selected] {
+  border-color: var(--accent-border);
+  background: color-mix(in oklab, var(--accent-bg) 55%, var(--surface));
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.rail-choice:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rail-choice-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rail-choice-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--treasury-line);
+  border-radius: 7px;
+  background: var(--treasury-shade);
+  color: var(--text);
+}
+
+.rail-choice[data-selected] .rail-choice-mark {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.rail-choice-title {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text-h);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-choice-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  border: 1px solid var(--treasury-line);
+  border-radius: 999px;
+  color: transparent;
+}
+
+.rail-choice[data-selected] .rail-choice-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.rail-choice-meta {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-choice-figure {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+.rail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--treasury-line);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--surface-muted) 30%, var(--surface));
+}
+
+.rail-panel-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rail-panel-row strong,
+.rail-panel-figure {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-panel-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.rail-summary-note {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.rail-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rail-panel-empty p {
+  margin: 0;
+}
+
+.rail-panel-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rail-panel-divider::before,
+.rail-panel-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--treasury-line);
+}
+
+.rail-panel-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--color-error);
+}
+
+.rail-offline-link {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.rail-offline-link button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-h);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.rail-offline-link button:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .rail-choice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payment-ticket {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .payment-ticket-amount {
+    font-size: 20px;
+  }
+}
+
 /* ── Motion preferences ──────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1274,7 +1826,9 @@
   .treasury-refresh,
   .treasury-sort-btn,
   .settlement-copy,
-  .settlement-row a {
+  .settlement-row a,
+  .payment-rail-link,
+  .rail-choice {
     transition: none;
   }
 }
