@@ -58,3 +58,4 @@ ai-gateway/.env
 
 # Visual companion session state
 .superpowers/
+.cloud-attachments/

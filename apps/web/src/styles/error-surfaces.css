@@ -5,16 +5,23 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 12px 14px 12px 17px;
+  padding: 13px 14px 13px 16px;
   border: 1px solid var(--notice-border);
   border-radius: 12px;
-  background: color-mix(in oklab, var(--notice-bg) 78%, var(--surface));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--notice-bg) 84%, var(--surface)),
+    color-mix(in oklab, var(--notice-bg) 62%, var(--surface))
+  );
   color: var(--text-h);
   font-size: 13px;
   line-height: 1.5;
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #ffffff 34%, transparent),
+    0 1px 2px color-mix(in oklab, var(--text-h) 5%, transparent);
 }
 
 .error-notice::before {
@@ -51,7 +58,10 @@
 }
 
 .error-notice[data-layout="banner"] {
+  gap: 10px;
+  align-items: center;
   border-radius: 10px;
+  padding: 9px 12px 9px 14px;
 }
 
 .error-notice[data-layout="panel"] {
@@ -60,10 +70,27 @@
 }
 
 .error-notice-icon {
-  display: flex;
+  display: grid;
   flex: 0 0 auto;
-  margin-top: 1px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--notice-accent) 22%, transparent);
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--notice-accent) 12%, var(--surface));
   color: var(--notice-accent);
+}
+
+.error-notice[data-layout="banner"] .error-notice-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.error-notice[data-layout="banner"] .error-notice-icon svg {
+  width: 15px;
+  height: 15px;
 }
 
 .error-notice-body {
@@ -71,17 +98,26 @@
   flex: 1 1 auto;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  padding-top: 3px;
+}
+
+.error-notice[data-layout="banner"] .error-notice-body {
+  padding-top: 0;
 }
 
 .error-notice-title {
   margin: 0;
   color: var(--text-h);
+  font-size: 13px;
   font-weight: 650;
+  letter-spacing: -0.005em;
 }
 
 .error-notice-message {
   color: var(--text);
+  font-size: 12.8px;
+  line-height: 1.55;
 }
 
 .error-notice-message p {
@@ -110,11 +146,11 @@
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   margin: -2px -4px 0 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
   color: var(--notice-accent);
   cursor: pointer;
@@ -146,14 +182,21 @@
   margin-top: 1px;
 }
 
+/* ════════════════════════════════════════════
+   Full-page error state
+   ════════════════════════════════════════════ */
+
 .error-state-screen {
   --error-accent: var(--color-error);
   --error-accent-soft: color-mix(in oklab, var(--error-accent) 12%, transparent);
   --error-glow: color-mix(in oklab, var(--error-accent) 30%, transparent);
   position: relative;
   isolation: isolate;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   min-height: 100vh;
   min-height: 100dvh;
   overflow: hidden;
@@ -208,15 +251,15 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(210px, 0.85fr) minmax(0, 1.5fr);
-  width: min(100%, 860px);
+  grid-template-columns: minmax(200px, 0.74fr) minmax(0, 1.6fr);
+  width: min(100%, 920px);
   overflow: hidden;
   border: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
   border-radius: 24px;
   background: linear-gradient(
     165deg,
-    color-mix(in oklab, var(--surface) 94%, transparent),
-    color-mix(in oklab, var(--surface) 82%, transparent)
+    color-mix(in oklab, var(--surface) 96%, transparent),
+    color-mix(in oklab, var(--surface) 84%, transparent)
   );
   box-shadow:
     0 40px 100px -40px var(--error-glow),
@@ -254,37 +297,35 @@
 .error-state-visual {
   position: relative;
   display: flex;
-  min-height: 360px;
+  min-height: 420px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  padding: 36px 24px;
+  gap: 18px;
+  padding: 32px 24px;
   border-right: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
   background:
     radial-gradient(
-      circle at 50% 46%,
+      circle at 50% 44%,
       color-mix(in oklab, var(--error-accent) 16%, transparent),
-      transparent 62%
+      transparent 64%
     ),
     color-mix(in oklab, var(--surface-muted) 52%, transparent);
 }
 
 .error-state-code {
-  position: absolute;
-  top: 18px;
-  left: 20px;
-  color: color-mix(in oklab, var(--text-h) 45%, transparent);
+  color: color-mix(in oklab, var(--text-h) 42%, transparent);
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: 0.16em;
+  font-weight: 600;
+  letter-spacing: 0.18em;
 }
 
 .error-state-signal {
   position: relative;
   display: grid;
   place-items: center;
-  width: 190px;
+  width: 176px;
   aspect-ratio: 1;
 }
 
@@ -304,13 +345,15 @@
 .error-state-signal-icon {
   display: grid;
   place-items: center;
-  width: 84px;
-  height: 84px;
+  width: 82px;
+  height: 82px;
   border: 1px solid color-mix(in oklab, var(--error-accent) 38%, transparent);
   border-radius: 999px;
   background: color-mix(in oklab, var(--error-accent) 12%, var(--surface));
   color: var(--error-accent);
-  box-shadow: 0 0 58px var(--error-glow);
+  box-shadow:
+    0 0 58px var(--error-glow),
+    inset 0 1px 0 color-mix(in oklab, #ffffff 32%, transparent);
   animation: error-signal-breathe 4.6s ease-in-out infinite;
 }
 
@@ -319,6 +362,7 @@
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.18em;
+  text-align: center;
   text-transform: uppercase;
 }
 
@@ -327,47 +371,73 @@
   min-width: 0;
   flex-direction: column;
   gap: 18px;
-  padding: 38px 40px 34px;
+  padding: 34px 38px 32px;
 }
 
 .error-state-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .error-state-logo {
-  height: 48px;
+  height: 38px;
   width: auto;
-  max-width: 96px;
+  max-width: 84px;
   object-fit: contain;
 }
 
-.error-state-badge {
-  margin-left: auto;
-  padding: 4px 9px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--surface-muted) 72%, transparent);
+.error-state-brand-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--text-h);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.error-state-brand-sub {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  font-weight: 550;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.error-state-copy {
+  min-width: 0;
 }
 
 .error-state-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
+  padding: 4px 10px 4px 9px;
+  border: 1px solid color-mix(in oklab, var(--error-accent) 26%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--error-accent) 8%, transparent);
   color: var(--error-accent);
-  font-size: 10.5px;
-  font-weight: 750;
-  letter-spacing: 0.17em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
+.error-state-eyebrow::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--error-accent) 16%, transparent);
+}
+
 .error-state-title {
-  max-width: 16ch;
-  margin: 8px 0 0;
+  max-width: 20ch;
+  margin: 12px 0 0;
   color: var(--text-h);
   font-family: var(--heading);
   font-size: clamp(28px, 3.2vw, 40px);
@@ -379,26 +449,103 @@
 
 .error-state-message {
   max-width: 48ch;
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   color: var(--text);
   font-size: 14px;
   line-height: 1.65;
+}
+
+.error-state-guide {
+  padding: 14px 16px 15px;
+  border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--surface-muted) 56%, transparent);
+}
+
+.error-state-guide-title {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.error-state-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.error-state-steps li {
+  display: grid;
+  grid-template-columns: 19px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.error-state-step-num {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  border: 1px solid color-mix(in oklab, var(--error-accent) 24%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--error-accent) 10%, var(--surface));
+  color: var(--error-accent);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 650;
 }
 
 .error-state-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .error-state-primary,
-.error-state-secondary {
+.error-state-secondary,
+.error-state-back {
   gap: 8px;
 }
 
 .error-state-primary {
   box-shadow: 0 10px 24px -12px var(--error-glow);
+}
+
+.error-state-back {
+  color: var(--text-muted);
+}
+
+.error-state-back:hover {
+  color: var(--text-h);
+}
+
+.error-state-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  max-width: 44ch;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.error-state-footer svg {
+  flex: 0 0 auto;
+  opacity: 0.8;
 }
 
 .error-state-dev {
@@ -466,47 +613,82 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 860px) {
   .error-state-card {
     grid-template-columns: 1fr;
   }
 
   .error-state-visual {
-    min-height: 200px;
-    padding: 24px;
+    min-height: 0;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px 24px 22px;
     border-right: 0;
     border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
   }
 
-  .error-state-code {
-    top: 14px;
-    left: 16px;
-  }
-
   .error-state-signal {
-    width: 132px;
+    width: 116px;
   }
 
   .error-state-signal-icon {
-    width: 64px;
-    height: 64px;
+    width: 60px;
+    height: 60px;
+  }
+
+  .error-state-signal-icon svg {
+    width: 28px;
+    height: 28px;
   }
 
   .error-state-content {
-    padding: 24px;
-  }
-
-  .error-state-logo {
-    height: 42px;
-    max-width: 84px;
+    padding: 26px 24px 28px;
   }
 
   .error-state-title {
     max-width: none;
+    font-size: clamp(26px, 6.4vw, 32px);
+  }
+}
+
+@media (max-width: 600px) {
+  .error-notice {
+    flex-wrap: wrap;
   }
 
-  .error-state-badge {
+  .error-notice[data-layout="panel"] .error-notice-action {
+    width: 100%;
+    padding-left: 42px;
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .error-state-content {
+    gap: 16px;
+    padding: 22px 20px 24px;
+  }
+
+  .error-state-brand-sub {
     display: none;
+  }
+
+  .error-state-guide {
+    padding: 12px 14px 13px;
+  }
+
+  .error-state-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .error-state-actions > button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .error-state-footer {
+    font-size: 12px;
   }
 }
 

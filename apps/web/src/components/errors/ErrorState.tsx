@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import {
   AlertTriangle,
+  ArrowLeft,
   Compass,
   Home,
+  LifeBuoy,
   RefreshCw,
   RotateCw,
   WifiOff,
@@ -24,7 +26,14 @@ interface ErrorStateProps {
 
 const content: Record<
   AppErrorKind,
-  { code: string; eyebrow: string; title: string; message: string; visualLabel: string }
+  {
+    code: string;
+    eyebrow: string;
+    title: string;
+    message: string;
+    visualLabel: string;
+    steps: string[];
+  }
 > = {
   runtime: {
     code: "ERR_RUNTIME",
@@ -33,6 +42,11 @@ const content: Record<
     message:
       "The page could not finish loading. Your work is safe. Try again or return to the home page.",
     visualLabel: "Signal interrupted",
+    steps: [
+      "Retry the page — most interruptions clear on a second load.",
+      "Check that your connection is stable.",
+      "Go home and reopen the page you were working on.",
+    ],
   },
   chunk: {
     code: "ERR_UPDATE",
@@ -41,6 +55,11 @@ const content: Record<
     message:
       "The app was updated while this page was open. Refreshing the app cache should restore the latest version.",
     visualLabel: "New version ready",
+    steps: [
+      "Refresh the app to pull the latest version.",
+      "The app cache is cleared during this step, so you may need to sign in again.",
+      "Reopen the page you were working on.",
+    ],
   },
   offline: {
     code: "ERR_OFFLINE",
@@ -49,6 +68,11 @@ const content: Record<
     message:
       "Reconnect to the internet and try again. Previously loaded workspace data may still be available.",
     visualLabel: "Signal lost",
+    steps: [
+      "Reconnect to Wi-Fi or mobile data.",
+      "Cached pages and recent changes stay available.",
+      "Try again once you are back online.",
+    ],
   },
   "not-found": {
     code: "404",
@@ -56,6 +80,11 @@ const content: Record<
     title: "That page moved or does not exist",
     message: "Check the address or return to your workspace and continue from there.",
     visualLabel: "Marker missing",
+    steps: [
+      "Check the address for typos or a missing segment.",
+      "Return home and navigate to the page from there.",
+      "The page may have been moved or removed.",
+    ],
   },
 };
 
@@ -85,6 +114,14 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
     window.location.href = "/";
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    handleHome();
+  };
+
   const handlePrimary = () => {
     if (resolvedKind === "chunk") {
       void clearSiteData();
@@ -100,6 +137,7 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
   return (
     <main className="error-state-screen" data-state={resolvedKind}>
       <div className="error-state-backdrop" aria-hidden="true" />
+
       <section className="error-state-card" role="alert" aria-labelledby="error-state-title">
         <div className="error-state-visual" aria-hidden="true">
           <span className="error-state-code">{copy.code}</span>
@@ -115,11 +153,14 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
 
         <div className="error-state-content">
           <div className="error-state-brand">
-            <img src="/logo.svg" alt="SiteSurveyor" className="error-state-logo" />
-            <span className="error-state-badge">SiteSurveyor</span>
+            <img src="/logo.svg" alt="" className="error-state-logo" />
+            <span className="error-state-brand-name">
+              SiteSurveyor
+              <span className="error-state-brand-sub">Field survey operations</span>
+            </span>
           </div>
 
-          <div>
+          <div className="error-state-copy">
             <p className="error-state-eyebrow">{copy.eyebrow}</p>
             <h1
               ref={headingRef}
@@ -130,6 +171,20 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
               {copy.title}
             </h1>
             <p className="error-state-message">{copy.message}</p>
+          </div>
+
+          <div className="error-state-guide">
+            <p className="error-state-guide-title">What you can try</p>
+            <ol className="error-state-steps">
+              {copy.steps.map((step, index) => (
+                <li key={step}>
+                  <span className="error-state-step-num" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
           </div>
 
           <div className="error-state-actions">
@@ -145,13 +200,24 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
             ) : null}
             <Button
               type="button"
-              variant="outline"
+              variant={resolvedKind === "not-found" ? "default" : "outline"}
               onClick={handleHome}
               className="error-state-secondary"
             >
               <Home size={16} aria-hidden="true" />
               Go home
             </Button>
+            {resolvedKind === "not-found" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleBack}
+                className="error-state-back"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+                Go back
+              </Button>
+            ) : null}
           </div>
 
           {import.meta.env.DEV && error ? (
@@ -162,6 +228,11 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
           ) : null}
         </div>
       </section>
+
+      <p className="error-state-footer">
+        <LifeBuoy size={14} aria-hidden="true" />
+        Still stuck? Ask your workspace administrator to check your access.
+      </p>
     </main>
   );
 }
