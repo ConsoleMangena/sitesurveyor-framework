@@ -5,13 +5,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
+  type DialogSize,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-export type DialogSize = "sm" | "md" | "lg" | "xl" | "2xl" | "full" | "screen";
+export type { DialogSize };
 
 interface DialogTemplateProps {
   open: boolean;
@@ -19,26 +18,16 @@ interface DialogTemplateProps {
   title: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Small uppercase line above the title — a record type or section name. */
+  kicker?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: DialogSize;
-  /** If true, the footer is rendered with flex-col-reverse on narrow screens. */
+  /** If true, the footer stacks its actions on narrow screens. */
   responsiveFooter?: boolean;
   className?: string;
   contentClassName?: string;
 }
-
-const sizeClasses: Record<DialogSize, string> = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-xl",
-  "2xl": "max-w-2xl",
-  full: "w-[calc(100vw-2rem)] max-w-none sm:max-w-4xl",
-  // NOTE: Tailwind v4 important modifier is a trailing "!" (v3's leading "!"
-  // generates no CSS and silently breaks the fullscreen sizing).
-  screen: "w-[calc(100vw-2rem)] max-w-none max-h-none h-[calc(100dvh-2rem)] flex flex-col overflow-hidden",
-};
 
 export function DialogTemplate({
   open,
@@ -46,6 +35,7 @@ export function DialogTemplate({
   title,
   description,
   icon,
+  kicker,
   children,
   footer,
   size = "md",
@@ -56,53 +46,41 @@ export function DialogTemplate({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        variant="sheet"
+        size={size}
         disableAnimation={size === "screen"}
-        className={cn(
-          "w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-none p-0 sm:w-auto",
-          sizeClasses[size],
-          className
-        )}
+        className={cn(className)}
       >
-        <DialogHeader className="space-y-2 px-5 pt-5 pb-4 border-b">
-          <div className="flex items-start gap-3">
-            {icon && (
-              <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                {icon}
-              </div>
-            )}
-            <div className="flex-1 min-w-0 space-y-1 text-left">
-              <DialogTitle className="text-lg font-semibold leading-tight">
-                {title}
-              </DialogTitle>
-              {description && (
-                <DialogDescription className="text-sm text-muted-foreground" asChild>
-                  <div>{description}</div>
-                </DialogDescription>
-              )}
-            </div>
+        <div className="dlg-header">
+          {icon ? <span className="dlg-header-icon">{icon}</span> : null}
+          <div className="dlg-header-main">
+            {kicker ? <p className="dlg-kicker">{kicker}</p> : null}
+            <DialogTitle className="text-[15.5px] font-bold leading-[1.25] tracking-[-0.018em] text-foreground">
+              {title}
+            </DialogTitle>
+            {description ? (
+              <DialogDescription
+                className="mt-1 text-[12.5px] leading-[1.5] text-muted-foreground"
+                asChild
+              >
+                <div>{description}</div>
+              </DialogDescription>
+            ) : null}
           </div>
-        </DialogHeader>
-
-        <div
-          className={cn(
-            "px-5 py-4",
-            size === "screen" && "flex-1 overflow-y-auto",
-            contentClassName
-          )}
-        >
-          {children}
         </div>
 
-        {footer && (
-          <DialogFooter
+        <div className={cn("dlg-body", contentClassName)}>{children}</div>
+
+        {footer ? (
+          <div
             className={cn(
-              "px-5 py-4 border-t gap-2 sm:justify-end",
-              responsiveFooter && "flex-col-reverse sm:flex-row"
+              "dlg-footer",
+              !responsiveFooter && "dlg-footer-row",
             )}
           >
             {footer}
-          </DialogFooter>
-        )}
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

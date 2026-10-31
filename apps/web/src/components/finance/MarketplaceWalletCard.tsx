@@ -1,8 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { TriangleAlert, Wallet } from "lucide-react";
 
 import PageLoader from "@/components/PageLoader.tsx";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -16,17 +15,23 @@ import { getMarketplaceWallet, updateMarketplaceWallet } from "@/lib/repositorie
 
 interface MarketplaceWalletCardProps {
   workspaceId: string;
-  phantomAddress: string | null;
-  phantomShortAddress: string | null;
+  connectedAddress: string | null;
+  connectedWalletName?: string | null;
   cryptoMethods: PaymentMethodRow[];
+  onAddWallet?: () => void;
   onNotice?: (message: string) => void;
+}
+
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-6)}`;
 }
 
 export default function MarketplaceWalletCard({
   workspaceId,
-  phantomAddress,
-  phantomShortAddress,
+  connectedAddress,
+  connectedWalletName,
   cryptoMethods,
+  onAddWallet,
   onNotice,
 }: MarketplaceWalletCardProps) {
   const [wallet, setWallet] = useState<string | null>(null);
@@ -47,6 +52,25 @@ export default function MarketplaceWalletCard({
 
   useAsyncAction(fetchWallet, [fetchWallet]);
 
+  const options = useMemo(() => {
+    const list: { address: string; label: string }[] = [];
+    const seen = new Set<string>();
+    const add = (address: string, label: string) => {
+      if (seen.has(address)) return;
+      seen.add(address);
+      list.push({ address, label: `${label} (${shortAddress(address)})` });
+    };
+
+    if (connectedAddress) {
+      add(connectedAddress, connectedWalletName ?? "Connected wallet");
+    }
+    for (const method of cryptoMethods) {
+      if (!method.detail) continue;
+      add(method.detail, method.label);
+    }
+    return list;
+  }, [connectedAddress, connectedWalletName, cryptoMethods]);
+
   const handleChange = async (value: string) => {
     const address = value || null;
     setWallet(address);
@@ -63,52 +87,68 @@ export default function MarketplaceWalletCard({
   };
 
   return (
-    <Card className="rounded-2xl border-border/60">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400">
-            <Wallet size={18} />
-          </div>
-          <div>
-            <CardTitle className="text-base">Marketplace receiving wallet</CardTitle>
-            <CardDescription>
-              Solana address that receives marketplace sale and hire payments.
-            </CardDescription>
-          </div>
+    <section className="side-card marketplace-wallet" aria-labelledby="marketplace-wallet-title">
+      <div className="side-card-head">
+        <span className="side-card-mark">
+          <Wallet size={17} />
+        </span>
+        <div>
+          <p className="treasury-eyebrow">Marketplace</p>
+          <h2 id="marketplace-wallet-title" className="side-card-title">
+            Receiving wallet
+          </h2>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+
+      <div className="side-card-body">
+        <p className="side-card-copy">
+          Solana address that receives sale and hire payments from the marketplace.
+        </p>
+
         {loading ? (
-          <PageLoader compact />
+          <div className="marketplace-loading">
+            <PageLoader compact />
+          </div>
         ) : (
-          <div className="space-y-3">
+          <>
             <Select value={wallet ?? ""} onValueChange={handleChange} disabled={saving}>
-              <SelectTrigger className="rounded-xl">
+              <SelectTrigger className="marketplace-select" aria-label="Marketplace receiving wallet">
                 <SelectValue placeholder="Select a Solana wallet" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">— No wallet selected —</SelectItem>
-                {phantomAddress && (
-                  <SelectItem value={phantomAddress}>
-                    Phantom Wallet ({phantomShortAddress})
-                  </SelectItem>
-                )}
-                {cryptoMethods.map((method) => (
-                  <SelectItem key={method.id} value={method.detail}>
-                    {method.label} ({method.detail.slice(0, 6)}…{method.detail.slice(-6)})
+                {options.map((option) => (
+                  <SelectItem key={option.address} value={option.address}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
             {!wallet && (
-              <p className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-                <TriangleAlert size={15} className="mt-0.5 shrink-0" />
-                No wallet selected. Buyers will see “Seller has no wallet” until one is assigned.
-              </p>
+              <div className="marketplace-empty">
+                <TriangleAlert size={14} />
+                <span>
+                  No wallet assigned. Buyers see “Seller has no wallet” until you pick
+                  one.
+                  {onAddWallet ? (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        className="marketplace-empty-action"
+                        onClick={onAddWallet}
+                      >
+                        Add a wallet method
+                      </button>
+                    </>
+                  ) : null}
+                </span>
+              </div>
             )}
-          </div>
+          </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

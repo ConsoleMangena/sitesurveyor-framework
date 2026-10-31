@@ -145,6 +145,11 @@ export default function AdminUsersPage({
         badge={<Badge variant="secondary">Platform admin</Badge>}
         title="User management"
         subtitle="View registered users and manage platform admin access"
+        meta={
+          <>
+            {filtered.length} {filtered.length === 1 ? "user" : "users"}
+          </>
+        }
         actions={
           <Button
             variant="outline"
@@ -164,8 +169,8 @@ export default function AdminUsersPage({
           {error}
         </ErrorNotice>
       ) : null}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+      <div className="console-toolbar">
+        <div className="console-toolbar-search relative">
           <Search
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -183,7 +188,7 @@ export default function AdminUsersPage({
           value={filterAdmin}
           onValueChange={(v) => setFilterAdmin(v as "all" | "admin" | "user")}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="console-toolbar-select">
             <SelectValue placeholder="Filter users" />
           </SelectTrigger>
           <SelectContent>
@@ -200,8 +205,8 @@ export default function AdminUsersPage({
         <>
           <Card className="border-border/60 overflow-hidden">
             <CardContent className="p-0">
-              <ResponsiveTable>
-                <Table className="min-w-[760px]">
+              <ResponsiveTable records>
+                <Table className="console-table min-w-[760px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="min-w-[170px]">Name</TableHead>
@@ -231,22 +236,22 @@ export default function AdminUsersPage({
                               {p.full_name || "—"}
                             </span>
                           </TableCell>
-                          <TableCell className="align-middle text-muted-foreground">
+                          <TableCell data-label="Email" className="align-middle text-muted-foreground">
                             <span className="block truncate max-w-[220px]" title={p.email ?? undefined}>
                               {p.email ?? "—"}
                             </span>
                           </TableCell>
-                          <TableCell className="align-middle">
+                          <TableCell data-label="Title" className="align-middle">
                             <span className="block truncate max-w-[160px]" title={p.professional_title ?? undefined}>
                               {p.professional_title ?? "—"}
                             </span>
                           </TableCell>
-                          <TableCell className="align-middle whitespace-nowrap">
+                          <TableCell data-label="Signup type" className="align-middle whitespace-nowrap">
                             <Badge variant="outline">
                               {p.auth_signup_account_type ?? "—"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="align-middle whitespace-nowrap">
+                          <TableCell data-label="Admin" className="align-middle whitespace-nowrap">
                             {p.is_platform_admin ? (
                               <Badge
                                 variant="purple"
@@ -259,10 +264,10 @@ export default function AdminUsersPage({
                               <span className="text-sm text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="align-middle text-muted-foreground whitespace-nowrap">
+                          <TableCell data-label="Joined" className="align-middle text-muted-foreground whitespace-nowrap">
                             {formatDate(p.created_at)}
                           </TableCell>
-                          <TableCell className="align-middle text-right">
+                          <TableCell data-label="Actions" className="align-middle text-right">
                             <Button
                               variant="outline"
                               size="sm"
@@ -282,7 +287,7 @@ export default function AdminUsersPage({
           </Card>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3">
+            <div className="console-pagination">
               <Button
                 variant="outline"
                 size="sm"
@@ -311,6 +316,7 @@ export default function AdminUsersPage({
         open={!!detailUser}
         onOpenChange={(open) => !open && setDetailUser(null)}
         title="User detail"
+        kicker="Platform record"
         description="Workspace memberships and platform admin privileges."
         size="lg"
         footer={
@@ -343,34 +349,36 @@ export default function AdminUsersPage({
         ) : (
           <div className="space-y-5">
             <div className="space-y-1">
-              <p className="text-base font-semibold">{detailUser.full_name || "Unnamed"}</p>
-              <p className="text-sm text-muted-foreground">{detailUser.email ?? ""}</p>
+              <p className="text-base font-semibold break-words">{detailUser.full_name || "Unnamed"}</p>
+              <p className="text-sm text-muted-foreground break-all">{detailUser.email ?? ""}</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground">Title</span>
-                <p className="text-sm font-medium">{detailUser.professional_title ?? "—"}</p>
+            <div className="dlg-field-grid">
+              <div className="console-readout">
+                <span className="console-readout-label">Title</span>
+                <span className="console-readout-value">
+                  {detailUser.professional_title ?? "—"}
+                </span>
               </div>
-              <div>
-                <span className="text-xs text-muted-foreground">Signup type</span>
-                <p className="text-sm font-medium">
+              <div className="console-readout">
+                <span className="console-readout-label">Signup type</span>
+                <span className="console-readout-value">
                   <Badge variant="outline">{detailUser.auth_signup_account_type ?? "—"}</Badge>
-                </p>
+                </span>
               </div>
-              <div>
-                <span className="text-xs text-muted-foreground">Platform admin</span>
-                <p className="text-sm font-medium">
+              <div className="console-readout">
+                <span className="console-readout-label">Platform admin</span>
+                <span className="console-readout-value">
                   {detailUser.is_platform_admin ? (
                     <Badge variant="purple">Yes</Badge>
                   ) : (
                     <Badge variant="secondary">No</Badge>
                   )}
-                </p>
+                </span>
               </div>
-              <div>
-                <span className="text-xs text-muted-foreground">Joined</span>
-                <p className="text-sm font-medium">{formatDate(detailUser.created_at)}</p>
+              <div className="console-readout">
+                <span className="console-readout-label">Joined</span>
+                <span className="console-readout-value">{formatDate(detailUser.created_at)}</span>
               </div>
             </div>
 
@@ -385,10 +393,14 @@ export default function AdminUsersPage({
                   {detailUser.workspaces.map((ws) => (
                     <li
                       key={ws.workspace_id}
-                      className="flex items-center justify-between px-3 py-2 text-sm"
+                      className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
                     >
-                      <span>{ws.workspace_name}</span>
-                      <Badge variant="outline">{ws.role}</Badge>
+                      <span className="min-w-0 truncate" title={ws.workspace_name}>
+                        {ws.workspace_name}
+                      </span>
+                      <Badge variant="outline" className="shrink-0">
+                        {ws.role}
+                      </Badge>
                     </li>
                   ))}
                 </ul>

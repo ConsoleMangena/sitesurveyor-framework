@@ -2701,6 +2701,92 @@ export type Database = {
           },
         ]
       }
+      workspace_pesepay_transactions: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          currency_code: string
+          description: string
+          id: string
+          kind: string
+          pesepay_reference: string | null
+          related_id: string | null
+          status: string
+          user_id: string
+          wallet_id: string
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          created_at?: string
+          currency_code?: string
+          description: string
+          id?: string
+          kind: string
+          pesepay_reference?: string | null
+          related_id?: string | null
+          status?: string
+          user_id: string
+          wallet_id: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          currency_code?: string
+          description?: string
+          id?: string
+          kind?: string
+          pesepay_reference?: string | null
+          related_id?: string | null
+          status?: string
+          user_id?: string
+          wallet_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      workspace_pesepay_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          currency_code: string
+          id: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          currency_code?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          currency_code?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_pesepay_wallets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_settings: {
         Row: {
           country_code: string
@@ -2734,6 +2820,53 @@ export type Database = {
             foreignKeyName: "workspace_settings_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_storage_purchases: {
+        Row: {
+          amount: number
+          created_at: string
+          currency_code: string
+          id: string
+          paid_at: string
+          payment_method: string
+          plan_id: string
+          purchased_by: string | null
+          storage_mb: number
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency_code: string
+          id?: string
+          paid_at?: string
+          payment_method?: string
+          plan_id: string
+          purchased_by?: string | null
+          storage_mb: number
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency_code?: string
+          id?: string
+          paid_at?: string
+          payment_method?: string
+          plan_id?: string
+          purchased_by?: string | null
+          storage_mb?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_storage_purchases_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
@@ -3280,6 +3413,24 @@ export type Database = {
         Returns: undefined
       }
       path_first_segment_uuid: { Args: { path: string }; Returns: string }
+      pay_workspace_invoice_with_balance: {
+        Args: {
+          p_invoice_id: string
+          p_request_id: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: { payment_id: string; remaining_balance: number }[]
+      }
+      pay_workspace_storage_with_balance: {
+        Args: {
+          p_plan_id: string
+          p_request_id: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: { purchase_id: string; remaining_balance: number }[]
+      }
       set_default_payment_method: {
         Args: { p_method_id: string; p_workspace_id: string }
         Returns: undefined
@@ -3287,6 +3438,10 @@ export type Database = {
       set_default_workspace: {
         Args: { target_workspace_id: string }
         Returns: boolean
+      }
+      settle_workspace_pesepay_deposit: {
+        Args: { p_amount: number; p_currency_code: string; p_reference: string }
+        Returns: undefined
       }
       shares_workspace_with_profile: {
         Args: { target_profile_id: string }

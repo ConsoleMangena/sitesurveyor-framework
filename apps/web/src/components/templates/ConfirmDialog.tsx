@@ -51,7 +51,7 @@ export function ConfirmDialog({
             </AlertDialogDescription>
           )}
         </AlertDialogHeader>
-        {children}
+        {children ? <div className="dlg-alert-body">{children}</div> : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction

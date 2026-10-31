@@ -42,10 +42,21 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import "@/styles/console.css";
 import type { WorkspaceRowAdmin } from "@/lib/repositories/adminPlatform";
 
 type WorkspaceFilter = "All" | "Personal" | "Business" | "Archived";
 const filters: WorkspaceFilter[] = ["All", "Personal", "Business", "Archived"];
+
+/** Column labels for the phone record view, keyed by column id. */
+const COLUMN_LABELS: Record<string, string> = {
+  name: "Workspace",
+  type: "Type",
+  owner_user_id: "Owner",
+  status: "Status",
+  created_at: "Created",
+  actions: "Actions",
+};
 
 interface RecentWorkspacesTableProps {
   workspaces: WorkspaceRowAdmin[];
@@ -84,39 +95,40 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
   const columns = React.useMemo<ColumnDef<WorkspaceRowAdmin>[]>(
     () => [
       {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            aria-label="Select all"
-            checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            aria-label={`Select ${row.original.name}`}
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-          />
-        ),
-        enableSorting: false,
-      },
-      {
+        /* The row checkbox sits inside the name cell: on phones the name then
+           reads as the record title instead of a lone floating checkbox. */
         accessorKey: "name",
-        header: "Workspace",
+        header: ({ table }) => (
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              aria-label="Select all"
+              checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            />
+            Workspace
+          </div>
+        ),
         cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
-            <div className="font-medium leading-none">{row.original.name}</div>
-            {row.original.slug ? (
-              <div className="text-muted-foreground text-xs">/{row.original.slug}</div>
-            ) : null}
+          <div className="flex items-start gap-2.5">
+            <Checkbox
+              aria-label={`Select ${row.original.name}`}
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              className="mt-0.5"
+            />
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <div className="truncate font-medium leading-none">{row.original.name}</div>
+              {row.original.slug ? (
+                <div className="truncate text-muted-foreground text-xs">/{row.original.slug}</div>
+              ) : null}
+            </div>
           </div>
         ),
       },
       {
         accessorKey: "type",
         header: "Type",
-        cell: ({ row }) => <Badge variant="outline">{row.original.type}</Badge>,
+        cell: ({ row }) => <Badge variant="outline" className="capitalize">{row.original.type}</Badge>,
       },
       {
         accessorKey: "owner_user_id",
@@ -159,7 +171,7 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
         id: "actions",
         header: () => <div className="flex w-full justify-end">Actions</div>,
         cell: () => (
-          <div className="flex w-full justify-end">
+          <div className="console-table-actions flex w-full justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button aria-label="Open actions" size="icon" variant="ghost" className="size-7">
@@ -206,8 +218,11 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
   }, [currentPage, pageCount]);
 
   const selectedCount = Object.keys(rowSelection).length;
+  const rowCount = table.getFilteredRowModel().rows.length;
   const subtitle =
-    selectedCount > 0 ? `${selectedCount} selected` : `${table.getFilteredRowModel().rows.length} workspaces`;
+    selectedCount > 0
+      ? `${selectedCount} selected`
+      : `${rowCount} workspace${rowCount === 1 ? "" : "s"}`;
 
   return (
     <DashboardCard
@@ -217,7 +232,7 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
       titleAction={<Badge variant="outline">{subtitle}</Badge>}
       contentClassName="flex flex-col gap-4 px-0"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6">
         <ToggleGroup
           type="single"
           value={filter}
@@ -239,12 +254,16 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
       </div>
 
       <div className="dash-table-scroll">
-        <Table className="min-w-[720px]">
+        <Table className="console-table min-w-[640px]">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} colSpan={header.colSpan} className="whitespace-nowrap">
+                  <TableHead
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    className="whitespace-nowrap first:pl-6 last:pr-6"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -258,7 +277,13 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell
+                      key={cell.id}
+                      data-label={COLUMN_LABELS[cell.column.id]}
+                      className="align-middle first:pl-6 last:pr-6"
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))
@@ -273,7 +298,7 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
         </Table>
       </div>
 
-      <div className="flex flex-col gap-3 px-4 pb-1 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="flex flex-col gap-3 px-4 pb-1 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-muted-foreground text-sm">
           Viewing {table.getRowModel().rows.length} of {table.getFilteredRowModel().rows.length}
         </p>

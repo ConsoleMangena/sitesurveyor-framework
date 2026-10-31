@@ -229,7 +229,7 @@ export default function BusinessDashboardPage({
           <MarketGlobeCard onNavigate={onNavigate} />
 
           <DashboardSection title="Pipeline">
-            <DashboardGrid>
+            <DashboardGrid className="md:items-stretch">
               <div className="md:col-span-12 xl:col-span-7">
                 <ProjectTimelineChart projects={projects} />
               </div>

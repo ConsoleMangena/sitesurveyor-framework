@@ -161,6 +161,11 @@ export default function AdminWorkspacesPage({
         badge={<Badge variant="secondary">Platform admin</Badge>}
         title="Workspaces"
         subtitle="Inspect any workspace — members, entity counts, archive status"
+        meta={
+          <>
+            {filtered.length} {filtered.length === 1 ? "workspace" : "workspaces"}
+          </>
+        }
         actions={
           <Button
             variant="outline"
@@ -180,8 +185,8 @@ export default function AdminWorkspacesPage({
           {error}
         </ErrorNotice>
       ) : null}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+      <div className="console-toolbar">
+        <div className="console-toolbar-search relative">
           <Search
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -211,8 +216,8 @@ export default function AdminWorkspacesPage({
       ) : (
         <Card className="border-border/60 overflow-hidden">
           <CardContent className="p-0">
-            <ResponsiveTable>
-              <Table className="min-w-[640px]">
+            <ResponsiveTable records>
+              <Table className="console-table min-w-[640px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[200px]">Workspace</TableHead>
@@ -247,16 +252,16 @@ export default function AdminWorkspacesPage({
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="align-middle capitalize">{row.type}</TableCell>
-                        <TableCell className="align-middle text-muted-foreground">
+                        <TableCell data-label="Type" className="align-middle capitalize">{row.type}</TableCell>
+                        <TableCell data-label="Owner" className="align-middle text-muted-foreground">
                           <span className="block truncate max-w-[180px]" title={ownerLabels.get(row.owner_user_id) ?? undefined}>
                             {ownerLabels.get(row.owner_user_id) ?? "—"}
                           </span>
                         </TableCell>
-                        <TableCell className="align-middle text-muted-foreground whitespace-nowrap">
+                        <TableCell data-label="Created" className="align-middle text-muted-foreground whitespace-nowrap">
                           {formatDate(row.created_at)}
                         </TableCell>
-                        <TableCell className="align-middle text-right">
+                        <TableCell data-label="Actions" className="align-middle text-right">
                           <Button
                             variant="outline"
                             size="sm"
@@ -314,27 +319,29 @@ export default function AdminWorkspacesPage({
           <PageLoader compact />
         ) : selectedRow ? (
           <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="space-y-0.5">
-                <span className="text-xs text-muted-foreground">Type</span>
-                <p className="text-sm font-medium capitalize">{selectedRow.type}</p>
+            <div className="dlg-field-grid">
+              <div className="console-readout">
+                <span className="console-readout-label">Type</span>
+                <span className="console-readout-value capitalize">{selectedRow.type}</span>
               </div>
-              <div className="space-y-0.5">
-                <span className="text-xs text-muted-foreground">Owner</span>
-                <p className="text-sm font-medium">{ownerLabels.get(selectedRow.owner_user_id) ?? "—"}</p>
+              <div className="console-readout">
+                <span className="console-readout-label">Owner</span>
+                <span className="console-readout-value">
+                  {ownerLabels.get(selectedRow.owner_user_id) ?? "—"}
+                </span>
               </div>
-              <div className="space-y-0.5">
-                <span className="text-xs text-muted-foreground">Slug</span>
-                <p className="text-sm font-medium">{selectedRow.slug ?? "—"}</p>
+              <div className="console-readout">
+                <span className="console-readout-label">Slug</span>
+                <span className="console-readout-value">{selectedRow.slug ?? "—"}</span>
               </div>
-              <div className="space-y-0.5">
-                <span className="text-xs text-muted-foreground">Created</span>
-                <p className="text-sm font-medium">{formatDate(selectedRow.created_at)}</p>
+              <div className="console-readout">
+                <span className="console-readout-label">Created</span>
+                <span className="console-readout-value">{formatDate(selectedRow.created_at)}</span>
               </div>
               {selectedRow.archived_at && (
-                <div className="space-y-0.5">
-                  <span className="text-xs text-muted-foreground">Archived</span>
-                  <p className="text-sm font-medium">{formatDate(selectedRow.archived_at)}</p>
+                <div className="console-readout">
+                  <span className="console-readout-label">Archived</span>
+                  <span className="console-readout-value">{formatDate(selectedRow.archived_at)}</span>
                 </div>
               )}
             </div>
@@ -342,7 +349,7 @@ export default function AdminWorkspacesPage({
             {summary && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold">Entity counts</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {(Object.entries(summary) as [string, number][]).map(([key, val]) => (
                     <StatBox key={key} label={key.replace(/_/g, " ")} value={val} />
                   ))}
@@ -356,7 +363,7 @@ export default function AdminWorkspacesPage({
                 <p className="text-sm text-muted-foreground">No members.</p>
               ) : (
                 <div className="max-h-[220px] overflow-auto rounded-md border">
-                  <Table className="min-w-[420px]">
+                  <Table className="console-table min-w-[420px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-xs min-w-[120px]">Name</TableHead>
@@ -373,17 +380,17 @@ export default function AdminWorkspacesPage({
                               {m.full_name ?? "—"}
                             </span>
                           </TableCell>
-                          <TableCell className="align-middle text-sm">
+                          <TableCell data-label="Email" className="align-middle text-sm">
                             <span className="block truncate max-w-[180px]" title={m.email ?? undefined}>
                               {m.email ?? "—"}
                             </span>
                           </TableCell>
-                          <TableCell className="align-middle whitespace-nowrap">
+                          <TableCell data-label="Role" className="align-middle whitespace-nowrap">
                             <Badge variant="outline" className="text-xs">
                               {m.role}
                             </Badge>
                           </TableCell>
-                          <TableCell className="align-middle text-xs">
+                          <TableCell data-label="Status" className="align-middle text-xs">
                             <Badge variant={m.status === "active" ? "default" : "secondary"}>
                               {m.status}
                             </Badge>

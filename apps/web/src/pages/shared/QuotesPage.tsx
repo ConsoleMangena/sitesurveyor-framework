@@ -1157,7 +1157,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
             <DocumentThemeSelector
               value={defaults.theme}
               onChange={setTheme}
-              className="w-[130px]"
+              className="w-full sm:w-[130px]"
             />
             <Button
               variant="outline"

@@ -36,6 +36,12 @@ import { SuccessDialog } from "../../components/SuccessDialog.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import {
+  DashboardHeader,
+  DashboardShell,
+} from "../../components/dashboard/DashboardShell.tsx";
+import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
+import "../../styles/console.css";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -165,9 +171,9 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
   };
 
   const stats = [
-    { label: "Total Contacts", value: totalContacts, icon: Users },
-    { label: "Active Clients", value: activeClients, icon: Building2 },
-    { label: "Network Partners", value: networkPartners, icon: Handshake },
+    { label: "Total Contacts", value: totalContacts, icon: Users, tone: "primary" as const },
+    { label: "Active Clients", value: activeClients, icon: Building2, tone: "success" as const },
+    { label: "Network Partners", value: networkPartners, icon: Handshake, tone: "info" as const },
   ];
 
   if (loading) {
@@ -410,47 +416,43 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
   }
 
   return (
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      <DashboardShell className="hub-body">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1>Directory</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage clients, subcontractors, and authorities
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" /> Export CSV
-          </Button>
-          <Button size="sm" onClick={() => setShowCreateModal(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Contact
-          </Button>
-        </div>
-      </div>
+      <DashboardHeader
+        badge={<Badge variant="secondary">Directory</Badge>}
+        title="Contacts"
+        subtitle="Manage clients, subcontractors, and authorities"
+        meta={`${totalContacts} ${totalContacts === 1 ? "contact" : "contacts"}`}
+        actions={
+          <>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+            <Button size="sm" onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4" /> Add Contact
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="flex items-center gap-4 py-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/10 text-primary">
-                <stat.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <KpiCard
+            key={stat.label}
+            title={stat.label}
+            value={stat.value}
+            icon={<stat.icon className="h-5 w-5" />}
+            tone={stat.tone}
+          />
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="console-toolbar">
         <Tabs
           value={activeFilter}
           onValueChange={(value) =>
@@ -465,7 +467,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative flex-1 sm:max-w-xs">
+        <div className="console-toolbar-search relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search contacts..."
@@ -488,18 +490,20 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
 
       {filtered.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <Users className="h-12 w-12 text-muted-foreground/50" />
-            <div className="space-y-1">
-              <p className="font-medium text-foreground">No contacts found</p>
-              <p className="text-sm text-muted-foreground">
-                {contacts.length === 0
-                  ? "Add your first contact to get started."
-                  : "Try adjusting your search or filter criteria."}
-              </p>
-            </div>
+          <CardContent className="console-empty">
+            <span className="console-empty-icon" aria-hidden="true">
+              <Users size={18} />
+            </span>
+            <p className="console-empty-title">No contacts found</p>
+            <p>
+              {contacts.length === 0
+                ? "Add your first contact to get started."
+                : "Try adjusting your search or filter criteria."}
+            </p>
             {contacts.length === 0 && (
-              <Button onClick={() => setShowCreateModal(true)}>Add Contact</Button>
+              <Button className="mt-2" onClick={() => setShowCreateModal(true)}>
+                Add Contact
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -516,7 +520,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
             return (
               <Card
                 key={c.id}
-                className="flex flex-col transition-shadow hover:shadow-md cursor-pointer"
+                className="flex cursor-pointer flex-col transition-shadow hover:shadow-md"
                 onClick={() => setSelectedContact(c)}
               >
                 <CardContent className="flex flex-1 flex-col gap-4 p-5">
@@ -529,9 +533,9 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
                     </div>
                     <Badge variant={typeVariant[c.type] ?? "secondary"}>{c.type}</Badge>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">{c.name}</h3>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold text-foreground">{c.name}</h3>
+                    <p className="truncate text-sm text-muted-foreground">
                       {[c.title, c.company].filter(Boolean).join(" · ")}
                     </p>
                   </div>
@@ -539,22 +543,25 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
                     {c.email && (
                       <a
                         href={`mailto:${c.email}`}
-                        className="flex items-center gap-2 hover:text-primary"
+                        className="flex min-w-0 items-center gap-2 hover:text-primary"
                       >
-                        <Mail className="h-3.5 w-3.5" /> {c.email}
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{c.email}</span>
                       </a>
                     )}
                     {c.phone && (
                       <a
                         href={`tel:${c.phone}`}
-                        className="flex items-center gap-2 hover:text-primary"
+                        className="flex min-w-0 items-center gap-2 hover:text-primary"
                       >
-                        <Phone className="h-3.5 w-3.5" /> {c.phone}
+                        <Phone className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{c.phone}</span>
                       </a>
                     )}
                     {c.lastContact && (
-                      <span className="flex items-center gap-2">
-                        <Clock className="h-3.5 w-3.5" /> {c.lastContact}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{c.lastContact}</span>
                       </span>
                     )}
                   </div>
@@ -601,38 +608,38 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
         {selectedContact && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
             <div className="min-w-0 space-y-4">
-            <div className="rounded-none border p-4 space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Type</span>
+            <div className="rounded-none border p-4 text-sm">
+              <div className="console-readout">
+                <span className="console-readout-label">Type</span>
                 <Badge variant={typeVariant[selectedContact.type] ?? "secondary"}>{selectedContact.type}</Badge>
               </div>
               {selectedContact.email && (
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Email</span>
+                <div className="console-readout">
+                  <span className="console-readout-label">Email</span>
                   <a href={`mailto:${selectedContact.email}`} className="text-primary hover:underline break-all">{selectedContact.email}</a>
                 </div>
               )}
               {selectedContact.phone && (
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Phone</span>
+                <div className="console-readout">
+                  <span className="console-readout-label">Phone</span>
                   <a href={`tel:${selectedContact.phone}`} className="text-primary hover:underline">{selectedContact.phone}</a>
                 </div>
               )}
               {selectedContact.title && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Title</span>
-                  <span>{selectedContact.title}</span>
+                <div className="console-readout">
+                  <span className="console-readout-label">Title</span>
+                  <span className="console-readout-value">{selectedContact.title}</span>
                 </div>
               )}
               {selectedContact.company && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Company</span>
-                  <span>{selectedContact.company}</span>
+                <div className="console-readout">
+                  <span className="console-readout-label">Company</span>
+                  <span className="console-readout-value">{selectedContact.company}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Last Contact</span>
-                <span>{selectedContact.lastContact}</span>
+              <div className="console-readout">
+                <span className="console-readout-label">Last Contact</span>
+                <span className="console-readout-value">{selectedContact.lastContact}</span>
               </div>
             </div>
             </div>
@@ -655,6 +662,6 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </div>
+    </DashboardShell>
   );
 }

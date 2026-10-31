@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
 import {
+  DashboardHeader,
+  DashboardShell,
+} from "../../components/dashboard/DashboardShell.tsx";
+import {
   archiveJob,
   createJob,
   listJobs,
@@ -60,6 +64,7 @@ import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import { Separator } from "../../components/ui/separator.tsx";
 import { cn } from "../../lib/utils.ts";
 import "../../styles/pages.css";
+import "../../styles/console.css";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -546,60 +551,63 @@ export default function JobsPage({
   }
 
   return (
-    <div className="hub-body mx-auto max-w-6xl space-y-6">
+    <DashboardShell className="hub-body">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1>Jobs</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            View field jobs, site visits, and survey assignments
-          </p>
-          {!isPlatformAdmin && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Job listings are maintained by platform administrators.
-            </p>
-          )}
-        </div>
-        {isPlatformAdmin && (
-          <Button onClick={openCreateEditor}>
-            <Plus className="mr-2 h-4 w-4" /> Add job
-          </Button>
-        )}
-      </div>
+      <DashboardHeader
+        badge={<Badge variant="secondary">Field jobs</Badge>}
+        title="Jobs"
+        subtitle="View field jobs, site visits, and survey assignments"
+        meta={
+          !isPlatformAdmin
+            ? "Maintained by platform administrators"
+            : `${jobStats.total} ${jobStats.total === 1 ? "job" : "jobs"}`
+        }
+        actions={
+          isPlatformAdmin ? (
+            <Button onClick={openCreateEditor}>
+              <Plus className="h-4 w-4" /> Add job
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <KpiCard
           title="Total Jobs"
           value={String(jobStats.total)}
           subtext="All survey jobs"
           icon={<Briefcase className="size-4" />}
+          tone="primary"
         />
         <KpiCard
           title="Planned"
           value={String(jobStats.planned)}
           subtext="Yet to start"
           icon={<Clock className="size-4" />}
+          tone="neutral"
         />
         <KpiCard
           title="In Progress"
           value={String(jobStats.inProgress)}
           subtext="Active field work"
           icon={<PlayCircle className="size-4" />}
+          tone="warning"
         />
         <KpiCard
           title="Completed"
           value={String(jobStats.completed)}
           subtext="Finished jobs"
           icon={<CheckCircle2 className="size-4" />}
+          tone="success"
         />
       </div>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="console-toolbar">
         <Tabs value={typeFilter} onValueChange={(value) => setTypeFilter(value as JobFilter)}>
           <TabsList className="h-auto flex-wrap">
             {filterTabs.map((f) => (
@@ -609,7 +617,7 @@ export default function JobsPage({
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative flex-1 lg:max-w-xs">
+        <div className="console-toolbar-search relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search jobs..."
@@ -625,6 +633,7 @@ export default function JobsPage({
         onOpenChange={() => setSelectedJob(null)}
         title={selectedJob?.title ?? "Job Details"}
         description={selectedJob ? `${selectedJob.project_name ?? "No project"} · ${selectedJob.location ?? "No location"}` : undefined}
+        kicker="Field job record"
         size="screen"
         footer={selectedJob ? (
           <>
@@ -667,22 +676,22 @@ export default function JobsPage({
               {selectedJob.description ?? "No description provided."}
             </p>
             <Card>
-              <CardContent className="space-y-2 py-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Scheduled Start</span>
-                  <span className="font-medium text-foreground">
+              <CardContent className="space-y-1 py-4 text-sm">
+                <div className="console-readout">
+                  <span className="console-readout-label">Scheduled Start</span>
+                  <span className="console-readout-value">
                     {formatDate(selectedJob.scheduled_start)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Scheduled End</span>
-                  <span className="font-medium text-foreground">
+                <div className="console-readout">
+                  <span className="console-readout-label">Scheduled End</span>
+                  <span className="console-readout-value">
                     {formatDate(selectedJob.scheduled_end)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Project</span>
-                  <span className="font-medium text-foreground">
+                <div className="console-readout">
+                  <span className="console-readout-label">Project</span>
+                  <span className="console-readout-value">
                     {selectedJob.project_name ?? "—"}
                   </span>
                 </div>
@@ -705,10 +714,12 @@ export default function JobsPage({
 
       {filtered.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-            <Briefcase className="h-12 w-12 text-muted-foreground/50" />
-            <p className="font-medium text-foreground">No jobs found</p>
-            <p className="text-sm text-muted-foreground">
+          <CardContent className="console-empty">
+            <span className="console-empty-icon" aria-hidden="true">
+              <Briefcase size={18} />
+            </span>
+            <p className="console-empty-title">No jobs found</p>
+            <p>
               {jobs.length === 0
                 ? "No jobs available in the system yet."
                 : "Try adjusting your search criteria."}
@@ -746,9 +757,9 @@ export default function JobsPage({
                       </div>
                       <Badge variant={statusVariant(job.status)}>{statusLabel}</Badge>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{job.title}</h3>
-                      <p className="text-sm text-muted-foreground">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-foreground">{job.title}</h3>
+                      <p className="truncate text-sm text-muted-foreground">
                         {job.project_name ?? "No project"}
                         {job.job_type && (
                           <>
@@ -760,15 +771,18 @@ export default function JobsPage({
                     </div>
                     <div className="mt-auto space-y-1.5 text-xs text-muted-foreground">
                       {job.location && (
-                        <span className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5" /> {job.location}
+                        <span className="flex items-start gap-1.5">
+                          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span className="min-w-0 truncate">{job.location}</span>
                         </span>
                       )}
                       {job.scheduled_start && (
-                        <span className="flex items-center gap-1.5">
-                          <CalendarDays className="h-3.5 w-3.5" />{" "}
-                          {formatDate(job.scheduled_start)}
-                          {job.scheduled_end ? ` – ${formatDate(job.scheduled_end)}` : ""}
+                        <span className="flex items-start gap-1.5">
+                          <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" />{" "}
+                          <span className="min-w-0 truncate">
+                            {formatDate(job.scheduled_start)}
+                            {job.scheduled_end ? ` – ${formatDate(job.scheduled_end)}` : ""}
+                          </span>
                         </span>
                       )}
                     </div>
@@ -794,14 +808,14 @@ export default function JobsPage({
           </div>
 
           {filtered.length > pageSize && (
-            <div className="flex items-center justify-center gap-3">
+            <div className="console-pagination">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={effectivePage <= 1}
               >
-                <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                <ChevronLeft className="h-4 w-4" /> Previous
               </Button>
               <span className="text-sm text-muted-foreground">
                 Page {effectivePage} / {totalPages}
@@ -812,7 +826,7 @@ export default function JobsPage({
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={effectivePage >= totalPages}
               >
-                Next <ChevronRight className="ml-1 h-4 w-4" />
+                Next <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           )}
@@ -824,6 +838,6 @@ export default function JobsPage({
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </div>
+    </DashboardShell>
   );
 }

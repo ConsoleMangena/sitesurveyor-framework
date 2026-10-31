@@ -47,7 +47,11 @@ import {
   TableRow,
 } from "../../components/ui/table.tsx";
 import { ResponsiveTable } from "../../components/ui/responsive-table.tsx";
-import { cn } from "../../lib/utils.ts";
+import {
+  DashboardHeader,
+  DashboardShell,
+} from "../../components/dashboard/DashboardShell.tsx";
+import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
 import "../../styles/pages.css";
 
 interface TimeTrackingPageProps {
@@ -659,28 +663,28 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
       sub: `${billableHours.toFixed(2)}h billable`,
       value: `${totalHours.toFixed(2)}h`,
       icon: Clock,
-      color: "text-emerald-600",
+      tone: "success" as const,
     },
     {
       label: "This Week",
       sub: "Mon–Sun",
       value: `${thisWeekHours.toFixed(2)}h`,
       icon: Clock,
-      color: "text-emerald-600",
+      tone: "success" as const,
     },
     {
       label: "Total Expenses",
       sub: `$${reimbursableExpenses.toLocaleString()} reimbursable`,
       value: `$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
       icon: DollarSign,
-      color: "text-amber-600",
+      tone: "warning" as const,
     },
     {
       label: "Entries",
       sub: activeTab,
       value: entryCount.toString(),
       icon: Clock,
-      color: "text-primary",
+      tone: "info" as const,
     },
   ];
 
@@ -706,34 +710,40 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
   );
 
   return (
-    <div className="hub-body mx-auto max-w-6xl space-y-6">
+    <DashboardShell className="hub-body">
+      <DashboardHeader
+        badge={<Badge variant="secondary">Field log</Badge>}
+        title="Time & Expenses"
+        subtitle="Log your hours and site costs against real projects"
+        meta={
+          <>
+            {entryCount} {entryCount === 1 ? "entry" : "entries"}
+          </>
+        }
+        actions={
+          <Button size="sm" className="gap-2" onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4" />
+            {activeTab === "time" ? "Log Time" : "Log Expense"}
+          </Button>
+        }
+      />
+
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <div>
-        <h1>Time & Expenses</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Log your hours and site costs against real projects
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {stat.label}
-                </span>
-                <stat.icon className={cn("h-4 w-4", stat.color)} />
-              </div>
-              <div className="mt-1 text-2xl font-semibold text-foreground">{stat.value}</div>
-              <div className="text-xs text-muted-foreground">{stat.sub}</div>
-            </CardContent>
-          </Card>
+          <KpiCard
+            key={stat.label}
+            title={stat.label}
+            value={stat.value}
+            subtext={stat.sub}
+            icon={<stat.icon className="h-4 w-4" />}
+            tone={stat.tone}
+          />
         ))}
       </div>
 
@@ -745,14 +755,10 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               <TabsTrigger value="expenses">Expenses</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button size="sm" onClick={() => setShowCreateModal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {activeTab === "time" ? "Log Time" : "Log Expense"}
-          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+          <div className="console-toolbar">
+            <div className="console-toolbar-search relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={
@@ -765,7 +771,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
             </div>
             <select
               className="h-9 rounded-none border border-input bg-background px-3 py-1 text-sm shadow-sm transition-[color,box-shadow]
-              focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1 sm:w-[220px]"
+              focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
             >
@@ -783,11 +789,11 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
           </div>
 
           {activeTab === "time" ? (
-            <ResponsiveTable>
+            <ResponsiveTable records>
               {filteredTimeEntries.length === 0 ? (
                 renderEmptyState()
               ) : (
-                <Table className="min-w-[720px]">
+                <Table className="console-table min-w-[720px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[100px]">Date</TableHead>
@@ -802,33 +808,33 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
                   <TableBody>
                     {filteredTimeEntries.map((e) => (
                       <TableRow key={e.id}>
-                        <TableCell className="align-middle whitespace-nowrap">{e.entry_date}</TableCell>
-                        <TableCell className="align-middle font-medium text-foreground">
+                        <TableCell data-label="Date" className="align-middle whitespace-nowrap">{e.entry_date}</TableCell>
+                        <TableCell data-label="Project" className="align-middle font-medium text-foreground">
                           <span className="block truncate max-w-[180px]" title={e.projects?.name ?? "Internal"}>
                             {e.projects?.name ?? "Internal"}
                           </span>
                         </TableCell>
-                        <TableCell className="align-middle hidden md:table-cell">
+                        <TableCell data-label="Task" className="align-middle hidden md:table-cell">
                           <span className="block truncate max-w-[160px]" title={e.task}>
                             {e.task}
                           </span>
                         </TableCell>
-                        <TableCell className="align-middle hidden md:table-cell text-sm text-muted-foreground">
+                        <TableCell data-label="Notes" className="align-middle hidden md:table-cell text-sm text-muted-foreground">
                           <span className="block truncate max-w-[200px]" title={e.notes ?? undefined}>
                             {e.notes ?? "—"}
                           </span>
                         </TableCell>
-                        <TableCell className="align-middle text-center">
+                        <TableCell data-label="Billable" className="align-middle text-center">
                           {e.billable ? (
                             <span className="text-emerald-600">✓</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="align-middle text-right font-semibold whitespace-nowrap">
+                        <TableCell data-label="Hours" className="align-middle text-right font-semibold whitespace-nowrap">
                           {Number(e.hours).toFixed(2)}
                         </TableCell>
-                        <TableCell className="align-middle text-right">
+                        <TableCell data-label="Actions" className="align-middle text-right">
                           <Button
                             variant="outline"
                             size="icon"
@@ -846,11 +852,11 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               )}
             </ResponsiveTable>
           ) : (
-            <ResponsiveTable>
+            <ResponsiveTable records>
               {filteredExpenseEntries.length === 0 ? (
                 renderEmptyState()
               ) : (
-                <Table className="min-w-[720px]">
+                <Table className="console-table min-w-[720px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[100px]">Date</TableHead>
@@ -865,31 +871,31 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
                   <TableBody>
                     {filteredExpenseEntries.map((e) => (
                       <TableRow key={e.id}>
-                        <TableCell className="align-middle whitespace-nowrap">{e.entry_date}</TableCell>
-                        <TableCell className="align-middle font-medium text-foreground">
+                        <TableCell data-label="Date" className="align-middle whitespace-nowrap">{e.entry_date}</TableCell>
+                        <TableCell data-label="Project" className="align-middle font-medium text-foreground">
                           <span className="block truncate max-w-[180px]" title={e.projects?.name ?? "Internal"}>
                             {e.projects?.name ?? "Internal"}
                           </span>
                         </TableCell>
-                        <TableCell className="align-middle whitespace-nowrap">
+                        <TableCell data-label="Category" className="align-middle whitespace-nowrap">
                           <Badge variant="secondary">{e.category}</Badge>
                         </TableCell>
-                        <TableCell className="align-middle hidden md:table-cell">
+                        <TableCell data-label="Vendor" className="align-middle hidden md:table-cell">
                           <span className="block truncate max-w-[200px]" title={e.vendor ?? undefined}>
                             {e.vendor ?? "—"}
                           </span>
                         </TableCell>
-                        <TableCell className="align-middle text-center whitespace-nowrap">
+                        <TableCell data-label="Reimbursable" className="align-middle text-center whitespace-nowrap">
                           {e.reimbursable ? (
                             <span className="text-xs font-semibold text-primary">Yes</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="align-middle text-right font-semibold whitespace-nowrap">
+                        <TableCell data-label="Amount" className="align-middle text-right font-semibold whitespace-nowrap">
                           ${Number(e.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </TableCell>
-                        <TableCell className="align-middle text-right">
+                        <TableCell data-label="Actions" className="align-middle text-right">
                           <Button
                             variant="outline"
                             size="icon"
@@ -915,6 +921,6 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </div>
+    </DashboardShell>
   );
 }

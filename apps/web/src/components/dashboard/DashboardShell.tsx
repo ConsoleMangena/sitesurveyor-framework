@@ -26,6 +26,8 @@ interface DashboardHeaderProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   description?: React.ReactNode;
+  /** Eyebrow line shown when the header has no description to carry one. */
+  meta?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 }
@@ -35,11 +37,12 @@ export function DashboardHeader({
   title,
   subtitle,
   description,
+  meta,
   actions,
   className,
 }: DashboardHeaderProps) {
   const hasDescription = Boolean(description);
-  const metaText = hasDescription ? subtitle : undefined;
+  const metaText = hasDescription ? subtitle : meta;
   const lede = hasDescription ? description : subtitle;
 
   return (

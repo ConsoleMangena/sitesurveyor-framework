@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabase/client.ts";
 
 interface WorkspaceStorage {
@@ -11,7 +11,8 @@ interface WorkspaceStorage {
   error: string | null;
 }
 
-export function useWorkspaceStorage(workspaceId: string | null): WorkspaceStorage {
+export function useWorkspaceStorage(workspaceId: string | null): WorkspaceStorage & { reload: () => void } {
+  const [revision, setRevision] = useState(0);
   const [storage, setStorage] = useState<WorkspaceStorage>(() => ({
     usedBytes: 0,
     fileCount: 0,
@@ -21,6 +22,7 @@ export function useWorkspaceStorage(workspaceId: string | null): WorkspaceStorag
     loading: workspaceId !== null,
     error: null,
   }));
+  const reload = useCallback(() => setRevision((value) => value + 1), []);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -86,7 +88,7 @@ export function useWorkspaceStorage(workspaceId: string | null): WorkspaceStorag
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, revision]);
 
-  return storage;
+  return { ...storage, reload };
 }

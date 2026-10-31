@@ -44,6 +44,12 @@ import {
 import { DialogTemplate } from "../../components/templates/DialogTemplate.tsx";
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert.tsx";
 import { Separator } from "../../components/ui/separator.tsx";
+import { Badge } from "../../components/ui/badge.tsx";
+import {
+  DashboardHeader,
+  DashboardShell,
+} from "../../components/dashboard/DashboardShell.tsx";
+import "../../styles/console.css";
 
 const COUNTRIES: { code: string; name: string }[] = [
   { code: "ZW", name: "Zimbabwe" },
@@ -268,7 +274,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="hub-body mx-auto max-w-5xl space-y-6">
+    <DashboardShell className="hub-body">
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -283,17 +289,17 @@ export default function ProfileSettingsPage() {
         </Alert>
       )}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1>Profile &amp; Professional Portfolio</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Your professional identity, contact details, portfolio and account security
-          </p>
-        </div>
-        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
-      </div>
+      <DashboardHeader
+        badge={<Badge variant="secondary">Professional identity</Badge>}
+        title="Profile & Portfolio"
+        subtitle="Your professional identity, contact details, portfolio and account security"
+        meta={fullName || "Profile incomplete"}
+        actions={
+          <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        }
+      />
 
       {/* ── Identity card ── */}
       <Card>
@@ -311,10 +317,10 @@ export default function ProfileSettingsPage() {
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className="truncate text-lg font-semibold text-foreground">
                 {fullName || "Your Name"}
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="truncate text-sm text-muted-foreground">
                 {[
                   professionalTitle,
                   registrationNo ? `Reg. No. ${registrationNo}` : "",
@@ -631,14 +637,18 @@ export default function ProfileSettingsPage() {
             <CardDescription>How you receive product updates</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label className="text-sm">Email Notifications</Label>
-                <p className="text-xs text-muted-foreground">
+            <div className="console-setting">
+              <div className="console-setting-text">
+                <p className="console-setting-title">Email notifications</p>
+                <p className="console-setting-hint">
                   Receive updates about invites, approvals and activity in your workspaces
                 </p>
               </div>
-              <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
+              <Switch
+                checked={emailNotifications}
+                onCheckedChange={setEmailNotifications}
+                className="shrink-0"
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               Saved with your profile when you press Save Changes.
@@ -647,14 +657,14 @@ export default function ProfileSettingsPage() {
         </Card>
 
         {/* ── Danger zone ── */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>Danger Zone</CardTitle>
             <CardDescription>Irreversible account actions</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-0.5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <Label className="text-sm">Clear Local Cache</Label>
                 <p className="text-xs text-muted-foreground">
                   Delete stored login session, offline database, and cached assets, then reload
@@ -663,7 +673,7 @@ export default function ProfileSettingsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full sm:w-auto"
+                className="w-full shrink-0 sm:w-auto"
                 onClick={() => {
                   if (
                     window.confirm(
@@ -674,13 +684,13 @@ export default function ProfileSettingsPage() {
                   }
                 }}
               >
-                <Eraser className="mr-2 h-4 w-4" /> Clear Cache
+                <Eraser className="h-4 w-4" /> Clear Cache
               </Button>
             </div>
             <Separator />
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-sm text-destructive">Delete Account &amp; Data</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <Label className="text-sm text-destructive">Delete Account & Data</Label>
                 <p className="text-xs text-muted-foreground">
                   Permanently delete your account and all data you own
                 </p>
@@ -688,14 +698,14 @@ export default function ProfileSettingsPage() {
               <Button
                 variant="destructive"
                 size="sm"
-                className="w-full sm:w-auto"
+                className="w-full shrink-0 sm:w-auto"
                 onClick={() => {
                   setShowDeleteAccount(true);
                   setDeleteConfirmText("");
                   setDeleteError(null);
                 }}
               >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                <Trash2 className="h-4 w-4" /> Delete Account
               </Button>
             </div>
           </CardContent>
@@ -758,6 +768,6 @@ export default function ProfileSettingsPage() {
           </div>
         </div>
       </DialogTemplate>
-    </div>
+    </DashboardShell>
   );
 }

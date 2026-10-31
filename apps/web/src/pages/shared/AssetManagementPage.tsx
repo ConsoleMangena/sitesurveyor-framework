@@ -1380,9 +1380,9 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                           {deployed && <Badge variant="default">In Use</Badge>}
                         </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{inst.name}</h3>
-                        <p className="text-sm text-muted-foreground">{inst.type} · {inst.make} {inst.model}</p>
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold text-foreground">{inst.name}</h3>
+                        <p className="truncate text-sm text-muted-foreground">{inst.type} · {inst.make} {inst.model}</p>
                       </div>
                       <div className="flex items-baseline gap-1">
                         <span className="text-lg font-bold">${inst.currentValue.toLocaleString()}</span>
@@ -1474,14 +1474,14 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
               .map((inst) => (
                 <Card key={inst.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedAsset(inst)}>
                   <CardContent className="p-5 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-semibold">{inst.name}</h3>
-                      <Badge variant="default">Deployed</Badge>
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="min-w-0 truncate font-semibold">{inst.name}</h3>
+                      <Badge variant="default" className="shrink-0">Deployed</Badge>
                     </div>
                     <div className="space-y-1 text-sm">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Crew</span><span>{inst.assignedTo}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Project</span><span>{inst.assignedProject}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Serial</span><code>{inst.serial}</code></div>
+                      <div className="console-readout"><span className="console-readout-label">Crew</span><span className="console-readout-value">{inst.assignedTo}</span></div>
+                      <div className="console-readout"><span className="console-readout-label">Project</span><span className="console-readout-value">{inst.assignedProject}</span></div>
+                      <div className="console-readout"><span className="console-readout-label">Serial</span><code className="console-readout-value">{inst.serial}</code></div>
                     </div>
                     <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleStatusChange(inst.dbId, "available", { current_project_name: null }); }}>
                       Check In
@@ -1498,13 +1498,13 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                   .map((inst) => (
                     <Card key={inst.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedAsset(inst)}>
                       <CardContent className="p-5 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <h3 className="font-semibold">{inst.name}</h3>
-                          <Badge variant="success">Available</Badge>
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="min-w-0 truncate font-semibold">{inst.name}</h3>
+                          <Badge variant="success" className="shrink-0">Available</Badge>
                         </div>
                         <div className="space-y-1 text-sm">
-                          <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span>{inst.type}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">Serial</span><code>{inst.serial}</code></div>
+                          <div className="console-readout"><span className="console-readout-label">Type</span><span className="console-readout-value">{inst.type}</span></div>
+                          <div className="console-readout"><span className="console-readout-label">Serial</span><code className="console-readout-value">{inst.serial}</code></div>
                         </div>
                         <Button size="sm" onClick={(e) => openDeployModal(e, inst.dbId)}>Deploy</Button>
                       </CardContent>

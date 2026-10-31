@@ -1,0 +1,430 @@
+/* ════════════════════════════════════════════
+   SiteSurveyor — Popup layer
+   Bottom sheet on phones, centred card on desktop.
+   The header and footer stay put; only the body scrolls.
+   ════════════════════════════════════════════ */
+
+/* This file is bundled into its own chunk, which the browser can load before
+   the Tailwind stylesheet. Without this statement the `components` layer is
+   created first and ends up underneath Tailwind's preflight reset, which
+   strips the padding and borders these rules set. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ── Overlay ── */
+  .dlg-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(11, 14, 12, 0.46);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+  }
+
+  .dlg-overlay[data-state='open'] {
+    animation: dlg-overlay-in var(--motion-base) var(--ease-standard);
+  }
+
+  .dlg-overlay[data-state='closed'] {
+    animation: dlg-overlay-out var(--motion-fast) var(--ease-standard) forwards;
+  }
+
+  /* ── Sheet ── */
+  .dlg-sheet {
+    position: fixed;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+    color: var(--text-h);
+    border: 1px solid var(--border);
+    box-shadow: 0 -18px 48px -24px rgba(15, 23, 20, 0.4);
+
+    /* Phone: a sheet that slides up from the bottom edge. */
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 90dvh;
+    border-bottom: none;
+    border-radius: 18px 18px 0 0;
+  }
+
+  /* ── Sheet widths ── */
+  .dlg-sheet[data-size='sm'] {
+    --dlg-w: 24rem;
+  }
+
+  .dlg-sheet[data-size='md'] {
+    --dlg-w: 30rem;
+  }
+
+  .dlg-sheet[data-size='lg'] {
+    --dlg-w: 36rem;
+  }
+
+  .dlg-sheet[data-size='xl'] {
+    --dlg-w: 44rem;
+  }
+
+  .dlg-sheet[data-size='2xl'] {
+    --dlg-w: 56rem;
+  }
+
+  .dlg-sheet[data-size='full'] {
+    --dlg-w: 64rem;
+  }
+
+  .dlg-sheet[data-size='screen'] {
+    --dlg-w: 84rem;
+  }
+
+  /* A full-screen sheet owns the whole viewport on phones. */
+  .dlg-sheet[data-size='screen'] {
+    inset: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .dlg-sheet[data-size='screen'] .dlg-grabber {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .dlg-sheet[data-size='screen'] {
+      inset: 50% auto auto 50%;
+      width: min(calc(100vw - 2rem), var(--dlg-w));
+      height: min(calc(100dvh - 2rem), 62rem);
+      max-height: min(calc(100dvh - 2rem), 62rem);
+      border-radius: 16px;
+    }
+  }
+
+  /* Red lead-in: the same datum mark that opens every console page. */
+  .dlg-sheet::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      var(--accent) 0 46px,
+      color-mix(in oklab, var(--accent) 14%, transparent) 46px 100%
+    );
+  }
+
+  @media (min-width: 640px) {
+    .dlg-sheet {
+      inset: 50% auto auto 50%;
+      width: min(calc(100vw - 2rem), var(--dlg-w, 32rem));
+      max-height: min(88dvh, 56rem);
+      border-bottom: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 26px 70px -28px rgba(15, 23, 20, 0.42);
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  /* ── Sheet animations ── */
+  .dlg-sheet[data-state='open'] {
+    animation: dlg-sheet-up var(--motion-base) var(--ease-emphasized);
+  }
+
+  .dlg-sheet[data-state='closed'] {
+    animation: dlg-sheet-down var(--motion-fast) var(--ease-standard) forwards;
+  }
+
+  @media (min-width: 640px) {
+    .dlg-sheet[data-state='open'] {
+      animation: dlg-card-in var(--motion-base) var(--ease-emphasized);
+    }
+
+    .dlg-sheet[data-state='closed'] {
+      animation: dlg-card-out var(--motion-fast) var(--ease-standard) forwards;
+    }
+  }
+
+  .dlg-sheet[data-anim='off'],
+  .dlg-sheet[data-anim='off'][data-state='open'],
+  .dlg-sheet[data-anim='off'][data-state='closed'] {
+    animation: none;
+  }
+
+  /* ── Regions ── */
+  .dlg-grabber {
+    flex: none;
+    width: 38px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 999px;
+    background: var(--border-heavy);
+  }
+
+  .dlg-header {
+    flex: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 46px 13px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .dlg-header-icon {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in oklab, var(--accent) 22%, transparent);
+    border-radius: 9px;
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+
+  .dlg-header-main {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .dlg-kicker {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .dlg-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+  }
+
+  .dlg-footer {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--surface-muted);
+  }
+
+  .dlg-footer > * {
+    width: 100%;
+  }
+
+  /* Opt-out for footers that must stay on one line. */
+  .dlg-footer-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .dlg-footer-row > * {
+    width: auto;
+  }
+
+  .dlg-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text-muted);
+    transition:
+      background var(--motion-fast) var(--ease-standard),
+      color var(--motion-fast) var(--ease-standard);
+  }
+
+  .dlg-close:hover {
+    background: var(--surface-muted);
+    color: var(--text-h);
+  }
+
+  .dlg-close:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  @media (min-width: 640px) {
+    .dlg-grabber {
+      display: none;
+    }
+
+    .dlg-header {
+      padding: 16px 48px 14px 18px;
+    }
+
+    .dlg-body {
+      padding: 18px;
+    }
+
+    .dlg-footer {
+      flex-direction: row;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px 18px;
+    }
+
+    .dlg-footer > * {
+      width: auto;
+    }
+  }
+
+  /* ── Detail rows inside popups ── */
+  .dlg-field {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 7px 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+    font-size: 13px;
+  }
+
+  .dlg-field:last-child {
+    border-bottom: none;
+  }
+
+  .dlg-field-label {
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  .dlg-field-value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+    color: var(--text-h);
+    font-weight: 500;
+  }
+
+  .dlg-field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 4px 24px;
+  }
+
+  /* ── Confirmation sheet ── */
+  .dlg-alert {
+    --dlg-w: 28rem;
+  }
+
+  .dlg-alert-header {
+    flex: none;
+    padding: 18px 18px 14px;
+  }
+
+  .dlg-alert-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 18px 18px;
+  }
+
+  .dlg-alert-footer {
+    flex: none;
+    gap: 8px;
+    padding: 12px 18px max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--surface-muted);
+  }
+
+  .dlg-alert-footer > * {
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .dlg-alert-footer {
+      gap: 10px;
+      padding: 12px 18px;
+    }
+
+    .dlg-alert-footer > * {
+      width: auto;
+    }
+  }
+}
+
+@keyframes dlg-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dlg-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dlg-sheet-up {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes dlg-sheet-down {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+}
+
+@keyframes dlg-card-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.975);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dlg-card-out {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(0.975);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dlg-overlay,
+  .dlg-sheet {
+    animation: none !important;
+  }
+}

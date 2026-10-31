@@ -498,8 +498,8 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
             <CardTitle className="text-base">Pending Invitations</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ResponsiveTable>
-              <Table className="min-w-[360px]">
+            <ResponsiveTable records>
+              <Table className="console-table min-w-[360px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[200px]">Email</TableHead>
@@ -510,15 +510,18 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
                 <TableBody>
                   {paginatedInvitations.map((invite) => (
                     <TableRow key={invite.id}>
-                      <TableCell className="align-middle">
+                      <TableCell className="align-middle" data-label="Email">
                         <span className="block truncate max-w-[220px]" title={invite.email}>
                           {invite.email}
                         </span>
                       </TableCell>
-                      <TableCell className="align-middle whitespace-nowrap">
+                      <TableCell className="align-middle whitespace-nowrap" data-label="Role">
                         {roleLabels[invite.role] ?? invite.role}
                       </TableCell>
-                      <TableCell className="align-middle hidden sm:table-cell whitespace-nowrap">
+                      <TableCell
+                        className="align-middle hidden sm:table-cell whitespace-nowrap"
+                        data-label="Expires"
+                      >
                         {new Date(invite.expires_at).toLocaleDateString()}
                       </TableCell>
                     </TableRow>

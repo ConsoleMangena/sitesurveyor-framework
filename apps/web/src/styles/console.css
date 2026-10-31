@@ -1,0 +1,298 @@
+/* ════════════════════════════════════════════
+   SiteSurveyor — Console layer
+   Shared furniture for the operational pages: toolbars,
+   record tables, empty states and settings rows.
+   ════════════════════════════════════════════ */
+
+/* This file is bundled into its own chunk, which the browser can load before
+   the Tailwind stylesheet. Without this statement the `components` layer is
+   created first and ends up underneath Tailwind's preflight reset, which
+   strips the padding and borders these rules set. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ── Page frame ── */
+  .console-frame {
+    display: flex;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  @media (min-width: 640px) {
+    .console-frame {
+      gap: 22px;
+    }
+  }
+
+  /* ── Toolbar: filters and actions sit on one line, then stack ── */
+  .console-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .console-toolbar > * {
+    min-width: 0;
+  }
+
+  .console-toolbar-search {
+    flex: 1 1 220px;
+    min-width: 0;
+    max-width: 26rem;
+  }
+
+  .console-toolbar-select {
+    flex: 0 1 auto;
+    width: 100%;
+  }
+
+  @media (max-width: 639px) {
+    .console-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .console-toolbar > * {
+      width: 100%;
+      max-width: none;
+    }
+
+    /* The toolbar stacks, so the search wrapper's flex-basis would become a
+       height. Reset it to the content height. */
+    .console-toolbar-search,
+    .console-toolbar-select {
+      flex: 0 0 auto;
+    }
+
+    .console-toolbar-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+  }
+
+  /* ── Record tables ── */
+  .console-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .console-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .console-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border-heavy);
+    background: var(--surface-muted);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .console-table tbody td {
+    padding: 11px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+    vertical-align: middle;
+    color: var(--text);
+  }
+
+  .console-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .console-table tbody tr:hover td {
+    background: color-mix(in oklab, var(--surface-muted) 55%, transparent);
+  }
+
+  .console-table .console-num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-h);
+  }
+
+  /* Phones: each row becomes a labelled record instead of a sideways table.
+     Declared unlayered so it outranks the cell utilities (nowrap, padding). */
+
+  /* ── Empty state ── */
+  .console-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 34px 18px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+
+  .console-empty-icon {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--border-heavy);
+    border-radius: 10px;
+    color: var(--text-muted);
+  }
+
+  .console-empty-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-h);
+  }
+
+  /* ── Pagination ── */
+  .console-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 4px;
+  }
+
+  /* ── Settings rows ── */
+  .console-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  }
+
+  .console-setting:last-child {
+    border-bottom: none;
+  }
+
+  .console-setting-text {
+    min-width: 0;
+  }
+
+  .console-setting-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-h);
+  }
+
+  .console-setting-hint {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 639px) {
+    .console-setting {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+  }
+
+  /* ── Label / value readouts ── */
+  .console-readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .console-readout-label {
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  .console-readout-value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+    color: var(--text-h);
+    font-weight: 500;
+  }
+}
+
+/* ── Phone record view ──
+   Unlayered on purpose: the record layout has to outrank the table cell
+   utilities (whitespace-nowrap, fixed padding, min widths). */
+@media (max-width: 640px) {
+  .console-table,
+  .console-table tbody,
+  .console-table tbody tr,
+  .console-table tbody td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .console-table thead {
+    display: none;
+  }
+
+  .console-table tbody tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .console-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .console-table tbody td {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 12px;
+    align-items: baseline;
+    padding: 3px 0;
+    border: none;
+    white-space: normal;
+    /* Values line up in one column instead of centring or drifting right. */
+    text-align: left;
+  }
+
+  .console-table tbody td::before {
+    content: attr(data-label);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .console-table tbody td:first-child {
+    display: block;
+    padding-bottom: 7px;
+    font-weight: 600;
+    color: var(--text-h);
+  }
+
+  .console-table tbody td:first-child::before {
+    display: none;
+  }
+
+  /* Row controls line up with the values above them instead of drifting right. */
+  .console-table tbody td .console-table-actions {
+    justify-content: flex-start;
+  }
+}

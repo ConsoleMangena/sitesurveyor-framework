@@ -1368,7 +1368,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
             <DocumentThemeSelector
               value={defaults.theme}
               onChange={setTheme}
-              className="w-[130px]"
+              className="w-full sm:w-[130px]"
             />
             <Button
               variant="outline"
@@ -1448,7 +1448,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
           />
         </div>
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

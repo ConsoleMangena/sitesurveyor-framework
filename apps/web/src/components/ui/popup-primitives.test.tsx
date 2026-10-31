@@ -45,7 +45,7 @@ describe("alert dialog primitive", () => {
         </AlertDialogContent>
       </AlertDialog>,
     );
-    expect(screen.getByRole("alertdialog").className).toContain("rounded-lg");
+    expect(screen.getByRole("alertdialog").className).toContain("dlg-sheet");
     expect(screen.getByText("Delete?")).toBeTruthy();
     expect(screen.getByText("The data will go.")).toBeTruthy();
     expect(screen.getByText("Delete")).toBeTruthy();

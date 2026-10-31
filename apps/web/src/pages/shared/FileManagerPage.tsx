@@ -47,7 +47,8 @@ import {
 } from "../../lib/repositories/attachments.ts";
 import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
-import { DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
+import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -667,18 +668,26 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
 
   return (
     <DashboardShell className="hub-body file-manager-page">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">File Manager</h1>
-          <p className="text-sm text-muted-foreground">
-            Secure storage for plans and survey data.
-          </p>
-        </div>
-        <Button onClick={openFilePicker} disabled={uploading || viewMode === "trash"} className="gap-2 w-full sm:w-auto">
-          <Upload size={16} />
-          {uploading ? "Uploading..." : viewMode === "trash" ? "Upload disabled in trash" : "Upload Files"}
-        </Button>
-      </div>
+      <DashboardHeader
+        badge={<Badge variant="secondary">Secure storage</Badge>}
+        title="File Manager"
+        subtitle="Secure storage for plans and survey data."
+        meta={`${files.length} ${files.length === 1 ? "file" : "files"}`}
+        actions={
+          <Button
+            onClick={openFilePicker}
+            disabled={uploading || viewMode === "trash"}
+            className="gap-2 w-full sm:w-auto"
+          >
+            <Upload size={16} />
+            {uploading
+              ? "Uploading..."
+              : viewMode === "trash"
+                ? "Upload disabled in trash"
+                : "Upload Files"}
+          </Button>
+        }
+      />
 
       {error ? (
         <ErrorNotice tone="danger">

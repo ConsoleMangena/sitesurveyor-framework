@@ -58,6 +58,8 @@ export function ProjectStatusChart({ projects }: ProjectStatusChartProps) {
           {total} total
         </span>
       }
+      className="h-full"
+      contentClassName="flex flex-col justify-center"
     >
       {total === 0 ? (
         <div className="dash-empty">

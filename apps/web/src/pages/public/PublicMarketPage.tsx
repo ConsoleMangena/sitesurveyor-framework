@@ -1,21 +1,3 @@
-/*
-Design contract — /market public surface (REVISED 2026-10-23: contained map +
-Discovery Rails replacing the card grid): THESIS: the open market as a live
-directory — a contained, bordered basemap card carrying the pins, a market-pulse
-stat strip, then horizontal Discovery Rails (Fresh on the market, gear,
-professionals, jobs, firms, training) with snap-scroll tiles; searching dims
-every non-matching pin on the map and flips the registry into a flat
-editorial-row results list with Load more; co-located pins collapse into
-numbered clusters that zoom in or open an in-map list. OWN-WORLD: app shadcn tokens throughout; one accent hue per
-directory kind carried from data — amber = listings, cyan = professionals,
-violet = jobs, emerald = firms, rose = training — echoed in pins, rail
-accents, legend and hover tints; tabular numerals for prices; no custom
-display face. STORY: visitor sees the bordered map and its pinned activity in
-seconds, browses rails, searches to flatten results, opens a detail dialog;
-rail items pan the map and pins scroll the list (two-way sync). FINISH:
-unreviewed and undocumented is unfinished; this build ends with the finish
-review, the verdict, and DESIGN.md.
-*/
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -379,6 +361,9 @@ export default function PublicMarketPage() {
     () => (data ? buildRails(data, listingCategory, scope) : []),
     [data, listingCategory, scope],
   );
+  const visibleRails = rails.filter(
+    (rail) => scope === "all" || rail.kinds.includes(scope as MarketDotKind),
+  );
 
   const flatItems: RailItem[] = useMemo(() => {
     if (!data) return [];
@@ -733,67 +718,51 @@ export default function PublicMarketPage() {
       </header>
 
       <main>
-        {/* Dedicated Hero Header Banner - positioned cleanly above the map so text does not obscure map pins */}
-        <section className="mx-auto w-full max-w-7xl px-4 pt-10 pb-6 sm:px-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <div className="max-w-3xl">
-              <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                  <span className="web3-live-dot" aria-hidden="true" />
-                  Live marketplace
-                </span>
-                <span aria-hidden="true">•</span>
-                <span>
-                  <span className="font-mono font-semibold tabular-nums text-foreground">
-                    {liveTotals ? liveTotals.items : "—"}
-                  </span>{" "}
-                  live items
-                </span>
-                <span aria-hidden="true">•</span>
-                <span>
-                  <span className="font-mono font-semibold tabular-nums text-foreground">
-                    {liveTotals ? liveTotals.countries : "—"}
-                  </span>{" "}
-                  countries
-                </span>
-                {addedThisWeek > 0 ? (
-                  <>
-                    <span aria-hidden="true">•</span>
-                    <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                      {addedThisWeek} added this week
-                    </span>
-                  </>
-                ) : null}
-              </div>
-              <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-5xl" style={{ color: "var(--web3-text)" }}>
-                The Surveyor’s Market.
-              </h1>
-              <p className="mt-2.5 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: "var(--web3-text-muted)" }}>
-                Instruments, professionals, jobs, firms, and training —
-                published live by SiteSurveyor workspaces worldwide.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <section className="mx-auto grid w-full max-w-7xl items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
+          <div className="max-w-xl">
+            <h1 className="market-hero-title text-balance text-[var(--web3-text)]">
+              The Surveyor’s <span className="text-[var(--web3-brand)]">Market.</span>
+            </h1>
+            <p className="mt-5 max-w-[58ch] text-base leading-7 text-[var(--web3-text-muted)] sm:text-lg sm:leading-8">
+              Instruments, professionals, jobs, firms, and training — published live by SiteSurveyor workspaces worldwide.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={scrollToRegistry}
-                className="web3-btn web3-btn-primary h-8.5 sm:h-9 text-xs sm:text-sm px-3.5 sm:px-4"
+                className="web3-btn web3-btn-primary min-h-11 px-5 text-sm"
               >
-                Browse registry
-                <ChevronDown className="size-3.5 sm:size-4" aria-hidden="true" />
+                Browse the registry
+                <ChevronDown className="size-4" aria-hidden="true" />
               </button>
+              <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                <span className="web3-live-dot" aria-hidden="true" />
+                Live marketplace
+              </span>
             </div>
+            {addedThisWeek > 0 ? (
+              <p className="mt-4 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                {addedThisWeek} new {addedThisWeek === 1 ? "item" : "items"} added this week
+              </p>
+            ) : null}
           </div>
-        </section>
 
-        {/* Map Section: contained, bordered card inside the page container */}
-        <section aria-label="Interactive market map" className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-            <Suspense
-              fallback={
-                <div className="h-[500px] w-full animate-pulse bg-muted/30 sm:h-[600px] lg:h-[660px]" />
-              }
-            >
+          <div aria-label="Interactive market map" className="market-map-frame overflow-hidden rounded-2xl border border-border/80 bg-card">
+            <div className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-accent-bg text-[var(--web3-brand)]">
+                  <Globe2 className="size-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="market-map-title text-foreground">Explore the live map</h2>
+                  <p className="text-[11px] text-muted-foreground">Select a pin to preview the opportunity</p>
+                </div>
+              </div>
+              <span className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
+                {liveTotals ? `${liveTotals.items} live items` : "Loading activity"}
+              </span>
+            </div>
+            <Suspense fallback={<div className="h-[360px] w-full animate-pulse bg-muted/30 sm:h-[440px] lg:h-[500px]" />}>
               <PublicMarketGlobe
                 ref={globeRef}
                 dots={dots}
@@ -803,21 +772,14 @@ export default function PublicMarketPage() {
                 failed={failed}
                 onSelect={handlePinSelect}
                 onRetry={retry}
+                heightClassName="h-[360px] sm:h-[440px] lg:h-[500px]"
               />
             </Suspense>
+            <div className="flex items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-[11px] text-muted-foreground sm:px-5">
+              <span>Two-way map and registry discovery</span>
+              <span className="shrink-0 font-mono tabular-nums">{totalPoints} mapped</span>
+            </div>
           </div>
-        </section>
-
-        <section
-          aria-label="Web3 market terminal"
-          className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6"
-        >
-          <Web3MarketTerminal
-            snapshot={market.snapshot}
-            loading={market.loading}
-            error={market.error}
-            onRefresh={market.refresh}
-          />
         </section>
 
         {failed ? null : loading ? (
@@ -826,149 +788,158 @@ export default function PublicMarketPage() {
           <MarketPulseStrip data={data} addedThisWeek={addedThisWeek} />
         )}
 
-        <section ref={registryRef} className="mx-auto w-full max-w-7xl scroll-mt-16 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                Browse the market
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-                Pick a section, or search to see every match in one list.
-              </p>
-            </div>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div role="group" aria-label="Filter by kind" className="flex w-full sm:w-fit items-center gap-1 overflow-x-auto p-1 rounded-lg border border-border/70 bg-card shadow-sm scrollbar-none sm:flex-wrap">
-                {(
-                  [
-                    ["all", "Everything", true],
-                    ["listing", "Listings", true],
-                    ["professional", "Professionals", true],
-                    ["job", "Jobs", true],
-                    ["firm", "Firms", true],
-                    ["event", "Training", true],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={scope === value}
-                    onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}
-                    className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm transition-colors ${
-                      scope === value
-                        ? "bg-accent-bg font-medium text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {label}
-                    {value !== "all" ? (
-                      <span className="ml-1.5 font-mono text-[11px] sm:text-xs tabular-nums text-muted-foreground">
-                        {(value === "listing" && data?.listings.length) ||
-                          (value === "professional" &&
-                            data?.professionals.length) ||
-                          (value === "job" && data?.jobs.length) ||
-                          (value === "firm" && data?.firms.length) ||
-                          (value === "event" && data?.events.length) || 0}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
+        <section ref={registryRef} className="mt-10 scroll-mt-16 border-y border-border/70 bg-card/45 sm:mt-12">
+          <div className="mx-auto w-full max-w-7xl space-y-9 px-4 py-12 sm:px-6 sm:py-16">
+            <div className="flex flex-col gap-6">
+              <div className="max-w-2xl">
+                <h2 className="market-section-title text-balance text-foreground">
+                  Browse the market
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+                  Pick a section, or search to see every match in one list.
+                </p>
               </div>
-              <div className="flex flex-col sm:flex-row w-full sm:items-center gap-2 lg:w-auto">
-                <div className="relative min-w-0 w-full sm:flex-1 lg:w-[320px]">
-                  <Search
-                    className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    placeholder="Search instruments, people, places…"
-                    value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setFlatLimit(FLAT_PAGE_SIZE);
-                    }}
-                    className="h-9 pl-9 pr-9 text-xs sm:text-sm"
-                  />
-                  {search ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearch("");
+
+              <div className="space-y-5">
+                <div className="flex gap-2.5">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <Input
+                      placeholder="Search instruments, people, places…"
+                      value={search}
+                      onChange={(event) => {
+                        setSearch(event.target.value);
                         setFlatLimit(FLAT_PAGE_SIZE);
                       }}
-                      aria-label="Clear search"
-                      className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                      <X className="size-3.5" aria-hidden="true" />
-                    </button>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-2">
+                      className="h-12 rounded-xl border-border/80 bg-background pl-11 pr-11 text-sm shadow-none"
+                    />
+                    {search ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch("");
+                          setFlatLimit(FLAT_PAGE_SIZE);
+                        }}
+                        aria-label="Clear search"
+                        className="absolute right-1.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
                   <Select
-                  value={sort}
-                  onValueChange={(value) => {
-                    setSort(value as SortKey);
-                    setFlatLimit(FLAT_PAGE_SIZE);
-                  }}
-                >
-                  <SelectTrigger
-                    aria-label="Sort results"
-                    className="h-9 flex-1 sm:w-[190px] text-xs sm:text-sm shrink-0"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="newest">Newest first</SelectItem>
-                    <SelectItem value="price-asc">Price: low to high</SelectItem>
-                    <SelectItem value="price-desc">Price: high to low</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button type="button" variant={savedSearch ? "default" : "outline"} size="icon" className="size-9 shrink-0" onClick={toggleSavedSearch} aria-label={savedSearch ? "Remove saved search" : "Save this search"} title={savedSearch ? "Saved search" : "Save this search"}>
-                  <Bookmark className="size-4" fill={savedSearch ? "currentColor" : "none"} aria-hidden="true" />
-                </Button>
-                <Button type="button" variant="outline" size="icon" className="size-9 shrink-0 sm:hidden" onClick={() => setMobileFiltersOpen((value) => !value)} aria-expanded={mobileFiltersOpen} aria-label="Toggle marketplace filters">
-                  <SlidersHorizontal className="size-4" aria-hidden="true" />
-                </Button>
-                </div>
-              </div>
-            </div>
-
-            {showPanel("listing") && !loading && benchmarks.length > 0 ? (
-              <RateBenchmarks benchmarks={benchmarks} />
-            ) : null}
-
-            {(scope === "all" || scope === "listing") && !loading ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Gear category
-                </span>
-                {(
-                  [
-                    ["all", "Everything"],
-                    ["instrument", "Instruments"],
-                    ["accessory", "Accessories"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={listingCategory === value}
-                    onClick={() => {
-                      setListingCategory(value);
+                    value={sort}
+                    onValueChange={(value) => {
+                      setSort(value as SortKey);
                       setFlatLimit(FLAT_PAGE_SIZE);
                     }}
-                    className={cn(
-                      "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                      listingCategory === value
-                        ? "border-primary bg-primary text-primary-foreground shadow-xs"
-                        : "border-border/80 bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
                   >
-                    {label}
-                  </button>
-                ))}
+                    <SelectTrigger aria-label="Sort results" className="hidden h-12 w-[190px] shrink-0 rounded-xl bg-background text-sm sm:flex">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      <SelectItem value="newest">Newest first</SelectItem>
+                      <SelectItem value="price-asc">Price: low to high</SelectItem>
+                      <SelectItem value="price-desc">Price: high to low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant={savedSearch ? "default" : "outline"}
+                    size="icon"
+                    className="size-12 shrink-0 rounded-xl bg-background"
+                    onClick={toggleSavedSearch}
+                    aria-label={savedSearch ? "Remove saved search" : "Save this search"}
+                    title={savedSearch ? "Saved search" : "Save this search"}
+                  >
+                    <Bookmark className="size-4" fill={savedSearch ? "currentColor" : "none"} aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-12 shrink-0 rounded-xl bg-background sm:hidden"
+                    onClick={() => setMobileFiltersOpen(true)}
+                    aria-expanded={mobileFiltersOpen}
+                    aria-label="Toggle marketplace filters"
+                  >
+                    <SlidersHorizontal className="size-4" aria-hidden="true" />
+                  </Button>
+                </div>
+
+                <div role="group" aria-label="Filter by kind" className="scrollbar-none flex items-center gap-1 overflow-x-auto border-b border-border/80">
+                  {(
+                    [
+                      ["all", "Everything"],
+                      ["listing", "Listings"],
+                      ["professional", "Professionals"],
+                      ["job", "Jobs"],
+                      ["firm", "Firms"],
+                      ["event", "Training"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={scope === value}
+                      onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}
+                      className={cn(
+                        "relative min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors sm:px-4",
+                        scope === value
+                          ? "border-primary text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {label}
+                      {value !== "all" ? (
+                        <span className="ml-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                          {(value === "listing" && data?.listings.length) ||
+                            (value === "professional" && data?.professionals.length) ||
+                            (value === "job" && data?.jobs.length) ||
+                            (value === "firm" && data?.firms.length) ||
+                            (value === "event" && data?.events.length) || 0}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+
+                {showPanel("listing") && !loading && benchmarks.length > 0 ? (
+                  <RateBenchmarks benchmarks={benchmarks} />
+                ) : null}
+
+                {(scope === "all" || scope === "listing") && !loading ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="mr-1 text-xs font-medium text-muted-foreground">Gear category</span>
+                    {(
+                      [
+                        ["all", "Everything"],
+                        ["instrument", "Instruments"],
+                        ["accessory", "Accessories"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={listingCategory === value}
+                        onClick={() => {
+                          setListingCategory(value);
+                          setFlatLimit(FLAT_PAGE_SIZE);
+                        }}
+                        className={cn(
+                          "min-h-10 rounded-full border px-4 text-xs font-medium transition-colors",
+                          listingCategory === value
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            </div>
 
           {failed ? (
             <LoadErrorPanel failure={failure} onRetry={retry} />
@@ -982,15 +953,27 @@ export default function PublicMarketPage() {
                     ? "No results match your filters."
                     : `Showing ${visibleFlatItems.length} of ${flatItems.length} results${seeAll ? ` in ${seeAll.title}` : ""}`}
                 </p>
-                <Button type="button" variant="outline" size="sm" onClick={clearFlatMode} className="h-8 text-xs">
-                  ← Back to rails
+                <Button type="button" variant="outline" size="sm" onClick={clearFlatMode} className="min-h-10 px-4 text-xs">
+                  Back to discovery
                 </Button>
               </div>
               {flatItems.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Nothing matches — try a different search or clear filters.
-                  </p>
+                <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+                  <Search className="size-8 text-muted-foreground/60" aria-hidden="true" />
+                  <h3 className="mt-4 text-base font-semibold text-foreground">No matches found</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Try a different search or clear your filters.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-5 min-h-10"
+                    onClick={() => {
+                      clearFlatMode();
+                      setScope("all");
+                      setListingCategory("all");
+                    }}
+                  >
+                    Clear search and filters
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -1020,21 +1003,47 @@ export default function PublicMarketPage() {
                 </>
               )}
             </div>
+          ) : visibleRails.some((rail) => rail.items.length > 0) ? (
+            <div className="space-y-12">
+              {visibleRails.map((rail) => (
+                <MarketRail
+                  key={rail.id}
+                  rail={rail}
+                  highlightedId={highlighted?.id ?? null}
+                  onSelect={handleItemSelect}
+                  onSeeAll={handleSeeAll}
+                />
+              ))}
+            </div>
           ) : (
-            <div className="space-y-10">
-              {rails
-                .filter((rail) => scope === "all" || rail.kinds.includes(scope as MarketDotKind))
-                .map((rail) => (
-                  <MarketRail
-                    key={rail.id}
-                    rail={rail}
-                    highlightedId={highlighted?.id ?? null}
-                    onSelect={handleItemSelect}
-                    onSeeAll={handleSeeAll}
-                  />
-                ))}
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+              <PackageSearch className="size-8 text-muted-foreground/60" aria-hidden="true" />
+              <h3 className="mt-4 text-base font-semibold text-foreground">Nothing in this section yet</h3>
+              <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">Try another category or reset the filters to explore the full market.</p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-5 min-h-10"
+                onClick={() => {
+                  clearFlatMode();
+                  setScope("all");
+                  setListingCategory("all");
+                }}
+              >
+                Reset filters
+              </Button>
             </div>
           )}
+          </div>
+        </section>
+
+        <section aria-label="Web3 market terminal" className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
+          <Web3MarketTerminal
+            snapshot={market.snapshot}
+            loading={market.loading}
+            error={market.error}
+            onRefresh={market.refresh}
+          />
         </section>
       </main>
 
@@ -1067,33 +1076,64 @@ export default function PublicMarketPage() {
       </footer>
 
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-        <SheetContent side="bottom" className="web3-theme max-h-[85vh] rounded-t-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <SheetHeader className="px-0 pr-8">
-            <SheetTitle className="text-base">Filter Surveyor’s Market</SheetTitle>
-            <SheetDescription className="text-xs">Choose a section and sorting option.</SheetDescription>
+        <SheetContent side="bottom" className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-3xl p-0">
+          <SheetHeader className="shrink-0 border-b border-border/80 px-5 py-5 pr-14 text-left">
+            <SheetTitle className="market-sheet-title">Filter the market</SheetTitle>
+            <SheetDescription>Choose what to discover and how to order it.</SheetDescription>
           </SheetHeader>
-          <div className="space-y-3 pb-1">
-            <div className="grid grid-cols-2 gap-2">
-              {([['all','Everything'],['listing','Listings'],['professional','Professionals'],['job','Jobs'],['firm','Firms'],['event','Training']] as const).map(([value,label]) => (
-                <Button
-                  key={value}
-                  type="button"
-                  size="sm"
-                  variant={scope === value ? "default" : "outline"}
-                  className="h-8 justify-start px-3 text-xs font-medium"
-                  onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}
-                >
-                  {label}
-                </Button>
-              ))}
+          <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+            <fieldset>
+              <legend className="mb-3 text-sm font-semibold text-foreground">Marketplace section</legend>
+              <div className="grid grid-cols-2 gap-2.5">
+                {([["all", "Everything"], ["listing", "Listings"], ["professional", "Professionals"], ["job", "Jobs"], ["firm", "Firms"], ["event", "Training"]] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={scope === value ? "default" : "outline"}
+                    className="min-h-11 justify-start px-3.5 text-sm font-medium"
+                    onClick={() => { setSeeAll(null); setScope(value); setFlatLimit(FLAT_PAGE_SIZE); }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+
+            {(scope === "all" || scope === "listing") ? (
+              <fieldset>
+                <legend className="mb-3 text-sm font-semibold text-foreground">Gear category</legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {([["all", "All"], ["instrument", "Instruments"], ["accessory", "Accessories"]] as const).map(([value, label]) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant={listingCategory === value ? "default" : "outline"}
+                      className="min-h-11 px-2 text-xs"
+                      onClick={() => { setListingCategory(value); setFlatLimit(FLAT_PAGE_SIZE); }}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
+
+            <div>
+              <label className="mb-3 block text-sm font-semibold text-foreground">Sort results</label>
+              <Select value={sort} onValueChange={(value) => { setSort(value as SortKey); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                <SelectTrigger aria-label="Mobile sort results" className="h-11 w-full text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest first</SelectItem>
+                  <SelectItem value="price-asc">Price: low to high</SelectItem>
+                  <SelectItem value="price-desc">Price: high to low</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={sort} onValueChange={(value) => { setSort(value as SortKey); setFlatLimit(FLAT_PAGE_SIZE); }}>
-              <SelectTrigger aria-label="Mobile sort results" className="h-9 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="newest">Newest first</SelectItem><SelectItem value="price-asc">Price: low to high</SelectItem><SelectItem value="price-desc">Price: high to low</SelectItem></SelectContent>
-            </Select>
-            <div className="flex items-center justify-end pt-1">
-              <Button size="sm" className="h-8 px-3.5 text-xs font-medium" onClick={() => setMobileFiltersOpen(false)}>Show results</Button>
-            </div>
+          </div>
+          <div className="shrink-0 border-t border-border/80 bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <Button className="h-12 w-full text-sm font-semibold" onClick={() => setMobileFiltersOpen(false)}>
+              Show marketplace results
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -1153,29 +1193,15 @@ function MarketPulseStrip({
   ];
 
   return (
-    <section
-      aria-label="Market pulse"
-      className="mx-auto w-full max-w-7xl space-y-3 px-4 pt-8 sm:px-6"
-    >
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3 lg:grid-cols-7">
+    <section aria-label="Market pulse" className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+      <div className="scrollbar-none flex snap-x overflow-x-auto rounded-2xl border border-border/80 bg-card">
         {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="group rounded-md border border-border/80 bg-card px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,20,0.03)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-border hover:shadow-[0_10px_24px_rgba(15,23,20,0.06)]"
-          >
-            <p className="flex items-center gap-1.5 font-mono text-2xl font-semibold leading-none tracking-tight tabular-nums">
-              {stat.color ? (
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: stat.color }}
-                  aria-hidden="true"
-                />
-              ) : null}
+          <div key={stat.label} className="min-w-[142px] flex-1 snap-start border-r border-border/80 px-4 py-4 last:border-r-0">
+            <p className="flex items-center gap-2 font-mono text-xl font-semibold leading-none tabular-nums text-foreground">
+              {stat.color ? <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: stat.color }} aria-hidden="true" /> : null}
               {stat.value}
             </p>
-            <p className="mt-1.5 truncate text-xs text-muted-foreground">
-              {stat.label}
-            </p>
+            <p className="mt-2 whitespace-nowrap text-[11px] text-muted-foreground">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -1185,17 +1211,11 @@ function MarketPulseStrip({
 
 function MarketPulseStripSkeleton() {
   return (
-    <section
-      aria-hidden="true"
-      className="mx-auto w-full max-w-6xl space-y-3 px-4 pt-10 sm:px-6"
-    >
-      <div className="grid grid-cols-2 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
+    <section aria-hidden="true" className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+      <div className="flex overflow-hidden rounded-2xl border border-border/80 bg-card">
         {Array.from({ length: 7 }).map((_, index) => (
-          <div
-            key={index}
-            className="rounded-none border border-border bg-card px-4 py-3.5"
-          >
-            <div className="h-6 w-10 animate-pulse rounded bg-muted" />
+          <div key={index} className="min-w-[142px] flex-1 border-r border-border/80 px-4 py-4 last:border-r-0">
+            <div className="h-5 w-10 animate-pulse rounded bg-muted" />
             <div className="mt-2 h-3 w-20 animate-pulse rounded bg-muted" />
           </div>
         ))}

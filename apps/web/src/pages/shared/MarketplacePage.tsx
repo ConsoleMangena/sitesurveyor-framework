@@ -849,7 +849,7 @@ export default function MarketplacePage({
   }
 
   return (
-    <DashboardShell>
+    <DashboardShell className="hub-body">
       {fetchError && (
         <Alert variant="destructive">
           <AlertDescription>{fetchError}</AlertDescription>
@@ -866,8 +866,8 @@ export default function MarketplacePage({
         description="Browse available survey instruments and calibration services"
         actions={
           isPlatformAdmin ? (
-            <Button onClick={openCreateListing}>
-              <Plus className="mr-2 h-4 w-4" /> List a global instrument
+            <Button onClick={openCreateListing} className="gap-2">
+              <Plus className="h-4 w-4" /> List a global instrument
             </Button>
           ) : undefined
         }

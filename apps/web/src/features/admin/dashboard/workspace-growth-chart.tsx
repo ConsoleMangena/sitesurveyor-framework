@@ -47,6 +47,16 @@ export function WorkspaceGrowthChart({ workspaces }: WorkspaceGrowthChartProps) 
   const total = data.reduce((sum, day) => sum + day.count, 0);
   const peak = data.reduce((max, day) => Math.max(max, day.count), 0);
   const average = total / (data.length || 1);
+  // Every fifth day: the card spans the whole row now, and two end labels leave
+  // the rest of a 1100px axis unexplained.
+  const ticks = Array.from(
+    new Set(
+      data
+        .filter((_, index) => index % 5 === 0)
+        .map((day) => day.date)
+        .concat(data[data.length - 1]?.date ? [data[data.length - 1].date] : []),
+    ),
+  );
 
   return (
     <DashboardCard
@@ -101,7 +111,7 @@ export function WorkspaceGrowthChart({ workspaces }: WorkspaceGrowthChartProps) 
               tickFormatter={(value) => format(parseISO(value), "MMM d")}
               tickLine={false}
               tickMargin={8}
-              ticks={[data[0]?.date, data[data.length - 1]?.date].filter(Boolean) as string[]}
+              ticks={ticks}
             />
             <YAxis axisLine={false} tickLine={false} tickMargin={6} width={32} allowDecimals={false} />
             <ChartTooltip

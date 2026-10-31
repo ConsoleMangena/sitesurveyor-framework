@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import "@/styles/console.css";
 import type { ProjectWithOrg } from "@/lib/repositories/projects";
 
 type StatusFilter = "All" | "Active" | "Completed";
@@ -56,6 +57,13 @@ function ProjectStatusBadge({ status }: { status: string }) {
   }
   return <Badge variant="secondary">{status}</Badge>;
 }
+
+/** Column labels for the phone record view, keyed by column id. */
+const COLUMN_LABELS: Record<string, string> = {
+  name: "Project",
+  status: "Status",
+  created_at: "Created",
+};
 
 export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
   const [filter, setFilter] = React.useState<StatusFilter>("All");
@@ -206,7 +214,7 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
       className="h-full"
     >
       <div className="flex flex-col gap-4">
-        <div className="px-4 sm:px-5">
+        <div className="px-4 sm:px-6">
           <ToggleGroup
             type="single"
             value={filter}
@@ -227,12 +235,16 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
         </div>
 
         <div className="dash-table-scroll">
-          <Table className="min-w-[520px]">
+          <Table className="console-table min-w-[520px]">
             <TableHeader className="border-t">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className="first:pl-6 last:pr-6"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(header.column.columnDef.header, header.getContext())}
@@ -246,7 +258,13 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                      <TableCell
+                        key={cell.id}
+                        data-label={COLUMN_LABELS[cell.column.id]}
+                        className="align-middle first:pl-6 last:pr-6"
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
                     ))}
                   </TableRow>
                 ))

@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import {
-  DashboardGrid,
   DashboardHeader,
   DashboardSection,
 } from "@/components/dashboard/DashboardShell";
@@ -156,15 +155,13 @@ export function AdminPlatformDashboard({
             />
           </div>
 
+          {/* Both cards take the full row: the growth trend reads better wide,
+              and the workspace records clip beside anything narrower. */}
           <DashboardSection title="Growth & workspaces">
-            <DashboardGrid>
-              <div className="md:col-span-12 xl:col-span-5">
-                <WorkspaceGrowthChart workspaces={workspaces} />
-              </div>
-              <div className="md:col-span-12 xl:col-span-7">
-                <RecentWorkspacesTable workspaces={workspaces} ownerLabels={ownerLabels} />
-              </div>
-            </DashboardGrid>
+            <div className="flex flex-col gap-4 sm:gap-5">
+              <WorkspaceGrowthChart workspaces={workspaces} />
+              <RecentWorkspacesTable workspaces={workspaces} ownerLabels={ownerLabels} />
+            </div>
           </DashboardSection>
         </>
       )}

@@ -1,20 +1,29 @@
-import { useState, useCallback } from "react";
-import { Banknote, Loader2, Plus, Download, CreditCard, Wallet } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import {
+  Banknote,
+  Check,
+  Copy,
+  CreditCard,
+  Download,
+  ExternalLink,
+  Loader2,
+  Plus,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
+import type { Connection, Transaction } from "@solana/web3.js";
 
-import { cn } from "@/lib/utils";
 import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
 import { PageForm } from "@/components/templates/PageForm.tsx";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
-import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
 import WalletBalancesStrip from "../../features/phantom/components/WalletBalancesStrip.tsx";
+import WalletMethodsCard from "../../features/phantom/components/WalletMethodsCard.tsx";
 import MetricsTiles from "../../components/finance/MetricsTiles.tsx";
 import TransactionTable from "../../components/finance/TransactionTable.tsx";
 import MarketplaceWalletCard from "../../components/finance/MarketplaceWalletCard.tsx";
@@ -23,7 +32,12 @@ import { formatCurrency } from "../../components/finance/FinanceUtils.ts";
 import { listInvoices } from "../../lib/repositories/invoices.ts";
 import type { InvoiceWithDetails } from "../../lib/repositories/invoices.ts";
 import { createPayment, listPayments } from "../../lib/repositories/payments.ts";
-import { initiatePesepayCheckout } from "../../lib/repositories/pesepay.ts";
+import {
+  getPesepayWallet,
+  initiatePesepayCheckout,
+  payInvoiceWithBalance,
+  type PesepayWalletRow,
+} from "../../lib/repositories/pesepay.ts";
 import type { PaymentWithInvoice } from "../../lib/repositories/payments.ts";
 import {
   deletePaymentMethod,
@@ -37,18 +51,23 @@ import {
   type WorkspaceMemberRow,
 } from "../../lib/repositories/workspaces.ts";
 import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
-import PhantomWalletCard from "../../features/phantom/components/PhantomWalletCard.tsx";
 import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
+import { CUSTOM_WALLET_NAME } from "../../features/phantom/lib/customWalletAdapter.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import {
   estimateUsdcTransferFee,
   payInvoiceWithUsdc,
 } from "../../features/phantom/payments/phantomPay.ts";
+import type { WalletPaymentAdapter } from "../../features/phantom/payments/phantomPay.ts";
 import {
+  explorerAccountUrl,
   isOnChainPaymentConfigured,
   SOLANA_CLUSTER,
+  SOLANA_CLUSTER_LABEL,
+  SOLANA_TREASURY_ADDRESS,
   SOLANA_USDC_MINT,
 } from "../../features/phantom/lib/config.ts";
+import "../../styles/billing.css";
 
 interface BillingPageProps {
   workspaceId: string;
@@ -56,12 +75,35 @@ interface BillingPageProps {
   isPlatformAdmin?: boolean;
 }
 
+function shorten(value: string, lead = 6, tail = 6): string {
+  return `${value.slice(0, lead)}…${value.slice(-tail)}`;
+}
+
+function methodIcon(method: PaymentMethodRow) {
+  const label = method.label.toLowerCase();
+  if (label.includes("metamask")) return <img src="/metamask.svg" alt="" />;
+  if (label.includes("solflare")) return <img src="/solflare.svg" alt="" />;
+  if (method.type === "Crypto Wallet") return <img src="/solanaLogoMark.svg" alt="" />;
+  return <span>{method.label.slice(0, 2).toUpperCase()}</span>;
+}
+
+function clusterLabelFor(expiry: string | null): string {
+  if (!expiry) return "Solana";
+  if (expiry === "mainnet-beta") return "Solana Mainnet";
+  return `Solana ${expiry.charAt(0).toUpperCase()}${expiry.slice(1)}`;
+}
+
 export default function BillingPage({
   workspaceId,
   isPlatformAdmin = false,
 }: BillingPageProps) {
   const phantomWallet = useSiteSurveyorWallet();
-  const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
+  const {
+    wallet: activeWallet,
+    publicKey: activePublicKey,
+    sendTransaction: sendAdapterTransaction,
+  } = phantomWallet;
+
   const [notice, setNotice] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRow[]>([]);
   const [methodsLoading, setMethodsLoading] = useState(true);
@@ -76,10 +118,15 @@ export default function BillingPage({
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [pesepayBusy, setPesepayBusy] = useState(false);
   const [pesepayReference, setPesepayReference] = useState<string | null>(null);
+  const [pesepayBalance, setPesepayBalance] = useState<PesepayWalletRow | null>(null);
+  const [pesepayBalanceLoading, setPesepayBalanceLoading] = useState(true);
+  const [pesepayBalanceError, setPesepayBalanceError] = useState<string | null>(null);
+  const [balancePaymentBusy, setBalancePaymentBusy] = useState(false);
   const [solanaStatus, setSolanaStatus] = useState<
     "idle" | "connecting" | "pending" | "recording"
   >("idle");
   const [solanaFeeEstimate, setSolanaFeeEstimate] = useState<string | null>(null);
+  const [copiedTreasury, setCopiedTreasury] = useState(false);
   const [paymentInvoiceId, setPaymentInvoiceId] = useState("");
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -92,6 +139,28 @@ export default function BillingPage({
   const [historySort, setHistorySort] = useState<
     "date-desc" | "date-asc" | "amount-desc"
   >("date-desc");
+
+  const clusterLabel = SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER];
+
+  const connectedWalletName = useMemo(() => {
+    const name = activeWallet?.adapter.name;
+    if (name === CUSTOM_WALLET_NAME) return null;
+    if (name) return name;
+    return phantomWallet.address ? "Phantom" : null;
+  }, [activeWallet, phantomWallet.address]);
+
+  const walletAdapterForPayment = useMemo<WalletPaymentAdapter | undefined>(() => {
+    if (!activeWallet || !activePublicKey) return undefined;
+    if (activeWallet.adapter.name === CUSTOM_WALLET_NAME) return undefined;
+    return {
+      publicKey: activePublicKey,
+      sendTransaction: (transaction: Transaction, connection: Connection) =>
+        sendAdapterTransaction(transaction, connection),
+    };
+  }, [activeWallet, activePublicKey, sendAdapterTransaction]);
+
+  const walletLabel =
+    connectedWalletName ?? (phantomWallet.installed ? "Phantom" : "Solana wallet");
 
   const fetchMethods = useCallback(async () => {
     try {
@@ -133,6 +202,19 @@ export default function BillingPage({
 
   useAsyncAction(fetchInvoices, [fetchInvoices]);
 
+  const fetchPesepayBalance = useCallback(async () => {
+    try {
+      setPesepayBalanceError(null);
+      setPesepayBalance(await getPesepayWallet(workspaceId));
+    } catch (err: unknown) {
+      setPesepayBalanceError(err instanceof Error ? err.message : "Failed to load your PesePay balance.");
+    } finally {
+      setPesepayBalanceLoading(false);
+    }
+  }, [workspaceId]);
+
+  useAsyncAction(fetchPesepayBalance, [fetchPesepayBalance]);
+
   const fetchMembership = useCallback(async () => {
     try {
       const membershipData = await getMyWorkspaceMembership(workspaceId);
@@ -147,6 +229,27 @@ export default function BillingPage({
   const showNotice = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(null), 2300);
+  };
+
+  const scrollToWalletMethods = () => {
+    const target = document.getElementById("wallet-methods");
+    if (!target) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center",
+    });
+  };
+
+  const copyTreasuryAddress = async () => {
+    if (!SOLANA_TREASURY_ADDRESS) return;
+    try {
+      await navigator.clipboard.writeText(SOLANA_TREASURY_ADDRESS);
+      setCopiedTreasury(true);
+      window.setTimeout(() => setCopiedTreasury(false), 2000);
+    } catch {
+      showNotice("Could not copy the treasury address.");
+    }
   };
 
   const setDefaultMethod = async (id: string) => {
@@ -278,13 +381,40 @@ export default function BillingPage({
     }
   };
 
+  const payFromPesepayBalance = async () => {
+    if (!selectedInvoice) {
+      setRecordPaymentError("Please select an invoice to pay.");
+      return;
+    }
+    if (selectedInvoice.currency_code !== "USD") {
+      setRecordPaymentError("The PesePay balance currently supports USD invoices only.");
+      return;
+    }
+    setRecordPaymentError(null);
+    setBalancePaymentBusy(true);
+    try {
+      await payInvoiceWithBalance({
+        invoiceId: selectedInvoice.id,
+        workspaceId,
+      });
+      await Promise.all([fetchHistory(), fetchInvoices(), fetchPesepayBalance()]);
+      setIsRecordPaymentOpen(false);
+      resetRecordPaymentForm();
+      showNotice("Invoice paid from your PesePay balance.");
+    } catch (err: unknown) {
+      setRecordPaymentError(err instanceof Error ? err.message : "PesePay balance payment failed.");
+    } finally {
+      setBalancePaymentBusy(false);
+    }
+  };
+
   const solanaBusy = solanaStatus !== "idle";
   const solanaConfigured = isOnChainPaymentConfigured();
 
   const solanaButtonLabel = {
-    idle: `Pay with Solana (USDC) on ${SOLANA_CLUSTER}`,
-    connecting: "Connecting Phantom…",
-    pending: "Confirm in wallet…",
+    idle: `Pay with ${walletLabel}`,
+    connecting: `Connecting ${walletLabel}…`,
+    pending: `Confirm in ${walletLabel}…`,
     recording: "Recording payment…",
   }[solanaStatus];
 
@@ -299,6 +429,7 @@ export default function BillingPage({
       const { signature, reference, walletAddress } = await payInvoiceWithUsdc({
         amount: selectedInvoice.total,
         invoiceId: selectedInvoice.id,
+        walletAdapter: walletAdapterForPayment,
       });
 
       setSolanaStatus("recording");
@@ -308,7 +439,7 @@ export default function BillingPage({
         amount: selectedInvoice.total,
         payment_method: "Solana (USDC)",
         reference,
-        notes: `Invoice ${selectedInvoice.invoice_number} paid via Phantom`,
+        notes: `Invoice ${selectedInvoice.invoice_number} paid via ${connectedWalletName ?? "Solana wallet"}`,
         chain: "solana",
         token_mint: SOLANA_USDC_MINT,
         tx_signature: signature,
@@ -367,7 +498,7 @@ export default function BillingPage({
     return (
       <PageForm
         title="Record Payment"
-        description="Record an offline payment or pay on-chain with Solana."
+        description="Record an offline payment or pay an invoice on-chain with Solana."
         onBack={() => setIsRecordPaymentOpen(false)}
         footer={
           <>
@@ -388,19 +519,16 @@ export default function BillingPage({
         <div className="mx-auto w-full max-w-6xl">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
-              {/* ── Payment Details ──────────────────────────── */}
-              <Card>
+              <Card className="rounded-2xl border-border/60">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <Banknote size={15} />
                     </div>
                     <div>
-                      <CardTitle className="text-base">
-                        Payment details
-                      </CardTitle>
+                      <CardTitle className="text-base">Payment details</CardTitle>
                       <CardDescription>
-                        Record an offline payment or pay on-chain with Solana.
+                        Choose the invoice, then pay on-chain or record an offline payment.
                       </CardDescription>
                     </div>
                   </div>
@@ -475,74 +603,53 @@ export default function BillingPage({
               </Card>
 
               {recordPaymentError ? (
-                <ErrorNotice tone="danger">
-                  {recordPaymentError}
-                </ErrorNotice>
+                <ErrorNotice tone="danger">{recordPaymentError}</ErrorNotice>
               ) : null}
 
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
-                      <CreditCard size={15} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Pay with Pesepay</CardTitle>
-                      <CardDescription>Use EcoCash, InnBucks, cards, Zimswitch, or other supported Zimbabwe payment methods.</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button type="button" className="w-full gap-2" onClick={payWithPesepay} disabled={pesepayBusy || solanaBusy || !selectedInvoice}>
-                    {pesepayBusy && <Loader2 size={16} className="animate-spin" />}
-                    <CreditCard size={16} />
-                    {pesepayBusy ? "Opening Pesepay…" : "Pay with Pesepay"}
-                  </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    {selectedInvoice ? `Pays ${formatCurrency(selectedInvoice.total)} ${selectedInvoice.currency_code} for ${selectedInvoice.invoice_number} on Pesepay.` : "Select an invoice to continue."}
-                  </p>
-                  {pesepayReference && <p className="text-center text-xs text-muted-foreground">Reference: {pesepayReference}</p>}
-                </CardContent>
-              </Card>
-
-
               {solanaConfigured && (
-                <Card>
+                <Card className="rounded-2xl border-border/60">
                   <CardHeader>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
-                        <Wallet size={15} />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <SolanaLogo size={16} />
                       </div>
                       <div>
-                        <CardTitle className="text-base">
-                          Pay on-chain
-                        </CardTitle>
+                        <CardTitle className="text-base">Pay on-chain</CardTitle>
                         <CardDescription>
-                          Pay the invoice directly with a Solana wallet.
+                          Send USDC on Solana {clusterLabel} directly to the workspace
+                          treasury.
                         </CardDescription>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">SiteSurveyor uses the Solana wallet adapter for this payment. Confirm the network, token, recipient, and amount in Phantom before approving.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Pay from any wallet you sign in with — Phantom, Solflare,
+                        MetaMask, or a wallet app. SiteSurveyor builds the USDC
+                        transfer; you approve it in your wallet.
+                      </p>
                       <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-                        <div className="rounded-lg border bg-muted/30 p-3"><strong className="block text-foreground">1. Connect</strong>Use your Phantom wallet.</div>
-                        <div className="rounded-lg border bg-muted/30 p-3"><strong className="block text-foreground">2. Review</strong>Check the invoice and treasury.</div>
-                        <div className="rounded-lg border bg-muted/30 p-3"><strong className="block text-foreground">3. Confirm</strong>Approve only the expected transaction.</div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <strong className="block text-foreground">1. Connect</strong>
+                          Use your sign-in wallet.
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <strong className="block text-foreground">2. Review</strong>
+                          Check the invoice, treasury, and amount.
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <strong className="block text-foreground">3. Confirm</strong>
+                          Approve only the expected transaction.
+                        </div>
                       </div>
                     </div>
                     <div className="mt-3 space-y-2">
                       <Button
                         type="button"
-                        variant="outline"
                         className="w-full gap-2"
                         onClick={payWithSolana}
-                        disabled={
-                          solanaBusy ||
-                          recordingPayment ||
-                          !selectedInvoice
-                        }
+                        disabled={solanaBusy || recordingPayment || !selectedInvoice}
                         aria-busy={solanaBusy}
                       >
                         {solanaBusy && <Loader2 size={16} className="animate-spin" />}
@@ -551,10 +658,10 @@ export default function BillingPage({
                       </Button>
                       <p className="text-center text-xs text-muted-foreground">
                         {selectedInvoice
-                          ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC to the workspace treasury${
+                          ? `Pays ${formatCurrency(selectedInvoice.total)} in USDC on Solana ${clusterLabel}${
                               solanaFeeEstimate
-                                ? ` Estimated network cost: ${solanaFeeEstimate}.`
-                                : ""
+                                ? `. Estimated network cost: ${solanaFeeEstimate}.`
+                                : "."
                             }`
                           : "Select an invoice to pay it directly with your wallet."}
                       </p>
@@ -562,11 +669,103 @@ export default function BillingPage({
                   </CardContent>
                 </Card>
               )}
+
+              <Card className="rounded-2xl border-border/60">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <CreditCard size={15} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Pay with Pesepay</CardTitle>
+                      <CardDescription>
+                        Use EcoCash, InnBucks, cards, Zimswitch, or other supported
+                        Zimbabwe payment methods.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-3 rounded-lg border bg-muted/25 p-3">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">Available PesePay balance</span>
+                      {pesepayBalanceLoading ? (
+                        <span className="inline-flex items-center gap-2 text-muted-foreground">
+                          <Loader2 size={14} className="animate-spin" /> Loading…
+                        </span>
+                      ) : (
+                        <strong className="tabular-nums">
+                          {formatCurrency(Number(pesepayBalance?.balance ?? 0))}
+                        </strong>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full gap-2"
+                      onClick={payFromPesepayBalance}
+                      disabled={
+                        balancePaymentBusy ||
+                        pesepayBusy ||
+                        solanaBusy ||
+                        !selectedInvoice ||
+                        selectedInvoice.currency_code !== "USD"
+                      }
+                      aria-busy={balancePaymentBusy}
+                    >
+                      {balancePaymentBusy && <Loader2 size={16} className="animate-spin" />}
+                      <Wallet size={16} />
+                      {balancePaymentBusy ? "Paying…" : "Pay from PesePay balance"}
+                    </Button>
+                    <p className="text-center text-xs text-muted-foreground">
+                      {selectedInvoice
+                        ? selectedInvoice.currency_code === "USD"
+                          ? `Uses ${formatCurrency(Number(selectedInvoice.total))} from your prepaid SiteSurveyor balance. Deposits cannot be refunded or withdrawn.`
+                          : "This balance currently supports USD invoices only."
+                        : "Select a USD invoice to pay it from your balance."}
+                    </p>
+                    {pesepayBalanceError && (
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-destructive">{pesepayBalanceError}</span>
+                        <Button variant="outline" size="sm" onClick={() => void fetchPesepayBalance()}>
+                          Retry
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={payWithPesepay}
+                    disabled={
+                      pesepayBusy ||
+                      balancePaymentBusy ||
+                      solanaBusy ||
+                      recordingPayment ||
+                      !selectedInvoice
+                    }
+                  >
+                    {pesepayBusy && <Loader2 size={16} className="animate-spin" />}
+                    <CreditCard size={16} />
+                    {pesepayBusy ? "Opening Pesepay…" : "Pay with Pesepay"}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    {selectedInvoice
+                      ? `Opens a ${formatCurrency(Number(selectedInvoice.total))} ${selectedInvoice.currency_code} Pesepay checkout for ${selectedInvoice.invoice_number}.`
+                      : "Select an invoice to continue."}
+                  </p>
+                  {pesepayReference && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Reference: {pesepayReference}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
-            {/* ── Summary ───────────────────────────────────── */}
             <aside className="h-fit space-y-6 lg:sticky lg:top-0">
-              <Card className="gap-4">
+              <Card className="gap-4 rounded-2xl border-border/60">
                 <CardHeader>
                   <CardTitle className="text-base">Payment</CardTitle>
                   <CardDescription>Summary at a glance.</CardDescription>
@@ -576,9 +775,7 @@ export default function BillingPage({
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Invoice</dt>
                       <dd className="truncate font-medium">
-                        {selectedInvoice
-                          ? selectedInvoice.invoice_number
-                          : "—"}
+                        {selectedInvoice ? selectedInvoice.invoice_number : "—"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
@@ -589,21 +786,17 @@ export default function BillingPage({
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Date</dt>
-                      <dd className="truncate font-medium">
-                        {paymentDate || "—"}
-                      </dd>
+                      <dd className="truncate font-medium">{paymentDate || "—"}</dd>
                     </div>
                     {selectedInvoice && (
-                      <>
-                        <div className="border-t pt-3">
-                          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                            Invoice total
-                          </p>
-                          <p className="mt-0.5 text-lg font-semibold tabular-nums">
-                            {formatCurrency(selectedInvoice.total)}
-                          </p>
-                        </div>
-                      </>
+                      <div className="border-t pt-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                          Invoice total
+                        </p>
+                        <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                          {formatCurrency(selectedInvoice.total)}
+                        </p>
+                      </div>
                     )}
                   </dl>
                 </CardContent>
@@ -618,15 +811,22 @@ export default function BillingPage({
   return (
     <DashboardShell className="hub-body billing-page finance-page">
       <DashboardHeader
+        badge={
+          <span className="treasury-badge">
+            <span className="treasury-badge-dot" />
+            Treasury
+          </span>
+        }
         title="Treasury"
-        subtitle="Wallet balances, payments, and transaction history"
+        subtitle={`Solana ${clusterLabel} · USDC`}
+        description="Wallets, balances, and payment records for this workspace."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={downloadStatementCsv}
-              className="gap-2 rounded-xl"
+              className="gap-2 rounded-lg"
             >
               <Download size={16} />
               Export
@@ -639,7 +839,7 @@ export default function BillingPage({
                   setIsRecordPaymentOpen(true);
                 }}
                 disabled={invoicesLoading || invoices.length === 0}
-                className="gap-2 rounded-xl"
+                className="gap-2 rounded-lg"
               >
                 <Plus size={16} />
                 Record Payment
@@ -650,15 +850,16 @@ export default function BillingPage({
       />
 
       {notice && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+        <div className="treasury-notice" role="status">
           {notice}
         </div>
       )}
 
       <WalletBalancesStrip
         address={phantomWallet.address}
-        connected={phantomWallet.connected}
-        onConnect={() => void phantomWallet.connect()}
+        connected={Boolean(phantomWallet.address)}
+        walletName={connectedWalletName}
+        onConnect={scrollToWalletMethods}
       />
 
       <MetricsTiles
@@ -670,162 +871,248 @@ export default function BillingPage({
         invoiceCount={invoices.length}
       />
 
-      <div className="flex flex-col gap-4">
-        <PhantomWalletCard
-          workspaceId={workspaceId}
-          paymentMethods={paymentMethods}
-          canManageBilling={canManageBilling}
-          onMethodsChanged={fetchMethods}
-          onNotice={showNotice}
-        />
-        <MarketplaceWalletCard
-          workspaceId={workspaceId}
-          phantomAddress={phantomWallet.address}
-          phantomShortAddress={phantomWallet.shortAddress}
-          cryptoMethods={paymentMethods.filter((m) => m.type === "Crypto Wallet" && m.detail)}
-          onNotice={showNotice}
-        />
+      <div className="treasury-layout">
+        <div className="treasury-main">
+          <WalletMethodsCard
+            workspaceId={workspaceId}
+            paymentMethods={paymentMethods}
+            canManageBilling={canManageBilling}
+            onMethodsChanged={fetchMethods}
+            onNotice={showNotice}
+          />
+
+          <section className="method-ledger" aria-labelledby="saved-methods-title">
+            <div className="method-ledger-head">
+              <div>
+                <p className="treasury-eyebrow">Saved methods</p>
+                <h2 id="saved-methods-title" className="method-ledger-title">
+                  Receiving accounts
+                </h2>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 rounded-lg"
+                onClick={scrollToWalletMethods}
+              >
+                <Plus size={14} />
+                {canManageBilling ? "Add wallet method" : "Connect a wallet"}
+              </Button>
+            </div>
+
+            {methodsLoading ? (
+              <div className="method-ledger-loading">
+                <PageLoader compact />
+              </div>
+            ) : paymentMethods.length === 0 ? (
+              <div className="method-ledger-empty">
+                <p className="method-ledger-empty-title">No saved methods yet</p>
+                <p className="method-ledger-empty-hint">
+                  Connect a wallet above to save its address for invoices and
+                  marketplace payouts.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 rounded-lg"
+                  onClick={scrollToWalletMethods}
+                >
+                  <Wallet size={14} />
+                  Choose a wallet
+                </Button>
+              </div>
+            ) : (
+              <div className="method-ledger-list">
+                {paymentMethods.map((method) => {
+                  const isCrypto = method.type === "Crypto Wallet";
+                  const detail = method.detail
+                    ? isCrypto
+                      ? shorten(method.detail)
+                      : method.detail
+                    : "No detail saved";
+                  const meta = isCrypto
+                    ? clusterLabelFor(method.expiry)
+                    : method.expiry
+                      ? `Expires ${method.expiry}`
+                      : method.type;
+
+                  return (
+                    <div
+                      key={method.id}
+                      className="method-ledger-row"
+                      data-default={method.is_default || undefined}
+                    >
+                      <span className="method-ledger-icon">{methodIcon(method)}</span>
+                      <span className="method-ledger-copy">
+                        <span className="method-ledger-name">
+                          {method.label}
+                          {method.is_default && (
+                            <span className="method-ledger-flag">Default</span>
+                          )}
+                        </span>
+                        <span className="method-ledger-meta">
+                          {isCrypto ? `${meta} · ${detail}` : `${detail} · ${meta}`}
+                        </span>
+                      </span>
+                      <span className="method-ledger-actions">
+                        {canManageBilling && !method.is_default && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg"
+                            onClick={() => void setDefaultMethod(method.id)}
+                          >
+                            Set default
+                          </Button>
+                        )}
+                        {canManageBilling && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-lg text-muted-foreground"
+                            onClick={() => void removeMethod(method.id)}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <aside className="treasury-side">
+          <MarketplaceWalletCard
+            workspaceId={workspaceId}
+            connectedAddress={phantomWallet.address}
+            connectedWalletName={connectedWalletName}
+            cryptoMethods={paymentMethods.filter(
+              (method) => method.type === "Crypto Wallet" && method.detail,
+            )}
+            onAddWallet={scrollToWalletMethods}
+            onNotice={showNotice}
+          />
+
+          <section className="side-card settlement-card" aria-labelledby="settlement-title">
+            <div className="side-card-head">
+              <span className="side-card-mark">
+                <ShieldCheck size={17} />
+              </span>
+              <div>
+                <p className="treasury-eyebrow">Settlement</p>
+                <h2 id="settlement-title" className="side-card-title">
+                  How funds move
+                </h2>
+              </div>
+            </div>
+            <div className="side-card-body">
+              <dl className="settlement-list">
+                <div className="settlement-row">
+                  <dt>Network</dt>
+                  <dd>Solana {clusterLabel}</dd>
+                </div>
+                <div className="settlement-row">
+                  <dt>Token</dt>
+                  <dd>USDC · {shorten(SOLANA_USDC_MINT, 4, 4)}</dd>
+                </div>
+                <div className="settlement-row">
+                  <dt>Treasury</dt>
+                  <dd>
+                    {SOLANA_TREASURY_ADDRESS ? (
+                      <>
+                        <span>{shorten(SOLANA_TREASURY_ADDRESS)}</span>
+                        <button
+                          type="button"
+                          className="settlement-copy"
+                          onClick={() => void copyTreasuryAddress()}
+                          aria-label="Copy treasury address"
+                        >
+                          {copiedTreasury ? <Check size={12} /> : <Copy size={12} />}
+                        </button>
+                        <a
+                          href={explorerAccountUrl(SOLANA_TREASURY_ADDRESS)}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label="View treasury on Solana Explorer"
+                        >
+                          <ExternalLink size={12} />
+                        </a>
+                      </>
+                    ) : (
+                      <span>Not configured</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              <p className="settlement-note">
+                <ShieldCheck size={13} />
+                SiteSurveyor never holds funds. Payments move wallet to wallet; this
+                ledger keeps the record.
+              </p>
+            </div>
+          </section>
+        </aside>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as "overview" | "history")}
-      >
-        <DashboardCard
-          title="Payments"
-          icon={<Banknote size={16} />}
-          className="rounded-2xl border-border/60"
-          titleAction={
-            <TabsList>
-              <TabsTrigger value="overview">Payment methods</TabsTrigger>
-              <TabsTrigger value="history">Payment history</TabsTrigger>
-            </TabsList>
-          }
-        >
-            <TabsContent value="overview" className="mt-0">
-              {methodsLoading ? (
-                <PageLoader compact />
-              ) : paymentMethods.length === 0 ? (
-                <div className="py-10 text-center text-sm text-muted-foreground">
-                  No saved payment methods yet.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {paymentMethods.map((method) => (
-                    <Card
-                      key={method.id}
-                      className={cn(
-                        "rounded-2xl border-border/60",
-                        method.is_default && "border-primary/60 ring-1 ring-primary/40",
-                      )}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={cn(
-                                "h-10 w-10 rounded-xl flex items-center justify-center text-sm font-semibold",
-                                method.type === "Card"
-                                  ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                                  : method.type === "Crypto Wallet"
-                                    ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
-                                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-                              )}
-                            >
-                              {method.type === "Card"
-                                ? method.label.slice(0, 2)
-                                : method.type === "Crypto Wallet"
-                                  ? <SolanaLogo size={22} />
-                                  : "MM"}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold truncate">{method.label}</p>
-                              <p className="text-xs text-muted-foreground">{method.type}</p>
-                            </div>
-                          </div>
-                          {method.is_default && <Badge variant="success">Default</Badge>}
-                        </div>
+      <Card className="treasury-history-card">
+        <div className="treasury-history-head">
+          <div>
+            <p className="treasury-eyebrow">Ledger</p>
+            <h2 className="treasury-history-title">Payment history</h2>
+            <p className="treasury-history-sub">
+              {filteredHistory.length} of {history.length}{" "}
+              {history.length === 1 ? "entry" : "entries"}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 rounded-lg"
+            onClick={downloadStatementCsv}
+          >
+            <Download size={14} />
+            Export CSV
+          </Button>
+        </div>
 
-                        <p className="mt-3 text-sm font-medium">
-                          {method.type === "Crypto Wallet"
-                            ? `${method.detail.slice(0, 6)}…${method.detail.slice(-6)}`
-                            : method.detail}
-                        </p>
-                        {method.expiry && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {method.type === "Crypto Wallet"
-                              ? `Network: ${method.expiry}`
-                              : `Expires ${method.expiry}`}
-                          </p>
-                        )}
-                        {method.holder && (
-                          <p className="text-xs text-muted-foreground">{method.holder}</p>
-                        )}
+        <div className="treasury-history-toolbar">
+          <Input
+            placeholder="Search transactions..."
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            className="treasury-search"
+            aria-label="Search transactions"
+          />
+          <div className="treasury-sort-group" role="group" aria-label="Sort payments">
+            {[
+              { value: "date-desc", label: "Newest" },
+              { value: "date-asc", label: "Oldest" },
+              { value: "amount-desc", label: "Highest amount" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className="treasury-sort-btn"
+                aria-pressed={historySort === option.value}
+                onClick={() => setHistorySort(option.value as typeof historySort)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-                        <div className="flex flex-wrap gap-2 mt-4">
-                          {canManageBilling && !method.is_default && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => void setDefaultMethod(method.id)}
-                            >
-                              Set Default
-                            </Button>
-                          )}
-                          {canManageBilling && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => void removeMethod(method.id)}
-                            >
-                              Remove
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="history" className="mt-0 space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Input
-                  placeholder="Search transactions..."
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                  className="max-w-sm rounded-xl"
-                />
-                <div className="inline-flex flex-wrap gap-2">
-                  {[
-                    { value: "date-desc", label: "Newest" },
-                    { value: "date-asc", label: "Oldest" },
-                    { value: "amount-desc", label: "Highest amount" },
-                  ].map((opt) => (
-                    <Button
-                      key={opt.value}
-                      variant={historySort === opt.value ? "default" : "outline"}
-                      size="sm"
-                      className="rounded-xl"
-                      onClick={() => setHistorySort(opt.value as typeof historySort)}
-                    >
-                      {opt.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <TransactionTable
-                rows={filteredHistory}
-                loading={historyLoading}
-                error={historyError}
-              />
-            </TabsContent>
-        </DashboardCard>
-      </Tabs>
-
+        <div className="treasury-history-body">
+          <TransactionTable
+            rows={filteredHistory}
+            loading={historyLoading}
+            error={historyError}
+          />
+        </div>
+      </Card>
     </DashboardShell>
   );
 }
-

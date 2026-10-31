@@ -22,6 +22,8 @@ const STATUS_MAP: Record<string, string> = {
   paid: "Paid",
   overdue: "Overdue",
   cancelled: "Cancelled",
+  planned: "Planned",
+  in_progress: "In Progress",
   scheduled: "Scheduled",
   passed: "Passed",
   failed: "Failed",
