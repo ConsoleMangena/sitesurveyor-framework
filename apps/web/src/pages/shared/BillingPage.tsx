@@ -117,7 +117,6 @@ export default function BillingPage({
     publicKey: activePublicKey,
     sendTransaction: sendAdapterTransaction,
   } = phantomWallet;
-  const solanaBalances = useSolanaBalances(phantomWallet.address);
 
   const [notice, setNotice] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodRow[]>([]);
@@ -159,16 +158,28 @@ export default function BillingPage({
 
   const clusterLabel = SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER];
 
+  const savedCryptoMethods = paymentMethods.filter(
+    (method) => method.type === "Crypto Wallet" && Boolean(method.detail),
+  );
+  const preferredSavedWallet =
+    savedCryptoMethods.find((method) => method.is_default) ??
+    savedCryptoMethods[0] ??
+    null;
+  const cryptoConnected = Boolean(phantomWallet.address);
+  const cryptoAddress = phantomWallet.address ?? preferredSavedWallet?.detail ?? null;
+  const solanaBalances = useSolanaBalances(cryptoAddress);
+
   const connectedWalletName = useMemo(() => {
     const name = activeWallet?.adapter.name;
-    if (name === CUSTOM_WALLET_NAME) return null;
+    if (name === CUSTOM_WALLET_NAME) return "SiteSurveyor Wallet";
     if (name) return name;
     return phantomWallet.address ? "Phantom" : null;
   }, [activeWallet, phantomWallet.address]);
 
+  const cryptoWalletName = connectedWalletName ?? preferredSavedWallet?.label ?? null;
+
   const walletAdapterForPayment = useMemo<WalletPaymentAdapter | undefined>(() => {
     if (!activeWallet || !activePublicKey) return undefined;
-    if (activeWallet.adapter.name === CUSTOM_WALLET_NAME) return undefined;
     return {
       publicKey: activePublicKey,
       sendTransaction: (transaction: Transaction, connection: Connection) =>
@@ -177,7 +188,7 @@ export default function BillingPage({
   }, [activeWallet, activePublicKey, sendAdapterTransaction]);
 
   const walletLabel =
-    connectedWalletName ?? (phantomWallet.installed ? "Phantom" : "Solana wallet");
+    cryptoWalletName ?? (phantomWallet.installed ? "Phantom" : "Solana wallet");
 
   const fetchMethods = useCallback(async () => {
     try {
@@ -260,7 +271,7 @@ export default function BillingPage({
 
   const openPaymentComposer = () => {
     setPaymentMode("rails");
-    setPaymentSource(phantomWallet.address ? "crypto" : "pesepay");
+    setPaymentSource(cryptoAddress ? "crypto" : "pesepay");
     setRecordPaymentError(null);
     setSolanaStatus("idle");
     setIsPaymentOpen(true);
@@ -480,6 +491,12 @@ export default function BillingPage({
       setRecordPaymentError("Please select an invoice to pay.");
       return;
     }
+    if (!phantomWallet.address) {
+      setRecordPaymentError(
+        `Connect ${cryptoWalletName ?? "your wallet"} to pay from this saved method.`,
+      );
+      return;
+    }
     if (selectedInvoice.currency_code !== "USD") {
       setRecordPaymentError("Crypto wallets settle USD invoices. Use PesePay checkout for this invoice.");
       return;
@@ -558,7 +575,7 @@ export default function BillingPage({
 
   if (isPaymentOpen) {
     const railsMode = paymentMode === "rails";
-    const cryptoReady = Boolean(phantomWallet.address);
+    const cryptoReady = Boolean(cryptoAddress);
     const currencySupported = invoiceCurrency === "USD";
 
     return (
@@ -676,8 +693,10 @@ export default function BillingPage({
                             </span>
                           </span>
                           <span className="rail-choice-meta">
-                            {phantomWallet.address
-                              ? `${connectedWalletName ?? "Connected wallet"} · ${shorten(phantomWallet.address, 4, 4)}`
+                            {cryptoAddress
+                              ? `${cryptoWalletName ?? "Connected wallet"} · ${shorten(cryptoAddress, 4, 4)}${
+                                  cryptoConnected ? "" : " · saved"
+                                }`
                               : "No wallet connected"}
                           </span>
                           <span className="rail-choice-figure">
@@ -723,8 +742,8 @@ export default function BillingPage({
                               <div className="rail-panel-row">
                                 <span>Pay from</span>
                                 <strong>
-                                  {connectedWalletName ?? "Connected wallet"} ·{" "}
-                                  {shorten(phantomWallet.address ?? "", 4, 4)}
+                                  {cryptoWalletName ?? "Connected wallet"} ·{" "}
+                                  {shorten(cryptoAddress ?? "", 4, 4)}
                                 </strong>
                               </div>
                               <div className="rail-panel-row">
@@ -737,35 +756,49 @@ export default function BillingPage({
                                 <span>Network fee</span>
                                 <span className="rail-panel-figure">{solanaFeeEstimate ?? "—"}</span>
                               </div>
-                              <Button
-                                type="button"
-                                className="w-full gap-2"
-                                onClick={payWithSolana}
-                                disabled={
-                                  solanaBusy ||
-                                  recordingPayment ||
-                                  !selectedInvoice ||
-                                  !currencySupported
-                                }
-                                aria-busy={solanaBusy}
-                              >
-                                {solanaBusy ? (
-                                  <Loader2 size={16} className="animate-spin" />
-                                ) : (
-                                  <SolanaLogo size={16} />
-                                )}
-                                {solanaButtonLabel}
-                              </Button>
+                              {cryptoConnected ? (
+                                <Button
+                                  type="button"
+                                  className="w-full gap-2"
+                                  onClick={payWithSolana}
+                                  disabled={
+                                    solanaBusy ||
+                                    recordingPayment ||
+                                    !selectedInvoice ||
+                                    !currencySupported
+                                  }
+                                  aria-busy={solanaBusy}
+                                >
+                                  {solanaBusy ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                  ) : (
+                                    <SolanaLogo size={16} />
+                                  )}
+                                  {solanaButtonLabel}
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="w-full gap-2"
+                                  onClick={manageWalletsFromComposer}
+                                >
+                                  <Wallet size={16} />
+                                  Connect {cryptoWalletName ?? "this wallet"} to pay
+                                </Button>
+                              )}
                               <p className="rail-panel-note">
                                 {!selectedInvoice
                                   ? "Select an invoice to pay with a wallet."
                                   : !currencySupported
                                     ? "Crypto wallets settle USD invoices in USDC. Use PesePay checkout for this currency."
-                                    : `Sends ${formatCurrency(selectedInvoice.total)} in USDC on Solana ${clusterLabel} to the workspace treasury.${
-                                        solanaFeeEstimate && solanaFeeEstimate !== "…"
-                                          ? ` Estimated network cost: ${solanaFeeEstimate}.`
-                                          : ""
-                                      }`}
+                                    : !cryptoConnected
+                                      ? `${cryptoWalletName ?? "This wallet"} is saved for payments but isn't connected in this session. Connect it to sign the USDC transfer — your invoice stays selected.`
+                                      : `Sends ${formatCurrency(selectedInvoice.total)} in USDC on Solana ${clusterLabel} to the workspace treasury.${
+                                          solanaFeeEstimate && solanaFeeEstimate !== "…"
+                                            ? ` Estimated network cost: ${solanaFeeEstimate}.`
+                                            : ""
+                                        }`}
                               </p>
                             </>
                           ) : (
@@ -1097,8 +1130,9 @@ export default function BillingPage({
       )}
 
       <PaymentRails
-        address={phantomWallet.address}
-        walletName={connectedWalletName}
+        address={cryptoAddress}
+        walletName={cryptoWalletName}
+        connected={cryptoConnected}
         solana={solanaBalances}
         pesepayBalance={pesepayBalance}
         pesepayLoading={pesepayBalanceLoading}

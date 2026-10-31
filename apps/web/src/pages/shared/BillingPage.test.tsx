@@ -14,6 +14,7 @@ import {
   payInvoiceWithBalance,
 } from "../../lib/repositories/pesepay.ts";
 import { listPaymentMethods } from "../../lib/repositories/paymentMethods.ts";
+import type { PaymentMethodRow } from "../../lib/repositories/paymentMethods.ts";
 import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
 import { useSolanaBalances } from "../../features/phantom/hooks/useSolanaBalances.ts";
 import { estimateUsdcTransferFee } from "../../features/phantom/payments/phantomPay.ts";
@@ -92,6 +93,21 @@ function pesepayWallet(balance: number): PesepayWalletRow {
 
 const membership = { role: "owner" } as unknown as WorkspaceMemberRow;
 
+const SAVED_WALLET_ADDRESS = "So11111111111111111111111111111111111111112";
+
+const savedCryptoMethod = {
+  id: "pm-1",
+  workspace_id: "ws-1",
+  type: "Crypto Wallet",
+  label: "Phantom",
+  detail: SAVED_WALLET_ADDRESS,
+  expiry: "devnet",
+  holder: null,
+  is_default: true,
+  created_by: "user-1",
+  created_at: "2026-10-31T09:00:00Z",
+} as unknown as PaymentMethodRow;
+
 function renderBilling() {
   const onNavigate = vi.fn();
   render(
@@ -163,6 +179,39 @@ describe("BillingPage payment rails", () => {
     expect(await screen.findByText("25.00")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add funds/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Transactions" })).toBeInTheDocument();
+  });
+
+  it("uses the saved crypto wallet and its balance when no wallet is connected", async () => {
+    vi.mocked(listPaymentMethods).mockResolvedValue([savedCryptoMethod]);
+    renderBilling();
+
+    expect(
+      await screen.findByText(/So11…1112 · saved method, connect to pay/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Saved for payments. Connect it to sign USDC transfers."),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("120.00").length).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect(useSolanaBalances).toHaveBeenLastCalledWith(SAVED_WALLET_ADDRESS),
+    );
+
+    await openComposer();
+
+    const cryptoChoice = screen.getByRole("button", { name: /^Crypto wallet/ });
+    expect(cryptoChoice).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Phantom · So11…1112 · saved")).toBeInTheDocument();
+
+    await selectInvoice();
+
+    expect(
+      await screen.findByRole("button", { name: /connect phantom to pay/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /pay with phantom/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Phantom · So11…1112")).toBeInTheDocument();
+    expect(screen.getAllByText("120.00 USDC").length).toBeGreaterThan(0);
   });
 
   it("defaults the composer to the PesePay rail and separates the two payment paths", async () => {

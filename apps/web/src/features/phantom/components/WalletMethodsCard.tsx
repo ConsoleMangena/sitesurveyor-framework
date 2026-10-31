@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { WalletName } from "@solana/wallet-adapter-base";
-import { Check, Download, Loader2, ShieldCheck, Wallet } from "lucide-react";
+import { Check, Download, Loader2, LockKeyhole, ShieldCheck, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import FieldError from "@/components/errors/FieldError.tsx";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -12,9 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import type { PaymentMethodRow } from "../../../lib/repositories/paymentMethods.ts";
 import { createPaymentMethod } from "../../../lib/repositories/paymentMethods.ts";
-import { CUSTOM_WALLET_NAME } from "../lib/customWalletAdapter.ts";
+import { useCustomWalletStatus } from "../hooks/useCustomWalletStatus.ts";
+import {
+  CUSTOM_WALLET_NAME,
+  customWalletAdapter,
+} from "../lib/customWalletAdapter.ts";
 import { SOLANA_CLUSTER, SOLANA_CLUSTER_LABEL } from "../lib/config.ts";
 import {
   isMobileBrowser,
@@ -76,10 +82,22 @@ export default function WalletMethodsCard({
   onMethodsChanged,
   onNotice,
 }: WalletMethodsCardProps) {
-  const { wallets, select } = useWallet();
+  const { wallets, select, wallet, connected } = useWallet();
   const isMobile = isMobileBrowser();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { status: customWalletStatus, refresh: refreshCustomWalletStatus } =
+    useCustomWalletStatus();
+  const hasStoredCustomWallet = customWalletStatus === "stored";
+  const customWalletMethod = paymentMethods.find(
+    (method) =>
+      method.type === "Crypto Wallet" && method.label === CUSTOM_WALLET_NAME,
+  );
+  const customActive = wallet?.adapter.name === CUSTOM_WALLET_NAME && connected;
+  const [customPin, setCustomPin] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
+  const [customBusy, setCustomBusy] = useState(false);
 
   const options = useMemo<WalletMethodOption[]>(() => {
     const list: WalletMethodOption[] = [];
@@ -229,6 +247,77 @@ export default function WalletMethodsCard({
     }
   };
 
+  const saveCustomWalletMethod = async (address: string) => {
+    if (!canManageBilling) return;
+    if (!paymentMethods.some((method) => method.detail === address)) {
+      await createPaymentMethod(workspaceId, {
+        type: "Crypto Wallet",
+        label: CUSTOM_WALLET_NAME,
+        detail: address,
+        expiry: SOLANA_CLUSTER,
+        holder: null,
+        is_default: paymentMethods.length === 0,
+      });
+      await onMethodsChanged();
+      onNotice?.(`${CUSTOM_WALLET_NAME} added as a receiving wallet.`);
+      return;
+    }
+    onNotice?.(`${CUSTOM_WALLET_NAME} unlocked.`);
+  };
+
+  const unlockCustomWallet = async () => {
+    if (!customPin) {
+      setCustomError("Enter your wallet PIN.");
+      return;
+    }
+    setCustomBusy(true);
+    setCustomError(null);
+    try {
+      if (hasStoredCustomWallet) {
+        await customWalletAdapter.unlockWallet(customPin);
+      } else {
+        try {
+          await customWalletAdapter.createWallet(customPin);
+        } catch (err: unknown) {
+          if (err instanceof Error && err.message.includes("already exists")) {
+            await customWalletAdapter.unlockWallet(customPin);
+          } else {
+            throw err;
+          }
+        }
+      }
+      select(CUSTOM_WALLET_NAME);
+      const address = customWalletAdapter.publicKey?.toBase58();
+      if (!address) {
+        throw new Error("The wallet unlocked without an address.");
+      }
+      await saveCustomWalletMethod(address);
+      setCustomPin("");
+      setCustomDialogOpen(false);
+      await refreshCustomWalletStatus();
+    } catch (err: unknown) {
+      setCustomError(
+        err instanceof Error ? err.message : "Custom wallet failed.",
+      );
+      await refreshCustomWalletStatus();
+    } finally {
+      setCustomBusy(false);
+    }
+  };
+
+  const saveActiveCustomWallet = async () => {
+    const address = customWalletAdapter.publicKey?.toBase58();
+    if (!address) return;
+    setError(null);
+    try {
+      await saveCustomWalletMethod(address);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Failed to save the wallet method.",
+      );
+    }
+  };
+
   return (
     <Card id="wallet-methods" className="wallet-methods-card">
       <CardHeader className="wallet-methods-head">
@@ -261,9 +350,17 @@ export default function WalletMethodsCard({
               (wallet) => wallet.adapter.name === option.adapterName,
             );
             const address = entry?.adapter.publicKey?.toBase58();
-            const saved = Boolean(
-              address && paymentMethods.some((method) => method.detail === address),
-            );
+            const savedMethod =
+              paymentMethods.find((method) => method.detail === address) ??
+              (address
+                ? undefined
+                : paymentMethods.find(
+                    (method) =>
+                      method.type === "Crypto Wallet" &&
+                      method.label === option.name,
+                  ));
+            const saved = Boolean(savedMethod);
+            const savedAddress = address ?? savedMethod?.detail ?? null;
             const connected = Boolean(entry?.adapter.connected);
             const busy = busyKey === option.key;
 
@@ -293,12 +390,12 @@ export default function WalletMethodsCard({
                 <span className="wallet-method-copy">
                   <span className="wallet-method-name">{option.name}</span>
                   <span className="wallet-method-detail">
-                    {saved && address ? shorten(address) : option.detail}
+                    {saved && savedAddress ? shorten(savedAddress) : option.detail}
                   </span>
                 </span>
                 <span className="wallet-method-state">{state}</span>
                 <span className="wallet-method-action">
-                  {saved ? (
+                  {saved && connected ? (
                     <Button variant="ghost" size="sm" disabled className="gap-1.5">
                       <Check size={14} />
                       Saved
@@ -312,6 +409,21 @@ export default function WalletMethodsCard({
                     >
                       <Download size={14} />
                       Install
+                    </Button>
+                  ) : saved ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={busyKey !== null}
+                      onClick={() => void handleMethod(option)}
+                    >
+                      {busy ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Wallet size={14} />
+                      )}
+                      {busy ? "Connecting…" : "Connect"}
                     </Button>
                   ) : connected && !canManageBilling ? (
                     <Button variant="ghost" size="sm" disabled className="gap-1.5">
@@ -346,6 +458,69 @@ export default function WalletMethodsCard({
               </div>
             );
           })}
+
+          <div
+            className="wallet-method-row"
+            data-saved={customWalletMethod || customActive || undefined}
+          >
+            <span className="wallet-method-icon">
+              <img src="/logo.svg" alt="" />
+            </span>
+            <span className="wallet-method-copy">
+              <span className="wallet-method-name">{CUSTOM_WALLET_NAME}</span>
+              <span className="wallet-method-detail">
+                {customWalletMethod?.detail
+                  ? shorten(customWalletMethod.detail)
+                  : customActive
+                    ? "Unlocked on this device"
+                    : hasStoredCustomWallet
+                      ? "Encrypted on this device"
+                      : "Built-in app wallet"}
+              </span>
+            </span>
+            <span className="wallet-method-state">
+              {customActive
+                ? "Connected"
+                : customWalletMethod
+                  ? "Saved"
+                  : hasStoredCustomWallet
+                    ? "Locked"
+                    : "Not created"}
+            </span>
+            <span className="wallet-method-action">
+              {customActive ? (
+                customWalletMethod || !canManageBilling ? (
+                  <Button variant="ghost" size="sm" disabled className="gap-1.5">
+                    <Check size={14} />
+                    {customWalletMethod ? "Saved" : "Connected"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => void saveActiveCustomWallet()}
+                  >
+                    <Check size={14} />
+                    Save method
+                  </Button>
+                )
+              ) : hasStoredCustomWallet || canManageBilling ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setCustomError(null);
+                    setCustomDialogOpen(true);
+                  }}
+                >
+                  <LockKeyhole size={14} />
+                  {hasStoredCustomWallet ? "Unlock" : "Create"}
+                </Button>
+              ) : null}
+            </span>
+          </div>
         </div>
 
         <p className="wallet-methods-note">
@@ -355,6 +530,52 @@ export default function WalletMethodsCard({
             : "You can connect a wallet to pay invoices. A finance manager saves receiving wallets."}
         </p>
       </CardContent>
+
+      <DialogTemplate
+        open={customDialogOpen}
+        onOpenChange={setCustomDialogOpen}
+        title={
+          hasStoredCustomWallet
+            ? "Unlock SiteSurveyor Wallet"
+            : "Create SiteSurveyor Wallet"
+        }
+        description="Use a strong PIN to protect this wallet on the current device."
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setCustomDialogOpen(false)}
+              disabled={customBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void unlockCustomWallet()}
+              disabled={!customPin || customBusy}
+              className="gap-2"
+            >
+              {customBusy ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <LockKeyhole size={15} />
+              )}
+              {hasStoredCustomWallet ? "Unlock" : "Create wallet"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Input
+            autoFocus
+            type="password"
+            placeholder="Wallet PIN"
+            value={customPin}
+            onChange={(event) => setCustomPin(event.target.value)}
+          />
+          {customError ? <FieldError>{customError}</FieldError> : null}
+        </div>
+      </DialogTemplate>
     </Card>
   );
 }

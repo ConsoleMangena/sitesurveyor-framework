@@ -18,6 +18,7 @@ import type { PesepayWalletRow } from "../../lib/repositories/pesepay.ts";
 interface PaymentRailsProps {
   address: string | null;
   walletName?: string | null;
+  connected: boolean;
   solana: SolanaBalances;
   pesepayBalance: PesepayWalletRow | null;
   pesepayLoading: boolean;
@@ -42,6 +43,7 @@ function shortAddress(address: string): string {
 export default function PaymentRails({
   address,
   walletName,
+  connected,
   solana,
   pesepayBalance,
   pesepayLoading,
@@ -50,7 +52,7 @@ export default function PaymentRails({
   onOpenBalance,
   onRetryPesepay,
 }: PaymentRailsProps) {
-  const connected = Boolean(address);
+  const hasWallet = Boolean(address);
   const balance = Number(pesepayBalance?.balance ?? 0);
   const balanceFailed = Boolean(pesepayError);
   const clusterLabel = SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER];
@@ -84,12 +86,16 @@ export default function PaymentRails({
             />
             <div className="min-w-0">
               <p className="payment-rail-wallet-name">
-                {connected ? (walletName ?? "Connected wallet") : "No wallet connected"}
+                {hasWallet
+                  ? (walletName ?? (connected ? "Connected wallet" : "Saved wallet"))
+                  : "No wallet connected"}
               </p>
               <p className="payment-rail-wallet-meta">
                 {connected && address
                   ? `${shortAddress(address)} · signs here`
-                  : "Connect a wallet to pay with USDC"}
+                  : address
+                    ? `${shortAddress(address)} · saved method, connect to pay`
+                    : "Connect a wallet to pay with USDC"}
               </p>
             </div>
           </div>
@@ -129,7 +135,7 @@ export default function PaymentRails({
               type="button"
               className={cn("treasury-refresh", solana.loading && "is-loading")}
               onClick={solana.refresh}
-              disabled={solana.loading || !connected}
+              disabled={solana.loading || !hasWallet}
               aria-label="Refresh wallet balances"
             >
               <RefreshCw size={14} />
@@ -147,6 +153,13 @@ export default function PaymentRails({
               {connected ? "Manage wallets" : "Connect wallet"}
             </Button>
           </div>
+
+          {address && !connected ? (
+            <p className="payment-rail-note">
+              <Wallet size={13} />
+              Saved for payments. Connect it to sign USDC transfers.
+            </p>
+          ) : null}
 
           {solana.error ? (
             <div className="payment-rail-error">
