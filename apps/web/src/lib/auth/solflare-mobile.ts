@@ -25,7 +25,7 @@ import type { SolanaSignUpInput } from "./session.ts";
  */
 
 const STORAGE_KEY = "sitesurveyor.solflare-mobile-auth";
-const FLOW_TTL_MS = 15 * 60 * 1000;
+const FLOW_TTL_MS = 20 * 60 * 1000;
 
 export interface SolflareMobileStart {
   intent: "signin" | "signup";
@@ -41,6 +41,9 @@ interface PendingSolflareFlow {
   dappSecretKey: string;
   intent: "signin" | "signup";
   statement: string;
+  /** The full page URL captured at flow start — used as the SIWS URI field so
+   *  the message matches what auth-js / GoTrue expects on the server side. */
+  pageHref: string;
   signup?: SolanaSignUpInput;
   sharedSecret?: string;
   walletAddress?: string;
@@ -133,12 +136,16 @@ function isFresh(flow: PendingSolflareFlow): boolean {
  * Build the Sign-In With Solana message exactly as @supabase/auth-js does for
  * `signMessage` wallets. The server verifies this text, so it must be signed
  * verbatim by Solflare.
+ *
+ * The `url` parameter must be the full page URL (e.g.
+ * `https://app.example.com/auth/wallet`) — NOT just the origin — because
+ * GoTrue's signInWithSolana formats `URI: <url.href>` using the full href.
  */
 export function createSiwsMessage({
   address,
   statement,
   issuedAt,
-  url = window.location.origin,
+  url = window.location.href,
 }: {
   address: string;
   statement: string;
@@ -167,6 +174,7 @@ export function startSolflareMobileAuth(start: SolflareMobileStart): boolean {
     dappSecretKey: keyPair.secretKey,
     intent: start.intent,
     statement: start.statement,
+    pageHref: window.location.href,
     signup: start.signup,
   };
   savePendingFlow(flow);
@@ -264,6 +272,7 @@ export function resumeSolflareMobileAuth(
           address: response.public_key,
           statement: pending.statement,
           issuedAt: new Date().toISOString(),
+          url: pending.pageHref || window.location.href,
         }),
       });
       return { status: "awaiting-signature" };

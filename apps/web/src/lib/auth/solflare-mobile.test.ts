@@ -32,7 +32,7 @@ const SIWS_MESSAGE = [
   STATEMENT,
   "",
   "Version: 1",
-  "URI: http://localhost:3000/",
+  "URI: http://localhost:3000/auth/wallet",
   "Issued At: 2026-10-31T09:00:00.000Z",
 ].join("\n");
 
@@ -56,6 +56,7 @@ interface SeededFlow {
   dappSecretKey: string;
   intent: string;
   statement: string;
+  pageHref: string;
   signup?: SolanaSignUpInput;
   sharedSecret?: string;
   walletAddress?: string;
@@ -76,6 +77,7 @@ function seedFlow(overrides: Partial<SeededFlow> = {}): {
     dappSecretKey: dapp.secretKey,
     intent: "signin",
     statement: STATEMENT,
+    pageHref: APP_HREF,
     ...overrides,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(flow));
@@ -200,7 +202,7 @@ describe("solflare-mobile", () => {
         address: WALLET_ADDRESS,
         statement: STATEMENT,
         issuedAt: "2026-10-31T09:00:00.000Z",
-        url: "http://localhost:3000/",
+        url: "http://localhost:3000/auth/wallet",
       }),
     ).toBe(SIWS_MESSAGE);
   });
@@ -381,8 +383,8 @@ describe("solflare-mobile", () => {
     });
   });
 
-  it("rejects a flow older than fifteen minutes", () => {
-    const { flow } = seedFlow({ createdAt: Date.now() - 16 * 60 * 1000 });
+  it("rejects a flow older than twenty minutes", () => {
+    const { flow } = seedFlow({ createdAt: Date.now() - 21 * 60 * 1000 });
     const { search } = connectSearch(flow);
 
     expect(resumeSolflareMobileAuth(search)).toEqual({
@@ -420,7 +422,7 @@ describe("solflare-mobile", () => {
     const { flow } = seedSignStage();
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ ...flow, createdAt: Date.now() - 16 * 60 * 1000 }),
+      JSON.stringify({ ...flow, createdAt: Date.now() - 21 * 60 * 1000 }),
     );
 
     expect(continueSolflareMobileAuth()).toBe(false);

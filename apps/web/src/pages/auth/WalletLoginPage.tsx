@@ -620,10 +620,17 @@ export default function WalletLoginPage() {
         // Approve in Solflare, and making them notice a second button on a page
         // they were bounced back to is where the flow usually stalls. The
         // notice stays rendered as the fallback if the handoff is blocked.
-        if (!continueSolflareMobileAuth()) {
-          setSolflareContinuation(false);
-          setError(SOLFLARE_EXPIRED_MESSAGE);
-        }
+        //
+        // A short delay lets mobile browsers (iOS Safari, Chrome for Android)
+        // finish committing the page navigation before we trigger the second
+        // redirect to Solflare. Without this, anti-redirect protection can
+        // silently suppress the navigation.
+        window.setTimeout(() => {
+          if (!continueSolflareMobileAuth()) {
+            setSolflareContinuation(false);
+            setError(SOLFLARE_EXPIRED_MESSAGE);
+          }
+        }, 350);
         return;
       }
       if (outcome.status === "error") {
