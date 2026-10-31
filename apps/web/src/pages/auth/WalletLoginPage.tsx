@@ -207,7 +207,9 @@ export default function WalletLoginPage() {
   const [walletUnrecognised, setWalletUnrecognised] = useState(false);
   const [completingAccount, setCompletingAccount] = useState(false);
   const [signing, setSigning] = useState(() =>
-    shouldResumeSolflareAuth(window.location.search),
+    typeof window !== "undefined"
+      ? shouldResumeSolflareAuth(window.location.href)
+      : false,
   );
   const [copied, setCopied] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
@@ -599,14 +601,15 @@ export default function WalletLoginPage() {
     if (solflareResumeStarted.current) return;
     solflareResumeStarted.current = true;
 
-    const search = window.location.search;
-    if (!shouldResumeSolflareAuth(search)) {
+    const currentUrl =
+      typeof window !== "undefined" ? window.location.href : "";
+    if (!shouldResumeSolflareAuth(currentUrl)) {
       return;
     }
 
     setAuthLoading(true);
     void (async () => {
-      const outcome = resumeSolflareMobileAuth(search);
+      const outcome = resumeSolflareMobileAuth(currentUrl);
       if (!outcome) {
         setSigning(false);
         setAuthLoading(false);

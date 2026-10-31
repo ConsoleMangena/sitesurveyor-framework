@@ -9,6 +9,7 @@ import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
 import OfflineStatusBanner from "./components/OfflineStatusBanner";
 import WalletLoginPage from "./pages/auth/WalletLoginPage";
+import { shouldResumeSolflareAuth } from "./lib/auth/solflare-mobile.ts";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 import {
@@ -212,6 +213,16 @@ export default function App() {
             }
           />
           <Route
+            path="/auth/wallet"
+            element={
+              user ? (
+                <Navigate to="/" replace />
+              ) : (
+                <WalletLoginPage />
+              )
+            }
+          />
+          <Route
             path="/market"
             element={
               <Suspense fallback={<div className="min-h-screen bg-background" />}>
@@ -224,6 +235,9 @@ export default function App() {
             element={
               user ? (
                 <WorkspaceRouter />
+              ) : typeof window !== "undefined" &&
+                shouldResumeSolflareAuth(window.location.href) ? (
+                <WalletLoginPage />
               ) : (
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <PublicMarketPage />
@@ -237,7 +251,17 @@ export default function App() {
             } />
             <Route path="*" element={<AppErrorPage kind="not-found" />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="*"
+            element={
+              typeof window !== "undefined" &&
+              shouldResumeSolflareAuth(window.location.href) ? (
+                <WalletLoginPage />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

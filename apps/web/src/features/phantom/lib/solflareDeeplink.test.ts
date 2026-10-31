@@ -167,6 +167,51 @@ describe("solflareDeeplink", () => {
     expect(readSolflareRedirect("")).toBeNull();
   });
 
+  it("handles double question marks from Solflare mobile redirects", () => {
+    expect(
+      readSolflareRedirect(
+        "?solflare_flow=f1&solflare_return=connect?solflare_encryption_public_key=SF&nonce=N&data=D",
+      ),
+    ).toEqual({
+      kind: "connect",
+      flowId: "f1",
+      solflareEncryptionPublicKey: "SF",
+      nonce: "N",
+      data: "D",
+    });
+
+    expect(
+      readSolflareRedirect(
+        "?solflare_flow=f1&solflare_return=sign?nonce=N&data=D",
+      ),
+    ).toEqual({ kind: "sign", flowId: "f1", nonce: "N", data: "D" });
+  });
+
+  it("identifies connect and sign even if wallet drops custom query parameters", () => {
+    expect(
+      readSolflareRedirect(
+        "https://sitesurveyor.tech/login?solflare_encryption_public_key=SF&nonce=N&data=D",
+      ),
+    ).toEqual({
+      kind: "connect",
+      flowId: null,
+      solflareEncryptionPublicKey: "SF",
+      nonce: "N",
+      data: "D",
+    });
+
+    expect(
+      readSolflareRedirect(
+        "https://sitesurveyor.tech/login?nonce=N&data=D",
+      ),
+    ).toEqual({
+      kind: "sign",
+      flowId: null,
+      nonce: "N",
+      data: "D",
+    });
+  });
+
   it("strips the response params from the address bar", () => {
     const replaceState = vi
       .spyOn(window.history, "replaceState")

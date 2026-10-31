@@ -169,13 +169,25 @@ export function buildSolflareRedirectLink(
   return url.toString();
 }
 
-export function readSolflareRedirect(search: string): SolflareRedirect | null {
-  const params = new URLSearchParams(search);
-  const stage = params.get(SOLFLARE_RETURN_PARAM);
-  if (stage !== "connect" && stage !== "sign") {
-    return null;
+/**
+ * Safely parse query parameters from a search string or full URL, handling:
+ * 1. Double question marks ("?a=b?c=d") caused by mobile wallet universal links
+ *    blindly appending "?param=val" to return URLs with existing query strings.
+ * 2. Hash-appended parameters ("#param=val" or "...#top?param=val").
+ */
+export function extractSolflareParams(searchOrHref?: string): URLSearchParams {
+  if (!searchOrHref) return new URLSearchParams();
+  let s = searchOrHref;
+  const firstDelim = s.search(/[?#]/);
+  if (firstDelim !== -1) {
+    s = s.substring(firstDelim + 1);
   }
+  s = s.replace(/[?#]/g, "&");
+  return new URLSearchParams(s);
+}
 
+export function readSolflareRedirect(search: string): SolflareRedirect | null {
+  const params = extractSolflareParams(search);
   const flowId = params.get(SOLFLARE_FLOW_PARAM);
   const errorCode = params.get("errorCode");
   if (errorCode) {
@@ -187,35 +199,62 @@ export function readSolflareRedirect(search: string): SolflareRedirect | null {
     };
   }
 
-  if (stage === "connect") {
+  const explicitStage = params.get(SOLFLARE_RETURN_PARAM);
+  const solflareEncryptionPublicKey = params.get("solflare_encryption_public_key");
+  const nonce = params.get("nonce");
+  const data = params.get("data");
+
+  // Connect stage: explicit stage or Solflare's encryption public key returned
+  if (explicitStage === "connect" || Boolean(solflareEncryptionPublicKey)) {
+    if (!solflareEncryptionPublicKey && !nonce && !data) {
+      return null;
+    }
     return {
       kind: "connect",
       flowId,
-      solflareEncryptionPublicKey: params.get("solflare_encryption_public_key"),
-      nonce: params.get("nonce"),
-      data: params.get("data"),
+      solflareEncryptionPublicKey,
+      nonce,
+      data,
     };
   }
 
-  return {
-    kind: "sign",
-    flowId,
-    nonce: params.get("nonce"),
-    data: params.get("data"),
-  };
+  // Sign stage: explicit stage or signature payload returned (nonce + data without encryption key)
+  if (explicitStage === "sign" || (Boolean(nonce) && Boolean(data))) {
+    return {
+      kind: "sign",
+      flowId,
+      nonce,
+      data,
+    };
+  }
+
+  return null;
 }
 
 /** Remove Solflare's response parameters so a reload cannot replay them. */
 export function stripSolflareRedirectParams(href = window.location.href): void {
-  const url = new URL(href);
-  for (const param of SOLFLARE_RESPONSE_PARAMS) {
-    url.searchParams.delete(param);
+  try {
+    const url = new URL(href);
+    const paramsToRemove = new Set([
+      ...SOLFLARE_RESPONSE_PARAMS,
+      SOLFLARE_FLOW_PARAM,
+      SOLFLARE_RETURN_PARAM,
+    ]);
+    const cleanParams = new URLSearchParams();
+    const raw = url.search + (url.hash ? "&" + url.hash : "");
+    const extracted = extractSolflareParams(raw);
+    extracted.forEach((value, key) => {
+      if (!paramsToRemove.has(key as never)) {
+        cleanParams.set(key, value);
+      }
+    });
+    const newSearch = cleanParams.toString() ? `?${cleanParams.toString()}` : "";
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${newSearch}`,
+    );
+  } catch {
+    /* ignore in non-browser environments */
   }
-  url.searchParams.delete(SOLFLARE_FLOW_PARAM);
-  url.searchParams.delete(SOLFLARE_RETURN_PARAM);
-  window.history.replaceState(
-    window.history.state,
-    "",
-    `${url.pathname}${url.search}${url.hash}`,
-  );
 }
