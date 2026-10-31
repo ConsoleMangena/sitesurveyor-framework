@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
 import OfflineStatusBanner from "./components/OfflineStatusBanner";
+import { Toaster } from "./components/ui/sonner";
 import WalletLoginPage from "./pages/auth/WalletLoginPage";
 import { shouldResumeSolflareAuth } from "./lib/auth/solflare-mobile.ts";
 
@@ -199,6 +200,7 @@ export default function App() {
     <ErrorBoundary>
       <GlobalLoader />
       <OfflineStatusBanner />
+      <Toaster position="bottom-right" richColors closeButton />
       <BrowserRouter>
         <SessionExpiredBanner />
         <Routes>

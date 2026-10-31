@@ -1,24 +1,36 @@
 import { useCallback, useMemo, useState } from "react";
-import { RefreshCw, Search, Loader2, ShieldCheck, ShieldX } from "lucide-react";
-
-import PageLoader from "@/components/PageLoader.tsx";
-import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
-import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
-import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
-import { useDialogState } from "@/lib/hooks/useDialogState.ts";
-import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import {
+  Copy,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  ShieldX,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
+import PageLoader from "@/components/PageLoader.tsx";
+import { DataTableBulkActions } from "@/components/data-table/bulk-actions";
+import { DataTableColumnHeader } from "@/components/data-table/column-header";
+import { DataTablePagination } from "@/components/data-table/pagination";
+import { DataTableToolbar } from "@/components/data-table/toolbar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -27,12 +39,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
-
+import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
+import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import {
-  listAllProfiles,
   getProfileWithWorkspaces,
+  listAllProfiles,
   togglePlatformAdmin,
   type AdminProfileRow,
   type AdminProfileWithWorkspaces,
@@ -42,27 +57,23 @@ interface AdminUsersPageProps {
   isPlatformAdmin: boolean;
 }
 
-const PAGE_SIZE = 20;
-
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      dateStyle: "medium",
-    });
+    return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
   } catch {
     return iso;
   }
 }
 
-export default function AdminUsersPage({
-  isPlatformAdmin,
-}: AdminUsersPageProps) {
+const ACCESS_OPTIONS = [
+  { label: "Platform admins", value: "admin" },
+  { label: "Regular users", value: "user" },
+];
+
+export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps) {
   const [profiles, setProfiles] = useState<AdminProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [filterAdmin, setFilterAdmin] = useState<"all" | "admin" | "user">("all");
-  const [page, setPage] = useState(1);
 
   const [detailUser, setDetailUser] = useState<AdminProfileWithWorkspaces | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -70,13 +81,18 @@ export default function AdminUsersPage({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const toggleAdminState = useDialogState();
 
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [globalFilter, setGlobalFilter] = useState("");
+
   const load = useCallback(async () => {
     if (!isPlatformAdmin) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await listAllProfiles();
-      setProfiles(data);
+      setProfiles(await listAllProfiles());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load users.");
     } finally {
@@ -86,35 +102,193 @@ export default function AdminUsersPage({
 
   useAsyncAction(load, [load]);
 
-  const filtered = useMemo(() => {
-    let result = profiles;
-    if (filterAdmin === "admin") result = result.filter((p) => p.is_platform_admin);
-    if (filterAdmin === "user") result = result.filter((p) => !p.is_platform_admin);
-    const q = query.trim().toLowerCase();
-    if (q) {
-      result = result.filter(
-        (p) =>
-          (p.full_name ?? "").toLowerCase().includes(q) ||
-          (p.email ?? "").toLowerCase().includes(q) ||
-          (p.professional_title ?? "").toLowerCase().includes(q),
-      );
-    }
-    return result;
-  }, [profiles, query, filterAdmin]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const effectivePage = Math.min(page, totalPages);
-  const paginated = filtered.slice((effectivePage - 1) * PAGE_SIZE, effectivePage * PAGE_SIZE);
-
-  const openDetail = async (userId: string) => {
+  const openDetail = useCallback(async (userId: string) => {
     setDetailLoading(true);
     try {
-      const data = await getProfileWithWorkspaces(userId);
-      setDetailUser(data);
+      setDetailUser(await getProfileWithWorkspaces(userId));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load user details.");
     } finally {
       setDetailLoading(false);
+    }
+  }, []);
+
+  const columns = useMemo<ColumnDef<AdminProfileRow>[]>(
+    () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all rows on this page"
+            className="translate-y-0.5"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+            className="translate-y-0.5"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      },
+      {
+        id: "name",
+        accessorFn: (row) => row.full_name ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Name" />
+        ),
+        cell: ({ row }) => (
+          <span
+            className="block max-w-[200px] truncate font-medium"
+            title={row.original.full_name ?? undefined}
+          >
+            {row.original.full_name || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "email",
+        accessorFn: (row) => row.email ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Email" />
+        ),
+        cell: ({ row }) => (
+          <span
+            className="block max-w-[220px] truncate text-muted-foreground"
+            title={row.original.email ?? undefined}
+          >
+            {row.original.email ?? "—"}
+          </span>
+        ),
+      },
+      {
+        id: "title",
+        accessorFn: (row) => row.professional_title ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Title" />
+        ),
+        cell: ({ row }) => (
+          <span
+            className="block max-w-[160px] truncate"
+            title={row.original.professional_title ?? undefined}
+          >
+            {row.original.professional_title ?? "—"}
+          </span>
+        ),
+      },
+      {
+        id: "signup",
+        accessorFn: (row) => row.auth_signup_account_type ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Signup" />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="outline">
+            {row.original.auth_signup_account_type ?? "—"}
+          </Badge>
+        ),
+      },
+      {
+        id: "access",
+        accessorFn: (row) => (row.is_platform_admin ? "admin" : "user"),
+        filterFn: "arrIncludesSome",
+        enableGlobalFilter: false,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Access" />
+        ),
+        cell: ({ row }) =>
+          row.original.is_platform_admin ? (
+            <Badge variant="purple" className="inline-flex items-center gap-1">
+              <ShieldCheck size={12} />
+              Admin
+            </Badge>
+          ) : (
+            <span className="text-sm text-muted-foreground">User</span>
+          ),
+      },
+      {
+        id: "created_at",
+        accessorFn: (row) => row.created_at,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Joined" />
+        ),
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-muted-foreground">
+            {formatDate(row.original.created_at)}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void openDetail(row.original.id)}
+              disabled={detailLoading}
+            >
+              View
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [openDetail, detailLoading],
+  );
+
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is not React Compiler compatible.
+  const table = useReactTable({
+    data: profiles,
+    columns,
+    state: { sorting, columnFilters, columnVisibility, rowSelection, globalFilter },
+    enableRowSelection: true,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const q = String(filterValue ?? "").trim().toLowerCase();
+      if (!q) return true;
+      const { full_name, email, professional_title } = row.original;
+      return [full_name, email, professional_title].some((value) =>
+        (value ?? "").toLowerCase().includes(q),
+      );
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    initialState: { pagination: { pageSize: 20 } },
+  });
+
+  const handleCopySelectedEmails = async () => {
+    const emails = table
+      .getFilteredSelectedRowModel()
+      .rows.map((row) => row.original.email)
+      .filter((email): email is string => Boolean(email));
+
+    if (emails.length === 0) return;
+
+    try {
+      await navigator.clipboard.writeText(emails.join(", "));
+      toast.success(`Copied ${emails.length} email${emails.length > 1 ? "s" : ""}.`);
+    } catch {
+      toast.error("Could not copy to clipboard.");
     }
   };
 
@@ -130,7 +304,9 @@ export default function AdminUsersPage({
       setSuccessMessage(`Platform admin ${action}d.`);
       await load();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : `Failed to ${action} platform admin.`);
+      setError(
+        err instanceof Error ? err.message : `Failed to ${action} platform admin.`,
+      );
     } finally {
       setToggling(false);
       toggleAdminState.setOpen(false);
@@ -138,6 +314,8 @@ export default function AdminUsersPage({
   };
 
   if (!isPlatformAdmin) return null;
+
+  const filteredCount = table.getFilteredRowModel().rows.length;
 
   return (
     <DashboardShell className="hub-body admin-console-page">
@@ -147,7 +325,7 @@ export default function AdminUsersPage({
         subtitle="View registered users and manage platform admin access"
         meta={
           <>
-            {filtered.length} {filtered.length === 1 ? "user" : "users"}
+            {filteredCount} {filteredCount === 1 ? "user" : "users"}
           </>
         }
         actions={
@@ -158,158 +336,95 @@ export default function AdminUsersPage({
             disabled={loading}
             className="gap-2"
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {loading ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
             Refresh
           </Button>
         }
       />
 
-      {error ? (
-        <ErrorNotice tone="danger">
-          {error}
-        </ErrorNotice>
-      ) : null}
-      <div className="console-toolbar">
-        <div className="console-toolbar-search relative">
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            type="search"
-            placeholder="Search by name or email…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search users"
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={filterAdmin}
-          onValueChange={(v) => setFilterAdmin(v as "all" | "admin" | "user")}
-        >
-          <SelectTrigger className="console-toolbar-select">
-            <SelectValue placeholder="Filter users" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All users</SelectItem>
-            <SelectItem value="admin">Platform admins</SelectItem>
-            <SelectItem value="user">Regular users</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 
       {loading ? (
         <PageLoader compact />
       ) : (
-        <>
-          <Card className="border-border/60 overflow-hidden">
-            <CardContent className="p-0">
-              <ResponsiveTable records>
-                <Table className="console-table min-w-[760px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[170px]">Name</TableHead>
-                      <TableHead className="min-w-[220px]">Email</TableHead>
-                      <TableHead className="min-w-[140px]">Title</TableHead>
-                      <TableHead className="w-[110px]">Signup type</TableHead>
-                      <TableHead className="w-[110px]">Admin</TableHead>
-                      <TableHead className="w-[120px]">Joined</TableHead>
-                      <TableHead className="w-[90px] text-right">Actions</TableHead>
+        <div className="space-y-3">
+          <DataTableToolbar
+            table={table}
+            searchPlaceholder="Search by name, email or title…"
+            filters={[
+              { columnId: "access", title: "Access", options: ACCESS_OPTIONS },
+            ]}
+          />
+
+          <div className="overflow-hidden rounded-md border">
+            <div className="overflow-x-auto">
+              <Table className="console-table min-w-[760px]">
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id} colSpan={header.colSpan}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </TableHead>
+                      ))}
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginated.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={7}
-                          className="text-center py-8 text-muted-foreground"
-                        >
-                          No users found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginated.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell className="align-middle font-medium">
-                            <span className="block truncate max-w-[200px]" title={p.full_name || undefined}>
-                              {p.full_name || "—"}
-                            </span>
-                          </TableCell>
-                          <TableCell data-label="Email" className="align-middle text-muted-foreground">
-                            <span className="block truncate max-w-[220px]" title={p.email ?? undefined}>
-                              {p.email ?? "—"}
-                            </span>
-                          </TableCell>
-                          <TableCell data-label="Title" className="align-middle">
-                            <span className="block truncate max-w-[160px]" title={p.professional_title ?? undefined}>
-                              {p.professional_title ?? "—"}
-                            </span>
-                          </TableCell>
-                          <TableCell data-label="Signup type" className="align-middle whitespace-nowrap">
-                            <Badge variant="outline">
-                              {p.auth_signup_account_type ?? "—"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell data-label="Admin" className="align-middle whitespace-nowrap">
-                            {p.is_platform_admin ? (
-                              <Badge
-                                variant="purple"
-                                className="inline-flex items-center gap-1"
-                              >
-                                <ShieldCheck size={12} />
-                                Admin
-                              </Badge>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="py-8 text-center text-muted-foreground"
+                      >
+                        No users found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() ? "selected" : undefined}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id} className="align-middle">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
                             )}
                           </TableCell>
-                          <TableCell data-label="Joined" className="align-middle text-muted-foreground whitespace-nowrap">
-                            {formatDate(p.created_at)}
-                          </TableCell>
-                          <TableCell data-label="Actions" className="align-middle text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => void openDetail(p.id)}
-                              disabled={detailLoading}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </ResponsiveTable>
-            </CardContent>
-          </Card>
-
-          {totalPages > 1 && (
-            <div className="console-pagination">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={effectivePage <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {effectivePage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={effectivePage >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
+                        ))}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          )}
-        </>
+          </div>
+
+          <DataTablePagination table={table} />
+
+          <DataTableBulkActions table={table} entityName="user">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => void handleCopySelectedEmails()}
+            >
+              <Copy className="size-4" />
+              Copy emails
+            </Button>
+          </DataTableBulkActions>
+        </div>
       )}
 
       <DialogTemplate
@@ -349,8 +464,12 @@ export default function AdminUsersPage({
         ) : (
           <div className="space-y-5">
             <div className="space-y-1">
-              <p className="text-base font-semibold break-words">{detailUser.full_name || "Unnamed"}</p>
-              <p className="text-sm text-muted-foreground break-all">{detailUser.email ?? ""}</p>
+              <p className="text-base font-semibold break-words">
+                {detailUser.full_name || "Unnamed"}
+              </p>
+              <p className="text-sm text-muted-foreground break-all">
+                {detailUser.email ?? ""}
+              </p>
             </div>
 
             <div className="dlg-field-grid">
@@ -363,7 +482,9 @@ export default function AdminUsersPage({
               <div className="console-readout">
                 <span className="console-readout-label">Signup type</span>
                 <span className="console-readout-value">
-                  <Badge variant="outline">{detailUser.auth_signup_account_type ?? "—"}</Badge>
+                  <Badge variant="outline">
+                    {detailUser.auth_signup_account_type ?? "—"}
+                  </Badge>
                 </span>
               </div>
               <div className="console-readout">
@@ -378,7 +499,9 @@ export default function AdminUsersPage({
               </div>
               <div className="console-readout">
                 <span className="console-readout-label">Joined</span>
-                <span className="console-readout-value">{formatDate(detailUser.created_at)}</span>
+                <span className="console-readout-value">
+                  {formatDate(detailUser.created_at)}
+                </span>
               </div>
             </div>
 
@@ -387,9 +510,11 @@ export default function AdminUsersPage({
                 Workspace memberships ({detailUser.workspaces.length})
               </h4>
               {detailUser.workspaces.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No workspace memberships.</p>
+                <p className="text-sm text-muted-foreground">
+                  No workspace memberships.
+                </p>
               ) : (
-                <ul className="divide-y border rounded-md">
+                <ul className="divide-y rounded-md border">
                   {detailUser.workspaces.map((ws) => (
                     <li
                       key={ws.workspace_id}
@@ -414,7 +539,9 @@ export default function AdminUsersPage({
         open={toggleAdminState.open}
         onOpenChange={toggleAdminState.setOpen}
         title={
-          detailUser?.is_platform_admin ? "Revoke platform admin" : "Grant platform admin"
+          detailUser?.is_platform_admin
+            ? "Revoke platform admin"
+            : "Grant platform admin"
         }
         description={
           detailUser

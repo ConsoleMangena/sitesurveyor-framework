@@ -1,17 +1,32 @@
 import { useCallback, useMemo, useState } from "react";
-import { RefreshCw, Search, Archive, ArchiveRestore, Loader2 } from "lucide-react";
+import {
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import {
+  Archive,
+  ArchiveRestore,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 
-import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
-import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import PageLoader from "@/components/PageLoader.tsx";
+import { DataTableColumnHeader } from "@/components/data-table/column-header";
+import { DataTablePagination } from "@/components/data-table/pagination";
+import { DataTableToolbar } from "@/components/data-table/toolbar";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
-import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
-import { useDialogState } from "@/lib/hooks/useDialogState.ts";
-import { SuccessDialog } from "@/components/SuccessDialog.tsx";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -20,18 +35,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
+import { SuccessDialog } from "@/components/SuccessDialog.tsx";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
-
+import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
+import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import {
-  listWorkspaces,
-  listWorkspaceMembersAdmin,
-  getWorkspaceSummary,
   archiveWorkspace,
-  unarchiveWorkspace,
+  getWorkspaceSummary,
   listProfilesSummary,
-  type WorkspaceRowAdmin,
+  listWorkspaceMembersAdmin,
+  listWorkspaces,
+  unarchiveWorkspace,
   type WorkspaceMemberAdmin,
+  type WorkspaceRowAdmin,
   type WorkspaceSummary,
 } from "../../lib/repositories/adminPlatform.ts";
 
@@ -51,18 +69,26 @@ function StatBox({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border bg-muted/40 p-3">
       <span className="text-xl font-bold text-foreground">{value}</span>
-      <span className="text-xs text-muted-foreground capitalize">{label}</span>
+      <span className="text-xs capitalize text-muted-foreground">{label}</span>
     </div>
   );
 }
+
+const TYPE_OPTIONS = [
+  { label: "Personal", value: "personal" },
+  { label: "Business", value: "business" },
+];
+
+const STATUS_OPTIONS = [
+  { label: "Active", value: "active" },
+  { label: "Archived", value: "archived" },
+];
 
 export default function AdminWorkspacesPage({
   isPlatformAdmin,
 }: AdminWorkspacesPageProps) {
   const [rows, setRows] = useState<WorkspaceRowAdmin[]>([]);
   const [ownerLabels, setOwnerLabels] = useState<Map<string, string>>(new Map());
-  const [query, setQuery] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -74,6 +100,11 @@ export default function AdminWorkspacesPage({
   const [archiving, setArchiving] = useState(false);
   const archiveState = useDialogState();
 
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [globalFilter, setGlobalFilter] = useState("");
+
   const load = useCallback(async () => {
     if (!isPlatformAdmin) return;
     setLoading(true);
@@ -81,8 +112,7 @@ export default function AdminWorkspacesPage({
     try {
       const data = await listWorkspaces();
       setRows(data);
-      const owners = await listProfilesSummary(data.map((r) => r.owner_user_id));
-      setOwnerLabels(owners);
+      setOwnerLabels(await listProfilesSummary(data.map((r) => r.owner_user_id)));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load workspaces.");
     } finally {
@@ -92,28 +122,11 @@ export default function AdminWorkspacesPage({
 
   useAsyncAction(load, [load]);
 
-  const filtered = useMemo(() => {
-    let result = rows;
-    if (!showArchived) result = result.filter((r) => !r.archived_at);
-    const q = query.trim().toLowerCase();
-    if (q) {
-      result = result.filter((r) => {
-        const owner = ownerLabels.get(r.owner_user_id) ?? "";
-        return (
-          r.name.toLowerCase().includes(q) ||
-          (r.slug ?? "").toLowerCase().includes(q) ||
-          owner.toLowerCase().includes(q)
-        );
-      });
-    }
-    return result;
-  }, [rows, query, showArchived, ownerLabels]);
-
   const selectedRow = selectedWsId
-    ? rows.find((r) => r.id === selectedWsId) ?? null
+    ? (rows.find((r) => r.id === selectedWsId) ?? null)
     : null;
 
-  const openDetail = async (wsId: string) => {
+  const openDetail = useCallback(async (wsId: string) => {
     setSelectedWsId(wsId);
     setDetailLoading(true);
     try {
@@ -124,11 +137,13 @@ export default function AdminWorkspacesPage({
       setMembers(m);
       setSummary(s);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load workspace details.");
+      setError(
+        err instanceof Error ? err.message : "Failed to load workspace details.",
+      );
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, []);
 
   const handleArchiveToggle = async () => {
     if (!selectedRow) return;
@@ -146,14 +161,146 @@ export default function AdminWorkspacesPage({
       setSelectedWsId(null);
       await load();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : `Failed to ${verb.toLowerCase()} workspace.`);
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Failed to ${verb.toLowerCase()} workspace.`,
+      );
     } finally {
       setArchiving(false);
       archiveState.setOpen(false);
     }
   };
 
+  const columns = useMemo<ColumnDef<WorkspaceRowAdmin>[]>(
+    () => [
+      {
+        id: "name",
+        accessorFn: (row) => row.name,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Workspace" />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span
+              className="block max-w-[240px] truncate font-medium text-foreground"
+              title={row.original.name}
+            >
+              {row.original.name}
+            </span>
+            {row.original.archived_at ? (
+              <Badge variant="outline" className="mt-1 w-fit text-xs">
+                Archived
+              </Badge>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: "type",
+        accessorFn: (row) => row.type,
+        filterFn: "arrIncludesSome",
+        enableGlobalFilter: false,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Type" />
+        ),
+        cell: ({ row }) => (
+          <span className="capitalize">{row.original.type}</span>
+        ),
+      },
+      {
+        id: "owner",
+        accessorFn: (row) => ownerLabels.get(row.owner_user_id) ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Owner" />
+        ),
+        cell: ({ row }) => (
+          <span
+            className="block max-w-[180px] truncate text-muted-foreground"
+            title={ownerLabels.get(row.original.owner_user_id) ?? undefined}
+          >
+            {ownerLabels.get(row.original.owner_user_id) ?? "—"}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        accessorFn: (row) => (row.archived_at ? "archived" : "active"),
+        filterFn: "arrIncludesSome",
+        enableGlobalFilter: false,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) =>
+          row.original.archived_at ? (
+            <Badge variant="secondary">Archived</Badge>
+          ) : (
+            <Badge variant="success">Active</Badge>
+          ),
+      },
+      {
+        id: "created_at",
+        accessorFn: (row) => row.created_at,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Created" />
+        ),
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-muted-foreground">
+            {formatDate(row.original.created_at)}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void openDetail(row.original.id)}
+              disabled={detailLoading}
+            >
+              Inspect
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [openDetail, ownerLabels, detailLoading],
+  );
+
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is not React Compiler compatible.
+  const table = useReactTable({
+    data: rows,
+    columns,
+    state: { sorting, columnFilters, columnVisibility, globalFilter },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: (row, _columnId, filterValue) => {
+      const q = String(filterValue ?? "").trim().toLowerCase();
+      if (!q) return true;
+      const owner = ownerLabels.get(row.original.owner_user_id) ?? "";
+      return [row.original.name, row.original.slug ?? "", owner].some((value) =>
+        value.toLowerCase().includes(q),
+      );
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    initialState: { pagination: { pageSize: 20 } },
+  });
+
   if (!isPlatformAdmin) return null;
+
+  const filteredCount = table.getFilteredRowModel().rows.length;
 
   return (
     <DashboardShell className="hub-body admin-console-page">
@@ -163,7 +310,7 @@ export default function AdminWorkspacesPage({
         subtitle="Inspect any workspace — members, entity counts, archive status"
         meta={
           <>
-            {filtered.length} {filtered.length === 1 ? "workspace" : "workspaces"}
+            {filteredCount} {filteredCount === 1 ? "workspace" : "workspaces"}
           </>
         }
         actions={
@@ -174,111 +321,81 @@ export default function AdminWorkspacesPage({
             disabled={loading}
             className="gap-2"
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {loading ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
             Refresh
           </Button>
         }
       />
 
-      {error ? (
-        <ErrorNotice tone="danger">
-          {error}
-        </ErrorNotice>
-      ) : null}
-      <div className="console-toolbar">
-        <div className="console-toolbar-search relative">
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            type="search"
-            placeholder="Filter by name, slug, or owner…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Filter workspaces"
-            className="pl-9"
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-            className="h-4 w-4 rounded border-border text-primary accent-primary"
-          />
-          Show archived
-        </label>
-      </div>
+      {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 
       {loading ? (
         <PageLoader compact />
       ) : (
-        <Card className="border-border/60 overflow-hidden">
-          <CardContent className="p-0">
-            <ResponsiveTable records>
-              <Table className="console-table min-w-[640px]">
+        <div className="space-y-3">
+          <DataTableToolbar
+            table={table}
+            searchPlaceholder="Filter by name, slug, or owner…"
+            filters={[
+              { columnId: "status", title: "Status", options: STATUS_OPTIONS },
+              { columnId: "type", title: "Type", options: TYPE_OPTIONS },
+            ]}
+          />
+
+          <div className="overflow-hidden rounded-md border">
+            <div className="overflow-x-auto">
+              <Table className="console-table min-w-[760px]">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[200px]">Workspace</TableHead>
-                    <TableHead className="w-[100px]">Type</TableHead>
-                    <TableHead className="min-w-[160px]">Owner</TableHead>
-                    <TableHead className="w-[120px]">Created</TableHead>
-                    <TableHead className="w-[100px] text-right">Actions</TableHead>
-                  </TableRow>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id} colSpan={header.colSpan}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableHeader>
                 <TableBody>
-                  {filtered.length === 0 ? (
+                  {table.getRowModel().rows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
-                        className="text-center py-8 text-muted-foreground"
+                        colSpan={columns.length}
+                        className="py-8 text-center text-muted-foreground"
                       >
                         No workspaces found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((row) => (
+                    table.getRowModel().rows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="align-middle">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-foreground truncate max-w-[240px]" title={row.name}>
-                              {row.name}
-                            </span>
-                            {row.archived_at && (
-                              <Badge variant="outline" className="mt-1 w-fit text-xs">
-                                Archived
-                              </Badge>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id} className="align-middle">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell data-label="Type" className="align-middle capitalize">{row.type}</TableCell>
-                        <TableCell data-label="Owner" className="align-middle text-muted-foreground">
-                          <span className="block truncate max-w-[180px]" title={ownerLabels.get(row.owner_user_id) ?? undefined}>
-                            {ownerLabels.get(row.owner_user_id) ?? "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell data-label="Created" className="align-middle text-muted-foreground whitespace-nowrap">
-                          {formatDate(row.created_at)}
-                        </TableCell>
-                        <TableCell data-label="Actions" className="align-middle text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void openDetail(row.id)}
-                            disabled={detailLoading}
-                          >
-                            Inspect
-                          </Button>
-                        </TableCell>
+                          </TableCell>
+                        ))}
                       </TableRow>
                     ))
                   )}
                 </TableBody>
               </Table>
-            </ResponsiveTable>
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+
+          <DataTablePagination table={table} />
+        </div>
       )}
 
       <DialogTemplate
@@ -301,12 +418,20 @@ export default function AdminWorkspacesPage({
               >
                 {selectedRow.archived_at ? (
                   <>
-                    {archiving ? <Loader2 size={14} className="animate-spin" /> : <ArchiveRestore size={16} />}
+                    {archiving ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <ArchiveRestore size={16} />
+                    )}
                     Unarchive
                   </>
                 ) : (
                   <>
-                    {archiving ? <Loader2 size={14} className="animate-spin" /> : <Archive size={16} />}
+                    {archiving ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Archive size={16} />
+                    )}
                     Archive
                   </>
                 )}
@@ -322,7 +447,9 @@ export default function AdminWorkspacesPage({
             <div className="dlg-field-grid">
               <div className="console-readout">
                 <span className="console-readout-label">Type</span>
-                <span className="console-readout-value capitalize">{selectedRow.type}</span>
+                <span className="console-readout-value capitalize">
+                  {selectedRow.type}
+                </span>
               </div>
               <div className="console-readout">
                 <span className="console-readout-label">Owner</span>
@@ -332,16 +459,22 @@ export default function AdminWorkspacesPage({
               </div>
               <div className="console-readout">
                 <span className="console-readout-label">Slug</span>
-                <span className="console-readout-value">{selectedRow.slug ?? "—"}</span>
+                <span className="console-readout-value">
+                  {selectedRow.slug ?? "—"}
+                </span>
               </div>
               <div className="console-readout">
                 <span className="console-readout-label">Created</span>
-                <span className="console-readout-value">{formatDate(selectedRow.created_at)}</span>
+                <span className="console-readout-value">
+                  {formatDate(selectedRow.created_at)}
+                </span>
               </div>
               {selectedRow.archived_at && (
                 <div className="console-readout">
                   <span className="console-readout-label">Archived</span>
-                  <span className="console-readout-value">{formatDate(selectedRow.archived_at)}</span>
+                  <span className="console-readout-value">
+                    {formatDate(selectedRow.archived_at)}
+                  </span>
                 </div>
               )}
             </div>
@@ -350,9 +483,11 @@ export default function AdminWorkspacesPage({
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold">Entity counts</h4>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {(Object.entries(summary) as [string, number][]).map(([key, val]) => (
-                    <StatBox key={key} label={key.replace(/_/g, " ")} value={val} />
-                  ))}
+                  {(Object.entries(summary) as [string, number][]).map(
+                    ([key, val]) => (
+                      <StatBox key={key} label={key.replace(/_/g, " ")} value={val} />
+                    ),
+                  )}
                 </div>
               </div>
             )}
@@ -366,32 +501,40 @@ export default function AdminWorkspacesPage({
                   <Table className="console-table min-w-[420px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs min-w-[120px]">Name</TableHead>
-                        <TableHead className="text-xs min-w-[160px]">Email</TableHead>
-                        <TableHead className="text-xs w-[100px]">Role</TableHead>
-                        <TableHead className="text-xs w-[80px]">Status</TableHead>
+                        <TableHead className="min-w-[120px] text-xs">Name</TableHead>
+                        <TableHead className="min-w-[160px] text-xs">Email</TableHead>
+                        <TableHead className="w-[100px] text-xs">Role</TableHead>
+                        <TableHead className="w-[80px] text-xs">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {members.map((m) => (
                         <TableRow key={m.id}>
                           <TableCell className="align-middle text-sm">
-                            <span className="block truncate max-w-[150px]" title={m.full_name ?? undefined}>
+                            <span
+                              className="block max-w-[150px] truncate"
+                              title={m.full_name ?? undefined}
+                            >
                               {m.full_name ?? "—"}
                             </span>
                           </TableCell>
-                          <TableCell data-label="Email" className="align-middle text-sm">
-                            <span className="block truncate max-w-[180px]" title={m.email ?? undefined}>
+                          <TableCell className="align-middle text-sm">
+                            <span
+                              className="block max-w-[180px] truncate"
+                              title={m.email ?? undefined}
+                            >
                               {m.email ?? "—"}
                             </span>
                           </TableCell>
-                          <TableCell data-label="Role" className="align-middle whitespace-nowrap">
+                          <TableCell className="whitespace-nowrap align-middle">
                             <Badge variant="outline" className="text-xs">
                               {m.role}
                             </Badge>
                           </TableCell>
-                          <TableCell data-label="Status" className="align-middle text-xs">
-                            <Badge variant={m.status === "active" ? "default" : "secondary"}>
+                          <TableCell className="align-middle text-xs">
+                            <Badge
+                              variant={m.status === "active" ? "default" : "secondary"}
+                            >
                               {m.status}
                             </Badge>
                           </TableCell>

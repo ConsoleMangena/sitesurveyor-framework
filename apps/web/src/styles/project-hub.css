@@ -566,6 +566,18 @@
     margin-top: 1px;
 }
 
+/* ── shadcn sidebar shell ──
+   Background treatment carried over from the legacy `.hub-screen` shell so the
+   app keeps its branded gradient now that the sidebar primitive owns layout. */
+.hub-shell {
+    background:
+        radial-gradient(circle at 12% 22%, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 32rem),
+        radial-gradient(circle at 88% 78%, color-mix(in oklab, var(--accent-purple) 8%, transparent) 0%, transparent 30rem),
+        var(--bg);
+    background-size: 400% 400%;
+    animation: hub-bg-drift 22s ease-in-out infinite;
+}
+
 /* ── Workspace (Sidebar + Content) ── */
 .hub-workspace {
     display: flex;
