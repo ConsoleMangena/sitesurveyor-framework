@@ -643,6 +643,20 @@ describe("WalletLoginPage (Solflare mobile return)", () => {
     expect(mockResumeSolflare).not.toHaveBeenCalled();
   });
 
+  it("continues the pending signature instead of restarting the connect", async () => {
+    mockHasPendingSolflare.mockReturnValue(true);
+
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /continue in solflare/i }),
+    );
+
+    expect(mockContinueSolflare).toHaveBeenCalledTimes(1);
+    expect(mockCancelSolflare).not.toHaveBeenCalled();
+    expect(mockStartSolflare).not.toHaveBeenCalled();
+    expect(mockSignInWithSolanaWallet).not.toHaveBeenCalled();
+  });
+
   it("explains an expired request when the signature cannot be sent", async () => {
     mockShouldResumeSolflare.mockReturnValue(true);
     mockResumeSolflare.mockReturnValue({ status: "awaiting-signature" });

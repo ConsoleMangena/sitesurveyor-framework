@@ -546,6 +546,13 @@ export default function WalletLoginPage() {
 
   const handleSignIn = async () => {
     clearError();
+    // Solflare has already connected in the app: continue the stored signature
+    // request. Cancelling here would throw away the approved session and send
+    // the user back to a fresh connect approval.
+    if (solflareContinuation || hasPendingSolflareSignature()) {
+      handleSolflareContinue();
+      return;
+    }
     setSolflareContinuation(false);
     cancelSolflareMobileAuth();
     try {
@@ -611,6 +618,7 @@ export default function WalletLoginPage() {
         return;
       }
       if (outcome.status === "error") {
+        setSolflareContinuation(false);
         setError(outcome.message);
         setSigning(false);
         setAuthLoading(false);
@@ -633,6 +641,7 @@ export default function WalletLoginPage() {
           await finishSignIn(user);
         }
       } catch (err) {
+        setSolflareContinuation(false);
         setAuthLoading(false);
         setError(
           describeWalletFailure(
@@ -954,6 +963,11 @@ export default function WalletLoginPage() {
                   <>
                     <Loader2 className="web3-btn-icon web3-spin" />
                     <span>Authorizing…</span>
+                  </>
+                ) : solflareContinuation ? (
+                  <>
+                    <LogIn className="web3-btn-icon" />
+                    <span>Continue in Solflare</span>
                   </>
                 ) : (
                   <>
