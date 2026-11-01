@@ -62,8 +62,8 @@ export function ProjectStatusChart({ projects }: ProjectStatusChartProps) {
       contentClassName="flex flex-col justify-center"
     >
       {total === 0 ? (
-        <div className="dash-empty">
-          <span className="dash-empty-icon">
+        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center text-sm text-muted-foreground">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
             <PieChartIcon size={16} />
           </span>
           <span>No projects to chart yet.</span>

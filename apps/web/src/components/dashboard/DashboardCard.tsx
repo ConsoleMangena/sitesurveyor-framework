@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import "./dashboard.css";
 
 interface DashboardCardProps {
   title?: React.ReactNode;
@@ -33,8 +32,7 @@ export function DashboardCard({
   return (
     <Card
       className={cn(
-        "dash-card border-border/70 bg-card flex flex-col shadow-[0_1px_2px_rgba(15,23,20,0.03)] transition-[border-color,box-shadow,transform] duration-300",
-        "hover:border-border hover:shadow-[0_12px_30px_rgba(15,23,20,0.06)] hover:-translate-y-0.5",
+        "flex flex-col",
         accent && "border-l-4 border-l-primary",
         className,
       )}
@@ -45,7 +43,7 @@ export function DashboardCard({
             {icon && (
               <span
                 className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/60",
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60",
                   accent
                     ? "bg-primary/10 text-primary"
                     : "bg-muted/70 text-muted-foreground",
@@ -71,6 +69,7 @@ export function DashboardCard({
       <CardContent className={cn("flex-1", contentClassName)}>
         {children}
       </CardContent>
-      {footer && <CardFooter className="pt-0 gap-2">{footer}</CardFooter>}    </Card>
+      {footer && <CardFooter className="pt-0 gap-2">{footer}</CardFooter>}
+    </Card>
   );
 }

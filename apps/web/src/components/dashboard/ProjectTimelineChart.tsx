@@ -72,8 +72,8 @@ export function ProjectTimelineChart({ projects, days = 30 }: ProjectTimelineCha
       </div>
 
       {total === 0 ? (
-        <div className="dash-empty">
-          <span className="dash-empty-icon">
+        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center text-sm text-muted-foreground">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
             <TrendingUp size={16} />
           </span>
           <span>No projects created in the last {days} days.</span>

@@ -1,21 +1,16 @@
 import { useCallback, useState } from "react";
 
-import {
-  DashboardGrid,
-  DashboardSection,
-  DashboardShell,
-} from "@/components/dashboard/DashboardShell.tsx";
-import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
-import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
+import ErrorNotice from "@/components/errors/ErrorNotice";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { AdminPlatformDashboard } from "@/features/admin/dashboard/admin-platform-dashboard";
-import { DatabaseStorageCard } from "@/components/dashboard/DatabaseStorageCard.tsx";
-import { ProfessionalPortfolioCard } from "@/features/personal/components/ProfessionalPortfolioCard.tsx";
+import { DatabaseStorageCard } from "@/components/dashboard/DatabaseStorageCard";
+import { ProfessionalPortfolioCard } from "@/features/personal/components/ProfessionalPortfolioCard";
 import {
   countProfiles,
   listProfilesSummary,
   listWorkspaces,
   type WorkspaceRowAdmin,
-} from "@/lib/repositories/adminPlatform.ts";
+} from "@/lib/repositories/adminPlatform";
 
 interface AdminOverviewPageProps {
   isPlatformAdmin: boolean;
@@ -65,7 +60,7 @@ export default function AdminOverviewPage({
   }
 
   return (
-    <DashboardShell className="hub-body admin-console-page">
+    <div className="space-y-4">
       {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 
       <AdminPlatformDashboard
@@ -78,17 +73,20 @@ export default function AdminOverviewPage({
       />
 
       {workspaceId ? (
-        <DashboardSection title="Your operator workspace">
-          <DashboardGrid>
-            <div className="md:col-span-12 xl:col-span-8">
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Your Operator Workspace
+          </h2>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="lg:col-span-8">
               <ProfessionalPortfolioCard workspaceId={workspaceId} userName={userName} />
             </div>
-            <div className="md:col-span-12 xl:col-span-4">
+            <div className="lg:col-span-4">
               <DatabaseStorageCard workspaceId={workspaceId} />
             </div>
-          </DashboardGrid>
-        </DashboardSection>
+          </div>
+        </div>
       ) : null}
-    </DashboardShell>
+    </div>
   );
 }

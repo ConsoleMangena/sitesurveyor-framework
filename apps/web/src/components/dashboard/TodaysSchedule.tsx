@@ -136,7 +136,7 @@ export function TodaysSchedule({
   ).length;
 
   return (
-    <Card className="dash-card h-full flex flex-col">
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm">
           <CalendarDays className="size-4" />

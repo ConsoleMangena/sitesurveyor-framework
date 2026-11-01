@@ -11,12 +11,12 @@ interface DashboardSkeletonProps {
 
 function KpiSkeleton() {
   return (
-    <div className="kpi-tile rounded-xl border p-3.5 sm:p-4">
+    <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm">
       <Skeleton className="size-7 rounded-lg" />
       <div className="mt-3 flex flex-col gap-2">
-        <Skeleton className="h-2.5 w-16" />
-        <Skeleton className="h-6 w-24" />
-        <Skeleton className="h-2.5 w-28" />
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-7 w-28" />
+        <Skeleton className="h-3 w-32" />
       </div>
     </div>
   );
@@ -26,18 +26,18 @@ function PanelSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "dash-card flex flex-col gap-4 rounded-xl border p-4 sm:p-5",
+        "flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-5 shadow-sm",
         className,
       )}
     >
       <div className="flex items-center gap-3">
         <Skeleton className="size-9 rounded-lg" />
         <div className="flex flex-col gap-2">
-          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3.5 w-28" />
           <Skeleton className="h-2.5 w-16" />
         </div>
       </div>
-      <Skeleton className="h-40 w-full rounded-lg sm:h-52" />
+      <Skeleton className="h-44 w-full rounded-lg sm:h-56" />
     </div>
   );
 }
@@ -49,28 +49,28 @@ export function DashboardSkeleton({
 }: DashboardSkeletonProps) {
   return (
     <div
-      className={cn("dash-skeleton", className)}
+      className={cn("flex flex-col gap-4", className)}
       aria-busy="true"
       aria-label="Loading dashboard"
     >
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: kpis }).map((_, index) => (
           <KpiSkeleton key={`kpi-${index}`} />
         ))}
       </div>
 
       {rail > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: rail }).map((_, index) => (
             <div
               key={`rail-${index}`}
-              className="kpi-tile rounded-xl border px-3 py-2.5"
+              className="rounded-xl border bg-card px-4 py-3 shadow-sm"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 <Skeleton className="size-6 rounded-md" />
                 <div className="flex flex-1 flex-col gap-1.5">
-                  <Skeleton className="h-2 w-12" />
-                  <Skeleton className="h-3.5 w-10" />
+                  <Skeleton className="h-2.5 w-16" />
+                  <Skeleton className="h-4 w-12" />
                 </div>
               </div>
             </div>
@@ -78,12 +78,9 @@ export function DashboardSkeleton({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-12">
-        <PanelSkeleton className="md:col-span-12 xl:col-span-7" />
-        <PanelSkeleton className="md:col-span-12 xl:col-span-5" />
-        <PanelSkeleton className="md:col-span-6 xl:col-span-4" />
-        <PanelSkeleton className="md:col-span-6 xl:col-span-4" />
-        <PanelSkeleton className="md:col-span-12 xl:col-span-4" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
+        <PanelSkeleton className="col-span-1 lg:col-span-4" />
+        <PanelSkeleton className="col-span-1 lg:col-span-3" />
       </div>
     </div>
   );

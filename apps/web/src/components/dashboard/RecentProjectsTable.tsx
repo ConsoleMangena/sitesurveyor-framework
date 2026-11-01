@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import "@/styles/console.css";
 import type { ProjectWithOrg } from "@/lib/repositories/projects";
 
 type StatusFilter = "All" | "Active" | "Completed";
@@ -234,8 +233,8 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
           </ToggleGroup>
         </div>
 
-        <div className="dash-table-scroll">
-          <Table className="console-table min-w-[520px]">
+        <div className="w-full overflow-x-auto">
+          <Table className="min-w-[520px]">
             <TableHeader className="border-t">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
