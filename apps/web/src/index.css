@@ -1,137 +1,69 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import './styles/theme.css';
 
 /* ─────────────────────────────────────────────────────────────
-   SiteSurveyor — Supabase-style design tokens
-   Light (default) + dark (`.dark`, `[data-theme="dark"]`)  console.
+   SiteSurveyor — shadcn-admin design tokens (ported)
+   Light (default) + dark (`.dark`, `[data-theme="dark"]`)
    ───────────────────────────────────────────────────────────── */
 
-@theme inline {
-  /* Typography — the shadcn-admin font system. Each `--font-*` token
-     generates a `font-<name>` utility; `FontProvider` puts one of those
-     classes on <html>, which remaps `--font-app` further down. Because every
-     face in the app (Tailwind's `font-sans`, the legacy `--sans` / `--heading`
-     consumers, the document font) resolves through `--font-app`, a single
-     class switches the whole UI. */
-  --font-inter: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-manrope: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-system: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-sans: var(--font-app);
-  --font-mono: var(--mono);
+/* ── Light theme ── */
+:root {
+  --text: #52525b;
+  --text-h: #09090b;
+  --bg: #ffffff;
 
-  /* 11px — the step Tailwind leaves out between text-xs (12) and its own
-     floor, for tracked uppercase labels and dense data chrome. Deliberately
-     no paired line-height, so it only ever sets size. */
-  --text-micro: 0.6875rem;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
 
-  --color-background: var(--bg);
-  --color-foreground: var(--text-h);
-  --color-card: var(--surface);
-  --color-card-foreground: var(--text-h);
-  --color-popover: var(--surface);
-  --color-popover-foreground: var(--text-h);
-  --color-primary: var(--accent);
-  --color-primary-foreground: var(--accent-contrast);
-  --color-secondary: var(--surface-muted);
-  --color-secondary-foreground: var(--text-h);
-  --color-muted: var(--surface-muted);
-  --color-muted-foreground: var(--text);
-  --color-accent: var(--surface-muted);
-  --color-accent-foreground: var(--text-h);
-  --color-destructive: var(--color-error);
-  --color-destructive-foreground: #ffffff;
-  --color-border: var(--border);
-  --color-input: var(--border);
-  --color-ring: var(--accent);
-  --color-chart-1: var(--accent);
-  --color-chart-2: #0ea5e9;
-  --color-chart-3: #f59e0b;
-  --color-chart-4: #8b5cf6;
-  --color-chart-5: #f2555a;
-  /* Sidebar shell (shadcn sidebar primitive) */
-  --color-sidebar: var(--surface);
-  --color-sidebar-foreground: var(--text-h);
-  --color-sidebar-primary: var(--accent);
-  --color-sidebar-primary-foreground: var(--accent-contrast);
-  --color-sidebar-accent: var(--surface-muted);
-  --color-sidebar-accent-foreground: var(--text-h);
-  --color-sidebar-border: var(--border);
-  --color-sidebar-ring: var(--accent);
+  --border: #e4e4e7;
+  --border-heavy: #d4d4d8;
+
+  --accent: #18181b;
+  --accent-contrast: #fafafa;
+  --accent-bg: rgba(24, 24, 27, 0.08);
+  --accent-border: rgba(24, 24, 27, 0.3);
+  --accent-purple: #8b5cf6;
+  --accent-purple-bg: rgba(139, 92, 246, 0.1);
+  --social-bg: rgba(244, 244, 245, 0.5);
+
+  --color-error: #ef4444;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-success: #16a34a;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-info: #2563eb;
+  --color-info-bg: #eff6ff;
+  --color-info-border: #bfdbfe;
+
+  --placeholder: #8a918c;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --muted-foreground: var(--text-muted);
+
+  --background: var(--bg);
+  --foreground: var(--text-h);
+
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
-}
 
-:root {
-  /* Base text / bg */
-  --text: #4c5350;
-  --text-h: #10130f;
-  --bg: #fbfbfa;
-
-  /* Surfaces */
-  --surface: #ffffff;
-  --surface-muted: #f3f4f3;
-
-  /* Borders */
-  --border: #e2e4e2;
-  --border-heavy: #cdd1cd;
-
-  /* Brand — surveyor red (matches the logo) */
-  --code-bg: #f6f1f0;
-  --accent: #d92d20;
-  --accent-contrast: #ffffff;
-  --accent-bg: rgba(217, 45, 32, 0.1);
-  --accent-border: rgba(217, 45, 32, 0.42);
-  --accent-purple: #8b5cf6;
-  --accent-purple-bg: rgba(139, 92, 246, 0.1);
-  --social-bg: rgba(246, 241, 240, 0.5);
-
-  /* Semantic status colors */
-  --color-error: #cc2435;
-  --color-error-bg: #fdebec;
-  --color-error-border: #f8c2c7;
-  --color-success: #0c8f5d;
-  --color-success-bg: #e6f6ee;
-  --color-success-border: #b5e4cd;
-  --color-warning: #b25a09;
-  --color-warning-bg: #fdf3e3;
-  --color-warning-border: #f3d9ab;
-  --color-info: #0563c6;
-  --color-info-bg: #e8f0fc;
-  --color-info-border: #bcd5f5;
-
-  /* Text */
-  --placeholder: #8a918c;
-  --text-secondary: #4c5350;
-  --text-muted: #6d7570;
-  --muted-foreground: var(--text-muted);
-
-  /* Monochromatic extras used by charts */
-  --background: var(--bg);
-  --foreground: var(--text-h);
-  --color-count: var(--accent);
-
-  /* Radii — Supabase: soft, console-grade curvature */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
-  /* Spacing */
   --panel-pad: 16px;
   --panel-pad-lg: 20px;
 
-  /* Tables */
   --table-head-bg: var(--surface-muted);
   --table-row-hover-bg: var(--surface-muted);
 
-  /* Shadows */
   --shadow:
     rgba(15, 23, 20, 0.08) 0 10px 15px -3px, rgba(15, 23, 20, 0.04) 0 4px 6px -2px;
   --shadow-sm: rgba(15, 23, 20, 0.04) 0 1px 2px;
   --shadow-hover: rgba(15, 23, 20, 0.08) 0 8px 24px;
   --focus-ring: 0 0 0 4px var(--accent-bg);
 
-  /* Motion */
   --motion-fast: 160ms;
   --motion-base: 240ms;
   --motion-slow: 360ms;
@@ -140,87 +72,71 @@
   --lift-sm: translateY(-1px) scale(1.01);
   --lift-md: translateY(-3px) scale(1.015);
 
-  /* Typography — one switchable family for UI and headings, one mono for
-     code and measured values. `--font-app` is the switch; the rest alias it. */
   --font-app: var(--font-inter);
   --sans: var(--font-app);
   --heading: var(--font-app);
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
-  /* 16px root: the rem base that Tailwind's text and spacing scale is
-     calibrated to, so the shadcn primitives render at their designed size.
-     Console density comes from `body`, never from shrinking the root. */
   font-size: 16px;
   font-family: var(--font-app);
   line-height: 1.5;
   letter-spacing: 0.01em;
   color-scheme: light;
-  color: var(--text);
-  background: var(--bg);
+  color: #52525b;
+  background: #fff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Typeface switch (appearance drawer / FontProvider) ──
-   Higher specificity than `:root` above, so the class wins; the aliases
-   inherit the new value through `--font-app`. */
-html.font-manrope {
-  --font-app: var(--font-manrope);
-}
-html.font-system {
-  --font-app: var(--font-system);
-}
-
-/* ── Dark console theme ── */
+/* ── Dark theme ── */
 .dark,
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --text: #9aa39c;
-  --text-h: #eef0ee;
-  --bg: #0d0f0e;
+  --text: #a1a1aa;
+  --text-h: #fafafa;
+  --bg: #09090b;
 
-  --surface: #15171a;
-  --surface-muted: #1d2023;
+  --surface: #09090b;
+  --surface-muted: #18181b;
 
-  --border: #262a28;
-  --border-heavy: #33383a;
+  --border: #27272a;
+  --border-heavy: #3f3f46;
 
-  --code-bg: #201a1a;
-  --accent: #ff6b6b;
-  --accent-contrast: #1f0a0a;
-  --accent-bg: rgba(255, 107, 107, 0.12);
-  --accent-border: rgba(255, 107, 107, 0.4);
+  --code-bg: #18181b;
+  --accent: #fafafa;
+  --accent-contrast: #18181b;
+  --accent-bg: rgba(250, 250, 250, 0.12);
+  --accent-border: rgba(250, 250, 250, 0.35);
   --accent-purple: #a78bfa;
   --accent-purple-bg: rgba(167, 139, 250, 0.12);
-  --social-bg: rgba(32, 26, 26, 0.6);
+  --social-bg: rgba(39, 39, 42, 0.6);
 
-  --color-error: #f2555a;
-  --color-error-bg: #2a1416;
-  --color-error-border: #5a2327;
-  --color-success: #55d79e;
-  --color-success-bg: #12241b;
-  --color-success-border: #1f5237;
-  --color-warning: #f0a25c;
-  --color-warning-bg: #291d12;
-  --color-warning-border: #5a3c1c;
-  --color-info: #63a6f0;
-  --color-info-bg: #12202f;
-  --color-info-border: #1f3a5c;
+  --color-error: #f87171;
+  --color-error-bg: #2b1111;
+  --color-error-border: #5f2626;
+  --color-success: #4ade80;
+  --color-success-bg: #102116;
+  --color-success-border: #1b4d2b;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #271c09;
+  --color-warning-border: #5b4212;
+  --color-info: #60a5fa;
+  --color-info-bg: #101e33;
+  --color-info-border: #1e3a5f;
 
   --placeholder: #5f6762;
-  --text-secondary: #9aa39c;
-  --text-muted: #707a73;
+  --text-secondary: #a1a1aa;
+  --text-muted: #a1a1aa;
   --muted-foreground: var(--text-muted);
 
   --background: var(--bg);
   --foreground: var(--text-h);
-  --color-count: var(--accent);
 
   --table-head-bg: var(--surface-muted);
-  --table-row-hover-bg: #22262a;
+  --table-row-hover-bg: #18181b;
 
   --shadow:
     rgba(0, 0, 0, 0.5) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
@@ -229,6 +145,7 @@ html.font-system {
   --focus-ring: 0 0 0 4px var(--accent-bg);
 }
 
+/* ── root styles ── */
 #root {
   max-width: 100%;
   min-height: 100svh;
@@ -239,23 +156,18 @@ html.font-system {
 
 body {
   margin: 0;
-  /* Console reading density lives here, not on the root, so `rem` keeps
-     resolving against 16px and the shadcn scale stays true. */
   font-size: 0.875rem;
   line-height: 1.5;
   background: var(--bg);
   color: var(--text);
 }
 
-/* Phones and tablets read better one step up — the density bump the shell
-   used to get from a 15px root, without distorting the rem scale. */
 @media (max-width: 1024px) {
   body {
     font-size: 0.9375rem;
   }
 }
 
-/* iOS zooms the whole viewport to focus any control under 16px. */
 @media (max-width: 767px) {
   input,
   select,
@@ -264,6 +176,7 @@ body {
   }
 }
 
+/* ── Keyframes ── */
 @keyframes ui-fade-in-up {
   from {
     opacity: 0;
@@ -298,6 +211,7 @@ body {
   }
 }
 
+/* ── Typography ── */
 h1,
 h2 {
   font-family: var(--heading);
@@ -316,6 +230,7 @@ h2 {
   letter-spacing: -0.03em;
   margin: 0 0 8px;
 }
+
 p {
   margin: 0;
 }
@@ -369,15 +284,6 @@ code {
   appearance: none;
 }
 
-/* Add custom select chevron */
-select.input-field {
-  padding-right: 36px;
-  background-image: url('data:image/svg+xml;utf8,<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%236d7570" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-}
-
 .input-field:focus {
   outline: none;
   border-color: var(--accent);
@@ -405,6 +311,7 @@ textarea.input-field {
 }
 
 /* ── App Logo Utilities ── */
+
 .app-logo {
   display: block;
   height: auto;
@@ -412,7 +319,6 @@ textarea.input-field {
   object-fit: contain;
 }
 
-/* Ensure splash logo looks great on all screens */
 .splash-screen .splash-logo-wrap {
   --splash-logo-size: clamp(56px, 12vw, 84px);
 }
@@ -427,15 +333,99 @@ textarea.input-field {
 }
 
 /* ── Professional UI polish layer ── */
+
 html {
   background: var(--bg);
 }
 
 body {
   min-width: 320px;
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 7%, transparent), transparent 34rem),
-    var(--bg);
+  background: var(--bg);
+}
+
+/* Consistent shadcn/ui admin surfaces across authenticated, public and auth views. */
+:root {
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-hover: 0 8px 24px rgb(0 0 0 / 0.1);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.dark,
+[data-theme="dark"] {
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.25);
+  --shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-hover: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+body {
+  min-width: 320px;
+  background: var(--bg);
+}
+
+.hub-screen {
+  background: var(--bg) !important;
+  animation: none !important;
+}
+
+.hub-screen::before,
+.hub-screen::after {
+  content: none !important;
+}
+
+.hub-sidebar,
+.hub-topbar {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.hub-main-content {
+  background: var(--bg);
+}
+
+.hub-side-tab.active {
+  border-color: transparent;
+  background: var(--surface-muted);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.card,
+.table-card,
+.billing-card,
+.admin-console-card,
+.settings-card,
+.project-dashboard-card,
+.mkt-card,
+.pro-card,
+.equipment-card,
+.crew-card {
+  border-radius: var(--radius-lg);
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-app);
+}
+
+.input-field {
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.input-field:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 * {
@@ -556,3 +546,91 @@ h2 {
     @apply bg-muted!;
   }
 }
+
+/* shadcn-admin visual system overrides: neutral zinc surfaces, crisp borders and restrained motion. */
+:root {
+  --text: #52525b;
+  --text-h: #09090b;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --border: #e4e4e7;
+  --border-heavy: #d4d4d8;
+  --code-bg: #f4f4f5;
+  --accent: #18181b;
+  --accent-contrast: #fafafa;
+  --accent-bg: rgb(24 24 27 / 8%);
+  --accent-border: rgb(24 24 27 / 30%);
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --placeholder: #a1a1aa;
+  --color-error: #ef4444;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-success: #16a34a;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-info: #2563eb;
+  --color-info-bg: #eff6ff;
+  --color-info-border: #bfdbfe;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow: 0 1px 3px rgb(0 0 0 / 8%), 0 1px 2px rgb(0 0 0 / 4%);
+  --shadow-hover: 0 8px 24px rgb(0 0 0 / 10%);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgb(24 24 27 / 35%);
+}
+
+.dark,
+[data-theme="dark"] {
+  --text: #a1a1aa;
+  --text-h: #fafafa;
+  --bg: #09090b;
+  --surface: #09090b;
+  --surface-muted: #18181b;
+  --border: #27272a;
+  --border-heavy: #3f3f46;
+  --code-bg: #18181b;
+  --accent: #fafafa;
+  --accent-contrast: #18181b;
+  --accent-bg: rgb(250 250 250 / 12%);
+  --accent-border: rgb(250 250 250 / 35%);
+  --text-secondary: #a1a1aa;
+  --text-muted: #a1a1aa;
+  --placeholder: #71717a;
+  --color-error: #f87171;
+  --color-error-bg: #2b1111;
+  --color-error-border: #5f2626;
+  --color-success: #4ade80;
+  --color-success-bg: #102116;
+  --color-success-border: #1b4d2b;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #271c09;
+  --color-warning-border: #5b4212;
+  --color-info: #60a5fa;
+  --color-info-bg: #101e33;
+  --color-info-border: #1e3a5f;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 25%);
+  --shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  --shadow-hover: 0 8px 24px rgb(0 0 0 / 30%);
+}
+
+body { background: var(--bg); }
+.hub-screen { background: var(--bg) !important; animation: none !important; }
+.hub-screen::before, .hub-screen::after { content: none !important; }
+.hub-sidebar, .hub-topbar { background: var(--surface); box-shadow: none; }
+.hub-main-content { background: var(--bg); }
+.hub-side-tab.active { border-color: transparent; background: var(--surface-muted); box-shadow: inset 2px 0 0 var(--accent); }
+.card, .table-card, .billing-card, .admin-console-card, .settings-card,
+.project-dashboard-card, .mkt-card, .pro-card, .equipment-card, .crew-card {
+  border-color: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+.input-field { border-radius: var(--radius-md); box-shadow: none; }
+.input-field:focus { box-shadow: 0 0 0 3px var(--accent-bg); }

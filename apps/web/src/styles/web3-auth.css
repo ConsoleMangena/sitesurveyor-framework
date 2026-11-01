@@ -1,5 +1,5 @@
 .web3-auth-screen {
-  --web3-glow: color-mix(in oklab, var(--accent) 38%, transparent);
+  --web3-glow: color-mix(in oklab, var(--accent) 14%, transparent);
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
@@ -1520,4 +1520,73 @@
   .web3-icon-btn {
     transition: none !important;
   }
+}
+
+/* Wallet sign-in and account creation follow the shadcn-admin auth surface. */
+.web3-auth-screen {
+  --web3-glow: rgb(24 24 27 / 10%);
+  background: var(--bg);
+}
+.web3-auth-screen::before { opacity: 0.12; }
+.web3-auth-card {
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.web3-auth-card::before { content: none; }
+.web3-card-header { padding: 24px 24px 16px; }
+.web3-card-body { padding: 0 24px 24px; }
+.web3-tabs-nav { border-radius: 0.5rem; background: var(--surface-muted); }
+.web3-tab-btn { border-radius: 0.375rem; }
+.web3-tab-btn.is-primary,
+.web3-tab-btn.is-primary.active {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: none;
+}
+.web3-tab-btn.is-primary .tab-icon,
+.web3-tab-btn.is-primary.active .tab-icon { color: var(--accent-contrast); }
+.web3-tab-btn.active { border-radius: 0.375rem; box-shadow: var(--shadow-sm); }
+.web3-wallet-field, .web3-connected-pill, .web3-icon-btn,
+.web3-type-card, .web3-wallet-row {
+  border-radius: 0.5rem;
+  box-shadow: none;
+}
+.web3-action-btn, .web3-action-btn--slim {
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: none;
+  font-weight: 600;
+}
+.web3-action-btn:hover:not(:disabled),
+.web3-action-btn--slim:hover:not(:disabled) {
+  transform: none;
+  filter: brightness(0.92);
+  box-shadow: none;
+}
+.web3-input { border-radius: 0.5rem; background: var(--surface); }
+.web3-type-card.active, .web3-wallet-row.selected {
+  background: var(--accent-bg);
+  box-shadow: 0 0 0 1px var(--accent-border);
+}
+.web3-market-link { border-radius: 0.5rem; background: var(--surface); }
+[data-slot="dialog-content"].web3-wallet-dialog {
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-hover);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.web3-brand-glow { display: none; }
+@media (max-width: 540px) {
+  .web3-auth-card { border-radius: 0.625rem; }
+  .web3-card-header { padding: 20px 18px 14px; }
+  .web3-card-body { padding: 0 18px 20px; }
 }
