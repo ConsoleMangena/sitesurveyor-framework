@@ -63,14 +63,13 @@ function nextId(prefix: string): string {
   return `${prefix}${Date.now()}-${idCounter}`;
 }
 
-/** Available AI models the user may choose from (Alibaba Cloud Model Studio Inkling). */
+/** Available AI models the user may choose from (NVIDIA NIM Nemotron). */
 const AI_MODELS: { id: string; label: string; free: boolean }[] = [
-  { id: "inkling-flash", label: "Inkling Flash", free: true },
-  { id: "inkling-pro", label: "Inkling Pro", free: false },
-  { id: "inkling-turbo", label: "Inkling Turbo", free: false },
-  { id: "inkling-3.7-max", label: "Inkling3.7 Max (free quota)", free: true },
-  { id: "inkling-3.7-plus", label: "Inkling3.7 Plus (free quota)", free: true },
-  { id: "inkling-3.7-flash", label: "Inkling3.7 Flash (free quota)", free: true },
+  { id: "nvidia/nemotron-3.5-lightning-30b-a3b", label: "Nemotron 3.5 Lightning 30B", free: true },
+  { id: "nvidia/nemotron-3.5-bolt-e4b", label: "Nemotron 3.5 Bolt E4B (fastest)", free: true },
+  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", label: "Nemotron 3 Nano Omni 30B (reasoning)", free: true },
+  { id: "nvidia/nemotron-3.5-super-vl-120b-a12b", label: "Nemotron 3.5 Super VL 120B", free: true },
+  { id: "nvidia/nemotron-3-ultra-550b-a55b", label: "Nemotron 3 Ultra 550B (strongest)", free: true },
 ];
 const MODEL_STORAGE_KEY = "sitesurveyor-ai-model";
 const DEFAULT_MODEL_ID = AI_MODELS[0].id;

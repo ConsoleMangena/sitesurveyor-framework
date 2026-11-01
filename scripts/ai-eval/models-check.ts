@@ -4,8 +4,8 @@
 import {
   ALLOWED_MODELS,
   DEFAULT_MODEL,
-  THINKING_MACHINES_AI_MODELS,
-  
+  NVIDIA_NEMOTRON_MODELS,
+  STRONG_MODEL_FALLBACK,
   STRONG_MODEL,
   isAllowedModel,
   providerFor,
@@ -32,17 +32,17 @@ check("allowlist-size", ALLOWED_MODELS.size >= 3);
 
 // isAllowedModel + resolveModel: explicit allowed value wins.
 check(
-  "resolve-explicit-allowed-simple",
-  resolveModel("inkling-flash", "simple") === "inkling-flash",
+  "resolve-explicit-allowed-default",
+  resolveModel(DEFAULT_MODEL, "simple") === DEFAULT_MODEL,
 );
 check(
-  "resolve-explicit-allowed-complex",
-  resolveModel("inkling-pro", "complex") === "inkling-pro",
+  "resolve-explicit-allowed-strong",
+  resolveModel(STRONG_MODEL, "complex") === STRONG_MODEL,
 );
 
 check(
-  "resolve-explicit-allowed-max",
-  resolveModel("inkling-3.7-max", "complex") === "inkling-3.7-max",
+  "resolve-explicit-allowed-fallback",
+  resolveModel(STRONG_MODEL_FALLBACK, "complex") === STRONG_MODEL_FALLBACK,
 );
 
 // resolveModel: empty / unknown falls back to default or strong by complexity.
@@ -57,31 +57,34 @@ check(
   resolveModel("not-a-real-model", "complex") === STRONG_MODEL,
 );
 
-// Thinking Machines AI allowlist + provider routing.
-check("allowlist-has-thinking-machines-flash", ALLOWED_MODELS.has("inkling-flash"));
-check("allowlist-has-thinking-machines-pro", ALLOWED_MODELS.has("inkling-pro"));
-check("thinking-machines-set-size", THINKING_MACHINES_AI_MODELS.size === 6);
-check("thinking-machines-set-nonempty", THINKING_MACHINES_AI_MODELS.size >= 6);
-check("provider-thinking-machines", providerFor("inkling-flash") === "thinking-machines-ai");
-check("provider-thinking-machines-pro", providerFor("inkling-pro") === "thinking-machines-ai");
-check("provider-thinking-machines-default", providerFor("inkling-flash") === "thinking-machines-ai");
-check("provider-unknown-defaults-thinking-machines", providerFor("wat") === "thinking-machines-ai");
+// NVIDIA NIM allowlist + provider routing.
+check("allowlist-has-nemotron-default", ALLOWED_MODELS.has(DEFAULT_MODEL));
+check("allowlist-has-nemotron-strong", ALLOWED_MODELS.has(STRONG_MODEL));
+check("nemotron-set-size", NVIDIA_NEMOTRON_MODELS.size === 5);
+check("nemotron-set-nonempty", NVIDIA_NEMOTRON_MODELS.size >= 5);
+check(
+  "nemotron-ids-are-namespaced",
+  [...NVIDIA_NEMOTRON_MODELS].every((m) => m.startsWith("nvidia/")),
+);
+check("provider-nvidia", providerFor(DEFAULT_MODEL) === "nvidia-nim");
+check("provider-nvidia-strong", providerFor(STRONG_MODEL) === "nvidia-nim");
+check("provider-unknown-defaults-nvidia", providerFor("wat") === "nvidia-nim");
 
 // Availability-aware resolution.
-check("resolve-explicit-thinking-machines", resolveModel("inkling-flash", "simple") === "inkling-flash");
+check("resolve-explicit-nemotron", resolveModel(DEFAULT_MODEL, "simple") === DEFAULT_MODEL);
 check(
-  "resolve-explicit-thinking-machines-unavailable",
-  resolveModel("inkling-flash", "simple", new Set(["inkling-pro"])) === DEFAULT_MODEL,
+  "resolve-explicit-nemotron-unavailable",
+  resolveModel(DEFAULT_MODEL, "simple", new Set([STRONG_MODEL])) === DEFAULT_MODEL,
 );
 check(
-  "resolve-complex-no-thinking-machines-falls-back",
-  resolveModel(undefined, "complex", new Set(["inkling-3.7-max"])) === "inkling-3.7-max",
+  "resolve-complex-without-strong-falls-back",
+  resolveModel(undefined, "complex", new Set([STRONG_MODEL_FALLBACK])) === STRONG_MODEL_FALLBACK,
 );
 
 // isAllowedModel: blanks are allowed (no model == default), unknowns are not.
 check("is-allowed-blank", isAllowedModel(undefined));
 check("is-allowed-empty", isAllowedModel(""));
-check("is-allowed-known-thinking-machines", isAllowedModel("inkling-flash"));
+check("is-allowed-known-nemotron", isAllowedModel(DEFAULT_MODEL));
 check("is-denied-unknown", !isAllowedModel("gpt-4-turbo"));
 check("is-denied-typo", !isAllowedModel("openrouter/auto"));
 
@@ -128,7 +131,7 @@ async function firstEvent(model: string) {
   const gen = runAgent({
     history: [],
     userMessage: "hi",
-    thinkingmachinesaiKey: "test-key",
+    nvidiaApiKey: "test-key",
     supabaseUrl: "https://x.invalid",
     serviceKey: "k",
     model,
@@ -141,11 +144,11 @@ check("boundary-denied", denied?.type === "error" && /not in the allowlist/i.tes
 const empty = await firstEvent(undefined);
 check("boundary-allowed-empty", empty !== null); // falls through; doesn't error on model
 
-async function firstThinkingMachinesAIEvent(model: string) {
+async function firstNvidiaNimEvent(model: string) {
   const gen = runAgent({
     history: [],
     userMessage: "hi",
-    thinkingmachinesaiKey: "" as unknown as string,
+    nvidiaApiKey: "" as unknown as string,
     supabaseUrl: "https://x.invalid",
     serviceKey: "k",
     model,
@@ -155,11 +158,11 @@ async function firstThinkingMachinesAIEvent(model: string) {
   }
   return null;
 }
-const thinkingmachinesNoKey = await firstThinkingMachinesAIEvent("inkling-flash");
+const nvidiaNoKey = await firstNvidiaNimEvent(DEFAULT_MODEL);
 check(
-  "boundary-thinking-machines-no-key",
-  thinkingmachinesNoKey?.type === "error" &&
-    /thinking[- ]?machines/i.test(String((thinkingmachinesNoKey as { message?: string }).message)),
+  "boundary-nvidia-no-key",
+  nvidiaNoKey?.type === "error" &&
+    /nvidia/i.test(String((nvidiaNoKey as { message?: string }).message)),
 );
 
 console.log(`\n${pass} passed, ${fail} failed`);

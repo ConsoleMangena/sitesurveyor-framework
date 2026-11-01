@@ -1,11 +1,11 @@
-// Thinking Machines AI agent runner for the SiteSurveyor host.
+// openclaw agent runner for the SiteSurveyor host.
 //
-// Runs one agent turn through the Thinking Machines AI Gateway:
+// Runs one agent turn through the openclaw Gateway:
 //
-//   Thinking Machines AI agent --agent sitesurveyor --message "<task>" --json
+//   openclaw agent --agent sitesurveyor --message "<task>" --json
 //
 // The Gateway is where the SiteSurveyor agent + its MCP tools are registered
-// (ambient config ~/.Thinking Machines AI/Thinking Machines AI.json: mcp.servers.sitesurveyor →
+// (ambient config ~/.openclaw/openclaw.json: mcp.servers.sitesurveyor →
 // sitesurveyor-mcp, agents.entries.sitesurveyor → routing/model). This path is
 // preferred over `agent exec` because the Gateway route is fully configured,
 // returns promptly, and keeps its own session/memory state.
@@ -45,22 +45,22 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Map the concrete SiteSurveyor Supabase credentials / workspace onto the
- * SITESURVEYOR_* names used by the ambient Thinking Machines AI config's MCP server env
- * block (mcp.servers.sitesurveyor.env). The Thinking Machines AI key is passed through
+ * SITESURVEYOR_* names used by the ambient openclaw config's MCP server env
+ * block (mcp.servers.sitesurveyor.env). The NVIDIA NIM key is passed through
  * unchanged for model auth.
  */
-export function buildThinkingMachinesAIEnv(bindings: {
+export function buildOpenclawEnv(bindings: {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   WORKSPACE_ID?: string;
-  THINKING_MACHINES_AI_API_KEY?: string;
+  NVIDIA_API_KEY?: string;
 }): NodeJS.ProcessEnv {
   const superset: NodeJS.ProcessEnv = { ...process.env };
   if (bindings.SUPABASE_URL) superset.SITESURVEYOR_SUPABASE_URL = bindings.SUPABASE_URL;
   if (bindings.SUPABASE_SERVICE_ROLE_KEY)
     superset.SITESURVEYOR_SUPABASE_SERVICE_ROLE_KEY = bindings.SUPABASE_SERVICE_ROLE_KEY;
   if (bindings.WORKSPACE_ID) superset.SITESURVEYOR_WORKSPACE_ID = bindings.WORKSPACE_ID;
-  if (bindings.THINKING_MACHINES_AI_API_KEY) superset.THINKING_MACHINES_AI_API_KEY = bindings.THINKING_MACHINES_AI_API_KEY;
+  if (bindings.NVIDIA_API_KEY) superset.NVIDIA_API_KEY = bindings.NVIDIA_API_KEY;
   return superset;
 }
 
@@ -70,7 +70,7 @@ export const SITESURVEYOR_AGENT_ID = "sitesurveyor";
  * Run one agent turn through the Gateway. Never throws on a model/run failure -
  * that comes back in `result.status`.
  */
-export function execThinkingMachinesAIAgent(opts: ExecAgentOpts): Promise<AgentRunResult> {
+export function execOpenclawAgent(opts: ExecAgentOpts): Promise<AgentRunResult> {
   return new Promise((resolve) => {
     const cmd = win32
       ? buildWin32Command(opts)
@@ -139,7 +139,7 @@ interface GatewayEnvelope {
 }
 
 /**
- * Parse the Gateway `Thinking Machines AI agent --json` envelope. The reply text lives at
+ * Parse the Gateway `openclaw agent --json` envelope. The reply text lives at
  * result.payloads[0].text; run errors surface at error.message (cli_error).
  */
 export function parseGatewayEnvelope(
@@ -172,7 +172,7 @@ export function parseGatewayEnvelope(
         message:
           envelope.error?.message ||
           stderr.trim() ||
-          `Thinking Machines AI agent exited ${code ?? "unknown"}`,
+          `openclaw agent exited ${code ?? "unknown"}`,
         kind: envelope.error?.type,
       },
     };
@@ -196,7 +196,7 @@ export function parseGatewayEnvelope(
 }
 
 /** Async generator turning an exec result into the NDJSON event contract. */
-export async function* ThinkingMachinesAIEvents(result: AgentRunResult): AsyncGenerator<Record<string, unknown>> {
+export async function* openclawAgentEvents(result: AgentRunResult): AsyncGenerator<Record<string, unknown>> {
   if (result.status === "timeout") {
     yield { type: "error", message: "The agent timed out. Try a more focused request." };
     return;

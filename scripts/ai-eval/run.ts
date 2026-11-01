@@ -1,10 +1,10 @@
 // AI agent evaluation runner.
 //
 // Usage:
-//   THINKING_MACHINES_AI_API_KEY=sk-... node scripts/ai-eval/run.ts
-//   THINKING_MACHINES_AI_API_KEY=... node scripts/ai-eval/run.ts --model=inkling-flash --filter=create-contact
+//   NVIDIA_API_KEY=nvapi-... node scripts/ai-eval/run.ts
+//   NVIDIA_API_KEY=... node scripts/ai-eval/run.ts --model=nvidia/nemotron-3.5-lightning-30b-a3b --filter=create-contact
 //
-// Runs each labelled case through the REAL agent loop (live Thinking Machines AI model over
+// Runs each labelled case through the REAL agent loop (live NVIDIA NIM model over
 // Alibaba Cloud Model Studio at modelstudio.console.alibabacloud.com) against
 // an in-memory copy of the fixture Supabase transport, then applies
 // deterministic assertions. Prints a pass/fail table; exit code 0 only if
@@ -18,7 +18,7 @@ import {
 import { cases, type EvalFrame, type RunLog } from "./cases.ts";
 import { runAgent, type AgentEvent } from "../../supabase/functions/_shared/ai-agent.ts";
 
-const KEY = process.env.THINKING_MACHINES_AI_API_KEY ?? "";
+const KEY = process.env.NVIDIA_API_KEY ?? "";
 const CASE_TIMEOUT_MS = 180_000;
 
 function parseArgs(argv: string[]): { model?: string; filter?: string } {
@@ -50,7 +50,7 @@ function reqUrl(input: unknown): string {
 async function main(): Promise<void> {
   if (!KEY) {
     console.error(
-      "Missing THINKING_MACHINES_AI_API_KEY. Set it to run the AI eval harness (it calls the real model against fixture data).",
+      "Missing NVIDIA_API_KEY. Set it to run the AI eval harness (it calls the real model against fixture data).",
     );
     process.exit(1);
   }
@@ -94,7 +94,7 @@ async function main(): Promise<void> {
       const gen = runAgent({
         history: [],
         userMessage: c.prompt,
-        thinkingmachinesaiKey: KEY,
+        nvidiaApiKey: KEY,
         supabaseUrl: FIXTURE_BASE,
         serviceKey: "test",
         model,

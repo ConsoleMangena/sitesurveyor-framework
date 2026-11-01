@@ -8,12 +8,12 @@
   },
   "models": {
     "providers": {
-      "Thinking Machines AI": {
-        "baseUrl": "https://api.thinkingmachines.ai/v1",
+      "NVIDIA NIM": {
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
         "apiKey": {
           "source": "env",
           "provider": "env",
-          "id": "THINKING_MACHINES_AI_API_KEY"
+          "id": "NVIDIA_API_KEY"
         },
         "auth": "api-key",
         "api": "openai-completions"
@@ -42,8 +42,8 @@
     "entries": {
       "sitesurveyor": {
         "name": "SiteSurveyor",
-        "description": "SiteSurveyor surveying project assistant configured for Thinking Machines AI (Inkling) Gateway.",
-        "model": "inkling"
+        "description": "SiteSurveyor surveying project assistant configured for the NVIDIA NIM (Nemotron) gateway.",
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b"
       }
     }
   }

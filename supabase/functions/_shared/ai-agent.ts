@@ -1,8 +1,7 @@
 // SiteSurveyor AI agent core — shared by the `ai-chat` Edge Function (Deno)
 // and the host-server fallback (Node). Zero external dependencies: talks to
-// Thinking Machines AI (Inkling) OpenAI-
-// compatible chat completions API
-// (https://api.thinkingmachines.ai/v1) with streaming +
+// the NVIDIA NIM (Nemotron) OpenAI-compatible chat completions API
+// (https://integrate.api.nvidia.com/v1) with streaming +
 // tool-calling, and executes tools against the platform's Supabase REST API
 // with the service-role key. Never imported by browser code.
 //
@@ -45,7 +44,7 @@ export type AgentEvent =
 export interface RunAgentOptions {
   history: ChatTurn[];
   userMessage: string;
-  thinkingmachinesaiKey: string;
+  nvidiaApiKey: string;
   supabaseUrl: string;
   serviceKey: string;
   maxToolRounds?: number;
@@ -57,7 +56,7 @@ export interface RunAgentOptions {
   memoryNote?: string;
   /** Optional abort signal so callers can cancel an in-flight agent run. */
   signal?: AbortSignal;
-  /** Override the default LLM model sent to Thinking Machines AI (Inkling). */
+  /** Override the default LLM model sent to NVIDIA NIM (Nemotron). */
   model?: string;
   /** Signed-in user id, for run attribution (optional). */
   userId?: string;
@@ -67,8 +66,8 @@ export interface RunAgentOptions {
   context?: string;
 }
 
-const THINKING_MACHINES_AI_URL =
-  "https://api.thinkingmachines.ai/v1/chat/completions";
+const NVIDIA_NIM_URL =
+  "https://integrate.api.nvidia.com/v1/chat/completions";
 const MAX_TOOL_ROUNDS = 8;
 /** Routine (simple) tasks never need the full round budget — cap them lower so
  *  a single query can't chain eight slow model round-trips. Complex tasks keep
@@ -84,7 +83,7 @@ const LIVE_MESSAGE_CAP_CHARS = 6_000;
 // surfaces as an error instead of a frozen chat.
 const SUPABASE_TIMEOUT_MS = 15_000;
 const SCHEMA_TIMEOUT_MS = 10_000;
-/** Max silence between SSE chunks from Thinking Machines AI (Inkling) before the round is aborted. */
+/** Max silence between SSE chunks from NVIDIA NIM (Nemotron) before the round is aborted. */
 const LLM_IDLE_TIMEOUT_MS = 60_000;
 /** Hard cap for one model round (streaming included). */
 const LLM_ROUND_TIMEOUT_MS = 240_000;
@@ -1247,10 +1246,10 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     yield { type: "error", message: `Model '${opts.model}' is not in the allowlist.` };
     return;
   }
-  if (!opts.thinkingmachinesaiKey) {
+  if (!opts.nvidiaApiKey) {
     yield {
       type: "error",
-      message: "Missing Thinking Machines AI API key (thinking-machines-ai).",
+      message: "Missing NVIDIA NIM API key (NVIDIA_API_KEY).",
     };
     return;
   }
@@ -1374,11 +1373,11 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     try {
       let res: Response;
       try {
-        res = await fetch(THINKING_MACHINES_AI_URL, {
+        res = await fetch(NVIDIA_NIM_URL, {
           method: "POST",
           signal: controller.signal,
           headers: {
-            Authorization: `Bearer ${opts.thinkingmachinesaiKey}`,
+            Authorization: `Bearer ${opts.nvidiaApiKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": "https://sitesurveyor.app",
             "X-Title": "SiteSurveyor AI",
@@ -1391,13 +1390,13 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
           }),
         });
       } catch (err) {
-        throw new Error(`Could not reach Thinking Machines AI (Inkling): ${(err as Error).message}`);
+        throw new Error(`Could not reach NVIDIA NIM (Nemotron): ${(err as Error).message}`);
       }
 
       if (!res.ok || !res.body) {
         const detail = await res.text().catch(() => "");
         throw new Error(
-          `Thinking Machines AI error ${res.status}: ${detail.slice(0, 300) || "no response"}`,
+          `NVIDIA NIM error ${res.status}: ${detail.slice(0, 300) || "no response"}`,
         );
       }
 
@@ -1556,7 +1555,7 @@ const SUMMARY_SYSTEM = [
  * simply retried on a later turn.
  */
 export async function summarizeConversationTurns(opts: {
-  thinkingmachinesaiKey: string;
+  nvidiaApiKey: string;
   priorSummary: string;
   turns: ChatTurn[];
   model?: string;
@@ -1567,11 +1566,11 @@ export async function summarizeConversationTurns(opts: {
     .join("\n");
   const t = timeoutSignal(30_000);
   try {
-    const res = await fetch(THINKING_MACHINES_AI_URL, {
+    const res = await fetch(NVIDIA_NIM_URL, {
       method: "POST",
       signal: t.signal,
       headers: {
-        Authorization: `Bearer ${opts.thinkingmachinesaiKey}`,
+        Authorization: `Bearer ${opts.nvidiaApiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://sitesurveyor.app",
         "X-Title": "SiteSurveyor AI",
