@@ -171,15 +171,15 @@
   background: var(--border);
 }
 
-/* ── KPI instrument tiles ── */
+/* ── KPI instrument tiles (shadcn-admin inherited sizes) ── */
 .kpi-tile {
   --kpi-accent: var(--primary);
   position: relative;
   height: 100%;
   overflow: hidden;
   border-color: color-mix(in oklab, var(--border) 84%, transparent);
-  background: var(--surface);
-  box-shadow: 0 1px 2px rgba(15, 23, 20, 0.03);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
   transition:
     border-color var(--motion-base) var(--ease-standard),
     box-shadow var(--motion-base) var(--ease-standard),
@@ -188,7 +188,7 @@
 
 .kpi-tile:hover {
   border-color: color-mix(in oklab, var(--kpi-accent) 26%, var(--border));
-  box-shadow: 0 10px 26px color-mix(in oklab, var(--kpi-accent) 8%, transparent);
+  box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
 }
 
@@ -209,7 +209,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 16px 15px;
+  padding: 16px;
 }
 
 .kpi-tile-top {
@@ -221,13 +221,13 @@
 
 .kpi-tile-chip {
   display: inline-flex;
-  width: 30px;
-  height: 30px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   border: 1px solid color-mix(in oklab, var(--kpi-accent) 22%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: color-mix(in oklab, var(--kpi-accent) 10%, transparent);
   color: var(--kpi-accent);
 }
@@ -241,20 +241,20 @@
 
 .kpi-tile-label {
   overflow: hidden;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--muted-foreground);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .kpi-tile-value {
   overflow: hidden;
-  font-size: clamp(21px, 2vw, 27px);
+  font-size: 1.5rem;
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.1;
   letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
   color: var(--foreground);
@@ -264,9 +264,9 @@
 
 .kpi-tile-sub {
   overflow: hidden;
-  font-size: 11.5px;
+  font-size: 0.75rem;
   line-height: 1.35;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -280,18 +280,18 @@
 }
 
 .kpi-tile--compact .kpi-tile-chip {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-sm);
 }
 
 .kpi-tile--compact .kpi-tile-label {
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
 }
 
 .kpi-tile--compact .kpi-tile-value {
-  font-size: 15px;
+  font-size: 1.125rem;
   letter-spacing: -0.01em;
 }
 
@@ -302,25 +302,25 @@
 @media (max-width: 639px) {
   .kpi-tile-content {
     gap: 9px;
-    padding: 11px 12px 12px;
+    padding: 12px;
   }
 
   .kpi-tile-chip {
-    width: 26px;
-    height: 26px;
+    width: 14px;
+    height: 14px;
   }
 
   .kpi-tile-value {
-    font-size: 20px;
+    font-size: 1.25rem;
   }
 
   .kpi-tile-label {
-    font-size: 9px;
-    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
   }
 
   .kpi-tile-sub {
-    font-size: 10.5px;
+    font-size: 0.7rem;
   }
 }
 
