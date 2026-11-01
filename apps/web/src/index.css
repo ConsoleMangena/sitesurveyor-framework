@@ -109,7 +109,13 @@
   --heading: var(--font-app);
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
-  font-size: 16px;
+  /* Single global font-size lever: every Tailwind text-* utility, the body
+     fallback and the web3 tokens resolve through rem, so this scales the
+     whole UI together. 15px instead of the browser default 16px gives a
+     ~1px step down (text-sm 14→13px, text-base 16→15px, text-2xl 24→22.5px)
+     and stays in step with the hand-picked 10–15.5px label sizes used
+     across the app. */
+  font-size: 15px;
   font-family: var(--font-app);
   line-height: 1.5;
   letter-spacing: 0.01em;
@@ -301,12 +307,12 @@ h2 {
 }
 
 h1 {
-  font-size: 23px;
+  font-size: 21px;
   letter-spacing: -0.04em;
   margin: 0;
 }
 h2 {
-  font-size: 18px;
+  font-size: 17px;
   line-height: 118%;
   letter-spacing: -0.03em;
   margin: 0 0 8px;
@@ -321,7 +327,7 @@ code {
   display: inline-flex;
   border-radius: 6px;
   color: var(--text-h);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 135%;
   padding: 2px 6px;
   background: var(--code-bg);
@@ -410,7 +416,7 @@ h2 {
 }
 
 h1 {
-  font-size: clamp(22px, 2vw, 28px);
+  font-size: clamp(21px, 2vw, 26px);
   letter-spacing: -0.04em;
 }
 
