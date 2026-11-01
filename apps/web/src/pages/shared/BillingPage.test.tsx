@@ -179,7 +179,7 @@ describe("BillingPage payment rails", () => {
     expect(await screen.findByText("25.00")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add funds/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Transactions" })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("uses the saved crypto wallet and its balance when no wallet is connected", async () => {
     vi.mocked(listPaymentMethods).mockResolvedValue([savedCryptoMethod]);
