@@ -10,7 +10,7 @@ export default function SessionExpiredBanner() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-4000 px-3 pt-[max(8px,env(safe-area-inset-top))]">
-      <div className="pointer-events-auto mx-auto max-w-3xl">
+      <div className="pointer-events-auto mx-auto max-w-md">
         <ErrorNotice
           tone="warning"
           title="Session expired"
@@ -25,7 +25,7 @@ export default function SessionExpiredBanner() {
             </a>
           }
         >
-          Your session has expired. Sign in to continue where you left off.
+          Sign in to continue where you left off.
         </ErrorNotice>
       </div>
     </div>

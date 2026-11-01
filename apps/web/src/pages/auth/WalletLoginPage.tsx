@@ -44,13 +44,7 @@ import {
 } from "../../features/phantom/lib/config.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../../components/ui/dialog";
+import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -1176,17 +1170,17 @@ export default function WalletLoginPage() {
         </div>
       </div>
 
-      <Dialog open={walletDialogOpen} onOpenChange={setWalletDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Connect a wallet</DialogTitle>
-            <DialogDescription>
-              {isMobile && mwaWallet
-                ? "Pick a wallet app — no browser extension needed. SiteSurveyor never stores your keys."
-                : "Choose a detected Solana wallet to continue. SiteSurveyor never stores your keys."}
-            </DialogDescription>
-          </DialogHeader>
-
+      <DialogTemplate
+        open={walletDialogOpen}
+        onOpenChange={setWalletDialogOpen}
+        title="Connect a wallet"
+        description={
+          isMobile && mwaWallet
+            ? "Pick a wallet app — no browser extension needed. SiteSurveyor never stores your keys."
+            : "Choose a detected Solana wallet to continue. SiteSurveyor never stores your keys."
+        }
+      >
+        <div className="flex flex-col gap-3">
           {error ? (
             <ErrorNotice
               tone="danger"
@@ -1269,16 +1263,19 @@ export default function WalletLoginPage() {
             })}
           </div>
 
-          <p className="flex items-start gap-2 text-xs text-muted-foreground">
-            <Lock className="mt-px size-3.5 shrink-0" aria-hidden="true" />
-            <span>
-              {isMobile
-                ? "Wallet apps approve the connection and sign inside their own app (Phantom, Solflare, Backpack, etc.). No extension required."
-                : "Wallets are detected in this browser. MetaMask opens its official install page when the extension is missing."}
-            </span>
-          </p>
-        </DialogContent>
-      </Dialog>
+          {/* Desktop-only footnote: on phones the description already states
+              that no extension is needed, so repeating it just adds bulk. */}
+          {!isMobile ? (
+            <p className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Lock className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Wallets are detected in this browser. MetaMask opens its
+                official install page when the extension is missing.
+              </span>
+            </p>
+          ) : null}
+        </div>
+      </DialogTemplate>
     </div>
   );
 }
