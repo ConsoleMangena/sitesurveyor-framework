@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════
-   SiteSurveyor — Global Auth Loader Overlay
+   SiteSurveyor — shadcn-style auth session loader
    ════════════════════════════════════════════ */
 
 .global-loader-overlay {
@@ -13,7 +13,7 @@
     max(16px, env(safe-area-inset-right, 0px))
     max(16px, env(safe-area-inset-bottom, 0px))
     max(16px, env(safe-area-inset-left, 0px));
-  background: color-mix(in oklab, var(--bg) 74%, transparent);
+  background: color-mix(in oklab, var(--background) 74%, transparent);
   backdrop-filter: blur(3px);
 }
 
@@ -23,8 +23,8 @@
   align-items: center;
   gap: 16px;
   padding: 26px 34px;
-  background: var(--surface);
-  border: 1px solid color-mix(in oklab, var(--border) 85%, transparent);
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
 }
@@ -32,13 +32,25 @@
 .global-loader-text {
   font-family: var(--sans);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--text);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+}
+
+@keyframes global-loader-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.global-loader-card {
+  animation: global-loader-fade-in 200ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .global-loader-overlay {
     backdrop-filter: none;
+  }
+  .global-loader-card {
+    animation: none;
   }
 }

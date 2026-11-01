@@ -55,15 +55,15 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: color-mix(in oklab, var(--color-success) 78%, var(--text-h));
+  color: color-mix(in oklab, var(--success) 78%, var(--foreground));
 }
 
 .dash-live-dot {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: var(--color-success);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-success) 16%, transparent);
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--success) 16%, transparent);
 }
 
 .dash-title {
@@ -73,7 +73,7 @@
   font-weight: 700;
   line-height: 1.06;
   letter-spacing: -0.032em;
-  color: var(--text-h);
+  color: var(--foreground);
   text-wrap: balance;
 }
 
@@ -128,7 +128,7 @@
   left: 0;
   width: 54px;
   height: 2px;
-  background: var(--accent);
+  background: var(--primary);
 }
 
 .dash-datum::after {
@@ -138,7 +138,7 @@
   right: 0;
   width: 10px;
   height: 2px;
-  background: color-mix(in oklab, var(--accent) 55%, transparent);
+  background: color-mix(in oklab, var(--primary) 55%, transparent);
 }
 
 /* ── Section labels ── */
@@ -173,7 +173,7 @@
 
 /* ── KPI instrument tiles ── */
 .kpi-tile {
-  --kpi-accent: var(--accent);
+  --kpi-accent: var(--primary);
   position: relative;
   height: 100%;
   overflow: hidden;
@@ -257,7 +257,7 @@
   line-height: 1.08;
   letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
-  color: var(--text-h);
+  color: var(--foreground);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -1,5 +1,5 @@
 .error-notice {
-  --notice-accent: var(--color-error);
+  --notice-accent: var(--destructive);
   --notice-bg: var(--color-error-bg);
   --notice-border: var(--color-error-border);
   position: relative;
@@ -9,19 +9,13 @@
   width: 100%;
   padding: 13px 14px 13px 16px;
   border: 1px solid var(--notice-border);
-  border-radius: 12px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--notice-bg) 84%, var(--surface)),
-    color-mix(in oklab, var(--notice-bg) 62%, var(--surface))
-  );
-  color: var(--text-h);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--notice-bg) 70%, var(--background));
+  color: var(--foreground);
   font-size: 13px;
   line-height: 1.5;
   overflow: hidden;
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #ffffff 34%, transparent),
-    0 1px 2px color-mix(in oklab, var(--text-h) 5%, transparent);
+  box-shadow: none;
 }
 
 .error-notice::before {
@@ -34,25 +28,25 @@
 }
 
 .error-notice[data-tone="danger"] {
-  --notice-accent: var(--color-error);
+  --notice-accent: var(--destructive);
   --notice-bg: var(--color-error-bg);
   --notice-border: var(--color-error-border);
 }
 
 .error-notice[data-tone="warning"] {
-  --notice-accent: var(--color-warning);
+  --notice-accent: var(--warning);
   --notice-bg: var(--color-warning-bg);
   --notice-border: var(--color-warning-border);
 }
 
 .error-notice[data-tone="info"] {
-  --notice-accent: var(--color-info);
+  --notice-accent: var(--info);
   --notice-bg: var(--color-info-bg);
   --notice-border: var(--color-info-border);
 }
 
 .error-notice[data-tone="success"] {
-  --notice-accent: var(--color-success);
+  --notice-accent: var(--success);
   --notice-bg: var(--color-success-bg);
   --notice-border: var(--color-success-border);
 }
@@ -65,7 +59,7 @@
 }
 
 .error-notice[data-layout="panel"] {
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   padding: 16px 16px 16px 19px;
 }
 
@@ -77,15 +71,15 @@
   height: 30px;
   margin: 0;
   border: 1px solid color-mix(in oklab, var(--notice-accent) 22%, transparent);
-  border-radius: 9px;
-  background: color-mix(in oklab, var(--notice-accent) 12%, var(--surface));
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--notice-accent) 12%, var(--background));
   color: var(--notice-accent);
 }
 
 .error-notice[data-layout="banner"] .error-notice-icon {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: var(--radius);
 }
 
 .error-notice[data-layout="banner"] .error-notice-icon svg {
@@ -108,14 +102,14 @@
 
 .error-notice-title {
   margin: 0;
-  color: var(--text-h);
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 650;
   letter-spacing: -0.005em;
 }
 
 .error-notice-message {
-  color: var(--text);
+  color: var(--muted-foreground);
   font-size: 12.8px;
   line-height: 1.55;
 }
@@ -139,7 +133,7 @@
 }
 
 .error-notice-link:hover {
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .error-notice-dismiss {
@@ -159,7 +153,7 @@
 
 .error-notice-dismiss:hover {
   background: color-mix(in oklab, var(--notice-accent) 12%, transparent);
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .error-notice-dismiss:focus-visible {
@@ -172,7 +166,7 @@
   align-items: flex-start;
   gap: 5px;
   margin: 4px 0 0;
-  color: var(--color-error);
+  color: var(--destructive);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -187,7 +181,7 @@
    ════════════════════════════════════════════ */
 
 .error-state-screen {
-  --error-accent: var(--color-error);
+  --error-accent: var(--destructive);
   --error-accent-soft: color-mix(in oklab, var(--error-accent) 12%, transparent);
   --error-glow: color-mix(in oklab, var(--error-accent) 30%, transparent);
   position: relative;
@@ -205,7 +199,7 @@
     radial-gradient(48rem 32rem at 0% 0%, var(--error-accent-soft), transparent 62%),
     radial-gradient(
       40rem 30rem at 100% 100%,
-      color-mix(in oklab, var(--accent-purple) 10%, transparent),
+      color-mix(in oklab, var(--primary) 10%, transparent),
       transparent 60%
     ),
     var(--bg);
@@ -213,11 +207,11 @@
 }
 
 .error-state-screen[data-state="chunk"] {
-  --error-accent: var(--accent-purple);
+  --error-accent: var(--primary);
 }
 
 .error-state-screen[data-state="offline"] {
-  --error-accent: var(--color-warning);
+  --error-accent: var(--warning);
 }
 
 .error-state-screen[data-state="not-found"] {
@@ -239,7 +233,7 @@
     repeating-radial-gradient(
       ellipse at 92% 82%,
       transparent 0 56px,
-      color-mix(in oklab, var(--text-h) 5%, transparent) 57px 58px,
+      color-mix(in oklab, var(--foreground) 5%, transparent) 57px 58px,
       transparent 59px 112px
     );
   opacity: 0.58;
@@ -282,7 +276,7 @@
     90deg,
     transparent,
     color-mix(in oklab, var(--error-accent) 82%, transparent) 34%,
-    color-mix(in oklab, var(--accent-purple) 50%, transparent) 66%,
+    color-mix(in oklab, var(--primary) 50%, transparent) 66%,
     transparent
   );
 }
@@ -310,11 +304,11 @@
       color-mix(in oklab, var(--error-accent) 16%, transparent),
       transparent 64%
     ),
-    color-mix(in oklab, var(--surface-muted) 52%, transparent);
+    color-mix(in oklab, var(--muted) 52%, transparent);
 }
 
 .error-state-code {
-  color: color-mix(in oklab, var(--text-h) 42%, transparent);
+  color: color-mix(in oklab, var(--foreground) 42%, transparent);
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 600;
@@ -391,7 +385,7 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  color: var(--text-h);
+  color: var(--foreground);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -438,7 +432,7 @@
 .error-state-title {
   max-width: 20ch;
   margin: 12px 0 0;
-  color: var(--text-h);
+  color: var(--foreground);
   font-family: var(--heading);
   font-size: clamp(28px, 3.2vw, 40px);
   font-weight: 800;
@@ -459,7 +453,7 @@
   padding: 14px 16px 15px;
   border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
   border-radius: 14px;
-  background: color-mix(in oklab, var(--surface-muted) 56%, transparent);
+  background: color-mix(in oklab, var(--muted) 56%, transparent);
 }
 
 .error-state-guide-title {
@@ -526,7 +520,7 @@
 }
 
 .error-state-back:hover {
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .error-state-footer {
@@ -568,7 +562,7 @@
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface-muted);
+  background: var(--muted);
   padding: 10px;
   font-family: var(--mono);
   font-size: 11px;

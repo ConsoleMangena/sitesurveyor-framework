@@ -96,7 +96,7 @@
     z-index: 1;
     padding: 9px 12px;
     border-bottom: 1px solid var(--border-heavy);
-    background: var(--surface-muted);
+    background: var(--muted);
     font-size: 9.5px;
     font-weight: 700;
     letter-spacing: 0.13em;
@@ -118,13 +118,13 @@
   }
 
   .console-table tbody tr:hover td {
-    background: color-mix(in oklab, var(--surface-muted) 55%, transparent);
+    background: color-mix(in oklab, var(--muted) 55%, transparent);
   }
 
   .console-table .console-num {
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
-    color: var(--text-h);
+    color: var(--foreground);
   }
 
   /* Phones: each row becomes a labelled record instead of a sideways table.
@@ -157,7 +157,7 @@
   .console-empty-title {
     font-size: 13.5px;
     font-weight: 600;
-    color: var(--text-h);
+    color: var(--foreground);
   }
 
   /* ── Pagination ── */
@@ -191,7 +191,7 @@
   .console-setting-title {
     font-size: 13.5px;
     font-weight: 500;
-    color: var(--text-h);
+    color: var(--foreground);
   }
 
   .console-setting-hint {
@@ -228,7 +228,7 @@
     min-width: 0;
     overflow-wrap: anywhere;
     text-align: right;
-    color: var(--text-h);
+    color: var(--foreground);
     font-weight: 500;
   }
 }
@@ -284,7 +284,7 @@
     display: block;
     padding-bottom: 7px;
     font-weight: 600;
-    color: var(--text-h);
+    color: var(--foreground);
   }
 
   .console-table tbody td:first-child::before {

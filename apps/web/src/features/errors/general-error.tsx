@@ -18,11 +18,11 @@ export function GeneralError({
     <div className={cn("h-svh w-full bg-background", className)}>
       <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
         {!minimal && (
-          <h1 className="text-[7rem] font-bold leading-tight tracking-tighter text-foreground sm:text-[8rem]">
+          <h1 className="text-[7rem] leading-tight font-bold text-foreground sm:text-[8rem]">
             500
           </h1>
         )}
-        <span className="text-xl font-semibold text-foreground">
+        <span className="text-lg font-medium text-foreground">
           Oops! Something went wrong
         </span>
         <p className="max-w-md text-center text-sm text-muted-foreground">

@@ -37,7 +37,7 @@
     flex-direction: column;
     overflow: hidden;
     background: var(--surface);
-    color: var(--text-h);
+    color: var(--foreground);
     border: 1px solid var(--border);
     box-shadow: 0 -18px 48px -24px rgba(15, 23, 20, 0.4);
 
@@ -179,7 +179,7 @@
     justify-content: center;
     border: 1px solid color-mix(in oklab, var(--accent) 22%, transparent);
     border-radius: 9px;
-    background: var(--accent-bg);
+    background: color-mix(in oklab, var(--primary) 12%, transparent);
     color: var(--accent);
   }
 
@@ -212,7 +212,7 @@
     gap: 8px;
     padding: 12px 16px max(12px, env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
-    background: var(--surface-muted);
+    background: var(--muted);
   }
 
   .dlg-footer > * {
@@ -250,8 +250,8 @@
   }
 
   .dlg-close:hover {
-    background: var(--surface-muted);
-    color: var(--text-h);
+    background: var(--muted);
+    color: var(--foreground);
   }
 
   .dlg-close:focus-visible {
@@ -308,7 +308,7 @@
     min-width: 0;
     overflow-wrap: anywhere;
     text-align: right;
-    color: var(--text-h);
+    color: var(--foreground);
     font-weight: 500;
   }
 
@@ -341,7 +341,7 @@
     gap: 8px;
     padding: 12px 18px max(12px, env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
-    background: var(--surface-muted);
+    background: var(--muted);
   }
 
   .dlg-alert-footer > * {

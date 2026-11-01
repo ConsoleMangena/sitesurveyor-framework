@@ -34,7 +34,7 @@
   /* Type ramp — the same rem steps as the Tailwind scale (text-xs/sm/base/xl),
      so the market’s bespoke chrome sits on the grid the ported shadcn
      primitives use. rem keeps it honest if the base ever moves. */
-  --web3-text-micro: var(--text-micro); /* 11px — tracked labels, map bubbles */
+  --web3-text-micro: 0.6875rem; /* 11px — tracked labels, map bubbles */
   --web3-text-caption: 0.75rem;   /* 12px — text-xs: meta, subs, notes */
   --web3-text-body: 0.875rem;     /* 14px — text-sm: buttons, rows, values */
   --web3-text-title: 1rem;        /* 16px — text-base: panel and brand titles */
@@ -101,9 +101,9 @@
   isolation: isolate;
   min-height: 100vh;
   min-height: 100dvh;
-  color: var(--web3-text);
+  color: var(--foreground);
   font-family: var(--sans);
-  background: var(--web3-bg);
+  background: var(--background);
 }
 
 .web3-surface::before {
@@ -135,7 +135,7 @@
 
 .web3-theme,
 .web3-surface {
-  caret-color: var(--web3-brand);
+  caret-color: var(--primary);
 }
 
 .web3-surface .market-hero-title {
@@ -156,7 +156,7 @@
 
 .web3-surface .market-map-title {
   margin: 0;
-  font-size: var(--web3-text-body);
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: normal;
@@ -172,7 +172,7 @@
 
 .web3-theme .market-sheet-title {
   margin: 0;
-  font-size: var(--web3-text-xl);
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: -0.02em;
@@ -183,7 +183,7 @@
 }
 
 .market-detail-scroll {
-  scrollbar-color: var(--web3-border-strong) transparent;
+  scrollbar-color: var(--border) transparent;
   scrollbar-width: thin;
 }
 
@@ -205,17 +205,17 @@
 }
 
 .web3-mono {
-  font-family: var(--web3-mono);
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 
 .web3-kicker {
-  font-size: var(--web3-text-micro);
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--web3-text-dim);
+  color: var(--muted-foreground);
 }
 
 /* ── Sticky header ─────────────────────────────────────────── */
@@ -224,7 +224,7 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  border-bottom: 1px solid var(--web3-border);
+  border-bottom: 1px solid var(--border);
   background: rgba(251, 251, 250, 0.88);
   backdrop-filter: blur(18px) saturate(1.25);
   -webkit-backdrop-filter: blur(18px) saturate(1.25);
@@ -252,7 +252,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 10px;
-  color: var(--web3-text);
+  color: var(--foreground);
   text-decoration: none;
 }
 
@@ -263,22 +263,22 @@
 }
 
 .web3-brand-name {
-  font-size: var(--web3-text-title);
+  font-size: 1rem;
   font-weight: 650;
   letter-spacing: -0.02em;
 }
 
 .web3-brand-sub {
-  font-size: var(--web3-text-caption);
-  color: var(--web3-text-muted);
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
 }
 
 /* ── Panels ────────────────────────────────────────────────── */
 
 .web3-panel {
-  border: 1px solid var(--web3-border);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--web3-panel);
+  background: var(--card);
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.04),
     0 4px 16px -4px rgba(0, 0, 0, 0.06);
@@ -290,22 +290,22 @@
   justify-content: space-between;
   gap: 14px;
   padding: 16px 18px;
-  border-bottom: 1px solid var(--web3-border);
+  border-bottom: 1px solid var(--border);
 }
 
 .web3-panel-title {
   margin: 0;
-  font-size: var(--web3-text-title);
+  font-size: 1rem;
   font-weight: 650;
   letter-spacing: -0.015em;
-  color: var(--web3-text);
+  color: var(--foreground);
 }
 
 .web3-panel-sub {
   margin: 3px 0 0;
-  font-size: var(--web3-text-caption);
+  font-size: 0.75rem;
   line-height: 1.5;
-  color: var(--web3-text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-panel-body {
@@ -319,9 +319,9 @@
   flex-direction: column;
   gap: 6px;
   padding: 14px 16px;
-  border: 1px solid var(--web3-border);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--web3-panel);
+  background: var(--card);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
@@ -335,25 +335,25 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--web3-text-micro);
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--web3-text-dim);
+  color: var(--muted-foreground);
 }
 
 .web3-tile-value {
-  font-family: var(--web3-mono);
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--web3-text-xl);
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.1;
-  color: var(--web3-text);
+  color: var(--foreground);
 }
 
 .web3-tile-note {
-  font-size: var(--web3-text-caption);
-  color: var(--web3-text-muted);
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
 }
 
 .web3-delta-up {
@@ -380,7 +380,7 @@
 
 .web3-stat-icon-cap {
   background: rgba(217, 45, 32, 0.08);
-  color: var(--web3-brand);
+  color: var(--primary);
 }
 
 .web3-stat-icon-vol {
@@ -496,7 +496,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px;
-  border-right: 1px solid var(--web3-border);
+  border-right: 1px solid var(--border);
 }
 
 .web3-ticker-cell:last-child {
@@ -504,19 +504,19 @@
 }
 
 .web3-ticker-label {
-  font-size: var(--web3-text-micro);
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--web3-text-dim);
+  color: var(--muted-foreground);
 }
 
 .web3-ticker-value {
-  font-family: var(--web3-mono);
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--web3-text-body);
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--web3-text);
+  color: var(--foreground);
 }
 
 /* ── Buttons ───────────────────────────────────────────────── */
@@ -530,11 +530,11 @@
   min-height: 38px;
   padding: 0 16px;
   border-radius: 11px;
-  border: 1px solid var(--web3-border-strong);
-  background: var(--web3-panel);
-  color: var(--web3-text);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
   font-family: var(--sans);
-  font-size: var(--web3-text-body);
+  font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: -0.005em;
   cursor: pointer;
@@ -547,8 +547,8 @@
 
 .web3-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: var(--web3-brand);
-  background: var(--web3-brand-light);
+  border-color: var(--primary);
+  background: var(--muted);
   box-shadow: 0 4px 12px rgba(217, 45, 32, 0.1);
 }
 
@@ -562,15 +562,15 @@
 }
 
 .web3-btn-primary {
-  border: 1px solid var(--web3-brand);
-  background: var(--web3-brand);
+  border: 1px solid var(--primary);
+  background: var(--primary);
   color: #ffffff;
   box-shadow: 0 4px 14px -4px rgba(217, 45, 32, 0.35);
 }
 
 .web3-btn-primary:hover:not(:disabled) {
-  background: var(--web3-brand-deep);
-  border-color: var(--web3-brand-deep);
+  background: var(--primary-foreground);
+  border-color: var(--primary-foreground);
   filter: brightness(1.05);
   box-shadow: 0 6px 20px -4px rgba(217, 45, 32, 0.4);
 }
@@ -578,12 +578,12 @@
 .web3-btn-ghost {
   border-color: transparent;
   background: transparent;
-  color: var(--web3-text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-btn-ghost:hover:not(:disabled) {
-  background: var(--web3-bg-2);
-  color: var(--web3-text);
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .web3-icon-btn {
@@ -593,9 +593,9 @@
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  border: 1px solid var(--web3-border);
-  background: var(--web3-panel);
-  color: var(--web3-text-muted);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
   cursor: pointer;
   transition:
     color 0.16s ease,
@@ -604,9 +604,9 @@
 }
 
 .web3-icon-btn:hover {
-  color: var(--web3-text);
-  border-color: var(--web3-border-strong);
-  background: var(--web3-bg-2);
+  color: var(--foreground);
+  border-color: var(--border);
+  background: var(--muted);
 }
 
 .web3-icon-btn svg {
@@ -640,7 +640,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  border-top: 1px solid var(--web3-border);
+  border-top: 1px solid var(--border);
 }
 
 .web3-status-inline {
@@ -652,31 +652,31 @@
 /* ── Leaflet map on a light surface ───────────────────────── */
 
 .web3-surface .leaflet-container {
-  background: var(--web3-bg-2);
+  background: var(--muted);
   font-family: var(--sans);
 }
 
 .web3-surface .leaflet-control-zoom a,
 .web3-surface .leaflet-control-attribution {
   background: rgba(255, 255, 255, 0.92);
-  color: var(--web3-text-muted);
-  border-color: var(--web3-border);
+  color: var(--muted-foreground);
+  border-color: var(--border);
 }
 
 .web3-surface .leaflet-control-zoom a:hover {
-  background: var(--web3-brand-light);
-  color: var(--web3-brand);
+  background: var(--muted);
+  color: var(--primary);
 }
 
 .web3-surface .leaflet-control-attribution a {
-  color: var(--web3-brand);
+  color: var(--primary);
 }
 
 .web3-surface .leaflet-popup-content-wrapper,
 .web3-surface .leaflet-popup-tip {
   background: rgba(255, 255, 255, 0.96);
-  color: var(--web3-text);
-  border: 1px solid var(--web3-border);
+  color: var(--foreground);
+  border: 1px solid var(--border);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -696,8 +696,8 @@
   border: 2px solid #ffffff;
   background: rgba(17, 24, 39, 0.88);
   color: #ffffff;
-  font-family: var(--web3-mono);
-  font-size: var(--web3-text-micro);
+  font-family: var(--mono);
+  font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -714,7 +714,7 @@
 }
 
 .market-cluster-bubble.is-match {
-  background: var(--web3-brand);
+  background: var(--primary);
   box-shadow:
     0 0 0 4px rgba(217, 45, 32, 0.18),
     0 4px 14px rgba(15, 23, 42, 0.24);
@@ -745,23 +745,23 @@
   gap: 10px;
   padding: 34px 18px;
   text-align: center;
-  color: var(--web3-text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-empty-title {
-  font-size: var(--web3-text-body);
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--web3-text);
+  color: var(--foreground);
 }
 
 .web3-empty-note {
   max-width: 34rem;
-  font-size: var(--web3-text-caption);
+  font-size: 0.75rem;
   line-height: 1.6;
 }
 
 .web3-link {
-  color: var(--web3-brand);
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -772,7 +772,7 @@
 .web3-divider {
   height: 1px;
   border: none;
-  background: var(--web3-border);
+  background: var(--border);
 }
 
 /* ── Candlestick chart ─────────────────────────────────────── */
@@ -783,8 +783,8 @@
   height: 180px;
   overflow: hidden;
   border-radius: 12px;
-  background: var(--web3-panel);
-  border: 1px solid var(--web3-border);
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 .web3-chart-canvas {
@@ -949,7 +949,7 @@
 
 .web3-stat-icon-portfolio {
   background: rgba(217, 45, 32, 0.1);
-  color: var(--web3-brand);
+  color: var(--primary);
 }
 
 /* ── Token row (used by portfolio) ─────────────────────────── */
@@ -959,7 +959,7 @@
   align-items: center;
   gap: 12px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--web3-border);
+  border-bottom: 1px solid var(--border);
 }
 
 .web3-token-row:last-child {
@@ -973,8 +973,8 @@
   height: 30px;
   flex-shrink: 0;
   border-radius: 9px;
-  border: 1px solid var(--web3-border);
-  background: var(--web3-bg-2);
+  border: 1px solid var(--border);
+  background: var(--muted);
   overflow: hidden;
 }
 
@@ -987,7 +987,7 @@
 .web3-token-icon svg {
   width: 15px;
   height: 15px;
-  color: var(--web3-text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-token-meta {
@@ -997,9 +997,9 @@
 
 .web3-token-name {
   display: block;
-  font-size: var(--web3-text-body);
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--web3-text);
+  color: var(--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1007,9 +1007,9 @@
 
 .web3-token-sub {
   display: block;
-  font-family: var(--web3-mono);
-  font-size: var(--web3-text-caption);
-  color: var(--web3-text-dim);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
 }
 
 .web3-token-value {
@@ -1019,18 +1019,18 @@
 
 .web3-token-usd {
   display: block;
-  font-family: var(--web3-mono);
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--web3-text-body);
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--web3-text);
+  color: var(--foreground);
 }
 
 .web3-token-amount {
   display: block;
-  font-family: var(--web3-mono);
-  font-size: var(--web3-text-caption);
-  color: var(--web3-text-dim);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
 }
 
 .web3-alloc-bar {
@@ -1038,13 +1038,13 @@
   width: 100%;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--web3-bg-2);
+  background: var(--muted);
 }
 
 .web3-alloc-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--web3-brand), #f59e0b);
+  background: linear-gradient(90deg, var(--primary), #f59e0b);
 }
 
 .web3-alloc-row {
@@ -1056,15 +1056,15 @@
 }
 
 .web3-alloc-name {
-  font-size: var(--web3-text-caption);
-  color: var(--web3-text);
+  font-size: 0.75rem;
+  color: var(--foreground);
 }
 
 .web3-alloc-pct {
-  font-family: var(--web3-mono);
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--web3-text-caption);
-  color: var(--web3-text-muted);
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
 }
 
 .web3-alloc-track {

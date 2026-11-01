@@ -1,21 +1,24 @@
 /* ════════════════════════════════════════════
-   SiteSurveyor — Survey Loader
-   A plan-sheet frame with a sweeping scan line and a benchmark mark.
+   SiteSurveyor — shadcn-style spinner
+   Ported from the shadcn-admin template.
    ════════════════════════════════════════════ */
 
 .sv-loader {
-  --sv-size: 44px;
-  --sv-accent: var(--accent, #d92d20);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  color: var(--text, #4c5350);
+  color: var(--text, var(--foreground));
 }
 
 .sv-loader--sm {
   --sv-size: 28px;
   gap: 8px;
+}
+
+.sv-loader--md {
+  --sv-size: 44px;
+  gap: 12px;
 }
 
 .sv-loader--lg {
@@ -25,91 +28,27 @@
 
 .sv-loader-frame {
   position: relative;
-  width: var(--sv-size);
-  height: var(--sv-size);
-  overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--border, #e2e4e2) 88%, transparent);
-  border-radius: 3px;
-  background-color: var(--surface, #ffffff);
-  background-image:
-    linear-gradient(color-mix(in oklab, var(--border, #e2e4e2) 55%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in oklab, var(--border, #e2e4e2) 55%, transparent) 1px, transparent 1px);
-  background-size: calc(var(--sv-size) / 4) calc(var(--sv-size) / 4);
-  box-shadow: 0 1px 2px rgba(15, 23, 20, 0.05);
+  width: var(--sv-size, 44px);
+  height: var(--sv-size, 44px);
 }
 
-.sv-loader-corner {
+/* Animated ring spinner: shadcn-style indeterminate arc. */
+.sv-loader-frame::after {
+  content: '';
   position: absolute;
-  width: 22%;
-  height: 22%;
-  border: 1.5px solid var(--sv-accent);
-  opacity: 0.85;
-}
-
-.sv-loader-corner--tl {
-  top: 4px;
-  left: 4px;
-  border-right: 0;
-  border-bottom: 0;
-}
-
-.sv-loader-corner--tr {
-  top: 4px;
-  right: 4px;
-  border-left: 0;
-  border-bottom: 0;
-}
-
-.sv-loader-corner--bl {
-  bottom: 4px;
-  left: 4px;
-  border-right: 0;
-  border-top: 0;
-}
-
-.sv-loader-corner--br {
-  bottom: 4px;
-  right: 4px;
-  border-left: 0;
-  border-top: 0;
-}
-
-.sv-loader-scan {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -30%;
-  height: 34%;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    color-mix(in oklab, var(--sv-accent) 26%, transparent) 78%,
-    var(--sv-accent) 100%
-  );
-  opacity: 0.7;
-  animation: sv-loader-sweep 2.1s cubic-bezier(0.35, 0, 0.25, 1) infinite;
-}
-
-.sv-loader-mark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 7px;
-  height: 7px;
-  margin: -3.5px 0 0 -3.5px;
-  background: var(--sv-accent);
-  transform: rotate(45deg);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--sv-accent) 16%, transparent);
-  animation: sv-loader-mark 2.1s ease-in-out infinite;
+  inset: 0;
+  border: 2px solid color-mix(in oklab, var(--accent, var(--primary)) 16%, transparent);
+  border-top-color: var(--accent, var(--primary));
+  border-radius: 50%;
+  animation: sv-loader-spin 0.8s cubic-bezier(0.5, 0, 0.25, 1) infinite;
 }
 
 .sv-loader-label {
   font-family: var(--sans, inherit);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted, var(--text, #6d7570));
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
   text-align: center;
 }
 
@@ -125,41 +64,18 @@
   border: 0;
 }
 
-@keyframes sv-loader-sweep {
-  0% {
-    transform: translateY(0);
-  }
-  62% {
-    transform: translateY(calc(var(--sv-size) * 1.5));
-  }
-  100% {
-    transform: translateY(calc(var(--sv-size) * 1.5));
-  }
+@keyframes sv-loader-spin {
+  to { transform: rotate(360deg); }
 }
 
-@keyframes sv-loader-mark {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: rotate(45deg) scale(0.82);
-  }
-  45% {
-    opacity: 1;
-    transform: rotate(45deg) scale(1);
-  }
+@keyframes sv-loader-spin-reverse {
+  to { transform: rotate(-360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sv-loader-scan {
+  .sv-loader-frame::after {
     animation: none;
-    top: auto;
-    bottom: 0;
-    height: 2px;
-    opacity: 0.55;
-  }
-
-  .sv-loader-mark {
-    animation: none;
-    opacity: 1;
+    border-color: color-mix(in oklab, var(--accent, var(--primary)) 25%, transparent);
+    border-top-color: var(--accent, var(--primary));
   }
 }

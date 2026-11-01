@@ -1,5 +1,5 @@
 .web3-auth-screen {
-  --web3-glow: color-mix(in oklab, var(--accent) 14%, transparent);
+  --web3-glow: color-mix(in oklab, var(--primary) 14%, transparent);
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
@@ -13,20 +13,20 @@
   background:
     radial-gradient(
       52rem 34rem at 4% -8%,
-      color-mix(in oklab, var(--accent) 17%, transparent),
+      color-mix(in oklab, var(--primary) 8%, transparent),
       transparent 62%
     ),
     radial-gradient(
       44rem 30rem at 102% 2%,
-      color-mix(in oklab, var(--web3-solana) 12%, transparent),
+      transparent,
       transparent 60%
     ),
     radial-gradient(
       42rem 32rem at 52% 112%,
-      color-mix(in oklab, var(--web3-purple) 13%, transparent),
+      transparent,
       transparent 64%
     ),
-    var(--bg);
+    var(--background);
   box-sizing: border-box;
 }
 
@@ -37,7 +37,7 @@
   pointer-events: none;
   background-image: radial-gradient(
     circle at 1px 1px,
-    color-mix(in oklab, var(--text-h) 8%, transparent) 1px,
+    color-mix(in oklab, var(--foreground) 8%, transparent) 1px,
     transparent 0
   );
   background-size: 28px 28px;
@@ -51,8 +51,8 @@
 }
 
 .web3-auth-screen ::selection {
-  background: color-mix(in oklab, var(--accent) 26%, transparent);
-  color: var(--text-h);
+  background: color-mix(in oklab, var(--primary) 26%, transparent);
+  color: var(--foreground);
 }
 
 .web3-auth-stage {
@@ -74,13 +74,13 @@
   border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
   background: linear-gradient(
     165deg,
-    color-mix(in oklab, var(--surface) 92%, transparent) 0%,
-    color-mix(in oklab, var(--surface) 78%, transparent) 100%
+    color-mix(in oklab, var(--background) 92%, transparent) 0%,
+    color-mix(in oklab, var(--background) 78%, transparent) 100%
   );
   backdrop-filter: blur(24px) saturate(1.15);
   -webkit-backdrop-filter: blur(24px) saturate(1.15);
   box-shadow:
-    0 34px 90px -34px var(--web3-glow),
+    0 34px 90px -34px color-mix(in oklab, var(--primary) 14%, transparent),
     0 14px 34px -20px rgba(15, 23, 20, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
   animation: web3-card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
@@ -97,8 +97,8 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in oklab, var(--accent) 80%, transparent) 32%,
-    color-mix(in oklab, var(--web3-solana) 65%, transparent) 68%,
+    color-mix(in oklab, var(--primary) 80%, transparent) 32%,
+    color-mix(in oklab, var(--primary) 65%, transparent) 68%,
     transparent 100%
   );
   opacity: 0.9;
@@ -139,8 +139,8 @@
   border-radius: 999px;
   background: radial-gradient(
     circle,
-    color-mix(in oklab, var(--web3-solana) 42%, transparent) 0%,
-    color-mix(in oklab, var(--accent) 18%, transparent) 44%,
+    color-mix(in oklab, var(--primary) 42%, transparent) 0%,
+    color-mix(in oklab, var(--primary) 18%, transparent) 44%,
     transparent 72%
   );
   filter: blur(13px);
@@ -174,7 +174,7 @@
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.035em;
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .web3-brand-subtitle {
@@ -184,7 +184,7 @@
   line-height: 1.3;
   letter-spacing: 0.17em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -201,7 +201,7 @@
   padding: 0 11px 0 9px;
   border-radius: 999px;
   border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
-  background: color-mix(in oklab, var(--surface-muted) 72%, transparent);
+  background: color-mix(in oklab, var(--muted) 72%, transparent);
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -215,8 +215,8 @@
   height: 6px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--web3-solana-deep);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--web3-solana) 22%, transparent);
+  background: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 22%, transparent);
 }
 
 .web3-network-icon {
@@ -239,7 +239,7 @@
   padding: 4px;
   border-radius: 14px;
   border: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
-  background: color-mix(in oklab, var(--surface-muted) 76%, transparent);
+  background: color-mix(in oklab, var(--muted) 76%, transparent);
 }
 
 .web3-tab-btn {
@@ -257,7 +257,7 @@
   font-family: var(--sans);
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -268,7 +268,7 @@
 }
 
 .web3-tab-btn:hover {
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .web3-tab-btn:active {
@@ -276,11 +276,11 @@
 }
 
 .web3-tab-btn.active {
-  background: var(--surface);
-  color: var(--text-h);
+  background: var(--background);
+  color: var(--foreground);
   box-shadow:
     0 2px 10px rgba(15, 23, 20, 0.08),
-    inset 0 0 0 1px color-mix(in oklab, var(--accent) 16%, var(--border));
+    inset 0 0 0 1px color-mix(in oklab, var(--primary) 16%, var(--border));
 }
 
 .web3-tab-btn .tab-icon {
@@ -289,37 +289,37 @@
 }
 
 .web3-tab-btn.active .tab-icon {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 /* Sign-up path reads as the colored action, in the brand accent. */
 .web3-tab-btn.is-primary {
-  border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent);
-  background: var(--accent-bg);
-  color: var(--accent);
+  border: 1px solid color-mix(in oklab, var(--primary) 28%, transparent);
+  background: var(--primary);
+  color: var(--primary);
   box-shadow: none;
 }
 
 .web3-tab-btn.is-primary:hover {
-  background: color-mix(in oklab, var(--accent-bg) 78%, var(--surface));
-  color: var(--accent);
+  background: color-mix(in oklab, var(--primary) 78%, var(--background));
+  color: var(--primary);
 }
 
 .web3-tab-btn.is-primary .tab-icon {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .web3-tab-btn.is-primary.active {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
   box-shadow:
-    0 10px 24px -14px var(--web3-glow),
+    0 10px 24px -14px color-mix(in oklab, var(--primary) 14%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
 .web3-tab-btn.is-primary.active .tab-icon {
-  color: var(--accent-contrast);
+  color: var(--primary-foreground);
 }
 
 .web3-card-body {
@@ -342,7 +342,7 @@
   font-weight: 750;
   line-height: 1.18;
   letter-spacing: -0.032em;
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .web3-mode-heading p {
@@ -367,7 +367,7 @@
   font-weight: 700;
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-wallet-field {
@@ -379,8 +379,8 @@
   padding: 10px 12px;
   border-radius: 14px;
   border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
-  background: color-mix(in oklab, var(--surface-muted) 58%, transparent);
-  color: var(--text-h);
+  background: color-mix(in oklab, var(--muted) 58%, transparent);
+  color: var(--foreground);
   font-family: var(--sans);
   text-align: left;
   cursor: pointer;
@@ -392,9 +392,9 @@
 }
 
 .web3-wallet-field:hover {
-  border-color: color-mix(in oklab, var(--accent) 38%, var(--border));
-  background: color-mix(in oklab, var(--surface) 82%, transparent);
-  box-shadow: 0 0 0 3px var(--accent-bg);
+  border-color: color-mix(in oklab, var(--primary) 38%, var(--border));
+  background: color-mix(in oklab, var(--background) 82%, transparent);
+  box-shadow: 0 0 0 3px var(--primary);
   transform: translateY(-1px);
 }
 
@@ -406,7 +406,7 @@
   place-items: center;
   border-radius: 10px;
   border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
-  background: var(--surface);
+  background: var(--background);
   color: var(--text);
 }
 
@@ -437,20 +437,20 @@
 .web3-wallet-field-sub {
   font-size: 10.5px;
   line-height: 1.3;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-wallet-field-chevron {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   transition: transform 0.18s ease;
 }
 
 .web3-wallet-field:hover .web3-wallet-field-chevron {
   transform: translateX(2px);
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .web3-connected-pill {
@@ -464,8 +464,8 @@
     color-mix(in oklab, var(--color-success) 28%, var(--border));
   background: linear-gradient(
     135deg,
-    color-mix(in oklab, var(--color-success) 8%, var(--surface)) 0%,
-    color-mix(in oklab, var(--surface) 82%, transparent) 100%
+    color-mix(in oklab, var(--color-success) 8%, var(--background)) 0%,
+    color-mix(in oklab, var(--background) 82%, transparent) 100%
   );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
@@ -486,7 +486,7 @@
   border-radius: 10px;
   border: 1px solid
     color-mix(in oklab, var(--color-success) 22%, var(--border));
-  background: var(--surface);
+  background: var(--background);
 }
 
 .web3-connected-icon img,
@@ -529,7 +529,7 @@
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: var(--text-h);
+  color: var(--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -551,7 +551,7 @@
   padding: 0;
   border-radius: 9px;
   border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
-  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  background: color-mix(in oklab, var(--background) 72%, transparent);
   color: var(--text);
   cursor: pointer;
   transition:
@@ -567,9 +567,9 @@
 }
 
 .web3-icon-btn:hover {
-  background: var(--surface);
-  border-color: color-mix(in oklab, var(--accent) 34%, var(--border));
-  color: var(--text-h);
+  background: var(--background);
+  border-color: color-mix(in oklab, var(--primary) 34%, var(--border));
+  color: var(--foreground);
   transform: translateY(-1px);
 }
 
@@ -600,16 +600,16 @@
   gap: 8px;
   padding: 10px 18px;
   border-radius: 13px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-family: var(--sans);
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: -0.005em;
   cursor: pointer;
   box-shadow:
-    0 12px 30px -12px var(--web3-glow),
+    0 12px 30px -12px color-mix(in oklab, var(--primary) 14%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
   transition:
     transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
@@ -621,8 +621,8 @@
   transform: translateY(-1px) scale(1.008);
   filter: brightness(1.04);
   box-shadow:
-    0 18px 38px -14px var(--web3-glow),
-    0 0 0 3px var(--accent-bg),
+    0 18px 38px -14px color-mix(in oklab, var(--primary) 14%, transparent),
+    0 0 0 3px var(--primary),
     inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
@@ -653,8 +653,8 @@
   transform: translateY(-1px);
   filter: brightness(1.04);
   box-shadow:
-    0 18px 38px -14px var(--web3-glow),
-    0 0 0 3px var(--accent-bg),
+    0 18px 38px -14px color-mix(in oklab, var(--primary) 14%, transparent),
+    0 0 0 3px var(--primary),
     inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
@@ -687,7 +687,7 @@
   gap: 10px;
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .web3-label-optional {
@@ -695,7 +695,7 @@
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-input {
@@ -704,8 +704,8 @@
   padding: 10px 13px;
   border-radius: 12px;
   border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
-  background: color-mix(in oklab, var(--surface) 72%, transparent);
-  color: var(--text-h);
+  background: color-mix(in oklab, var(--background) 72%, transparent);
+  color: var(--foreground);
   font-family: var(--sans);
   font-size: 13px;
   outline: none;
@@ -717,14 +717,14 @@
 }
 
 .web3-input:hover {
-  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  border-color: color-mix(in oklab, var(--primary) 30%, var(--border));
 }
 
 .web3-input:focus,
 .web3-input:focus-visible {
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 3px var(--accent-bg);
+  border-color: var(--primary);
+  background: var(--background);
+  box-shadow: 0 0 0 3px var(--primary);
 }
 
 .web3-input::placeholder {
@@ -744,7 +744,7 @@
   padding: 9px 10px;
   border-radius: 13px;
   border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
-  background: color-mix(in oklab, var(--surface) 64%, transparent);
+  background: color-mix(in oklab, var(--background) 64%, transparent);
   cursor: pointer;
   transition:
     border-color 0.16s ease,
@@ -754,19 +754,19 @@
 }
 
 .web3-type-card:hover {
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
-  background: color-mix(in oklab, var(--surface) 84%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 32%, var(--border));
+  background: color-mix(in oklab, var(--background) 84%, transparent);
   transform: translateY(-1px);
 }
 
 .web3-type-card.active {
-  border-color: var(--accent);
+  border-color: var(--primary);
   background: linear-gradient(
     135deg,
-    color-mix(in oklab, var(--accent-bg) 88%, transparent) 0%,
-    color-mix(in oklab, var(--surface) 76%, transparent) 100%
+    color-mix(in oklab, var(--primary) 88%, transparent) 0%,
+    color-mix(in oklab, var(--background) 76%, transparent) 100%
   );
-  box-shadow: 0 0 0 3px var(--accent-bg);
+  box-shadow: 0 0 0 3px var(--primary);
 }
 
 .web3-type-icon {
@@ -776,7 +776,7 @@
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: color-mix(in oklab, var(--surface-muted) 82%, transparent);
+  background: color-mix(in oklab, var(--muted) 82%, transparent);
   color: var(--text);
 }
 
@@ -786,8 +786,8 @@
 }
 
 .web3-type-card.active .web3-type-icon {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .web3-type-info {
@@ -802,7 +802,7 @@
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--text-h);
+  color: var(--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -811,7 +811,7 @@
 .web3-type-desc {
   font-size: 9.5px;
   line-height: 1.25;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -828,8 +828,8 @@
 }
 
 .web3-type-card.active .web3-type-radio {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--primary);
+  background: var(--primary);
 }
 
 .web3-type-card.active .web3-type-radio::after {
@@ -837,7 +837,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--accent-contrast);
+  background: var(--primary-foreground);
 }
 
 .web3-security-footer {
@@ -849,7 +849,7 @@
   font-size: 10.5px;
   line-height: 1.4;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-security-icon {
@@ -866,7 +866,7 @@
   text-align: center;
   font-size: 10.5px;
   line-height: 1.5;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-market-link {
@@ -878,7 +878,7 @@
   padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
-  background: color-mix(in oklab, var(--surface-muted) 66%, transparent);
+  background: color-mix(in oklab, var(--muted) 66%, transparent);
   font-size: 11.5px;
   font-weight: 600;
   color: var(--text);
@@ -890,23 +890,23 @@
 }
 
 .web3-market-link:hover {
-  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
-  background: color-mix(in oklab, var(--accent) 9%, var(--surface-muted));
-  color: var(--text-h);
+  border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+  background: color-mix(in oklab, var(--primary) 9%, var(--muted));
+  color: var(--foreground);
 }
 
 .web3-market-link-icon {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .web3-market-link-chevron {
   width: 13px;
   height: 13px;
   flex-shrink: 0;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 [data-slot="dialog-content"].web3-wallet-dialog {
@@ -920,8 +920,8 @@
   border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
   background: linear-gradient(
     165deg,
-    color-mix(in oklab, var(--surface) 96%, transparent) 0%,
-    color-mix(in oklab, var(--surface) 88%, transparent) 100%
+    color-mix(in oklab, var(--background) 96%, transparent) 0%,
+    color-mix(in oklab, var(--background) 88%, transparent) 100%
   );
   backdrop-filter: blur(26px) saturate(1.15);
   -webkit-backdrop-filter: blur(26px) saturate(1.15);
@@ -938,14 +938,14 @@
   padding: 7px;
   border-radius: 9px;
   border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
-  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  background: color-mix(in oklab, var(--background) 70%, transparent);
   color: var(--text);
   opacity: 1;
 }
 
 [data-slot="dialog-content"].web3-wallet-dialog [data-slot="dialog-close"]:hover {
-  background: var(--surface);
-  color: var(--text-h);
+  background: var(--background);
+  color: var(--foreground);
 }
 
 [data-slot="dialog-content"].web3-wallet-dialog [data-slot="dialog-close"] svg {
@@ -967,7 +967,7 @@
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.03em;
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .web3-dialog-description {
@@ -998,7 +998,7 @@
   line-height: 1.3;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .web3-dialog-wallet-hint {
@@ -1008,7 +1008,7 @@
   padding: 9px 11px;
   border-radius: 13px;
   border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
-  background: color-mix(in oklab, var(--surface-muted) 48%, transparent);
+  background: color-mix(in oklab, var(--muted) 48%, transparent);
 }
 
 .web3-dialog-wallet-icon {
@@ -1019,7 +1019,7 @@
   place-items: center;
   border-radius: 10px;
   border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
-  background: var(--surface);
+  background: var(--background);
 }
 
 .web3-dialog-wallet-icon img,
@@ -1043,7 +1043,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-h);
+  color: var(--foreground);
 }
 
 .web3-dialog-wallet-sub {
@@ -1052,7 +1052,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-wallet-list {
@@ -1071,7 +1071,7 @@
 
 .web3-wallet-list::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: color-mix(in oklab, var(--text-muted) 34%, transparent);
+  background: color-mix(in oklab, var(--muted-foreground) 34%, transparent);
 }
 
 .web3-wallet-row {
@@ -1083,8 +1083,8 @@
   padding: 10px 12px;
   border-radius: 14px;
   border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
-  background: color-mix(in oklab, var(--surface-muted) 52%, transparent);
-  color: var(--text-h);
+  background: color-mix(in oklab, var(--muted) 52%, transparent);
+  color: var(--foreground);
   font-family: var(--sans);
   text-align: left;
   cursor: pointer;
@@ -1096,19 +1096,19 @@
 }
 
 .web3-wallet-row:hover {
-  border-color: color-mix(in oklab, var(--accent) 36%, var(--border));
-  background: color-mix(in oklab, var(--surface) 84%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 36%, var(--border));
+  background: color-mix(in oklab, var(--background) 84%, transparent);
   transform: translateY(-1px);
 }
 
 .web3-wallet-row.selected {
-  border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+  border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
   background: linear-gradient(
     135deg,
-    color-mix(in oklab, var(--accent-bg) 72%, transparent) 0%,
-    color-mix(in oklab, var(--surface) 78%, transparent) 100%
+    color-mix(in oklab, var(--primary) 72%, transparent) 0%,
+    color-mix(in oklab, var(--background) 78%, transparent) 100%
   );
-  box-shadow: 0 0 0 3px var(--accent-bg);
+  box-shadow: 0 0 0 3px var(--primary);
 }
 
 .web3-wallet-row-icon {
@@ -1119,7 +1119,7 @@
   place-items: center;
   border-radius: 11px;
   border: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
-  background: var(--surface);
+  background: var(--background);
   color: var(--text);
 }
 
@@ -1150,7 +1150,7 @@
 .web3-wallet-row-sub {
   font-size: 10.5px;
   line-height: 1.3;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-wallet-row-status {
@@ -1160,8 +1160,8 @@
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: color-mix(in oklab, var(--surface) 70%, transparent);
-  color: var(--text-muted);
+  background: color-mix(in oklab, var(--background) 70%, transparent);
+  color: var(--muted-foreground);
 }
 
 .web3-wallet-row-status svg {
@@ -1175,8 +1175,8 @@
 }
 
 .web3-wallet-row-status.is-install {
-  color: var(--accent);
-  background: var(--accent-bg);
+  color: var(--primary);
+  background: var(--primary);
 }
 
 .web3-wallet-empty {
@@ -1188,7 +1188,7 @@
   border-radius: 14px;
   border: 1px dashed color-mix(in oklab, var(--border) 90%, transparent);
   text-align: center;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1206,7 +1206,7 @@
   border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   font-size: 10.5px;
   line-height: 1.5;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .web3-wallet-dialog-footnote svg {
@@ -1251,7 +1251,7 @@
     .web3-wallet-row,
     .web3-market-link
   ):focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--accent) 82%, transparent);
+  outline: 2px solid color-mix(in oklab, var(--primary) 82%, transparent);
   outline-offset: 2px;
 }
 
@@ -1261,7 +1261,7 @@
 
 :is(.dark, [data-theme="dark"]) .web3-auth-card {
   box-shadow:
-    0 34px 100px -34px color-mix(in oklab, var(--accent) 42%, transparent),
+    0 34px 100px -34px color-mix(in oklab, var(--primary) 42%, transparent),
     0 18px 44px -24px rgba(0, 0, 0, 0.62),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -1525,13 +1525,13 @@
 /* Wallet sign-in and account creation follow the shadcn-admin auth surface. */
 .web3-auth-screen {
   --web3-glow: rgb(24 24 27 / 10%);
-  background: var(--bg);
+  background: var(--background);
 }
 .web3-auth-screen::before { opacity: 0.12; }
 .web3-auth-card {
   border: 1px solid var(--border);
   border-radius: 0.625rem;
-  background: var(--surface);
+  background: var(--background);
   box-shadow: var(--shadow);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -1539,17 +1539,17 @@
 .web3-auth-card::before { content: none; }
 .web3-card-header { padding: 24px 24px 16px; }
 .web3-card-body { padding: 0 24px 24px; }
-.web3-tabs-nav { border-radius: 0.5rem; background: var(--surface-muted); }
+.web3-tabs-nav { border-radius: 0.5rem; background: var(--muted); }
 .web3-tab-btn { border-radius: 0.375rem; }
 .web3-tab-btn.is-primary,
 .web3-tab-btn.is-primary.active {
   border-color: transparent;
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--primary);
+  color: var(--primary-foreground);
   box-shadow: none;
 }
 .web3-tab-btn.is-primary .tab-icon,
-.web3-tab-btn.is-primary.active .tab-icon { color: var(--accent-contrast); }
+.web3-tab-btn.is-primary.active .tab-icon { color: var(--primary-foreground); }
 .web3-tab-btn.active { border-radius: 0.375rem; box-shadow: var(--shadow-sm); }
 .web3-wallet-field, .web3-connected-pill, .web3-icon-btn,
 .web3-type-card, .web3-wallet-row {
@@ -1557,10 +1557,10 @@
   box-shadow: none;
 }
 .web3-action-btn, .web3-action-btn--slim {
-  border: 1px solid var(--accent);
+  border: 1px solid var(--primary);
   border-radius: 0.5rem;
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--primary);
+  color: var(--primary-foreground);
   box-shadow: none;
   font-weight: 600;
 }
@@ -1570,16 +1570,16 @@
   filter: brightness(0.92);
   box-shadow: none;
 }
-.web3-input { border-radius: 0.5rem; background: var(--surface); }
+.web3-input { border-radius: 0.5rem; background: var(--background); }
 .web3-type-card.active, .web3-wallet-row.selected {
-  background: var(--accent-bg);
-  box-shadow: 0 0 0 1px var(--accent-border);
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
-.web3-market-link { border-radius: 0.5rem; background: var(--surface); }
+.web3-market-link { border-radius: 0.5rem; background: var(--background); }
 [data-slot="dialog-content"].web3-wallet-dialog {
   border: 1px solid var(--border);
   border-radius: 0.625rem;
-  background: var(--surface);
+  background: var(--background);
   box-shadow: var(--shadow-hover);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;

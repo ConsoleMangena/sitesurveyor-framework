@@ -9,12 +9,7 @@
     flex-direction: column;
     overflow: hidden;
     position: relative;
-    background:
-        radial-gradient(circle at 12% 22%, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 32rem),
-        radial-gradient(circle at 88% 78%, color-mix(in oklab, var(--accent-purple) 8%, transparent) 0%, transparent 30rem),
-        var(--bg);
-    background-size: 400% 400%;
-    animation: hub-bg-drift 22s ease-in-out infinite;
+    background: var(--bg);
     --hub-topbar-stack: calc(56px + env(safe-area-inset-top, 0px));
 }
 
@@ -23,26 +18,11 @@
     position: absolute;
     inset: 0;
     background-image:
-        linear-gradient(color-mix(in oklab, var(--accent) 2.5%, transparent) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in oklab, var(--accent) 2.5%, transparent) 1px, transparent 1px);
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
     background-size: 48px 48px;
     pointer-events: none;
-    opacity: 0.6;
-    animation: hub-grid-pulse 12s ease-in-out infinite;
-}
-
-.hub-screen::after {
-    content: '';
-    position: absolute;
-    inset: -10%;
-    background:
-        radial-gradient(circle at 28% 28%, color-mix(in oklab, var(--accent) 10%, transparent) 0%, transparent 34%),
-        radial-gradient(circle at 72% 72%, color-mix(in oklab, var(--accent-purple) 8%, transparent) 0%, transparent 32%);
-    filter: blur(50px);
-    pointer-events: none;
-    opacity: 0.55;
-    animation: hub-orb-float 20s ease-in-out infinite alternate;
-    z-index: 0;
+    opacity: 0.06;
 }
 
 .hub-top-notice {

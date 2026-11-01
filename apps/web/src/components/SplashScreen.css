@@ -13,10 +13,10 @@
   background:
     radial-gradient(
       circle at 50% 38%,
-      color-mix(in oklab, var(--accent, #d92d20) 7%, transparent) 0%,
+      color-mix(in oklab, var(--primary) 6%, transparent) 0%,
       transparent 26rem
     ),
-    var(--bg, #fbfbfa);
+    var(--bg, white);
   opacity: 1;
   transition: opacity 0.6s ease-out;
 }
@@ -75,8 +75,8 @@
   background: conic-gradient(
     from 0deg,
     transparent 0%,
-    var(--accent, #d92d20) 30%,
-    color-mix(in oklab, var(--accent, #d92d20) 25%, transparent) 55%,
+    var(--primary) 30%,
+    color-mix(in oklab, var(--primary) 25%, transparent) 55%,
     transparent 100%
   );
   opacity: 0.16;
@@ -89,7 +89,7 @@
   position: absolute;
   inset: 2px;
   border-radius: 50%;
-  background: var(--bg, #fbfbfa);
+  background: var(--bg, white);
 }
 
 @keyframes splash-ring-spin {

@@ -50,6 +50,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
 import {
   Building2,
   Check,
@@ -954,10 +955,11 @@ export default function WalletLoginPage() {
             </div>
 
             <div className="web3-btn-row">
-              <button
+              <Button
                 type="button"
                 onClick={() => void handleSignIn()}
                 disabled={connecting || signing}
+                variant={connecting || signing ? "default" : "default"}
                 className="web3-action-btn web3-action-btn--slim"
               >
                 {connecting || signing ? (
@@ -980,7 +982,7 @@ export default function WalletLoginPage() {
                     </span>
                   </>
                 )}
-              </button>
+              </Button>
             </div>
 
           </div>
@@ -1255,9 +1257,10 @@ export default function WalletLoginPage() {
             </div>
 
             <div className="web3-btn-row">
-              <button
+              <Button
                 type="submit"
                 disabled={connecting || signing}
+                variant="default"
                 className="web3-action-btn"
               >
                 {connecting || signing ? (
@@ -1275,7 +1278,7 @@ export default function WalletLoginPage() {
                     </span>
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </form>
 
