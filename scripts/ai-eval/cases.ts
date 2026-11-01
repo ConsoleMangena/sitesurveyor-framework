@@ -1,6 +1,6 @@
 // Labelled eval cases for the SiteSurveyor AI agent.
 //
-// Each case runs the REAL agent loop (real model over NaraRouter) against the
+// Each case runs the REAL agent loop (real model over NVIDIA NIM) against the
 // in-memory fixture Supabase transport, then a deterministic `assert` checks
 // system invariants: which tools were called with which args, whether the
 // fixture data changed, and how the run was logged. Cases are deliberately

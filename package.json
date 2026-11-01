@@ -15,7 +15,8 @@
     "ai:eval": "node scripts/ai-eval/run.ts",
     "ai:skills-check": "node scripts/ai-eval/skills-check.ts",
     "ai:memory-check": "node scripts/ai-eval/memory-check.ts",
-    "ai:models-check": "node scripts/ai-eval/models-check.ts"
+    "ai:models-check": "node scripts/ai-eval/models-check.ts",
+    "ai:rounds-check": "node scripts/ai-eval/rounds-check.ts"
   },
   "devDependencies": {
     "@noble/ed25519": "^3.2.0",

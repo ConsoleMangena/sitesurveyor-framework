@@ -71,8 +71,21 @@ const NVIDIA_NIM_URL =
 const MAX_TOOL_ROUNDS = 8;
 /** Routine (simple) tasks never need the full round budget — cap them lower so
  *  a single query can't chain eight slow model round-trips. Complex tasks keep
- *  the full budget via scoreComplexity(). */
-const SIMPLE_MAX_ROUNDS = 3;
+ *  the full budget via scoreComplexity(). Nemotron tends to issue one tool per
+ *  round, so this leaves headroom past a single lookup-and-answer exchange. */
+const SIMPLE_MAX_ROUNDS = 4;
+/** An identical tool call is allowed twice per turn. The third is a loop: the
+ *  model is asking for data it already has and is not making progress. */
+const MAX_IDENTICAL_CALLS = 2;
+/** Appended as a final user turn when the budget is spent. The wrap-up request
+ *  carries no tool schema, so this is the one instruction the model can obey. */
+const WRAP_UP_INSTRUCTION =
+  "You have used every tool call allowed for this turn and cannot call tools " +
+  "again. Write the user's answer now using only the tool results already in " +
+  "this conversation. Report the findings you have, and state plainly what you " +
+  "could not determine instead of guessing or asking to search again. Never " +
+  "claim a record was created, updated or deleted unless a tool result " +
+  "confirms it; if a call you attempted never ran, say so.";
 /** Prior turns replayed to the model — every turn is re-sent on each round. */
 const MAX_HISTORY_TURNS = 16;
 /** Per-turn elision caps so one huge message cannot eat the whole window. */
@@ -550,6 +563,9 @@ function systemPrompt(supabaseUrl: string): string {
     "   and defaults) with the `remember` tool under stable keys. They will be",
     "   re-injected on every turn as STRUCTURED MEMORY and survive history",
     "   truncation. Use `forget` to remove stale ones.",
+    "10. Tool rounds are capped and each one costs latency: batch every",
+    "   independent lookup into one round, and never repeat a call whose result",
+    "   you already have.",
     "",
     "CAD INTEGRATION — READING:",
     "Use get_cad_drawing to fetch the full model for a project.",
@@ -1232,6 +1248,184 @@ async function promoteRun(
   }
 }
 
+interface StreamedToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+  index: number;
+}
+
+interface ModelRound {
+  content: string;
+  toolCalls: Map<number, StreamedToolCall>;
+  finishReason: string | null;
+  /** Set when the request failed outright; the caller surfaces it verbatim. */
+  error?: string;
+  aborted: boolean;
+}
+
+/**
+ * One streamed model request: watchdog, SSE parsing and delta forwarding in
+ * place, shared by the tool loop and the tool-free wrap-up turn. Yields the
+ * events the caller should pass on and returns what the round produced.
+ */
+async function* streamModelRound(opts: {
+  nvidiaApiKey: string;
+  model: string;
+  messages: OutboundMessage[];
+  /** Omitting the schema is what makes a wrap-up turn unable to loop. */
+  tools?: ToolSchema[];
+  externalSignal?: AbortSignal;
+  phase: string;
+}): AsyncGenerator<AgentEvent, ModelRound> {
+  const controller = new AbortController();
+  const onOuterAbort = () => controller.abort();
+  if (opts.externalSignal?.aborted) controller.abort();
+  else opts.externalSignal?.addEventListener("abort", onOuterAbort, { once: true });
+  const startedAt = Date.now();
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  let stalled = false;
+  const armIdle = () => {
+    if (idleTimer !== undefined) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      stalled = true;
+      controller.abort();
+    }, LLM_IDLE_TIMEOUT_MS);
+  };
+  armIdle();
+
+  yield { type: "status", phase: opts.phase };
+
+  let content = "";
+  const toolCalls = new Map<number, StreamedToolCall>();
+  let finishReason: string | null = null;
+  let error: string | undefined;
+
+  try {
+    let res: Response;
+    try {
+      res = await fetch(NVIDIA_NIM_URL, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${opts.nvidiaApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://sitesurveyor.app",
+          "X-Title": "SiteSurveyor AI",
+        },
+        body: JSON.stringify({
+          model: opts.model,
+          messages: opts.messages,
+          ...(opts.tools ? { tools: opts.tools } : {}),
+          stream: true,
+        }),
+      });
+    } catch (err) {
+      throw new Error(`Could not reach NVIDIA NIM (Nemotron): ${(err as Error).message}`);
+    }
+
+    if (!res.ok || !res.body) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(
+        `NVIDIA NIM error ${res.status}: ${detail.slice(0, 300) || "no response"}`,
+      );
+    }
+
+    try {
+      for await (const evt of sseEvents(res)) {
+        armIdle();
+        if (Date.now() - startedAt > LLM_ROUND_TIMEOUT_MS) {
+          stalled = true;
+          controller.abort();
+        }
+        if (evt.data === "[DONE]") break;
+        let parsed: { choices?: UpstreamChoice[] };
+        try {
+          parsed = JSON.parse(evt.data) as { choices?: UpstreamChoice[] };
+        } catch {
+          continue;
+        }
+        const choice = parsed.choices?.[0];
+        if (!choice) continue;
+        if (choice.delta?.content) {
+          content += choice.delta.content;
+          yield { type: "delta", text: choice.delta.content };
+        }
+        for (const tc of choice.delta?.tool_calls ?? []) {
+          const slot =
+            toolCalls.get(tc.index) ??
+            { id: "", name: "", arguments: "", index: tc.index };
+          if (tc.id) slot.id = tc.id;
+          if (tc.function?.name) slot.name = tc.function.name;
+          if (tc.function?.arguments) slot.arguments += tc.function.arguments;
+          toolCalls.set(tc.index, slot);
+        }
+        if (choice.finish_reason) finishReason = choice.finish_reason;
+      }
+    } catch (err) {
+      throw new Error(`Stream failed: ${(err as Error).message}`);
+    }
+  } catch (err) {
+    error = stalled
+      ? `AI request timed out (no progress for ${Math.round(LLM_IDLE_TIMEOUT_MS / 1000)}s) — please try again.`
+      : (err as Error).message;
+  } finally {
+    if (idleTimer !== undefined) clearTimeout(idleTimer);
+    opts.externalSignal?.removeEventListener("abort", onOuterAbort);
+  }
+
+  return {
+    content,
+    toolCalls,
+    finishReason,
+    error,
+    aborted: opts.externalSignal?.aborted === true,
+  };
+}
+
+/**
+ * Tool arguments arrive in fragments, so a call is only executable once the
+ * whole JSON object has landed. A reasoning model that spends the token budget
+ * on thinking cuts calls off mid-JSON; executing that yields "Invalid JSON
+ * arguments." back to the model, which retries — and retrying is how the round
+ * budget actually gets burned. Absent args are legitimate (some tools take none).
+ */
+function isCompleteToolArgs(raw: string): boolean {
+  const s = (raw || "").trim();
+  if (!s || s === "{}") return true;
+  if (!s.startsWith("{")) return false;
+  try {
+    JSON.parse(s);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Key-sorting stringify so key order alone does not look like a new call. */
+function canonicalArgs(raw: string): string {
+  const sortDeep = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(sortDeep);
+    if (v && typeof v === "object") {
+      return Object.fromEntries(
+        Object.entries(v as Record<string, unknown>)
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([k, val]) => [k, sortDeep(val)]),
+      );
+    }
+    return v;
+  };
+  try {
+    return JSON.stringify(sortDeep(JSON.parse(raw || "{}")));
+  } catch {
+    return (raw || "").replace(/\s+/g, "");
+  }
+}
+
+function callKey(tc: StreamedToolCall): string {
+  return `${tc.name}:${canonicalArgs(tc.arguments)}`;
+}
+
 /**
  * Runs the agent loop and yields delta/final/error events.
  * final always carries the complete reply text.
@@ -1337,135 +1531,72 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     (scoreComplexity(opts.userMessage, selectedSkills.length) === "complex"
       ? MAX_TOOL_ROUNDS
       : SIMPLE_MAX_ROUNDS);
+  /** How many times each identical call has run this turn. A second pass is a
+   *  legitimate re-read (checking whether a write landed); a third is a loop. */
+  const executedCalls = new Map<string, number>();
   while (round < maxRounds) {
     round += 1;
-    yield {
-      type: "status",
+    const modelRound = yield* streamModelRound({
+      nvidiaApiKey: opts.nvidiaApiKey,
+      model: opts.model || DEFAULT_MODEL,
+      messages: outbound,
+      tools: TOOLS,
+      externalSignal: opts.signal,
       phase:
         round === 1 ? "thinking" : `working (step ${round}/${maxRounds})`,
-    };
+    });
 
-    // Watchdog: abort the upstream request when it stalls (no SSE traffic
-    // for LLM_IDLE_TIMEOUT_MS) or blows past LLM_ROUND_TIMEOUT_MS total.
-    const controller = new AbortController();
-    const onOuterAbort = () => controller.abort();
-    if (opts.signal?.aborted) controller.abort();
-    else opts.signal?.addEventListener("abort", onOuterAbort, { once: true });
-    const startedAt = Date.now();
-    let idleTimer: ReturnType<typeof setTimeout> | undefined;
-    let stalled = false;
-    const armIdle = () => {
-      if (idleTimer !== undefined) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        stalled = true;
-        controller.abort();
-      }, LLM_IDLE_TIMEOUT_MS);
-    };
-    armIdle();
-
-    let content = "";
-    const toolCalls = new Map<
-      number,
-      { id: string; name: string; arguments: string; index: number }
-    >();
-    let finishReason: string | null = null;
-
-    try {
-      let res: Response;
-      try {
-        res = await fetch(NVIDIA_NIM_URL, {
-          method: "POST",
-          signal: controller.signal,
-          headers: {
-            Authorization: `Bearer ${opts.nvidiaApiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://sitesurveyor.app",
-            "X-Title": "SiteSurveyor AI",
-          },
-          body: JSON.stringify({
-            model: opts.model || DEFAULT_MODEL,
-            messages: outbound,
-            tools: TOOLS,
-            stream: true,
-          }),
-        });
-      } catch (err) {
-        throw new Error(`Could not reach NVIDIA NIM (Nemotron): ${(err as Error).message}`);
-      }
-
-      if (!res.ok || !res.body) {
-        const detail = await res.text().catch(() => "");
-        throw new Error(
-          `NVIDIA NIM error ${res.status}: ${detail.slice(0, 300) || "no response"}`,
-        );
-      }
-
-      try {
-        for await (const evt of sseEvents(res)) {
-          armIdle();
-          if (Date.now() - startedAt > LLM_ROUND_TIMEOUT_MS) {
-            stalled = true;
-            controller.abort();
-          }
-          if (evt.data === "[DONE]") break;
-          let parsed: { choices?: UpstreamChoice[] };
-          try {
-            parsed = JSON.parse(evt.data) as { choices?: UpstreamChoice[] };
-          } catch {
-            continue;
-          }
-          const choice = parsed.choices?.[0];
-          if (!choice) continue;
-          if (choice.delta?.content) {
-            content += choice.delta.content;
-            yield { type: "delta", text: choice.delta.content };
-          }
-          for (const tc of choice.delta?.tool_calls ?? []) {
-            const slot =
-              toolCalls.get(tc.index) ??
-              { id: "", name: "", arguments: "", index: tc.index };
-            if (tc.id) slot.id = tc.id;
-            if (tc.function?.name) slot.name = tc.function.name;
-            if (tc.function?.arguments) slot.arguments += tc.function.arguments;
-            toolCalls.set(tc.index, slot);
-          }
-          if (choice.finish_reason) finishReason = choice.finish_reason;
-        }
-      } catch (err) {
-        throw new Error(`Stream failed: ${(err as Error).message}`);
-      }
-    } catch (err) {
-      const message = stalled
-        ? `AI request timed out (no progress for ${Math.round(LLM_IDLE_TIMEOUT_MS / 1000)}s) — please try again.`
-        : (err as Error).message;
-      yield { type: "error", message };
-      if (opts.signal?.aborted) {
+    if (modelRound.error) {
+      yield { type: "error", message: modelRound.error };
+      if (modelRound.aborted) {
         await finalize("cancelled", "cancelled by caller");
       } else {
-        await finalize("error", message);
+        await finalize("error", modelRound.error);
       }
       return;
-    } finally {
-      if (idleTimer !== undefined) clearTimeout(idleTimer);
-      opts.signal?.removeEventListener("abort", onOuterAbort);
     }
 
-    if (finishReason === "tool_calls" && toolCalls.size > 0) {
+    const content = modelRound.content;
+    const finishReason = modelRound.finishReason;
+    const streamed = [...modelRound.toolCalls.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, tc]) => tc);
+    const usable = streamed.filter((tc) => isCompleteToolArgs(tc.arguments));
+    const cutOff = streamed.filter((tc) => !isCompleteToolArgs(tc.arguments));
+
+    const dbg =
+      (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.SS_AI_DEBUG;
+    if (dbg)
+      console.error(
+        `[ai-agent] round=${round} finish=${finishReason} contentLen=${content.length} tools=${streamed.length} usable=${usable.length} cutOff=${cutOff.length}`,
+      );
+
+    // A provider that reports `stop` or `length` after streaming tool_calls
+    // still meant to call them. Gating on finish_reason === "tool_calls" alone
+    // dropped those calls and answered with a canned failure.
+    if (usable.length > 0) {
+      const fresh = usable.filter(
+        (tc) => (executedCalls.get(callKey(tc)) ?? 0) < MAX_IDENTICAL_CALLS,
+      );
+      // The model asked for something it already has: that is looping, not
+      // progress. Stop burning rounds and answer from what is on hand.
+      if (fresh.length === 0) break;
+
+      for (const tc of fresh) {
+        const key = callKey(tc);
+        executedCalls.set(key, (executedCalls.get(key) ?? 0) + 1);
+      }
+
       outbound.push({
         role: "assistant",
         content: content || null,
-        ...(toolCalls.size > 0
-          ? {
-              tool_calls: [...toolCalls.values()].map((tc) => ({
-                id: tc.id || `call_${tc.name}_${tc.index ?? 0}`,
-                type: "function" as const,
-                function: { name: tc.name, arguments: tc.arguments || "{}" },
-              })),
-            }
-          : {}),
+        tool_calls: usable.map((tc) => ({
+          id: tc.id || `call_${tc.name}_${tc.index ?? 0}`,
+          type: "function" as const,
+          function: { name: tc.name, arguments: tc.arguments || "{}" },
+        })),
       });
-      const ordered = [...toolCalls.entries()].sort((a, b) => a[0] - b[0]);
-      for (const [, tc] of ordered) {
+      for (const tc of fresh) {
         let args: unknown = tc.arguments;
         try {
           args = JSON.parse(tc.arguments || "{}");
@@ -1476,9 +1607,15 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
         yield { type: "tool", name: tc.name };
       }
       // Independent tools run concurrently; results are re-paired with their
-      // tool_call_ids in original order below.
+      // tool_call_ids in original order below. A repeated call answers with a
+      // pointer rather than a second round-trip, keeping the transcript legal.
       const results = await Promise.all(
-        ordered.map(async ([, tc]) => {
+        usable.map(async (tc) => {
+          if (!fresh.includes(tc)) {
+            return JSON.stringify({
+              note: "Identical to a call you already made this turn — reuse that result.",
+            });
+          }
           try {
             return await executeTool(tc.name, tc.arguments, ctx);
           } catch (err) {
@@ -1486,7 +1623,7 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
           }
         }),
       );
-      ordered.forEach(([, tc], i) => {
+      usable.forEach((tc, i) => {
         outbound.push({
           role: "tool",
           tool_call_id: tc.id || `call_${tc.name}_${tc.index ?? 0}`,
@@ -1497,16 +1634,12 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     }
 
     // Plain final answer. Guard against silent-empty completions: a provider
-    // occasionally reports `stop` (or `tool_calls` with no parseable calls)
-    // while yielding no content — surface a retryable message instead of an
-    // empty reply, which the client would have to report as an error.
-    const dbg =
-      (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.SS_AI_DEBUG;
-    if (dbg)
-      console.error(
-        `[ai-agent] round=${round} finish=${finishReason} contentLen=${content.length} tools=${toolCalls.size}`,
-      );
+    // occasionally reports `stop` while yielding no content.
     if (!content.trim()) {
+      // Nothing to say, but earlier tool results (or calls the token cap
+      // truncated) are worth a real reply — fall through to the wrap-up turn
+      // instead of failing the turn outright.
+      if (trace.length > 0 || cutOff.length > 0) break;
       yield {
         type: "final",
         text: "I couldn't complete that response — please send it again.",
@@ -1525,11 +1658,35 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     return;
   }
 
-  yield {
-    type: "error",
-    message: "The agent ran out of tool rounds before producing a final answer.",
-  };
-  await finalize("error", "out of tool rounds");
+  // Out of rounds, looping, or truncated calls — the tool results already
+  // gathered are worth far more to the user than an error message. Spend one
+  // tool-free turn reading them; without the schema the model cannot loop.
+  const wrap = yield* streamModelRound({
+    nvidiaApiKey: opts.nvidiaApiKey,
+    model: opts.model || DEFAULT_MODEL,
+    messages: [...outbound, { role: "user", content: WRAP_UP_INSTRUCTION }],
+    externalSignal: opts.signal,
+    phase: "wrapping up",
+  });
+
+  const wrapText = wrap.content.trim();
+  if (wrapText) {
+    finalText = wrapText;
+    yield { type: "final", text: wrapText };
+    await promoteRun(selectedSkills, trace, opts.userMessage, wrapText, {
+      supabaseFetch,
+      supabaseUrl,
+      serviceKey: opts.serviceKey,
+    });
+    await finalize("success");
+    return;
+  }
+
+  const message =
+    wrap.error ??
+    "The agent ran out of tool rounds before producing a final answer.";
+  yield { type: "error", message };
+  await finalize("error", message);
 }
 
 // ── Rolling conversation memory ───────────────────────────────────────────

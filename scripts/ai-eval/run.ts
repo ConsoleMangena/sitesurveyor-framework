@@ -4,9 +4,9 @@
 //   NVIDIA_API_KEY=nvapi-... node scripts/ai-eval/run.ts
 //   NVIDIA_API_KEY=... node scripts/ai-eval/run.ts --model=nvidia/nemotron-3.5-lightning-30b-a3b --filter=create-contact
 //
-// Runs each labelled case through the REAL agent loop (live NVIDIA NIM model over
-// Alibaba Cloud Model Studio at modelstudio.console.alibabacloud.com) against
-// an in-memory copy of the fixture Supabase transport, then applies
+// Runs each labelled case through the REAL agent loop (live NVIDIA NIM
+// Nemotron model at integrate.api.nvidia.com) against an in-memory copy of
+// the fixture Supabase transport, then applies
 // deterministic assertions. Prints a pass/fail table; exit code 0 only if
 // every case passes.
 
