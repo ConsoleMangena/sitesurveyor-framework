@@ -153,6 +153,14 @@ const asCluster = (network: string | null): SolanaCluster =>
 const formatLamports = (lamports: number): string =>
   `${lamports.toLocaleString()} lamports`;
 
+const formatAnchorError = (err: unknown): string => {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/network mismatch|wrong network/i.test(message)) {
+    return `Your wallet is on the wrong Solana network. Open your wallet, switch to ${SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}, reconnect it, and try signing again.`;
+  }
+  return message || "Failed to anchor file on Solana.";
+};
+
 export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const [files, setFiles] = useState<AttachmentRow[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
@@ -490,7 +498,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     } catch (err) {
       // The row records how far the attempt got, so always reload it.
       await fetchFiles();
-      setError(err instanceof Error ? err.message : "Failed to anchor file on Solana.");
+      setError(formatAnchorError(err));
     } finally {
       setAnchoring(false);
       setBusyFileId(null);

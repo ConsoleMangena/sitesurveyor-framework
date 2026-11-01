@@ -279,4 +279,18 @@ describe("FileManagerPage anchoring", () => {
     expect(await screen.findByText("Anchor cancelled in wallet.")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Anchored on Devnet/ })).toBeNull();
   });
+
+  it("explains how to recover from a wallet network mismatch", async () => {
+    vi.mocked(anchorAttachment).mockRejectedValue(new Error("Network mismatch"));
+
+    await renderFiles([makeFile()]);
+    await openAnchorDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Sign anchor transaction" }));
+
+    expect(
+      await screen.findByText(
+        "Your wallet is on the wrong Solana network. Open your wallet, switch to Devnet, reconnect it, and try signing again.",
+      ),
+    ).toBeTruthy();
+  });
 });
