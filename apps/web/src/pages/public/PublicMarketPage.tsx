@@ -838,7 +838,7 @@ export default function PublicMarketPage() {
                 </span>
                 <div>
                   <h2 className="market-map-title text-foreground">Explore the live map</h2>
-                  <p className="text-[11px] text-muted-foreground">Select a pin to preview the opportunity</p>
+                  <p className="text-micro text-muted-foreground">Select a pin to preview the opportunity</p>
                 </div>
               </div>
               <span className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
@@ -858,7 +858,7 @@ export default function PublicMarketPage() {
                 heightClassName="h-[360px] sm:h-[440px] lg:h-[500px]"
               />
             </Suspense>
-            <div className="flex items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-[11px] text-muted-foreground sm:px-5">
+            <div className="flex items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground sm:px-5">
               <span>Two-way map and registry discovery</span>
               <span className="shrink-0 font-mono tabular-nums">{totalPoints} mapped</span>
             </div>
@@ -976,7 +976,7 @@ export default function PublicMarketPage() {
                     >
                       {label}
                       {value !== "all" ? (
-                        <span className="ml-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                        <span className="ml-1.5 font-mono text-micro tabular-nums text-muted-foreground">
                           {(value === "listing" && data?.listings.length) ||
                             (value === "professional" && data?.professionals.length) ||
                             (value === "job" && data?.jobs.length) ||
@@ -1382,7 +1382,7 @@ function MarketPulseStrip({
               {stat.color ? <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: stat.color }} aria-hidden="true" /> : null}
               {stat.value}
             </p>
-            <p className="mt-2 whitespace-nowrap text-[11px] text-muted-foreground">{stat.label}</p>
+            <p className="mt-2 whitespace-nowrap text-micro text-muted-foreground">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -1415,7 +1415,7 @@ function RateBenchmarks({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-border/70 bg-muted/25 px-3 py-2">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
         Day-rate benchmarks
       </span>
       {benchmarks.map(({ type, median, count }) => (
@@ -1425,7 +1425,7 @@ function RateBenchmarks({
             ${median.toLocaleString()}
           </span>
           <span className="text-muted-foreground">/day</span>
-          <span className="text-[10px] text-muted-foreground/80">({count})</span>
+          <span className="text-micro text-muted-foreground/80">({count})</span>
         </span>
       ))}
     </div>

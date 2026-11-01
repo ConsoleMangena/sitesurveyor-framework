@@ -18,6 +18,11 @@
   --font-sans: var(--font-app);
   --font-mono: var(--mono);
 
+  /* 11px — the step Tailwind leaves out between text-xs (12) and its own
+     floor, for tracked uppercase labels and dense data chrome. Deliberately
+     no paired line-height, so it only ever sets size. */
+  --text-micro: 0.6875rem;
+
   --color-background: var(--bg);
   --color-foreground: var(--text-h);
   --color-card: var(--surface);

@@ -42,7 +42,7 @@ export function KindIcon({
 
 export function NewBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+    <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-micro font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
       New
     </span>
   );
@@ -97,7 +97,7 @@ function RailTile({
             <KindIcon kind={item.kind} className="size-10 text-foreground/35" />
           </div>
         )}
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/95 px-2.5 py-1 text-[10px] font-semibold text-foreground/80">
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/95 px-2.5 py-1 text-micro font-semibold text-foreground/80">
           <KindIcon kind={item.kind} className="size-3" />
           {KIND_LABELS[item.kind]}
         </span>
@@ -106,7 +106,7 @@ function RailTile({
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         <span className="flex items-start gap-1.5">
-          <span className="line-clamp-2 min-w-0 flex-1 text-[15px] font-semibold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary">
+          <span className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary">
             {item.title}
           </span>
           {item.verified ? <BadgeCheck className="mt-0.5 size-4 shrink-0 text-cyan-600" aria-label="Verified" /> : null}

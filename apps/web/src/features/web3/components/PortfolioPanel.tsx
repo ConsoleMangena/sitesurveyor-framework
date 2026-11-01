@@ -89,7 +89,7 @@ export function PortfolioPanel({
               className="web3-mono"
               style={{
                 margin: "6px 0 0",
-                fontSize: 30,
+                fontSize: "var(--web3-text-3xl)",
                 fontWeight: 600,
                 letterSpacing: "-0.02em",
                 color: "var(--web3-text)",
@@ -102,7 +102,7 @@ export function PortfolioPanel({
             <p className="web3-kicker">24h change</p>
             <p
               className={`web3-mono ${deltaClass(snapshot.change24h)}`}
-              style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 600 }}
+              style={{ margin: "6px 0 0", fontSize: "var(--web3-text-2xl)", fontWeight: 600 }}
             >
               {formatPercent(snapshot.change24h)}
             </p>
@@ -111,7 +111,7 @@ export function PortfolioPanel({
             <p className="web3-kicker">Holdings</p>
             <p
               className="web3-mono"
-              style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 600 }}
+              style={{ margin: "6px 0 0", fontSize: "var(--web3-text-2xl)", fontWeight: 600 }}
             >
               {snapshot.tokens.length}
             </p>

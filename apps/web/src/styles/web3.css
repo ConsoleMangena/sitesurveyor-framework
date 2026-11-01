@@ -27,7 +27,20 @@
   --web3-text-muted: #6b7280;
   --web3-text-dim: #9ca3af;
   --web3-glow: rgba(217, 45, 32, 0.15);
-  --web3-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* One mono for the whole product: index.css owns the stack and maps
+     Tailwind’s font-mono onto it, so DOM and the chart SVGs agree. */
+  --web3-mono: var(--mono);
+
+  /* Type ramp — the same rem steps as the Tailwind scale (text-xs/sm/base/xl),
+     so the market’s bespoke chrome sits on the grid the ported shadcn
+     primitives use. rem keeps it honest if the base ever moves. */
+  --web3-text-micro: var(--text-micro); /* 11px — tracked labels, map bubbles */
+  --web3-text-caption: 0.75rem;   /* 12px — text-xs: meta, subs, notes */
+  --web3-text-body: 0.875rem;     /* 14px — text-sm: buttons, rows, values */
+  --web3-text-title: 1rem;        /* 16px — text-base: panel and brand titles */
+  --web3-text-xl: 1.25rem;        /* 20px — text-xl: tile values, sheet titles */
+  --web3-text-2xl: 1.5rem;        /* 24px - text-2xl: hero stat values */
+  --web3-text-3xl: 1.875rem;      /* 30px - text-3xl: panel headline value */
 }
 
 /* ── Token remap ───────────────────────────────────────────────
@@ -127,7 +140,7 @@
 
 .web3-surface .market-hero-title {
   margin: 0;
-  font-size: clamp(40px, 4.8vw, 60px);
+  font-size: clamp(2.5rem, 4.8vw, 3.75rem);
   font-weight: 700;
   line-height: 1.04;
   letter-spacing: -0.035em;
@@ -135,7 +148,7 @@
 
 .web3-surface .market-section-title {
   margin: 0;
-  font-size: clamp(24px, 2.4vw, 30px);
+  font-size: clamp(1.5rem, 2.4vw, 1.875rem);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.025em;
@@ -143,15 +156,15 @@
 
 .web3-surface .market-map-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--web3-text-body);
   font-weight: 600;
-  line-height: 20px;
+  line-height: 1.4;
   letter-spacing: normal;
 }
 
 .web3-theme .market-dialog-title {
   margin: 0;
-  font-size: clamp(22px, 2.4vw, 30px);
+  font-size: clamp(1.375rem, 2.4vw, 1.875rem);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.025em;
@@ -159,9 +172,9 @@
 
 .web3-theme .market-sheet-title {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--web3-text-xl);
   font-weight: 600;
-  line-height: 28px;
+  line-height: 1.4;
   letter-spacing: -0.02em;
 }
 
@@ -198,7 +211,7 @@
 }
 
 .web3-kicker {
-  font-size: 10px;
+  font-size: var(--web3-text-micro);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -250,13 +263,13 @@
 }
 
 .web3-brand-name {
-  font-size: 15px;
+  font-size: var(--web3-text-title);
   font-weight: 650;
   letter-spacing: -0.02em;
 }
 
 .web3-brand-sub {
-  font-size: 13px;
+  font-size: var(--web3-text-caption);
   color: var(--web3-text-muted);
 }
 
@@ -282,7 +295,7 @@
 
 .web3-panel-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--web3-text-title);
   font-weight: 650;
   letter-spacing: -0.015em;
   color: var(--web3-text);
@@ -290,7 +303,7 @@
 
 .web3-panel-sub {
   margin: 3px 0 0;
-  font-size: 12px;
+  font-size: var(--web3-text-caption);
   line-height: 1.5;
   color: var(--web3-text-muted);
 }
@@ -322,7 +335,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--web3-text-micro);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -332,14 +345,14 @@
 .web3-tile-value {
   font-family: var(--web3-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 20px;
+  font-size: var(--web3-text-xl);
   font-weight: 600;
   line-height: 1.1;
   color: var(--web3-text);
 }
 
 .web3-tile-note {
-  font-size: 11px;
+  font-size: var(--web3-text-caption);
   color: var(--web3-text-muted);
 }
 
@@ -491,7 +504,7 @@
 }
 
 .web3-ticker-label {
-  font-size: 9.5px;
+  font-size: var(--web3-text-micro);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -501,7 +514,7 @@
 .web3-ticker-value {
   font-family: var(--web3-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
+  font-size: var(--web3-text-body);
   font-weight: 600;
   color: var(--web3-text);
 }
@@ -521,7 +534,7 @@
   background: var(--web3-panel);
   color: var(--web3-text);
   font-family: var(--sans);
-  font-size: 12.5px;
+  font-size: var(--web3-text-body);
   font-weight: 600;
   letter-spacing: -0.005em;
   cursor: pointer;
@@ -684,7 +697,7 @@
   background: rgba(17, 24, 39, 0.88);
   color: #ffffff;
   font-family: var(--web3-mono);
-  font-size: 11px;
+  font-size: var(--web3-text-micro);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -736,14 +749,14 @@
 }
 
 .web3-empty-title {
-  font-size: 13.5px;
+  font-size: var(--web3-text-body);
   font-weight: 600;
   color: var(--web3-text);
 }
 
 .web3-empty-note {
   max-width: 34rem;
-  font-size: 12px;
+  font-size: var(--web3-text-caption);
   line-height: 1.6;
 }
 
@@ -984,7 +997,7 @@
 
 .web3-token-name {
   display: block;
-  font-size: 13px;
+  font-size: var(--web3-text-body);
   font-weight: 600;
   color: var(--web3-text);
   overflow: hidden;
@@ -995,7 +1008,7 @@
 .web3-token-sub {
   display: block;
   font-family: var(--web3-mono);
-  font-size: 11px;
+  font-size: var(--web3-text-caption);
   color: var(--web3-text-dim);
 }
 
@@ -1008,7 +1021,7 @@
   display: block;
   font-family: var(--web3-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: var(--web3-text-body);
   font-weight: 600;
   color: var(--web3-text);
 }
@@ -1016,7 +1029,7 @@
 .web3-token-amount {
   display: block;
   font-family: var(--web3-mono);
-  font-size: 11px;
+  font-size: var(--web3-text-caption);
   color: var(--web3-text-dim);
 }
 
@@ -1043,14 +1056,14 @@
 }
 
 .web3-alloc-name {
-  font-size: 12px;
+  font-size: var(--web3-text-caption);
   color: var(--web3-text);
 }
 
 .web3-alloc-pct {
   font-family: var(--web3-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: var(--web3-text-caption);
   color: var(--web3-text-muted);
 }
 
@@ -1063,6 +1076,5 @@
     min-height: 34px;
     padding: 7px 12px;
     border-radius: 9px;
-    font-size: 12px;
   }
 }

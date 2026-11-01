@@ -124,7 +124,7 @@ export function Web3MarketTerminal({
                 <span
                   style={{
                     fontWeight: 700,
-                    fontSize: 14,
+                    fontSize: "var(--web3-text-body)",
                     color: "var(--web3-text)",
                     letterSpacing: "-0.01em",
                   }}
@@ -132,7 +132,7 @@ export function Web3MarketTerminal({
                   Web3 Market Terminal
                 </span>
                 <span
-                  className="rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                  className="rounded px-1.5 py-0.5 text-micro font-semibold tracking-wide uppercase"
                   style={{
                     background: "rgba(153, 69, 255, 0.12)",
                     color: "#9945FF",
@@ -143,7 +143,7 @@ export function Web3MarketTerminal({
                 </span>
               </div>
               <p
-                className="text-[11px]"
+                className="text-micro"
                 style={{ color: "var(--web3-text-dim)", marginTop: -1 }}
               >
                 Live settlement assets for equipment, escrow & invoices
@@ -196,7 +196,7 @@ export function Web3MarketTerminal({
             <SolanaLogoMark size={16} />
             <span>SOL</span>
             <span
-              className="font-mono text-[11px] font-bold"
+              className="font-mono text-micro font-bold"
               style={{
                 color: activeToken === "SOL" ? "var(--web3-text)" : "var(--web3-text-dim)",
               }}
@@ -204,7 +204,7 @@ export function Web3MarketTerminal({
               {formatUsd(snapshot.price)}
             </span>
             <span
-              className={`text-[10px] font-bold ${deltaClass(snapshot.change24h)}`}
+              className={`text-micro font-bold ${deltaClass(snapshot.change24h)}`}
             >
               {formatPercent(snapshot.change24h, { digits: 1 })}
             </span>
@@ -235,7 +235,7 @@ export function Web3MarketTerminal({
             <UsdcLogoMark size={16} />
             <span>USDC</span>
             <span
-              className="font-mono text-[11px] font-bold"
+              className="font-mono text-micro font-bold"
               style={{
                 color: activeToken === "USDC" ? "var(--web3-text)" : "var(--web3-text-dim)",
               }}
@@ -243,7 +243,7 @@ export function Web3MarketTerminal({
               $1.00
             </span>
             <span
-              className={`text-[10px] font-bold ${deltaClass(snapshot.usdc?.change24h ?? 0.01)}`}
+              className={`text-micro font-bold ${deltaClass(snapshot.usdc?.change24h ?? 0.01)}`}
             >
               {formatPercent(snapshot.usdc?.change24h ?? 0.01, { digits: 1 })}
             </span>
@@ -338,7 +338,7 @@ export function Web3MarketTerminal({
                       >
                         {isUsdc ? "USD Coin" : "Solana"}
                       </h4>
-                      <span className="text-[11px] font-mono text-muted-foreground">
+                      <span className="text-micro font-mono text-muted-foreground">
                         {isUsdc ? "USDC · SPL Token" : "SOL · Native Token"}
                       </span>
                     </div>
@@ -348,7 +348,7 @@ export function Web3MarketTerminal({
 
                 <div className="mt-3.5 flex items-baseline justify-between border-t border-border/50 pt-3">
                   <div>
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <span className="text-micro font-medium text-muted-foreground">
                       Price (USD)
                     </span>
                     <div
@@ -359,7 +359,7 @@ export function Web3MarketTerminal({
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <span className="text-micro font-medium text-muted-foreground">
                       24h Change
                     </span>
                     <div
@@ -379,7 +379,7 @@ export function Web3MarketTerminal({
 
                 <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/50 pt-3 text-xs">
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                    <span className="text-micro text-muted-foreground uppercase font-medium">
                       24h Spot Vol
                     </span>
                     <p className="font-mono font-bold" style={{ color: "var(--web3-text)" }}>
@@ -387,7 +387,7 @@ export function Web3MarketTerminal({
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                    <span className="text-micro text-muted-foreground uppercase font-medium">
                       Market Cap (FDV)
                     </span>
                     <p className="font-mono font-bold" style={{ color: "var(--web3-text)" }}>
@@ -423,19 +423,19 @@ export function Web3MarketTerminal({
                       >
                         Solana On-Chain Telemetry
                       </h4>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-micro text-muted-foreground">
                         Mainnet Beta Ecosystem
                       </span>
                     </div>
                   </div>
-                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-micro font-semibold text-emerald-600 dark:text-emerald-400">
                     Active
                   </span>
                 </div>
 
                 <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/50 pt-3 text-xs">
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                    <span className="text-micro text-muted-foreground uppercase font-medium">
                       DeFi TVL
                     </span>
                     <p className="font-mono font-bold" style={{ color: "var(--web3-text)" }}>
@@ -443,7 +443,7 @@ export function Web3MarketTerminal({
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                    <span className="text-micro text-muted-foreground uppercase font-medium">
                       Epoch
                     </span>
                     <p className="font-mono font-bold" style={{ color: "var(--web3-text)" }}>
@@ -451,10 +451,10 @@ export function Web3MarketTerminal({
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                    <span className="text-micro text-muted-foreground uppercase font-medium">
                       Slot Height
                     </span>
-                    <p className="font-mono font-bold text-[11px]" style={{ color: "var(--web3-text)" }}>
+                    <p className="font-mono font-bold text-micro" style={{ color: "var(--web3-text)" }}>
                       {formatSlot(snapshot.slot)}
                     </p>
                   </div>

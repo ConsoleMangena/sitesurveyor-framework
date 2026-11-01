@@ -227,12 +227,12 @@ export function SolanaMarketChart({
           {isUsdc ? <UsdcLogoMark size={28} /> : <SolanaLogoMark size={28} />}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: "var(--web3-text)", letterSpacing: "-0.01em" }}>
+              <span style={{ fontWeight: 700, fontSize: "var(--web3-text-title)", color: "var(--web3-text)", letterSpacing: "-0.01em" }}>
                 {isUsdc ? "USD Coin" : "Solana"}
               </span>
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: "var(--web3-text-micro)",
                   fontWeight: 600,
                   padding: "1px 6px",
                   borderRadius: 4,
@@ -242,19 +242,19 @@ export function SolanaMarketChart({
               >
                 {isUsdc ? "USDC / USD" : "SOL / USD"}
               </span>
-              <span className="web3-status-inline" style={{ fontSize: 11 }}>
+              <span className="web3-status-inline" style={{ fontSize: "var(--web3-text-micro)" }}>
                 <span className="web3-live-dot" aria-hidden="true" />
                 Live
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-              <span className="web3-mono" style={{ fontSize: 20, fontWeight: 700, color: "var(--web3-text)" }}>
+              <span className="web3-mono" style={{ fontSize: "var(--web3-text-xl)", fontWeight: 700, color: "var(--web3-text)" }}>
                 {formatPrice(activeCandle?.close ?? basePrice)}
               </span>
               <span
                 className={`web3-mono ${change24h >= 0 ? "web3-delta-up" : "web3-delta-down"}`}
                 style={{
-                  fontSize: 12,
+                  fontSize: "var(--web3-text-caption)",
                   fontWeight: 600,
                   display: "inline-flex",
                   alignItems: "center",
@@ -276,7 +276,7 @@ export function SolanaMarketChart({
             flexWrap: "wrap",
             alignItems: "center",
             gap: "12px 18px",
-            fontSize: 11.5,
+            fontSize: "var(--web3-text-micro)",
             color: "var(--web3-text-muted)",
           }}
         >
@@ -338,7 +338,7 @@ export function SolanaMarketChart({
                   alignItems: "center",
                   gap: 5,
                   padding: "3px 9px",
-                  fontSize: 11,
+                  fontSize: "var(--web3-text-micro)",
                   fontWeight: 650,
                   borderRadius: 6,
                   border: "none",
@@ -362,7 +362,7 @@ export function SolanaMarketChart({
                   alignItems: "center",
                   gap: 5,
                   padding: "3px 9px",
-                  fontSize: 11,
+                  fontSize: "var(--web3-text-micro)",
                   fontWeight: 650,
                   borderRadius: 6,
                   border: "none",
@@ -396,7 +396,7 @@ export function SolanaMarketChart({
                 onClick={() => setTimeframe(tf)}
                 style={{
                   padding: "3px 8px",
-                  fontSize: 11,
+                  fontSize: "var(--web3-text-micro)",
                   fontWeight: 650,
                   borderRadius: 6,
                   border: "none",
@@ -669,7 +669,7 @@ export function SolanaMarketChart({
           padding: "10px 18px",
           borderTop: "1px solid var(--web3-border)",
           background: "var(--web3-bg-2)",
-          fontSize: 11,
+          fontSize: "var(--web3-text-micro)",
           color: "var(--web3-text-muted)",
         }}
       >
@@ -688,7 +688,7 @@ export function SolanaMarketChart({
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 10, color: "var(--web3-text-dim)" }}>
+          <span style={{ fontSize: "var(--web3-text-micro)", color: "var(--web3-text-dim)" }}>
             Powered by Solana Mainnet Data Feed ({isUsdc ? "USDC SPL" : "SOL Native"})
           </span>
         </div>

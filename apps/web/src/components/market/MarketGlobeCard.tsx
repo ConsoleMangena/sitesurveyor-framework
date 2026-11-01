@@ -82,7 +82,7 @@ export default function MarketGlobeCard({ onNavigate }: { onNavigate?: (view: st
       >
         {!loading ? (
           <div className="pointer-events-none absolute bottom-4 left-4 hidden sm:block">
-            <span className="rounded-none border border-border/60 bg-background/85 px-2.5 py-1 text-[11px] font-medium tracking-wide text-muted-foreground shadow-sm backdrop-blur-sm">
+            <span className="rounded-none border border-border/60 bg-background/85 px-2.5 py-1 text-micro font-medium tracking-wide text-muted-foreground shadow-sm backdrop-blur-sm">
               Tap a pin for details
             </span>
           </div>

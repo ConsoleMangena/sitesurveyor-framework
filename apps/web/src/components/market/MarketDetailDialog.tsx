@@ -517,7 +517,7 @@ export function MarketDetailDialog({
                   <ol className="mt-3 space-y-2 text-sm leading-6 text-foreground/85">
                     {event.agenda.map((entry, index) => (
                       <li key={entry} className="flex items-start gap-2.5">
-                        <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-[11px] font-semibold text-rose-700">
+                        <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-micro font-semibold text-rose-700">
                           {index + 1}
                         </span>
                         <span>{entry}</span>
@@ -700,7 +700,7 @@ export function MarketDetailDialog({
                 <div className="flex items-center justify-between gap-3 border-b border-border/80 py-4 text-xs">
                   <div className="flex min-w-0 items-center gap-2">
                     <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+                    <span className="whitespace-nowrap font-mono text-micro text-muted-foreground">
                       {dot.lat >= 0 ? "+" : ""}{dot.lat.toFixed(4)}°, {dot.lng >= 0 ? "+" : ""}{dot.lng.toFixed(4)}°
                     </span>
                   </div>
@@ -1133,7 +1133,7 @@ function MarketReviews({
             <li key={review.id} className="rounded-xl border border-border/80 bg-card p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <StarRow value={review.rating} />
-                <span className="text-[11px] text-muted-foreground">Verified member</span>
+                <span className="text-micro text-muted-foreground">Verified member</span>
               </div>
               {review.body ? (
                 <p className="mt-1.5 text-sm leading-6 text-foreground/85">{review.body}</p>

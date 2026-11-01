@@ -428,7 +428,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                 <p
                   role="status"
                   aria-live="polite"
-                  className="font-mono text-[11px] tabular-nums text-muted-foreground"
+                  className="font-mono text-micro tabular-nums text-muted-foreground"
                 >
                   {dots === null ? (
                     "ACQUIRING FEED…"
@@ -453,7 +453,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                             aria-pressed={!hidden}
                             aria-label={`${hidden ? "Show" : "Hide"} ${kind} pins`}
                             onClick={() => toggleKind(kind)}
-                            className={`flex items-center gap-1.5 text-[11px] font-medium transition-opacity ${
+                            className={`flex items-center gap-1.5 text-micro font-medium transition-opacity ${
                               hidden
                                 ? "opacity-40 line-through"
                                 : "text-foreground"
@@ -539,7 +539,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                               <span className="block truncate text-xs font-medium text-foreground">
                                 {dot.name || "Untitled"}
                               </span>
-                              <span className="block truncate text-[11px] capitalize text-muted-foreground">
+                              <span className="block truncate text-micro capitalize text-muted-foreground">
                                 {dot.kind}
                                 {dot.location ? ` · ${dot.location}` : ""}
                               </span>

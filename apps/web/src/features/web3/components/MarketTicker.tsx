@@ -97,10 +97,10 @@ export function MarketTicker({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--web3-border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <SolanaLogoMark size={20} />
-          <span style={{ fontWeight: 650, fontSize: 13, color: "var(--web3-text)", letterSpacing: "-0.01em" }}>
+          <span style={{ fontWeight: 650, fontSize: "var(--web3-text-body)", color: "var(--web3-text)", letterSpacing: "-0.01em" }}>
             Solana Market Data
           </span>
-          <span className="web3-status-inline" style={{ fontSize: 11, color: "var(--web3-text-muted)" }}>
+          <span className="web3-status-inline" style={{ fontSize: "var(--web3-text-micro)", color: "var(--web3-text-muted)" }}>
             <span className="web3-live-dot" aria-hidden="true" />
             {loading ? "Syncing…" : "Live"}
           </span>
