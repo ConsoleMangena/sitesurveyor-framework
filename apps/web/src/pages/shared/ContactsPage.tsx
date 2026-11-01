@@ -15,7 +15,6 @@ import { listContacts, createContact, archiveContact } from "../../lib/repositor
 import { listOrganizations } from "../../lib/repositories/organizations.ts";
 import type { OrganizationRow } from "../../lib/repositories/organizations.ts";
 import { mapContactRowToUi, type UiContact } from "../../lib/mappers.ts";
-import PageLoader from "@/components/PageLoader.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
@@ -36,11 +35,14 @@ import { SuccessDialog } from "../../components/SuccessDialog.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import {
-  DashboardHeader,
-  DashboardShell,
-} from "../../components/dashboard/DashboardShell.tsx";
-import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
-import "../../styles/console.css";
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../../components/ui/empty.tsx";
+import { Skeleton } from "../../components/ui/skeleton.tsx";
 import {
   Select,
   SelectContent,
@@ -165,21 +167,42 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
     return matchesSearch && matchesTab;
   });
 
-  const getAvatarColor = (name: string) => {
-    const colors = ["#2563eb", "#059669", "#dc2626", "#d97706", "#7c3aed", "#db2777"];
-    return colors[name.length % colors.length];
-  };
-
   const stats = [
-    { label: "Total Contacts", value: totalContacts, icon: Users, tone: "primary" as const },
-    { label: "Active Clients", value: activeClients, icon: Building2, tone: "success" as const },
-    { label: "Network Partners", value: networkPartners, icon: Handshake, tone: "info" as const },
+    {
+      label: "Total Contacts",
+      value: totalContacts,
+      icon: Users,
+      iconClassName: "h-5 w-5 text-primary",
+    },
+    {
+      label: "Active Clients",
+      value: activeClients,
+      icon: Building2,
+      iconClassName: "h-5 w-5 text-muted-foreground",
+    },
+    {
+      label: "Network Partners",
+      value: networkPartners,
+      icon: Handshake,
+      iconClassName: "h-5 w-5 text-muted-foreground",
+    },
   ];
 
   if (loading) {
     return (
-      <div className="hub-body">
-        <PageLoader />
+      <div className="space-y-4">
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -416,43 +439,51 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
   }
 
   return (
-      <DashboardShell className="hub-body">
+    <div className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <DashboardHeader
-        badge={<Badge variant="secondary">Directory</Badge>}
-        title="Contacts"
-        subtitle="Manage clients, subcontractors, and authorities"
-        meta={`${totalContacts} ${totalContacts === 1 ? "contact" : "contacts"}`}
-        actions={
-          <>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4" /> Export CSV
-            </Button>
-            <Button size="sm" onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4" /> Add Contact
-            </Button>
-          </>
-        }
-      />
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Contacts
+            <Badge variant="secondary">Directory</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Manage clients, subcontractors, and authorities
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {totalContacts} {totalContacts === 1 ? "contact" : "contacts"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button size="sm" onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4" /> Add Contact
+          </Button>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
-          <KpiCard
-            key={stat.label}
-            title={stat.label}
-            value={stat.value}
-            icon={<stat.icon className="h-5 w-5" />}
-            tone={stat.tone}
-          />
+          <Card key={stat.label}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
+              <stat.icon className={stat.iconClassName} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <div className="console-toolbar">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Tabs
           value={activeFilter}
           onValueChange={(value) =>
@@ -467,7 +498,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
             ))}
           </TabsList>
         </Tabs>
-        <div className="console-toolbar-search relative">
+        <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search contacts..."
@@ -489,24 +520,24 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="console-empty">
-            <span className="console-empty-icon" aria-hidden="true">
-              <Users size={18} />
-            </span>
-            <p className="console-empty-title">No contacts found</p>
-            <p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon" aria-hidden="true">
+              <Users className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>No contacts found</EmptyTitle>
+            <EmptyDescription>
               {contacts.length === 0
                 ? "Add your first contact to get started."
                 : "Try adjusting your search or filter criteria."}
-            </p>
-            {contacts.length === 0 && (
-              <Button className="mt-2" onClick={() => setShowCreateModal(true)}>
-                Add Contact
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+            </EmptyDescription>
+          </EmptyHeader>
+          {contacts.length === 0 && (
+            <EmptyContent>
+              <Button onClick={() => setShowCreateModal(true)}>Add Contact</Button>
+            </EmptyContent>
+          )}
+        </Empty>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => {
@@ -516,18 +547,16 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
               .join("")
               .substring(0, 2)
               .toUpperCase();
-            const avatarColor = getAvatarColor(c.name);
             return (
               <Card
                 key={c.id}
-                className="flex cursor-pointer flex-col transition-shadow hover:shadow-md"
+                className="flex cursor-pointer flex-col transition-colors hover:bg-muted/40"
                 onClick={() => setSelectedContact(c)}
               >
                 <CardContent className="flex flex-1 flex-col gap-4 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-none text-sm font-semibold text-white"
-                      style={{ background: avatarColor }}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary"
                     >
                       {initials}
                     </div>
@@ -591,8 +620,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
         icon={
           selectedContact ? (
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-none text-sm font-semibold text-white"
-              style={{ background: getAvatarColor(selectedContact.name) }}
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary"
             >
               {selectedContact.name
                 .split(" ")
@@ -608,38 +636,38 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
         {selectedContact && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
             <div className="min-w-0 space-y-4">
-            <div className="rounded-none border p-4 text-sm">
-              <div className="console-readout">
-                <span className="console-readout-label">Type</span>
+            <div className="rounded-lg border p-4 text-sm">
+              <div className="flex items-baseline justify-between gap-4 py-1.5">
+                <span className="shrink-0 text-muted-foreground">Type</span>
                 <Badge variant={typeVariant[selectedContact.type] ?? "secondary"}>{selectedContact.type}</Badge>
               </div>
               {selectedContact.email && (
-                <div className="console-readout">
-                  <span className="console-readout-label">Email</span>
-                  <a href={`mailto:${selectedContact.email}`} className="text-primary hover:underline break-all">{selectedContact.email}</a>
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                  <span className="shrink-0 text-muted-foreground">Email</span>
+                  <a href={`mailto:${selectedContact.email}`} className="min-w-0 break-all text-right font-medium text-primary hover:underline">{selectedContact.email}</a>
                 </div>
               )}
               {selectedContact.phone && (
-                <div className="console-readout">
-                  <span className="console-readout-label">Phone</span>
-                  <a href={`tel:${selectedContact.phone}`} className="text-primary hover:underline">{selectedContact.phone}</a>
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                  <span className="shrink-0 text-muted-foreground">Phone</span>
+                  <a href={`tel:${selectedContact.phone}`} className="min-w-0 break-words text-right font-medium text-primary hover:underline">{selectedContact.phone}</a>
                 </div>
               )}
               {selectedContact.title && (
-                <div className="console-readout">
-                  <span className="console-readout-label">Title</span>
-                  <span className="console-readout-value">{selectedContact.title}</span>
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                  <span className="shrink-0 text-muted-foreground">Title</span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">{selectedContact.title}</span>
                 </div>
               )}
               {selectedContact.company && (
-                <div className="console-readout">
-                  <span className="console-readout-label">Company</span>
-                  <span className="console-readout-value">{selectedContact.company}</span>
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                  <span className="shrink-0 text-muted-foreground">Company</span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">{selectedContact.company}</span>
                 </div>
               )}
-              <div className="console-readout">
-                <span className="console-readout-label">Last Contact</span>
-                <span className="console-readout-value">{selectedContact.lastContact}</span>
+              <div className="flex items-baseline justify-between gap-4 py-1.5">
+                <span className="shrink-0 text-muted-foreground">Last Contact</span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">{selectedContact.lastContact}</span>
               </div>
             </div>
             </div>
@@ -662,6 +690,6 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </DashboardShell>
+    </div>
   );
 }

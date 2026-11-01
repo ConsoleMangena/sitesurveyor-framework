@@ -799,7 +799,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
 
   if (loading) {
     return (
-      <div className="hub-body quotes-page p-6">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
@@ -1148,8 +1148,9 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
   }
 
   return (
-    <DashboardShell className="hub-body quotes-page">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
+        className="print:hidden"
         title="Quotes"
         subtitle="Manage estimates, compute surveying fees, and issue proposals"
         actions={
@@ -1183,6 +1184,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
       ) : null}
 
       <MetricStrip
+        className="print:hidden"
         metrics={[
           {
             label: "Total Quotes",

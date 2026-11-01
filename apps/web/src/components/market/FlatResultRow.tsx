@@ -25,7 +25,7 @@ export default function FlatResultRow({
         aria-label={`${item.title}, ${item.priceLabel}, ${item.location}`}
         className={cn(
           "group grid w-full grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-3 border-l bg-card p-3 text-left transition-[background,border-color] hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:p-4",
-          highlighted && "ring-2 ring-inset ring-amber-500/70",
+          highlighted && "ring-2 ring-inset ring-warning/70",
         )}
         style={{ borderLeftColor: accent }}
       >

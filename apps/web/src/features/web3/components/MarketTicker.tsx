@@ -25,12 +25,11 @@ function MiniCandlesticks({ change24h }: { change24h: number | null }) {
   });
 
   return (
-    <div className="web3-candlestick-wrap" style={{ height: 44, padding: "4px 0", gap: 2 }}>
+    <div className="web3-candlestick-wrap h-11 gap-0.5 py-1">
       {candles.map((c, i) => (
-        <div key={i} className={`web3-candle ${c.isUp ? "web3-candle-up" : "web3-candle-down"}`}
-             style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+        <div key={i} className={`web3-candle ${c.isUp ? "web3-candle-up" : "web3-candle-down"}`}>
           <div className="web3-candle-wick" style={{ height: c.wickH }} />
-          <div className="web3-candle-body" style={{ height: c.bodyH, width: 5, borderRadius: 1 }} />
+          <div className="web3-candle-body" style={{ height: c.bodyH, width: 5 }} />
           <div className="web3-candle-wick" style={{ height: c.wickH * 0.6 }} />
         </div>
       ))}
@@ -94,13 +93,13 @@ export function MarketTicker({
   return (
     <section className="web3-panel" aria-label="Live Solana market">
       {/* Top bar with Solana identity */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--web3-border)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+        <div className="flex items-center gap-2">
           <SolanaLogoMark size={20} />
-          <span style={{ fontWeight: 650, fontSize: "var(--web3-text-body)", color: "var(--web3-text)", letterSpacing: "-0.01em" }}>
+          <span className="text-sm font-semibold tracking-tight text-foreground">
             Solana Market Data
           </span>
-          <span className="web3-status-inline" style={{ fontSize: "var(--web3-text-micro)", color: "var(--web3-text-muted)" }}>
+          <span className="web3-status-inline text-micro text-muted-foreground">
             <span className="web3-live-dot" aria-hidden="true" />
             {loading ? "Syncing…" : "Live"}
           </span>
@@ -112,8 +111,8 @@ export function MarketTicker({
       <div className="web3-ticker">
         {cells.map((cell) => (
           <div key={cell.label} className="web3-ticker-cell">
-            <span className="web3-ticker-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ opacity: 0.7 }}>{cell.icon}</span>
+            <span className="web3-ticker-label">
+              {cell.icon}
               {cell.label}
             </span>
             <span className={`web3-ticker-value ${cell.className ?? ""}`}>
@@ -122,10 +121,8 @@ export function MarketTicker({
           </div>
         ))}
         <div className="web3-ticker-cell">
-          <span className="web3-ticker-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ opacity: 0.7 }}>
-              <span className="web3-live-dot" aria-hidden="true" style={{ width: 5, height: 5 }} />
-            </span>
+          <span className="web3-ticker-label">
+            <span className="web3-live-dot" aria-hidden="true" style={{ width: 5, height: 5 }} />
             Status
           </span>
           <span className="web3-ticker-value web3-status-inline">
@@ -140,7 +137,7 @@ export function MarketTicker({
 
       {/* Footer */}
       <div className="web3-panel-foot">
-        <p className="web3-panel-sub" style={{ margin: 0 }}>
+        <p className="web3-panel-sub mt-0">
           {error
             ? error
             : `Market data refreshes every 30s · supply ${

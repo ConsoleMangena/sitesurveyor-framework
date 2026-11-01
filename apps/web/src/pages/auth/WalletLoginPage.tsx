@@ -43,6 +43,7 @@ import {
   SOLANA_CLUSTER_LABEL,
 } from "../../features/phantom/lib/config.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,16 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
   Building2,
   Check,
@@ -68,8 +79,6 @@ import {
 } from "lucide-react";
 import ErrorNotice from "../../components/errors/ErrorNotice.tsx";
 import { CUSTOM_WALLET_NAME } from "../../features/phantom/lib/customWalletAdapter.ts";
-import "../../styles/web3.css";
-import "../../styles/web3-auth.css";
 
 type WalletChoiceStatus =
   | "detected"
@@ -212,7 +221,7 @@ export default function WalletLoginPage() {
   );
   const [copied, setCopied] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
-  const [signupDialogOpen, setSignupDialogOpen] = useState(false);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [walletNotice, setWalletNotice] = useState<string | null>(null);
   const [solflareContinuation, setSolflareContinuation] = useState(() =>
     hasPendingSolflareSignature(),
@@ -622,7 +631,7 @@ export default function WalletLoginPage() {
             outcome.signature,
             outcome.signup,
           );
-          setSignupDialogOpen(false);
+          setMode("signin");
         } else {
           const { user } = await signInWithSolanaSignature(
             outcome.message,
@@ -694,7 +703,7 @@ export default function WalletLoginPage() {
       }
 
       await signUpWithSolanaWallet(activeWallet, signupInput);
-      setSignupDialogOpen(false);
+      setMode("signin");
     } catch (err) {
       setAuthLoading(false);
       setSignupError(
@@ -735,278 +744,443 @@ export default function WalletLoginPage() {
   const errorAction = walletUnrecognised ? (
     <button
       type="button"
-      className="error-notice-link"
+      className="text-sm font-medium underline underline-offset-4 hover:text-foreground"
       onClick={() => {
         clearError();
-        setSignupDialogOpen(true);
+        setMode("signup");
       }}
     >
       {completingAccount ? "Finish account setup" : "Create an account"}
     </button>
   ) : undefined;
 
+  const walletFieldSub = authWallet
+    ? authWallet.readyState === "Installed"
+      ? "Detected in this browser"
+      : "Not installed"
+    : isMobile
+      ? "Wallet app (Phantom, Solflare, etc.)"
+      : "Phantom, Solflare & MetaMask";
+
+  const walletFieldName = authWallet?.adapter.name || "Choose a wallet";
+
+  const selectMode = (next: "signin" | "signup") => {
+    clearError();
+    setSignupError(null);
+    if (next === "signup") setCompletingAccount(false);
+    setMode(next);
+  };
+
   return (
-    <div className="web3-auth-screen">
-      <div className="web3-auth-stage">
-        <section className="web3-auth-card" aria-labelledby="web3-auth-title">
-          <div className="web3-card-header">
-            <div className="web3-brand-bar">
-              <div className="web3-brand-row">
-                <div className="web3-brand-mark">
-                  <span className="web3-brand-glow" aria-hidden="true" />
-                  <img
-                    src="/logo.svg"
-                    alt="SiteSurveyor"
-                    className="web3-brand-logo"
-                  />
-                </div>
-                <div className="web3-brand-copy">
-                  <h1 id="web3-auth-title" className="web3-brand-title">
-                    SiteSurveyor
-                  </h1>
-                  <p className="web3-brand-subtitle">
-                    Solana Web3 Authentication
+    <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-10">
+      <div className="w-full max-w-md space-y-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <img src="/logo.svg" alt="" className="size-9" />
+          <div className="space-y-1">
+            <h1 id="web3-auth-title" className="text-xl font-bold tracking-tight">
+              SiteSurveyor
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Solana Web3 Authentication
+            </p>
+          </div>
+          <Badge
+            variant="outline"
+            className="gap-1.5 border-border bg-muted/60 text-muted-foreground hover:bg-muted"
+          >
+            <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+            <SolanaNetworkIcon className="size-3.5" />
+            <span>Solana</span>
+            <span className="font-medium text-foreground">{clusterLabel}</span>
+          </Badge>
+        </div>
+
+        <Tabs
+          value={mode}
+          onValueChange={(value) => selectMode(value as "signin" | "signup")}
+        >
+          <Card className="gap-0 overflow-hidden py-0">
+            <CardHeader className="border-b px-6 py-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger
+                  value="signin"
+                  onClick={() => selectMode("signin")}
+                  className="gap-2"
+                >
+                  <LogIn className="size-4" aria-hidden="true" />
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger
+                  value="signup"
+                  onClick={() => selectMode("signup")}
+                  className="gap-2"
+                >
+                  <UserPlus className="size-4" aria-hidden="true" />
+                  Create Account
+                </TabsTrigger>
+              </TabsList>
+            </CardHeader>
+
+            <CardContent className="px-6 py-6">
+              <TabsContent value="signin" className="mt-0 space-y-5">
+                <div className="space-y-1">
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    Welcome back to the field.
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Solana wallet to sign in. No passwords, no gas.
                   </p>
                 </div>
-              </div>
 
-              <div className="web3-network-pill" data-cluster={SOLANA_CLUSTER}>
-                <span className="web3-network-dot" />
-                <SolanaNetworkIcon className="web3-network-icon" />
-                <span>
-                  <span className="web3-network-label-prefix">Solana </span>
-                  {clusterLabel}
-                </span>
-              </div>
-            </div>
-
-            <div
-              className="web3-tabs-nav"
-              role="tablist"
-              aria-label="Authentication mode"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={!signupDialogOpen}
-                className={`web3-tab-btn ${!signupDialogOpen ? "active" : ""}`}
-                onClick={() => {
-                  clearError();
-                  setSignupDialogOpen(false);
-                }}
-              >
-                <LogIn className="tab-icon" />
-                Sign In
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={signupDialogOpen}
-                aria-haspopup="dialog"
-                className={`web3-tab-btn is-primary ${
-                  signupDialogOpen ? "active" : ""
-                }`}
-                onClick={() => {
-                  clearError();
-                  setSignupError(null);
-                  setCompletingAccount(false);
-                  setSignupDialogOpen(true);
-                }}
-              >
-                <UserPlus className="tab-icon" />
-                Create Account
-              </button>
-            </div>
-          </div>
-
-          <div className="web3-card-body">
-            <div className="web3-mode-heading">
-              <h2>Welcome back to the field.</h2>
-              <p>Connect your Solana wallet to sign in. No passwords, no gas.</p>
-            </div>
-
-            {error ? (
-              <ErrorNotice
-                tone="danger"
-                onDismiss={clearError}
-                action={errorAction}
-              >
-                {error}
-              </ErrorNotice>
-            ) : null}
-
-            {solflareContinuation ? (
-              <ErrorNotice
-                tone="info"
-                title="Solflare is connected"
-                action={
-                  <button
-                    type="button"
-                    className="error-notice-link"
-                    onClick={handleSolflareContinue}
+                {error ? (
+                  <ErrorNotice
+                    tone="danger"
+                    onDismiss={clearError}
+                    action={errorAction}
                   >
-                    Approve in Solflare
-                  </button>
-                }
-              >
-                Approve the signature request in the Solflare app to continue.
-              </ErrorNotice>
-            ) : walletNotice ? (
-              <ErrorNotice
-                tone="info"
-                onDismiss={() => setWalletNotice(null)}
-              >
-                {walletNotice}
-              </ErrorNotice>
-            ) : null}
+                    {error}
+                  </ErrorNotice>
+                ) : null}
 
-            <div className="web3-wallet-section">
-              <div className="web3-section-label">
-                <span>Solana wallet</span>
-                <span>
-                  {authConnected
-                    ? "Connected"
-                    : `${walletChoices.length} ${
-                        walletChoices.length === 1 ? "option" : "options"
-                      }`}
-                </span>
-              </div>
+                {solflareContinuation ? (
+                  <ErrorNotice
+                    tone="info"
+                    title="Solflare is connected"
+                    action={
+                      <button
+                        type="button"
+                        className="text-sm font-medium underline underline-offset-4 hover:text-foreground"
+                        onClick={handleSolflareContinue}
+                      >
+                        Approve in Solflare
+                      </button>
+                    }
+                  >
+                    Approve the signature request in the Solflare app to continue.
+                  </ErrorNotice>
+                ) : walletNotice ? (
+                  <ErrorNotice
+                    tone="info"
+                    onDismiss={() => setWalletNotice(null)}
+                  >
+                    {walletNotice}
+                  </ErrorNotice>
+                ) : null}
 
-              {authConnected && publicKey ? (
-                <div className="web3-connected-pill">
-                  <div className="web3-connected-left">
-                    <span className="web3-connected-icon">
-                      {authWallet?.adapter.icon ? (
-                        <img
-                          src={authWallet.adapter.icon}
-                          alt={authWallet.adapter.name}
-                        />
-                      ) : (
-                        <Wallet className="h-5 w-5" />
-                      )}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Solana wallet</span>
+                    <span className="text-xs text-muted-foreground">
+                      {authConnected
+                        ? "Connected"
+                        : `${walletChoices.length} ${
+                            walletChoices.length === 1 ? "option" : "options"
+                          }`}
                     </span>
-                    <div className="web3-connected-meta">
-                      <span className="web3-connected-label">
-                        <span className="web3-status-dot" />
-                        {authWallet?.adapter.name || "Wallet"}
-                      </span>
-                      <span className="web3-address-text">
-                        {truncatedAddress}
-                      </span>
-                    </div>
                   </div>
 
-                  <div className="web3-connected-actions">
+                  {authConnected && publicKey ? (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card ring-1 ring-border">
+                          {authWallet?.adapter.icon ? (
+                            <img
+                              src={authWallet.adapter.icon}
+                              alt={authWallet.adapter.name}
+                              className="size-5"
+                            />
+                          ) : (
+                            <Wallet className="size-4" aria-hidden="true" />
+                          )}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="flex items-center gap-1.5 text-sm font-medium">
+                            <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                            {authWallet?.adapter.name || "Wallet"}
+                          </span>
+                          <span className="block truncate font-mono text-xs text-muted-foreground">
+                            {truncatedAddress}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleCopy}
+                          title="Copy wallet address"
+                          aria-label="Copy wallet address"
+                          className="size-8"
+                        >
+                          {copied ? (
+                            <Check className="size-4 text-emerald-600" />
+                          ) : (
+                            <Copy className="size-4" />
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => void disconnect()}
+                          title="Disconnect wallet"
+                          aria-label="Disconnect wallet"
+                          className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <LogOut className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={handleCopy}
-                      className="web3-icon-btn"
-                      title="Copy wallet address"
-                      aria-label="Copy wallet address"
+                      onClick={() => setWalletDialogOpen(true)}
+                      aria-haspopup="dialog"
+                      className="flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     >
-                      {copied ? (
-                        <Check className="web3-icon-success" />
-                      ) : (
-                        <Copy />
-                      )}
+                      <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-foreground">
+                        {authWallet?.adapter.icon ? (
+                          <img src={authWallet.adapter.icon} alt="" className="size-5" />
+                        ) : (
+                          <Wallet className="size-4" aria-hidden="true" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {walletFieldName}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {walletFieldSub}
+                        </span>
+                      </span>
+                      <ChevronRight
+                        className="size-4 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void disconnect()}
-                      className="web3-icon-btn web3-icon-btn-danger"
-                      title="Disconnect wallet"
-                      aria-label="Disconnect wallet"
-                    >
-                      <LogOut />
-                    </button>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <button
+
+                <Button
                   type="button"
-                  className="web3-wallet-field"
-                  onClick={() => setWalletDialogOpen(true)}
-                  aria-haspopup="dialog"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => void handleSignIn()}
+                  disabled={connecting || signing}
                 >
-                  <span className="web3-wallet-field-icon">
+                  {connecting || signing ? (
+                    <>
+                      <Loader2 className="animate-spin" aria-hidden="true" />
+                      <span>Authorizing…</span>
+                    </>
+                  ) : solflareContinuation ? (
+                    <>
+                      <LogIn className="size-4" aria-hidden="true" />
+                      <span>Continue in Solflare</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="size-4" aria-hidden="true" />
+                      <span>
+                        {authConnected
+                          ? `Sign In with ${authWallet?.adapter.name || "Wallet"}`
+                          : "Connect Wallet & Sign In"}
+                      </span>
+                    </>
+                  )}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="signup" className="mt-0 space-y-5">
+                <div className="space-y-1">
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    {completingAccount ? "Finish your account" : "Create your account"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {completingAccount
+                      ? "Add the missing details, then authorize the same wallet."
+                      : "Connect a wallet, then set up your personal or firm profile."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
+                  <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card ring-1 ring-border">
                     {authWallet?.adapter.icon ? (
-                      <img src={authWallet.adapter.icon} alt="" />
+                      <img src={authWallet.adapter.icon} alt="" className="size-5" />
                     ) : (
-                      <Wallet />
+                      <Wallet className="size-4" aria-hidden="true" />
                     )}
                   </span>
-                  <span className="web3-wallet-field-meta">
-                    <span className="web3-wallet-field-name">
-                      {authWallet?.adapter.name || "Choose a wallet"}
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm font-medium">
+                      {authWallet?.adapter.name ?? "No wallet selected"}
                     </span>
-                    <span className="web3-wallet-field-sub">
-                      {authWallet
-                        ? authWallet.readyState === "Installed"
-                          ? "Detected in this browser"
-                          : "Not installed"
-                        : isMobile
-                          ? "Wallet app (Phantom, Solflare, etc.)"
-                          : "Phantom, Solflare & MetaMask"}
-                    </span>
-                  </span>
-                  <ChevronRight className="web3-wallet-field-chevron" />
-                </button>
-              )}
-            </div>
-
-            <div className="web3-btn-row">
-              <Button
-                type="button"
-                onClick={() => void handleSignIn()}
-                disabled={connecting || signing}
-                variant={connecting || signing ? "default" : "default"}
-                className="web3-action-btn web3-action-btn--slim"
-              >
-                {connecting || signing ? (
-                  <>
-                    <Loader2 className="web3-btn-icon web3-spin" />
-                    <span>Authorizing…</span>
-                  </>
-                ) : solflareContinuation ? (
-                  <>
-                    <LogIn className="web3-btn-icon" />
-                    <span>Continue in Solflare</span>
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="web3-btn-icon" />
-                    <span>
+                    <span className="block truncate text-xs text-muted-foreground">
                       {authConnected
-                        ? `Sign In with ${authWallet?.adapter.name || "Wallet"}`
-                        : "Connect Wallet & Sign In"}
+                        ? truncatedAddress
+                        : "You'll be asked to connect when you continue."}
                     </span>
-                  </>
-                )}
-              </Button>
-            </div>
+                  </div>
+                </div>
 
-          </div>
-        </section>
+                {signupError ? (
+                  <ErrorNotice
+                    tone="danger"
+                    onDismiss={() => setSignupError(null)}
+                  >
+                    {signupError}
+                  </ErrorNotice>
+                ) : null}
 
-        <Link to="/market" className="web3-market-link">
-          <Globe2 className="web3-market-link-icon" aria-hidden="true" />
-          <span>Go to public market</span>
-          <ChevronRight className="web3-market-link-chevron" aria-hidden="true" />
-        </Link>
+                <form onSubmit={(e) => void handleSignUp(e)} className="space-y-4">
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Account scope</span>
+                    <RadioGroup
+                      value={accountType}
+                      onValueChange={(value) =>
+                        setAccountType(value as "personal" | "business")
+                      }
+                      className="grid gap-2 sm:grid-cols-2"
+                    >
+                      <Label
+                        htmlFor="wallet-scope-personal"
+                        onClick={() => setAccountType("personal")}
+                        className={cn(
+                          "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent",
+                          accountType === "personal" && "border-primary bg-primary/5",
+                        )}
+                      >
+                        <RadioGroupItem
+                          value="personal"
+                          id="wallet-scope-personal"
+                          className="mt-0.5"
+                        />
+                        <span className="space-y-0.5">
+                          <span className="block text-sm font-medium">Personal</span>
+                          <span className="block text-xs text-muted-foreground">
+                            Independent surveyor
+                          </span>
+                        </span>
+                      </Label>
 
-        <p className="web3-auth-legal">
-          By continuing you agree to SiteSurveyor&apos;s terms and privacy
-          policy.
-        </p>
+                      <Label
+                        htmlFor="wallet-scope-business"
+                        onClick={() => setAccountType("business")}
+                        className={cn(
+                          "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent",
+                          accountType === "business" && "border-primary bg-primary/5",
+                        )}
+                      >
+                        <RadioGroupItem
+                          value="business"
+                          id="wallet-scope-business"
+                          className="mt-0.5"
+                        />
+                        <span className="space-y-0.5">
+                          <span className="block text-sm font-medium">Business Firm</span>
+                          <span className="block text-xs text-muted-foreground">
+                            Crews &amp; dispatch
+                          </span>
+                        </span>
+                      </Label>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="web3-fullname">Full Name / Surveyor Title</Label>
+                    <Input
+                      id="web3-fullname"
+                      placeholder="e.g. Samuel Vance, PLS"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
+
+                  {accountType === "business" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="web3-company">
+                        Survey Firm / Organization Name
+                      </Label>
+                      <Input
+                        id="web3-company"
+                        placeholder="e.g. Apex Geospatial Engineering LLC"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="web3-email">Contact Email</Label>
+                    <Input
+                      id="web3-email"
+                      type="email"
+                      placeholder="surveyor@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full"
+                    disabled={connecting || signing}
+                  >
+                    {connecting || signing ? (
+                      <>
+                        <Loader2 className="animate-spin" aria-hidden="true" />
+                        <span>Creating &amp; Authorizing…</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="size-4" aria-hidden="true" />
+                        <span>
+                          {completingAccount
+                            ? "Finish Setup & Authorize"
+                            : "Create Account & Authorize"}
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                </form>
+
+                <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+                  <Lock className="size-3.5 shrink-0" aria-hidden="true" />
+                  Your profile is signed locally · Non-custodial · Gasless
+                </p>
+              </TabsContent>
+            </CardContent>
+          </Card>
+        </Tabs>
+
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Link
+            to="/market"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+          >
+            <Globe2 className="size-4" aria-hidden="true" />
+            Go to public market
+          </Link>
+          <p className="text-xs text-muted-foreground">
+            By continuing you agree to SiteSurveyor&apos;s terms and privacy
+            policy.
+          </p>
+        </div>
       </div>
 
       <Dialog open={walletDialogOpen} onOpenChange={setWalletDialogOpen}>
-        <DialogContent className="web3-wallet-dialog" showCloseButton>
-          <DialogHeader className="web3-wallet-dialog-header">
-            <DialogTitle className="web3-dialog-title">
-              Connect a wallet
-            </DialogTitle>
-            <DialogDescription className="web3-dialog-description">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Connect a wallet</DialogTitle>
+            <DialogDescription>
               {isMobile && mwaWallet
                 ? "Pick a wallet app — no browser extension needed. SiteSurveyor never stores your keys."
                 : "Choose a detected Solana wallet to continue. SiteSurveyor never stores your keys."}
@@ -1024,17 +1198,17 @@ export default function WalletLoginPage() {
           ) : null}
 
           {isMobile && mwaWallet && SOLANA_CLUSTER !== "mainnet-beta" ? (
-            <div className="web3-network-note">
-              <SolanaNetworkIcon className="web3-network-note-icon" />
+            <p className="flex items-start gap-2 rounded-lg border bg-muted/50 p-3 text-xs text-muted-foreground">
+              <SolanaNetworkIcon className="mt-px size-4 shrink-0" />
               <span>
-                SiteSurveyor runs on <strong>{clusterLabel}</strong>. Switch your
-                wallet app to {clusterLabel} first: Settings → Developer
-                Settings → Change Network → {clusterLabel}.
+                SiteSurveyor runs on {clusterLabel}. Switch your wallet app to{" "}
+                {clusterLabel} first: Settings → Developer Settings → Change
+                Network → {clusterLabel}.
               </span>
-            </div>
+            </p>
           ) : null}
 
-          <div className="web3-wallet-list">
+          <div className="flex flex-col gap-2">
             {walletChoices.map((choice) => {
               const isSelected = Boolean(
                 choice.adapterName &&
@@ -1047,7 +1221,6 @@ export default function WalletLoginPage() {
                 <button
                   key={choice.key}
                   type="button"
-                  className={`web3-wallet-row ${isSelected ? "selected" : ""}`}
                   onClick={() => {
                     if (choice.status === "mobile-app") {
                       void connectViaMwa();
@@ -1061,33 +1234,34 @@ export default function WalletLoginPage() {
                       void handleWalletSelect(choice.adapterName);
                     }
                   }}
+                  className={`flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                    isSelected ? "border-primary" : ""
+                  }`}
                 >
-                  <span className="web3-wallet-row-icon">
+                  <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-foreground">
                     {choice.icon ? (
-                      <img src={choice.icon} alt="" />
+                      <img src={choice.icon} alt="" className="size-5" />
                     ) : (
-                      <Wallet />
+                      <Wallet className="size-4" aria-hidden="true" />
                     )}
                   </span>
-                  <span className="web3-wallet-row-meta">
-                    <span className="web3-wallet-row-name">{choice.name}</span>
-                    <span className="web3-wallet-row-sub">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {choice.name}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
                       {choice.status === "mobile-app"
                         ? "Installed wallet apps (Phantom, Solflare, etc.)"
                         : walletStatusLabels[choice.status]}
                     </span>
                   </span>
-                  <span
-                    className={`web3-wallet-row-status ${
-                      isReady ? "is-ready" : ""
-                    } ${isInstall ? "is-install" : ""}`}
-                  >
+                  <span className="shrink-0 text-muted-foreground">
                     {isInstall ? (
-                      <Download />
+                      <Download className="size-4" />
                     ) : isSelected && isReady ? (
-                      <Check />
+                      <Check className="size-4 text-primary" />
                     ) : (
-                      <ChevronRight />
+                      <ChevronRight className="size-4" />
                     )}
                   </span>
                 </button>
@@ -1095,197 +1269,14 @@ export default function WalletLoginPage() {
             })}
           </div>
 
-          <div className="web3-wallet-dialog-footnote">
-            <Lock />
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
+            <Lock className="mt-px size-3.5 shrink-0" aria-hidden="true" />
             <span>
               {isMobile
                 ? "Wallet apps approve the connection and sign inside their own app (Phantom, Solflare, Backpack, etc.). No extension required."
                 : "Wallets are detected in this browser. MetaMask opens its official install page when the extension is missing."}
             </span>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={signupDialogOpen}
-        onOpenChange={(open) => {
-          setSignupDialogOpen(open);
-          if (!open) setSignupError(null);
-        }}
-      >
-        <DialogContent
-          className="web3-wallet-dialog web3-auth-dialog web3-signup-dialog"
-          showCloseButton
-        >
-          <DialogHeader className="web3-wallet-dialog-header">
-            <span className="web3-dialog-kicker">New field identity</span>
-            <DialogTitle className="web3-dialog-title">
-              {completingAccount ? "Finish your account" : "Create your account"}
-            </DialogTitle>
-            <DialogDescription className="web3-dialog-description">
-              {completingAccount
-                ? "Add the missing details, then authorize the same wallet."
-                : "Connect a wallet, then set up your personal or firm profile."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="web3-dialog-wallet-hint">
-            <span className="web3-dialog-wallet-icon">
-              {authWallet?.adapter.icon ? (
-                <img src={authWallet.adapter.icon} alt="" />
-              ) : (
-                <Wallet />
-              )}
-            </span>
-            <span className="web3-dialog-wallet-copy">
-              <span className="web3-dialog-wallet-name">
-                {authWallet?.adapter.name ?? "No wallet selected"}
-              </span>
-              <span className="web3-dialog-wallet-sub">
-                {authConnected
-                  ? truncatedAddress
-                  : "You'll be asked to connect when you continue."}
-              </span>
-            </span>
-          </div>
-
-          {signupError ? (
-            <ErrorNotice
-              tone="danger"
-              onDismiss={() => setSignupError(null)}
-            >
-              {signupError}
-            </ErrorNotice>
-          ) : null}
-
-          <form
-            onSubmit={(e) => void handleSignUp(e)}
-            className="web3-form web3-signup-form"
-          >
-            <div className="web3-form-group">
-              <span className="web3-section-label">Account scope</span>
-              <div className="web3-type-selector">
-                <div
-                  className={`web3-type-card ${accountType === "personal" ? "active" : ""}`}
-                  onClick={() => setAccountType("personal")}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      setAccountType("personal");
-                    }
-                  }}
-                >
-                  <div className="web3-type-icon">
-                    <User />
-                  </div>
-                  <div className="web3-type-info">
-                    <span className="web3-type-title">Personal</span>
-                    <span className="web3-type-desc">Independent surveyor</span>
-                  </div>
-                  <div className="web3-type-radio" />
-                </div>
-
-                <div
-                  className={`web3-type-card ${accountType === "business" ? "active" : ""}`}
-                  onClick={() => setAccountType("business")}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      setAccountType("business");
-                    }
-                  }}
-                >
-                  <div className="web3-type-icon">
-                    <Building2 />
-                  </div>
-                  <div className="web3-type-info">
-                    <span className="web3-type-title">Business Firm</span>
-                    <span className="web3-type-desc">Crews &amp; dispatch</span>
-                  </div>
-                  <div className="web3-type-radio" />
-                </div>
-              </div>
-            </div>
-
-            <div className="web3-form-group">
-              <label className="web3-label" htmlFor="web3-fullname">
-                Full Name / Surveyor Title
-              </label>
-              <input
-                id="web3-fullname"
-                className="web3-input"
-                placeholder="e.g. Samuel Vance, PLS"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                autoComplete="name"
-                required
-              />
-            </div>
-
-            {accountType === "business" && (
-              <div className="web3-form-group">
-                <label className="web3-label" htmlFor="web3-company">
-                  Survey Firm / Organization Name
-                </label>
-                <input
-                  id="web3-company"
-                  className="web3-input"
-                  placeholder="e.g. Apex Geospatial Engineering LLC"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-
-            <div className="web3-form-group">
-              <label className="web3-label" htmlFor="web3-email">
-                Contact Email
-              </label>
-              <input
-                id="web3-email"
-                type="email"
-                className="web3-input"
-                placeholder="surveyor@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
-            </div>
-
-            <div className="web3-btn-row">
-              <Button
-                type="submit"
-                disabled={connecting || signing}
-                variant="default"
-                className="web3-action-btn"
-              >
-                {connecting || signing ? (
-                  <>
-                    <Loader2 className="web3-btn-icon web3-spin" />
-                    <span>Creating &amp; Authorizing…</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="web3-btn-icon" />
-                    <span>
-                      {completingAccount
-                        ? "Finish Setup & Authorize"
-                        : "Create Account & Authorize"}
-                    </span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-
-          <div className="web3-security-footer">
-            <Lock className="web3-security-icon" />
-            <span>Your profile is signed locally · Non-custodial · Gasless</span>
-          </div>
+          </p>
         </DialogContent>
       </Dialog>
     </div>

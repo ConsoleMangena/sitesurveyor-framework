@@ -79,7 +79,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 import { Switch } from "../../components/ui/switch.tsx";
 import { cn } from "../../lib/utils.ts";
 import { assetMediaUrl } from "../../lib/repositories/assetMedia.ts";
-import "../../styles/pages.css";
 
 /* ── SVG Icon Components ── */
 function IconTotalStation() {
@@ -849,7 +848,7 @@ export default function MarketplacePage({
   }
 
   return (
-    <DashboardShell className="hub-body">
+    <DashboardShell className="w-full max-w-full">
       {fetchError && (
         <Alert variant="destructive">
           <AlertDescription>{fetchError}</AlertDescription>

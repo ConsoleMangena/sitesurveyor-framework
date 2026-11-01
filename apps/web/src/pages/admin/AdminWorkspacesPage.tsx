@@ -21,12 +21,12 @@ import {
 } from "lucide-react";
 
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
-import PageLoader from "@/components/PageLoader.tsx";
 import { DataTableColumnHeader } from "@/components/data-table/column-header";
 import { DataTablePagination } from "@/components/data-table/pagination";
 import { DataTableToolbar } from "@/components/data-table/toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -38,7 +38,6 @@ import {
 import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
-import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import {
@@ -303,17 +302,21 @@ export default function AdminWorkspacesPage({
   const filteredCount = table.getFilteredRowModel().rows.length;
 
   return (
-    <DashboardShell className="hub-body admin-console-page">
-      <DashboardHeader
-        badge={<Badge variant="secondary">Platform admin</Badge>}
-        title="Workspaces"
-        subtitle="Inspect any workspace — members, entity counts, archive status"
-        meta={
-          <>
+    <div className="space-y-4">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Workspaces
+            <Badge variant="secondary">Platform admin</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Inspect any workspace — members, entity counts, archive status
+          </p>
+          <p className="text-xs text-muted-foreground">
             {filteredCount} {filteredCount === 1 ? "workspace" : "workspaces"}
-          </>
-        }
-        actions={
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -328,13 +331,16 @@ export default function AdminWorkspacesPage({
             )}
             Refresh
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 
       {loading ? (
-        <PageLoader compact />
+        <div className="space-y-4" role="status" aria-label="Loading">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-64 w-full" />
+        </div>
       ) : (
         <div className="space-y-3">
           <DataTableToolbar
@@ -346,9 +352,9 @@ export default function AdminWorkspacesPage({
             ]}
           />
 
-          <div className="overflow-hidden rounded-md border">
+          <div className="overflow-hidden rounded-lg border">
             <div className="overflow-x-auto">
-              <Table className="console-table min-w-[760px]">
+              <Table className="min-w-[760px]">
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
@@ -441,38 +447,40 @@ export default function AdminWorkspacesPage({
         }
       >
         {detailLoading ? (
-          <PageLoader compact />
+          <Skeleton className="h-40 w-full" />
         ) : selectedRow ? (
           <div className="space-y-5">
-            <div className="dlg-field-grid">
-              <div className="console-readout">
-                <span className="console-readout-label">Type</span>
-                <span className="console-readout-value capitalize">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">Type</span>
+                <span className="min-w-0 break-words text-right font-medium capitalize text-foreground">
                   {selectedRow.type}
                 </span>
               </div>
-              <div className="console-readout">
-                <span className="console-readout-label">Owner</span>
-                <span className="console-readout-value">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">Owner</span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">
                   {ownerLabels.get(selectedRow.owner_user_id) ?? "—"}
                 </span>
               </div>
-              <div className="console-readout">
-                <span className="console-readout-label">Slug</span>
-                <span className="console-readout-value">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">Slug</span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">
                   {selectedRow.slug ?? "—"}
                 </span>
               </div>
-              <div className="console-readout">
-                <span className="console-readout-label">Created</span>
-                <span className="console-readout-value">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">Created</span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">
                   {formatDate(selectedRow.created_at)}
                 </span>
               </div>
               {selectedRow.archived_at && (
-                <div className="console-readout">
-                  <span className="console-readout-label">Archived</span>
-                  <span className="console-readout-value">
+                <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                  <span className="shrink-0 text-muted-foreground">
+                    Archived
+                  </span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">
                     {formatDate(selectedRow.archived_at)}
                   </span>
                 </div>
@@ -497,8 +505,8 @@ export default function AdminWorkspacesPage({
               {members.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No members.</p>
               ) : (
-                <div className="max-h-[220px] overflow-auto rounded-md border">
-                  <Table className="console-table min-w-[420px]">
+                <div className="max-h-[220px] overflow-auto rounded-lg border">
+                  <Table className="min-w-[420px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="min-w-[120px] text-xs">Name</TableHead>
@@ -568,6 +576,6 @@ export default function AdminWorkspacesPage({
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </DashboardShell>
+    </div>
   );
 }

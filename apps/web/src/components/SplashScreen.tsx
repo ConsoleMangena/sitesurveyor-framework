@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import SurveyLoader from "./SurveyLoader.tsx";
-import "./SplashScreen.css";
+import { cn } from "@/lib/utils";
 
 interface SplashScreenProps {
   onFinish?: () => void;
@@ -27,18 +27,22 @@ export default function SplashScreen({
   }, [duration, hold, onFinish]);
 
   return (
-    <div className={`splash-screen ${fadeOut ? "splash-fade-out" : ""}`}>
-      <div className="splash-content">
-        <div className="splash-logo-wrap" aria-hidden="true">
-          <span className="splash-logo-ring" />
-          <img
-            src="/logo.svg"
-            alt="SiteSurveyor Logo"
-            className="splash-logo app-logo"
-          />
-        </div>
-        <p className="splash-tagline">SiteSurveyor</p>
-        <p className="splash-caption">Field surveying operations</p>
+    <div
+      className={cn(
+        "fixed inset-0 z-9999 flex items-center justify-center bg-background px-5 py-4 transition-opacity duration-500 ease-out",
+        fadeOut && "pointer-events-none opacity-0",
+      )}
+    >
+      <div className="flex w-full max-w-100 flex-col items-center gap-3 motion-safe:animate-[ui-fade-in-scale_0.5s_cubic-bezier(0.16,1,0.3,1)]">
+        <img
+          src="/logo.svg"
+          alt="SiteSurveyor Logo"
+          className="size-16 object-contain motion-safe:animate-[ui-fade-in-up_0.5s_cubic-bezier(0.16,1,0.3,1)] sm:size-20"
+        />
+        <p className="text-lg font-bold tracking-tight text-foreground">SiteSurveyor</p>
+        <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+          Field surveying operations
+        </p>
         <SurveyLoader size="lg" label="Preparing your workspace" />
       </div>
     </div>

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import "../../styles/project-hub.css";
 
 import { ConfigDrawer } from "@/components/config-drawer";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -54,8 +53,8 @@ export default function WorkspaceShell({
 
   if (shouldHideGlobalChrome) {
     return (
-      <div className="hub-screen">
-        <main className="hub-main-content hub-main-content-fullscreen">
+      <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
           {children}
         </main>
       </div>
@@ -69,7 +68,7 @@ export default function WorkspaceShell({
       onChangeView={onChangeView}
     >
       <LayoutProvider>
-        <SidebarProvider defaultOpen={defaultSidebarOpen} className="hub-shell">
+        <SidebarProvider defaultOpen={defaultSidebarOpen} className="bg-background">
           <SkipToMain />
           <AppSidebar
             user={user}
@@ -103,9 +102,13 @@ export default function WorkspaceShell({
               <div className="shrink-0 px-4 pt-2">{noticeBanner}</div>
             ) : null}
 
-            {/* `.hub-main-content` owns the page gutters, the fade-in and the
-                scroll containment — same contract as the pre-sidebar shell. */}
-            <Main fluid className="hub-main-content">
+            {/* The content column owns the page gutters, the scroll
+                containment and the mobile safe-area fallback — the same
+                contract the pre-sidebar shell had. */}
+            <Main
+              fluid
+              className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-background px-4 pt-4 pb-[max(3.5rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-16"
+            >
               {children}
             </Main>
           </SidebarInset>

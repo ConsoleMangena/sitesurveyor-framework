@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import "@/styles/console.css";
 import type { WorkspaceRowAdmin } from "@/lib/repositories/adminPlatform";
 
 type WorkspaceFilter = "All" | "Personal" | "Business" | "Archived";
@@ -73,7 +72,7 @@ function StatusBadge({ archivedAt }: { archivedAt: string | null }) {
     );
   }
   return (
-    <Badge variant="outline" className="border-green-700/25 text-green-700 gap-1">
+    <Badge variant="success" className="gap-1">
       <span className="size-1.5 rounded-full bg-current" />
       Active
     </Badge>
@@ -171,7 +170,7 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
         id: "actions",
         header: () => <div className="flex w-full justify-end">Actions</div>,
         cell: () => (
-          <div className="console-table-actions flex w-full justify-end">
+          <div className="flex w-full justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button aria-label="Open actions" size="icon" variant="ghost" className="size-7">
@@ -253,8 +252,8 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
         </ToggleGroup>
       </div>
 
-      <div className="dash-table-scroll">
-        <Table className="console-table min-w-[640px]">
+      <div className="overflow-x-auto">
+        <Table className="min-w-[640px]">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

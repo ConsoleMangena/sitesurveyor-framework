@@ -1,7 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator.tsx";
-import "./dashboard.css";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -12,7 +11,7 @@ export function DashboardShell({ children, className }: DashboardShellProps) {
   return (
     <div
       className={cn(
-        "dash-shell mx-auto flex w-full max-w-[1680px] flex-col gap-5 sm:gap-6 animate-in fade-in slide-in-from-bottom-1 duration-400",
+        "mx-auto flex w-full max-w-[1680px] flex-col gap-5 motion-safe:animate-[ui-fade-in-up_0.45s_cubic-bezier(0.16,1,0.3,1)] sm:gap-6",
         className,
       )}
     >
@@ -26,7 +25,7 @@ interface DashboardHeaderProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   description?: React.ReactNode;
-  /** Eyebrow line shown when the header has no description to carry one. */
+  /** Context line shown when the header has no description to carry one. */
   meta?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
@@ -46,24 +45,32 @@ export function DashboardHeader({
   const lede = hasDescription ? description : subtitle;
 
   return (
-    <header className={cn("dash-header", className)}>
-      <div className="dash-header-inner">
-        <div className="dash-header-main">
-          {(badge || metaText) && (
-            <div className="dash-meta">
-              {badge}
-              {badge && metaText ? (
-                <span className="dash-meta-divider" aria-hidden="true" />
-              ) : null}
-              {metaText ? <span>{metaText}</span> : null}
-            </div>
-          )}
-          <h1 className="dash-title">{title}</h1>
-          {lede ? <p className="dash-lede">{lede}</p> : null}
-        </div>
-        {actions ? <div className="dash-actions">{actions}</div> : null}
+    <header
+      className={cn(
+        "flex flex-wrap items-end justify-between gap-3",
+        className,
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <h1 className="text-2xl font-bold tracking-tight text-balance">
+          {title}
+        </h1>
+        {lede ? (
+          <p className="max-w-2xl text-sm text-muted-foreground">{lede}</p>
+        ) : null}
+        {badge || metaText ? (
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {badge}
+            {badge && metaText ? (
+              <span className="h-3 w-px bg-border" aria-hidden="true" />
+            ) : null}
+            {metaText ? <span>{metaText}</span> : null}
+          </div>
+        ) : null}
       </div>
-      <div className="dash-datum" aria-hidden="true" />
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      ) : null}
     </header>
   );
 }
@@ -114,11 +121,13 @@ export function DashboardSection({
   className,
 }: DashboardSectionProps) {
   return (
-    <section className={cn("dash-section", className)}>
+    <section className={cn("flex min-w-0 flex-col gap-3", className)}>
       {(title || action) && (
-        <div className="dash-section-head">
-          {title ? <h2 className="dash-section-title">{title}</h2> : null}
-          <span className="dash-section-line" aria-hidden="true" />
+        <div className="flex items-center gap-3">
+          {title ? (
+            <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+          ) : null}
+          <Separator className="flex-1" />
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       )}
@@ -148,15 +157,15 @@ export function DashboardListItem({
         type="button"
         onClick={onClick}
         className={cn(
-          "flex items-center justify-between gap-4 w-full text-left py-3 px-1 rounded-none transition-colors",
-          onClick && "hover:bg-muted/60 cursor-pointer",
+          "flex w-full items-center justify-between gap-4 rounded-md px-1 py-3 text-left transition-colors",
+          onClick && "cursor-pointer hover:bg-muted/60",
           className,
         )}
       >
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground truncate">{title}</p>
+          <p className="truncate text-sm font-medium text-foreground">{title}</p>
           {subtitle && (
-            <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
           )}
         </div>
         {badge && <div className="shrink-0">{badge}</div>}

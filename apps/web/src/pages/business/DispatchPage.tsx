@@ -427,14 +427,14 @@ export default function DispatchPage({ workspaceId }: DispatchPageProps) {
 
   if (loading) {
     return (
-      <div className="hub-body p-6">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
   }
 
   return (
-    <DashboardShell className="hub-body">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         title="Dispatch Board"
         subtitle="Assign crews, equipment, and vehicles to active projects"

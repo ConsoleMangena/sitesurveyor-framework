@@ -1,12 +1,18 @@
 import { useCallback, useMemo, useState } from "react";
 import { RefreshCw, Loader2, ChevronDown, ScrollText } from "lucide-react";
 
-import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Select,
   SelectContent,
@@ -14,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -23,7 +30,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 
 import {
   listAuditLogs,
@@ -129,17 +135,21 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
   if (!isPlatformAdmin) return null;
 
   return (
-    <DashboardShell className="hub-body admin-console-page">
-      <DashboardHeader
-        badge={<Badge variant="secondary">Platform admin</Badge>}
-        title="Audit log"
-        subtitle="Cross-workspace activity trail — who did what, when"
-        meta={
-          <>
+    <div className="space-y-4">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Audit log
+            <Badge variant="secondary">Platform admin</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Cross-workspace activity trail — who did what, when
+          </p>
+          <p className="text-xs text-muted-foreground">
             {entries.length} {entries.length === 1 ? "entry" : "entries"}
-          </>
-        }
-        actions={
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -147,11 +157,15 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
             disabled={loading}
             className="gap-2"
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Refresh
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {error ? (
         <ErrorNotice tone="danger">
@@ -159,9 +173,9 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
         </ErrorNotice>
       ) : null}
 
-      <div className="console-toolbar">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Select value={filterWsId} onValueChange={(v) => setFilterWsId(v)}>
-          <SelectTrigger className="console-toolbar-select">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="All workspaces" />
           </SelectTrigger>
           <SelectContent>
@@ -174,7 +188,7 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
           </SelectContent>
         </Select>
         <Select value={filterAction} onValueChange={(v) => setFilterAction(v)}>
-          <SelectTrigger className="console-toolbar-select">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="All actions" />
           </SelectTrigger>
           <SelectContent>
@@ -189,21 +203,28 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
       </div>
 
       {loading ? (
-        <PageLoader compact />
-      ) : entries.length === 0 ? (
-        <div className="console-empty">
-          <span className="console-empty-icon">
-            <ScrollText size={18} />
-          </span>
-          <span className="console-empty-title">No audit entries found</span>
-          <span>Actions taken across workspaces will appear here.</span>
+        <div className="space-y-4" role="status" aria-label="Loading">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-64 w-full" />
         </div>
+      ) : entries.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <ScrollText className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>No audit entries found</EmptyTitle>
+            <EmptyDescription>
+              Actions taken across workspaces will appear here.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
-          <Card className="border-border/60 overflow-hidden">
+          <Card className="overflow-hidden">
             <CardContent className="p-0">
-              <ResponsiveTable records>
-                <Table className="console-table min-w-[900px]">
+              <ResponsiveTable>
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[140px]">When</TableHead>
@@ -218,13 +239,22 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
                   <TableBody>
                     {entries.map((ev) => (
                       <TableRow key={ev.id}>
-                        <TableCell data-label="When" className="align-middle text-muted-foreground whitespace-nowrap">
+                        <TableCell
+                          data-label="When"
+                          className="align-middle whitespace-nowrap text-muted-foreground"
+                        >
                           {formatWhen(ev.created_at)}
                         </TableCell>
                         <TableCell data-label="Workspace" className="align-middle">
                           {ev.workspace_id ? (
-                            <span className="block truncate max-w-[220px]" title={wsLabels.get(ev.workspace_id) ?? ev.workspace_id}>
-                              {wsLabels.get(ev.workspace_id) ?? `${ev.workspace_id.slice(0, 8)}…`}
+                            <span
+                              className="block max-w-[220px] truncate"
+                              title={
+                                wsLabels.get(ev.workspace_id) ?? ev.workspace_id
+                              }
+                            >
+                              {wsLabels.get(ev.workspace_id) ??
+                                `${ev.workspace_id.slice(0, 8)}…`}
                             </span>
                           ) : (
                             <span className="text-sm text-muted-foreground">—</span>
@@ -232,22 +262,38 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
                         </TableCell>
                         <TableCell data-label="Actor" className="align-middle">
                           {ev.actor_user_id ? (
-                            <span className="block truncate max-w-[220px]" title={actorLabels.get(ev.actor_user_id) ?? ev.actor_user_id}>
-                              {actorLabels.get(ev.actor_user_id) ?? `${ev.actor_user_id.slice(0, 8)}…`}
+                            <span
+                              className="block max-w-[220px] truncate"
+                              title={
+                                actorLabels.get(ev.actor_user_id) ??
+                                ev.actor_user_id
+                              }
+                            >
+                              {actorLabels.get(ev.actor_user_id) ??
+                                `${ev.actor_user_id.slice(0, 8)}…`}
                             </span>
                           ) : (
-                            <span className="text-sm text-muted-foreground">system</span>
+                            <span className="text-sm text-muted-foreground">
+                              system
+                            </span>
                           )}
                         </TableCell>
                         <TableCell data-label="Table" className="align-middle">
-                          <code className="text-xs break-all">{ev.entity_table}</code>
+                          <code className="break-all text-xs">
+                            {ev.entity_table}
+                          </code>
                         </TableCell>
-                        <TableCell data-label="Action" className="align-middle whitespace-nowrap">
+                        <TableCell
+                          data-label="Action"
+                          className="align-middle whitespace-nowrap"
+                        >
                           <Badge variant="outline">{ev.action}</Badge>
                         </TableCell>
                         <TableCell data-label="Entity ID" className="align-middle">
                           {ev.entity_id ? (
-                            <code className="text-[11px]">{ev.entity_id.slice(0, 8)}…</code>
+                            <code className="text-xs">
+                              {ev.entity_id.slice(0, 8)}…
+                            </code>
                           ) : (
                             <span className="text-sm text-muted-foreground">—</span>
                           )}
@@ -259,7 +305,7 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
                                 {Object.keys(ev.details).length} field
                                 {Object.keys(ev.details).length === 1 ? "" : "s"}
                               </summary>
-                              <pre className="text-[11px] max-h-32 overflow-auto mt-1 bg-muted p-1.5 rounded">
+                              <pre className="mt-1 max-h-32 overflow-auto rounded bg-muted p-1.5 text-xs">
                                 {JSON.stringify(ev.details, null, 2)}
                               </pre>
                             </details>
@@ -276,7 +322,7 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
           </Card>
 
           {hasMore && (
-            <div className="console-pagination">
+            <div className="flex justify-center pt-1">
               <Button
                 variant="outline"
                 disabled={loadingMore}
@@ -284,9 +330,9 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
                 className="gap-2"
               >
                 {loadingMore ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <ChevronDown size={14} />
+                  <ChevronDown className="h-4 w-4" />
                 )}
                 Load more
               </Button>
@@ -294,6 +340,6 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
           )}
         </>
       )}
-    </DashboardShell>
+    </div>
   );
 }

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import "@/styles/error-surfaces.css";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 export type ErrorTone = "danger" | "warning" | "info" | "success";
 export type ErrorNoticeLayout = "banner" | "panel";
@@ -11,6 +12,13 @@ const defaultIcons = {
   warning: AlertTriangle,
   info: Info,
   success: CheckCircle2,
+} as const;
+
+const toneVariants = {
+  danger: "destructive",
+  warning: "warning",
+  info: "info",
+  success: "success",
 } as const;
 
 export interface ErrorNoticeProps {
@@ -42,33 +50,41 @@ export default function ErrorNotice({
   const resolvedRole = role ?? (tone === "danger" || tone === "warning" ? "alert" : "status");
 
   return (
-    <div
-      className={cn("error-notice", className)}
-      data-tone={tone}
-      data-layout={layout}
+    <Alert
+      variant={toneVariants[tone]}
       role={resolvedRole}
       aria-live={resolvedRole === "alert" ? "assertive" : "polite"}
+      data-tone={tone}
+      data-layout={layout}
+      className={cn(
+        "items-start gap-3 py-3 pl-10",
+        onDismiss && "pr-10",
+        layout === "banner" && "rounded-none border-x-0 border-t-0",
+        className,
+      )}
     >
       {icon !== false ? (
-        <span className="error-notice-icon" aria-hidden="true">
-          {icon ?? <DefaultIcon size={18} />}
+        <span className="absolute left-4 top-4" aria-hidden="true">
+          {icon ?? <DefaultIcon size={16} className="size-4" />}
         </span>
       ) : null}
-      <div className="error-notice-body">
-        {title ? <p className="error-notice-title">{title}</p> : null}
-        {children ? <div className="error-notice-message">{children}</div> : null}
+      <div className="min-w-0 flex-1">
+        {title ? <AlertTitle>{title}</AlertTitle> : null}
+        {children ? <AlertDescription>{children}</AlertDescription> : null}
       </div>
-      {action ? <div className="error-notice-action">{action}</div> : null}
+      {action ? <div className="shrink-0">{action}</div> : null}
       {onDismiss ? (
-        <button
+        <Button
           type="button"
-          className="error-notice-dismiss"
+          variant="ghost"
+          size="icon"
           onClick={onDismiss}
           aria-label={dismissLabel}
+          className="absolute right-2 top-2 size-7 text-current hover:bg-current/10 hover:text-current"
         >
           <X size={14} aria-hidden="true" />
-        </button>
+        </Button>
       ) : null}
-    </div>
+    </Alert>
   );
 }

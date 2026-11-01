@@ -11,8 +11,8 @@ type MainProps = React.HTMLAttributes<HTMLDivElement> & {
  *
  * `SidebarInset` already renders the `<main>` landmark, so this is a plain
  * block element that only carries the skip-link target. Page gutters, scroll
- * containment and scrollbar styling come from `.hub-main-content`, so the
- * workspace keeps the same inset as before the sidebar rewrite.
+ * containment and the mobile safe-area fallback are passed in as utilities by
+ * each shell, so the workspace can size its own inset.
  *
  * Rendering a second `<main>` here would nest landmarks, which is invalid.
  */

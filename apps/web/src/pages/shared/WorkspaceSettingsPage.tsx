@@ -15,6 +15,22 @@ import { Label } from "../../components/ui/label.tsx";
 import { Badge } from "../../components/ui/badge.tsx";
 import { Card, CardContent } from "../../components/ui/card.tsx";
 import { Switch } from "../../components/ui/switch.tsx";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table.tsx";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../../components/ui/empty.tsx";
+import { ResponsiveTable } from "../../components/ui/responsive-table.tsx";
 import ErrorNotice from "../../components/errors/ErrorNotice.tsx";
 import {
   DashboardHeader,
@@ -39,7 +55,6 @@ import {
   type StoragePlanId,
   type StoragePurchaseRow,
 } from "../../lib/repositories/pesepay.ts";
-import "../../styles/console.css";
 
 interface WorkspaceSettingsProps {
   workspaceId: string;
@@ -279,7 +294,7 @@ export default function WorkspaceSettingsPage({
 
   if (isPlatformAdmin) {
     return (
-      <DashboardShell className="hub-body">
+      <DashboardShell className="w-full max-w-full">
         <DashboardHeader
           badge={<Badge variant="secondary">Platform</Badge>}
           title="System Settings"
@@ -324,19 +339,19 @@ export default function WorkspaceSettingsPage({
         <DashboardSection title="Notifications">
           <Card>
             <CardContent className="pt-4">
-              <div className="console-setting">
-                <div className="console-setting-text">
-                  <p className="console-setting-title">Email notifications</p>
-                  <p className="console-setting-hint">
+              <div className="flex flex-col gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Email notifications</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                     Receive email updates for important events
                   </p>
                 </div>
                 <Switch defaultChecked />
               </div>
-              <div className="console-setting">
-                <div className="console-setting-text">
-                  <p className="console-setting-title">Project updates</p>
-                  <p className="console-setting-hint">
+              <div className="flex flex-col gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Project updates</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                     Get notified about project changes
                   </p>
                 </div>
@@ -350,7 +365,7 @@ export default function WorkspaceSettingsPage({
   }
 
   return (
-    <DashboardShell className="hub-body">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         badge={<Badge variant="secondary">Workspace</Badge>}
         title="Workspace Settings"
@@ -466,55 +481,70 @@ export default function WorkspaceSettingsPage({
                 <div className="border-t border-border/70 pt-4">
                   <h3 className="text-sm font-semibold text-foreground">Your transactions</h3>
                   {walletTransactions.length === 0 ? (
-                    <div className="console-empty">
-                      <span className="console-empty-icon"><Wallet size={18} /></span>
-                      <p className="console-empty-title">No balance transactions yet</p>
-                      <p>Deposits and payments made from your balance will appear here.</p>
-                    </div>
+                    <Empty className="gap-4 border border-dashed p-8">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Wallet />
+                        </EmptyMedia>
+                        <EmptyTitle className="text-base">
+                          No balance transactions yet
+                        </EmptyTitle>
+                        <EmptyDescription>
+                          Deposits and payments made from your balance will appear here.
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   ) : (
-                    <div className="console-table-wrap">
-                      <table className="console-table">
-                        <thead>
-                          <tr>
-                            <th>Description</th>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Reference</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                    <ResponsiveTable records>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Reference</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {walletTransactions.map((transaction) => (
-                            <tr key={transaction.id}>
-                              <td data-label="Description">{transaction.description}</td>
-                              <td data-label="Date">
+                            <TableRow key={transaction.id}>
+                              <TableCell data-label="Description">
+                                {transaction.description}
+                              </TableCell>
+                              <TableCell data-label="Date">
                                 <time dateTime={transaction.created_at}>
                                   {dateFormatter.format(new Date(transaction.created_at))}
                                 </time>
-                              </td>
-                              <td data-label="Type">{transactionKindLabel(transaction.kind)}</td>
-                              <td data-label="Amount" className="console-num">
+                              </TableCell>
+                              <TableCell data-label="Type">
+                                {transactionKindLabel(transaction.kind)}
+                              </TableCell>
+                              <TableCell
+                                data-label="Amount"
+                                className="font-mono tabular-nums"
+                              >
                                 {transaction.kind === "deposit" ? "+ " : "− "}
                                 {usdFormatter.format(Number(transaction.amount))}
-                              </td>
-                              <td data-label="Status">
+                              </TableCell>
+                              <TableCell data-label="Status">
                                 <Badge variant={walletStatusBadge(transaction.status)}>
                                   {walletStatusLabel(transaction.status)}
                                 </Badge>
-                              </td>
-                              <td data-label="Reference">
+                              </TableCell>
+                              <TableCell data-label="Reference">
                                 {transaction.pesepay_reference ? (
                                   <span className="block max-w-48 truncate font-mono text-xs" title={transaction.pesepay_reference}>
                                     {transaction.pesepay_reference}
                                   </span>
                                 ) : "—"}
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        </TableBody>
+                      </Table>
+                    </ResponsiveTable>
                   )}
                 </div>
               </>
@@ -679,46 +709,61 @@ export default function WorkspaceSettingsPage({
                 {purchasesError}
               </ErrorNotice>
             ) : purchases.length === 0 ? (
-              <div className="console-empty">
-                <span className="console-empty-icon"><CreditCard size={18} /></span>
-                <p className="console-empty-title">No storage purchases yet</p>
-                <p>Add-ons paid from the PesePay balance will appear here.</p>
-              </div>
+              <Empty className="gap-4 border border-dashed p-8">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <CreditCard />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-base">
+                    No storage purchases yet
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    Add-ons paid from the PesePay balance will appear here.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
-              <div className="console-table-wrap">
-                <table className="console-table">
-                  <thead>
-                    <tr>
-                      <th>Add-on</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                      <th>Method</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <ResponsiveTable records>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Add-on</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {purchases.map((purchase) => (
-                      <tr key={purchase.id}>
-                        <td data-label="Add-on">{purchase.storage_mb / 1024} GB</td>
-                        <td data-label="Date">
+                      <TableRow key={purchase.id}>
+                        <TableCell data-label="Add-on">
+                          {purchase.storage_mb / 1024} GB
+                        </TableCell>
+                        <TableCell data-label="Date">
                           <time dateTime={purchase.paid_at}>
                             {dateFormatter.format(new Date(purchase.paid_at))}
                           </time>
-                        </td>
-                        <td data-label="Amount" className="console-num">
+                        </TableCell>
+                        <TableCell
+                          data-label="Amount"
+                          className="font-mono tabular-nums"
+                        >
                           {usdFormatter.format(Number(purchase.amount))}
-                        </td>
-                        <td data-label="Method">
-                          {purchase.payment_method === "balance" ? "PesePay balance" : purchase.payment_method}
-                        </td>
-                        <td data-label="Status">
+                        </TableCell>
+                        <TableCell data-label="Method">
+                          {purchase.payment_method === "balance"
+                            ? "PesePay balance"
+                            : purchase.payment_method}
+                        </TableCell>
+                        <TableCell data-label="Status">
                           <Badge variant="success">Paid</Badge>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </ResponsiveTable>
             )}
           </CardContent>
         </Card>
@@ -727,19 +772,19 @@ export default function WorkspaceSettingsPage({
       <DashboardSection title="Team">
         <Card>
           <CardContent className="pt-4">
-            <div className="console-setting">
-              <div className="console-setting-text">
-                <p className="console-setting-title">Allow team invites</p>
-                <p className="console-setting-hint">
+            <div className="flex flex-col gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Allow team invites</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   Members can invite others to the workspace
                 </p>
               </div>
               <Switch />
             </div>
-            <div className="console-setting">
-              <div className="console-setting-text">
-                <p className="console-setting-title">Require admin approval</p>
-                <p className="console-setting-hint">
+            <div className="flex flex-col gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Require admin approval</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   New members must be approved before joining
                 </p>
               </div>
@@ -752,19 +797,19 @@ export default function WorkspaceSettingsPage({
       <DashboardSection title="Notifications">
         <Card>
           <CardContent className="pt-4">
-            <div className="console-setting">
-              <div className="console-setting-text">
-                <p className="console-setting-title">Email notifications</p>
-                <p className="console-setting-hint">
+            <div className="flex flex-col gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Email notifications</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   Receive email updates for important events
                 </p>
               </div>
               <Switch defaultChecked />
             </div>
-            <div className="console-setting">
-              <div className="console-setting-text">
-                <p className="console-setting-title">Project updates</p>
-                <p className="console-setting-hint">
+            <div className="flex flex-col gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Project updates</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   Get notified about project changes
                 </p>
               </div>

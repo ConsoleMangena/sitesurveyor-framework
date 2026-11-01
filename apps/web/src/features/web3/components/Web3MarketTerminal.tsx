@@ -428,7 +428,7 @@ export function Web3MarketTerminal({
                       </span>
                     </div>
                   </div>
-                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-micro font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-micro font-semibold text-success">
                     Active
                   </span>
                 </div>

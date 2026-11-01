@@ -1,12 +1,19 @@
 import { useCallback, useState } from "react";
 import { RefreshCw, Loader2, ChevronDown, Activity } from "lucide-react";
 
-import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Table,
   TableBody,
@@ -16,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   listAuditLogs,
@@ -92,17 +99,21 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
   }
 
   return (
-    <DashboardShell className="hub-body admin-console-page">
-      <DashboardHeader
-        badge={<Badge variant="secondary">Platform admin</Badge>}
-        title="Platform activity"
-        subtitle="Recent administrative activity across workspaces"
-        meta={
-          <>
+    <div className="space-y-4">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Platform activity
+            <Badge variant="secondary">Platform admin</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Recent administrative activity across workspaces
+          </p>
+          <p className="text-xs text-muted-foreground">
             {entries.length} {entries.length === 1 ? "entry" : "entries"}
-          </>
-        }
-        actions={
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -110,11 +121,15 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
             disabled={loading}
             className="gap-2"
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Refresh
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {error ? (
         <ErrorNotice tone="danger">
@@ -123,21 +138,29 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
       ) : null}
 
       {loading ? (
-        <PageLoader compact />
-      ) : entries.length === 0 ? (
-        <div className="console-empty">
-          <span className="console-empty-icon">
-            <Activity size={18} />
-          </span>
-          <span className="console-empty-title">No activity yet</span>
-          <span>Administrative actions across workspaces will appear here.</span>
+        <div className="space-y-4" role="status" aria-label="Loading">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-64 w-full" />
         </div>
+      ) : entries.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Activity className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>No activity yet</EmptyTitle>
+            <EmptyDescription>
+              Administrative actions across workspaces will appear here.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent />
+        </Empty>
       ) : (
         <>
-          <Card className="border-border/60 overflow-hidden">
+          <Card className="overflow-hidden">
             <CardContent className="p-0">
-              <ResponsiveTable records>
-                <Table className="console-table min-w-[540px]">
+              <ResponsiveTable>
+                <Table className="min-w-[540px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[140px]">When</TableHead>
@@ -149,20 +172,34 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
                   <TableBody>
                     {entries.map((ev) => (
                       <TableRow key={ev.id}>
-                        <TableCell data-label="When" className="align-middle text-muted-foreground whitespace-nowrap">
+                        <TableCell
+                          data-label="When"
+                          className="align-middle whitespace-nowrap text-muted-foreground"
+                        >
                           {formatWhen(ev.created_at)}
                         </TableCell>
                         <TableCell data-label="Actor" className="align-middle">
                           {ev.actor_user_id ? (
-                            <span className="block truncate max-w-[200px]" title={actorLabels.get(ev.actor_user_id) ?? ev.actor_user_id}>
-                              {actorLabels.get(ev.actor_user_id) ?? `${ev.actor_user_id.slice(0, 8)}…`}
+                            <span
+                              className="block max-w-[200px] truncate"
+                              title={
+                                actorLabels.get(ev.actor_user_id) ??
+                                ev.actor_user_id
+                              }
+                            >
+                              {actorLabels.get(ev.actor_user_id) ??
+                                `${ev.actor_user_id.slice(0, 8)}…`}
                             </span>
                           ) : (
-                            <span className="text-sm text-muted-foreground">system</span>
+                            <span className="text-sm text-muted-foreground">
+                              system
+                            </span>
                           )}
                         </TableCell>
                         <TableCell data-label="Table" className="align-middle">
-                          <code className="text-xs break-all">{ev.entity_table}</code>
+                          <code className="break-all text-xs">
+                            {ev.entity_table}
+                          </code>
                         </TableCell>
                         <TableCell data-label="Action" className="align-middle">
                           <Badge variant="outline">{ev.action}</Badge>
@@ -176,7 +213,7 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
           </Card>
 
           {hasMore && (
-            <div className="console-pagination">
+            <div className="flex justify-center pt-1">
               <Button
                 variant="outline"
                 disabled={loadingMore}
@@ -184,9 +221,9 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
                 className="gap-2"
               >
                 {loadingMore ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <ChevronDown size={14} />
+                  <ChevronDown className="h-4 w-4" />
                 )}
                 Load more
               </Button>
@@ -194,6 +231,6 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
           )}
         </>
       )}
-    </DashboardShell>
+    </div>
   );
 }

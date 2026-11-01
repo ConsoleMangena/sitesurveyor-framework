@@ -190,7 +190,7 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
 
   if (loading) {
     return (
-      <div className="hub-body ast-body team-page p-6">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
@@ -311,7 +311,7 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
   }
 
   return (
-    <DashboardShell className="hub-body ast-body team-page">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         title="Team"
         subtitle="Personnel, certifications, and roles"
@@ -499,7 +499,7 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
           </CardHeader>
           <CardContent className="p-0">
             <ResponsiveTable records>
-              <Table className="console-table min-w-[360px]">
+              <Table className="min-w-[360px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[200px]">Email</TableHead>

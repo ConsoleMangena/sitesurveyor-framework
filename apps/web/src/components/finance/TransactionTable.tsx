@@ -1,7 +1,22 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ReceiptText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { explorerTxUrl } from "@/features/phantom/lib/config.ts";
 import type { PaymentWithInvoice } from "@/lib/repositories/payments.ts";
 import { formatCurrency, formatDate } from "./FinanceUtils.ts";
@@ -27,7 +42,7 @@ export default function TransactionTable({ rows, loading, error }: TransactionTa
     return (
       <div className="space-y-2" aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-12 animate-pulse rounded-xl bg-muted" />
+          <Skeleton key={i} className="h-12 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -35,55 +50,68 @@ export default function TransactionTable({ rows, loading, error }: TransactionTa
 
   if (rows.length === 0) {
     return (
-      <div className="py-10 text-center text-sm text-muted-foreground">
-        No payments recorded yet.
-      </div>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ReceiptText className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>No payments recorded yet.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <div className="txn-table-wrap">
-      <table className="txn-table">
-        <thead>
-          <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Invoice</th>
-            <th scope="col">Method</th>
-            <th scope="col">Reference</th>
-            <th scope="col" className="txn-amount">
+    <div className="overflow-hidden rounded-lg border border-border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col">Date</TableHead>
+            <TableHead scope="col">Invoice</TableHead>
+            <TableHead scope="col">Method</TableHead>
+            <TableHead scope="col">Reference</TableHead>
+            <TableHead scope="col" className="text-right">
               Amount
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map((entry) => (
-            <tr key={entry.id}>
-              <td className="txn-date">{formatDate(entry.paid_on)}</td>
-              <td className="txn-invoice">{entry.invoice_number ?? "Payment"}</td>
-              <td className="txn-method">
+            <TableRow key={entry.id}>
+              <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                {formatDate(entry.paid_on)}
+              </TableCell>
+              <TableCell className="font-medium">
+                {entry.invoice_number ?? "Payment"}
+              </TableCell>
+              <TableCell>
                 <Badge variant={methodVariant(entry.payment_method)}>
                   {entry.payment_method ?? "Manual"}
                 </Badge>
-              </td>
-              <td className="txn-reference">
-                <span className="txn-ref-text">{entry.reference ?? "—"}</span>
+              </TableCell>
+              <TableCell>
+                <span className="block max-w-[190px] truncate font-mono text-xs text-muted-foreground">
+                  {entry.reference ?? "—"}
+                </span>
                 {entry.tx_signature && (
                   <a
                     href={explorerTxUrl(entry.tx_signature)}
                     target="_blank"
                     rel="noreferrer"
-                    className="txn-explorer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                   >
                     View on Explorer
-                    <ExternalLink size={12} />
+                    <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
-              </td>
-              <td className="txn-amount">{formatCurrency(entry.amount)}</td>
-            </tr>
+              </TableCell>
+              <TableCell className="text-right font-mono font-semibold tabular-nums">
+                {formatCurrency(entry.amount)}
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

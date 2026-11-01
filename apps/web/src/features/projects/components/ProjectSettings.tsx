@@ -4,9 +4,25 @@ import type { HubProject } from '../../../pages/shared/ProjectHubPage.tsx';
 import type { CrsType } from '../../../lib/mappers.ts';
 import type { ProjectActivity } from '../../../lib/repositories/projects.ts';
 import type { OrganizationRow } from '../../../lib/repositories/organizations.ts';
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import SelectDropdown from '../../../components/SelectDropdown.tsx';
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 interface ProjectSettingsProps {
   activeProject: HubProject;
@@ -62,6 +78,13 @@ interface ProjectSettingsProps {
   handleDeleteActivity: (id: string) => Promise<void>;
 }
 
+/**
+ * Radix forbids empty-string item values, so the "no client selected" state
+ * travels through a sentinel and is mapped back to "" before it reaches the
+ * parent — the value the parent already stores for an unassigned project.
+ */
+const NO_ORGANIZATION = "__no_organization__";
+
 export function ProjectSettings({
   activeProject,
   editName,
@@ -115,270 +138,521 @@ export function ProjectSettings({
   handleDeleteActivity,
 }: ProjectSettingsProps) {
   return (
-    <div className="project-settings-container responsive-grid-sidebar">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-        <div className="card project-workspace-card" style={{ padding: '24px' }}>
-          <div className="project-settings-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-h)', margin: 0 }}>Project Information</h2>
-            <button className="btn btn-primary btn-sm" onClick={handleUpdateProject} disabled={saving || !canEditProjects}>
+    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="flex flex-col gap-8">
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base font-semibold">
+              Project Information
+            </CardTitle>
+            <Button
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={handleUpdateProject}
+              disabled={saving || !canEditProjects}
+            >
               {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
+            </Button>
+          </CardHeader>
 
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Project Name</label>
-            <input type="text" className="input-field" value={editName} onChange={e => setEditName(e.target.value)} />
-          </div>
-
-          <div className="responsive-grid-2" style={{ marginBottom: '16px' }}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Client / Organization</label>
-              <SelectDropdown
-                className="input-field"
-                value={editOrgId}
-                onChange={setEditOrgId}
-                disabled={!canEditProjects}
-                options={[
-                  { value: '', label: editClient || 'Unassigned' },
-                  ...organizations.map(org => ({ value: org.id, label: org.name })),
-                ]}
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="project-settings-name">Project Name</Label>
+              <Input
+                id="project-settings-name"
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
               />
             </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Phase</label>
-              <select className="input-field" value={editPhase} onChange={e => setEditPhase(e.target.value)}>
-                <option>Planning</option>
-                <option>Field Execution</option>
-                <option>Data Processing</option>
-                <option>Drafting</option>
-                <option>Quality Assurance</option>
-                <option>Delivered</option>
-              </select>
-            </div>
-          </div>
 
-          <div className="responsive-grid-2" style={{ marginBottom: '16px' }}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Status</label>
-              <select className="input-field" value={editStatus} onChange={e => setEditStatus(e.target.value)}>
-                <option>Draft</option>
-                <option>Active</option>
-                <option>On Hold</option>
-                <option>Completed</option>
-                <option>Archived</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Axis Convention</label>
-              <select className="input-field" value={editAxisConvention} onChange={e => setEditAxisConvention(e.target.value as 'yx' | 'xy')}>
-                <option value="yx">Y, X (Zimbabwe / RSA Gauss — Y = Easting first)</option>
-                <option value="xy">X, Y (UTM / International — X = Easting first)</option>
-              </select>
-              <p className="text-xs text-muted-foreground mt-1">Controls coordinate readouts across the project workspace.</p>
-            </div>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Coordinate System Type</label>
-            <select className="input-field" value={editCrsType} onChange={e => setEditCrsType(e.target.value as CrsType)}>
-              <option value="local">Local site grid (arbitrary project origin)</option>
-              <option value="projected">Projected CRS (UTM, SPCS, Gauss-Conform, ...)</option>
-              <option value="other">Other / unspecified</option>
-            </select>
-          </div>
-
-          {editCrsType === 'projected' && (
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>EPSG Code (optional)</label>
-              <input type="text" className="input-field" value={editCrsEpsg} onChange={e => setEditCrsEpsg(e.target.value)} placeholder="e.g. 32736" />
-            </div>
-          )}
-
-          {editCrsType === 'local' && (
-            <div className="responsive-grid-2" style={{ marginBottom: '16px' }}>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Local Origin Easting</label>
-                <input type="text" className="input-field" value={editLocalOriginE} onChange={e => setEditLocalOriginE(e.target.value)} placeholder="Value treated as 0 in local grid" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-client">
+                  Client / Organization
+                </Label>
+                <Select
+                  value={editOrgId === '' ? NO_ORGANIZATION : editOrgId}
+                  onValueChange={(value) =>
+                    setEditOrgId(value === NO_ORGANIZATION ? '' : value)
+                  }
+                  disabled={!canEditProjects}
+                >
+                  <SelectTrigger id="project-settings-client">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_ORGANIZATION}>
+                      {editClient || 'Unassigned'}
+                    </SelectItem>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Local Origin Northing</label>
-                <input type="text" className="input-field" value={editLocalOriginN} onChange={e => setEditLocalOriginN(e.target.value)} placeholder="Value treated as 0 in local grid" />
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-phase">Phase</Label>
+                <Select value={editPhase} onValueChange={setEditPhase}>
+                  <SelectTrigger id="project-settings-phase">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Planning">Planning</SelectItem>
+                    <SelectItem value="Field Execution">
+                      Field Execution
+                    </SelectItem>
+                    <SelectItem value="Data Processing">
+                      Data Processing
+                    </SelectItem>
+                    <SelectItem value="Drafting">Drafting</SelectItem>
+                    <SelectItem value="Quality Assurance">
+                      Quality Assurance
+                    </SelectItem>
+                    <SelectItem value="Delivered">Delivered</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
 
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Datum Name</label>
-            <input type="text" className="input-field" value={editDatum} onChange={e => setEditDatum(e.target.value)} placeholder="e.g. WGS84, Arc 1950, site local..." />
-            <p className="text-xs text-muted-foreground mt-1">A short human-readable datum label. Use the fields above for the technical CRS / EPSG code.</p>
-          </div>
-
-          <div className="responsive-grid-3" style={{ marginBottom: '16px' }}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Bearing Format</label>
-              <select className="input-field" value={editBearingFormat} onChange={e => setEditBearingFormat(e.target.value)}>
-                <option value="azimuth">WCB / Forward Bearing (D°M'S")</option>
-                <option value="quadrant">Reduced Bearing (N/S .. E/W)</option>
-                <option value="gon">Gon / Grad</option>
-              </select>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-status">Status</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger id="project-settings-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="On Hold">On Hold</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="Archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-axis">Axis Convention</Label>
+                <Select
+                  value={editAxisConvention}
+                  onValueChange={(value) =>
+                    setEditAxisConvention(value as 'yx' | 'xy')
+                  }
+                >
+                  <SelectTrigger id="project-settings-axis">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yx">
+                      Y, X (Zimbabwe / RSA Gauss — Y = Easting first)
+                    </SelectItem>
+                    <SelectItem value="xy">
+                      X, Y (UTM / International — X = Easting first)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Controls coordinate readouts across the project workspace.
+                </p>
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Angle Entry</label>
-              <select className="input-field" value={editAngleEntry} onChange={e => setEditAngleEntry(e.target.value)}>
-                <option value="packed">Packed DD.MMSS</option>
-                <option value="dms">D M S fields</option>
-                <option value="decimal">Decimal degrees</option>
-                <option value="gon">Gon / Grad</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Coordinate Decimals</label>
-              <input type="number" className="input-field" min="0" max="6" value={editCoordDecimals} onChange={e => setEditCoordDecimals(e.target.value)} />
-            </div>
-          </div>
 
-          <div className="form-group">
-            <label className="form-label" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Description / Scope of Work</label>
-            <textarea className="input-field" style={{ minHeight: '100px' }} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
-          </div>
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="project-settings-crs-type">
+                Coordinate System Type
+              </Label>
+              <Select
+                value={editCrsType}
+                onValueChange={(value) => setEditCrsType(value as CrsType)}
+              >
+                <SelectTrigger id="project-settings-crs-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="local">
+                    Local site grid (arbitrary project origin)
+                  </SelectItem>
+                  <SelectItem value="projected">
+                    Projected CRS (UTM, SPCS, Gauss-Conform, ...)
+                  </SelectItem>
+                  <SelectItem value="other">Other / unspecified</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="card project-workspace-card" style={{ padding: '24px' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-h)', margin: 0, marginBottom: '16px' }}>Danger Zone</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {editCrsType === 'projected' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-crs-epsg">
+                  EPSG Code (optional)
+                </Label>
+                <Input
+                  id="project-settings-crs-epsg"
+                  type="text"
+                  value={editCrsEpsg}
+                  onChange={(e) => setEditCrsEpsg(e.target.value)}
+                  placeholder="e.g. 32736"
+                />
+              </div>
+            )}
+
+            {editCrsType === 'local' && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="project-settings-origin-e">
+                    Local Origin Easting
+                  </Label>
+                  <Input
+                    id="project-settings-origin-e"
+                    type="text"
+                    value={editLocalOriginE}
+                    onChange={(e) => setEditLocalOriginE(e.target.value)}
+                    placeholder="Value treated as 0 in local grid"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="project-settings-origin-n">
+                    Local Origin Northing
+                  </Label>
+                  <Input
+                    id="project-settings-origin-n"
+                    type="text"
+                    value={editLocalOriginN}
+                    onChange={(e) => setEditLocalOriginN(e.target.value)}
+                    placeholder="Value treated as 0 in local grid"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="project-settings-datum">Datum Name</Label>
+              <Input
+                id="project-settings-datum"
+                type="text"
+                value={editDatum}
+                onChange={(e) => setEditDatum(e.target.value)}
+                placeholder="e.g. WGS84, Arc 1950, site local..."
+              />
+              <p className="text-xs text-muted-foreground">
+                A short human-readable datum label. Use the fields above for the
+                technical CRS / EPSG code.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-bearing">Bearing Format</Label>
+                <Select
+                  value={editBearingFormat}
+                  onValueChange={setEditBearingFormat}
+                >
+                  <SelectTrigger id="project-settings-bearing">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="azimuth">
+                      WCB / Forward Bearing (D°M'S")
+                    </SelectItem>
+                    <SelectItem value="quadrant">
+                      Reduced Bearing (N/S .. E/W)
+                    </SelectItem>
+                    <SelectItem value="gon">Gon / Grad</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-angle">Angle Entry</Label>
+                <Select value={editAngleEntry} onValueChange={setEditAngleEntry}>
+                  <SelectTrigger id="project-settings-angle">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="packed">Packed DD.MMSS</SelectItem>
+                    <SelectItem value="dms">D M S fields</SelectItem>
+                    <SelectItem value="decimal">Decimal degrees</SelectItem>
+                    <SelectItem value="gon">Gon / Grad</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="project-settings-decimals">
+                  Coordinate Decimals
+                </Label>
+                <Input
+                  id="project-settings-decimals"
+                  type="number"
+                  min={0}
+                  max={6}
+                  value={editCoordDecimals}
+                  onChange={(e) => setEditCoordDecimals(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="project-settings-description">
+                Description / Scope of Work
+              </Label>
+              <Textarea
+                id="project-settings-description"
+                className="min-h-[100px]"
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Danger Zone</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             {activeProject.status === 'Archived' ? (
               <>
-                <div className="project-settings-danger-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--color-success-border)', background: 'var(--color-success-bg)', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-success)' }}>Restore Project</span>
-                    <span style={{ fontSize: '11px', color: 'var(--color-success)' }}>Make project active and editable again.</span>
+                <div className="flex flex-col gap-2.5 rounded-lg border border-success/30 bg-success/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-success">
+                      Restore Project
+                    </span>
+                    <span className="text-xs text-success">
+                      Make project active and editable again.
+                    </span>
                   </div>
-                <button className="btn btn-sm" style={{ background: 'var(--color-success)', color: '#fff', border: 'none' }} onClick={() => handleUnarchiveProject(activeProject.dbId)} disabled={!canEditProjects}>Restore</button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleUnarchiveProject(activeProject.dbId)}
+                    disabled={!canEditProjects}
+                  >
+                    Restore
+                  </Button>
                 </div>
-                <div className="project-settings-danger-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--color-error-border)', background: 'var(--color-error-bg)', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-error)' }}>Permanent Delete</span>
-                    <span style={{ fontSize: '11px', color: 'var(--color-error)' }}>Destroy all project data. This cannot be undone.</span>
+                <div className="flex flex-col gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-destructive">
+                      Permanent Delete
+                    </span>
+                    <span className="text-xs text-destructive">
+                      Destroy all project data. This cannot be undone.
+                    </span>
                   </div>
-                  <button className="btn btn-sm" style={{ background: 'var(--color-error)', color: '#fff', border: 'none' }} onClick={() => { setSelectedProject(activeProject); setShowPermanentDeleteConfirm(true); }} disabled={!canEditProjects}>Delete</button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      setSelectedProject(activeProject);
+                      setShowPermanentDeleteConfirm(true);
+                    }}
+                    disabled={!canEditProjects}
+                  >
+                    Delete
+                  </Button>
                 </div>
               </>
             ) : (
-              <div className="project-settings-danger-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid var(--color-error-border)', background: 'var(--color-error-bg)', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-error)' }}>Archive Project</span>
-                  <span style={{ fontSize: '11px', color: 'var(--color-error)' }}>Mark project as inactive and read-only.</span>
+              <div className="flex flex-col gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-destructive">
+                    Archive Project
+                  </span>
+                  <span className="text-xs text-destructive">
+                    Mark project as inactive and read-only.
+                  </span>
                 </div>
-                <button className="btn btn-sm" style={{ background: 'var(--color-error)', color: '#fff', border: 'none' }} onClick={() => { setSelectedProject(activeProject); setShowDeleteConfirm(true); }} disabled={!canEditProjects}>Archive</button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    setSelectedProject(activeProject);
+                    setShowDeleteConfirm(true);
+                  }}
+                  disabled={!canEditProjects}
+                >
+                  Archive
+                </Button>
               </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-        <div className="card project-workspace-card" style={{ padding: '24px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-h)', margin: 0, marginBottom: '20px' }}>Team Members</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="flex flex-col gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Team Members</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
             {activeProject.members.map((member, idx) => (
-              <div key={idx} className="project-settings-member-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-h)' }}>{member.name}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{member.role}</span>
+              <div
+                key={idx}
+                className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground">
+                    {member.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {member.role}
+                  </span>
                 </div>
-                <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: member.status === 'active' ? 'var(--color-success)' : 'var(--color-warning)' }}>{member.status}</span>
+                <Badge
+                  variant={member.status === 'active' ? 'success' : 'warning'}
+                  className="self-start uppercase sm:self-auto"
+                >
+                  {member.status}
+                </Badge>
               </div>
             ))}
-            <button className="btn btn-outline btn-sm" style={{ marginTop: '8px' }} onClick={() => setShowAssignModal(true)} disabled={!canInviteProjectMembers}>Assign Member</button>
-          </div>
-        </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full sm:w-auto"
+              onClick={() => setShowAssignModal(true)}
+              disabled={!canInviteProjectMembers}
+            >
+              Assign Member
+            </Button>
+          </CardContent>
+        </Card>
 
-        <div className="card project-workspace-card" style={{ padding: '24px' }}>
-          <h3 className="project-dashboard-card-title" style={{ margin: 0, marginBottom: '16px' }}>Project Activity Log</h3>
-          <div className="project-dashboard-timeline" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            <form onSubmit={handleAddActivity} className="flex flex-col sm:flex-row gap-2 mb-4">
-              <Input
-                placeholder="Add a log entry..."
-                value={newActivityText}
-                onChange={(e) => setNewActivityText(e.target.value)}
-                className="h-9 text-sm"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={submittingActivity || !newActivityText.trim()}
-                className="shrink-0"
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">
+              Project Activity Log
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex max-h-[400px] flex-col gap-4 overflow-y-auto">
+              <form
+                onSubmit={handleAddActivity}
+                className="flex flex-col gap-2 sm:flex-row"
               >
-                {submittingActivity ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-                Log
-              </Button>
-            </form>
-            {activities.length > 0 && settingsActivitySections[settingsActivitySectionIndex] ? (
-              <>
-                <section style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '10px', background: 'var(--surface)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span className="badge badge-blue">Section {settingsActivitySectionIndex + 1}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    {settingsActivitySections[settingsActivitySectionIndex].length} items
-                  </span>
-                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-muted)' }}>
-                    {settingsActivitySectionIndex + 1} / {settingsActivitySections.length}
-                  </span>
-                </div>
-                <div style={{ display: 'grid', gap: '10px' }}>
-                  {settingsActivitySections[settingsActivitySectionIndex].map(log => (
-                    <div key={log.id} className="project-dashboard-timeline-item" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <span className="project-dashboard-timeline-dot" style={{ background: log.activity_type === 'system' ? '#3b82f6' : '#6366f1' }} />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '13px', color: 'var(--text-h)' }}>{log.content}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{log.user_name} &bull; {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteActivity(log.id)}
-                        disabled={deletingActivityId === log.id}
-                        className="h-7 px-2 text-xs"
-                      >
-                        {deletingActivityId === log.id ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          'Delete'
-                        )}
-                      </Button>
+                <Input
+                  placeholder="Add a log entry..."
+                  value={newActivityText}
+                  onChange={(e) => setNewActivityText(e.target.value)}
+                  className="h-9 text-sm"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={submittingActivity || !newActivityText.trim()}
+                  className="shrink-0"
+                >
+                  {submittingActivity ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : null}
+                  Log
+                </Button>
+              </form>
+              {activities.length > 0 &&
+              settingsActivitySections[settingsActivitySectionIndex] ? (
+                <>
+                  <section className="rounded-lg border border-border bg-card p-2.5">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge variant="default">
+                        Section {settingsActivitySectionIndex + 1}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {settingsActivitySections[settingsActivitySectionIndex].length}{' '}
+                        items
+                      </span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {settingsActivitySectionIndex + 1} /{' '}
+                        {settingsActivitySections.length}
+                      </span>
                     </div>
-                  ))}
-                </div>
-                </section>
-                <div className="flex justify-between gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSettingsActivitySectionIndex((prev) => Math.max(0, prev - 1))}
-                    disabled={settingsActivitySectionIndex <= 0}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSettingsActivitySectionIndex((prev) => Math.min(settingsActivitySections.length - 1, prev + 1))}
-                    disabled={settingsActivitySectionIndex >= settingsActivitySections.length - 1}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>No activity logged yet.</p>
-            )}
-          </div>
-        </div>
+                    <div className="flex flex-col gap-2.5">
+                      {settingsActivitySections[
+                        settingsActivitySectionIndex
+                      ].map((log) => (
+                        <div
+                          key={log.id}
+                          className="flex items-start justify-between gap-2"
+                        >
+                          <div className="flex items-start gap-2">
+                            <span
+                              className={cn(
+                                'mt-1.5 size-2 shrink-0 rounded-full',
+                                log.activity_type === 'system'
+                                  ? 'bg-muted-foreground'
+                                  : 'bg-primary',
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-sm text-foreground">
+                                {log.content}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {log.user_name} &bull;{' '}
+                                {new Date(log.created_at).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteActivity(log.id)}
+                            disabled={deletingActivityId === log.id}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {deletingActivityId === log.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Delete'
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                  <div className="flex justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setSettingsActivitySectionIndex((prev) =>
+                          Math.max(0, prev - 1),
+                        )
+                      }
+                      disabled={settingsActivitySectionIndex <= 0}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setSettingsActivitySectionIndex((prev) =>
+                          Math.min(settingsActivitySections.length - 1, prev + 1),
+                        )
+                      }
+                      disabled={
+                        settingsActivitySectionIndex >=
+                        settingsActivitySections.length - 1
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No activity logged yet.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

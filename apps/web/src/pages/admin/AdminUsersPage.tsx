@@ -23,7 +23,6 @@ import {
 import { toast } from "sonner";
 
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
-import PageLoader from "@/components/PageLoader.tsx";
 import { DataTableBulkActions } from "@/components/data-table/bulk-actions";
 import { DataTableColumnHeader } from "@/components/data-table/column-header";
 import { DataTablePagination } from "@/components/data-table/pagination";
@@ -42,7 +41,7 @@ import {
 import { ConfirmDialog } from "@/components/templates/ConfirmDialog.tsx";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { SuccessDialog } from "@/components/SuccessDialog.tsx";
-import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useDialogState } from "@/lib/hooks/useDialogState.ts";
 import {
@@ -318,17 +317,21 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
   const filteredCount = table.getFilteredRowModel().rows.length;
 
   return (
-    <DashboardShell className="hub-body admin-console-page">
-      <DashboardHeader
-        badge={<Badge variant="secondary">Platform admin</Badge>}
-        title="User management"
-        subtitle="View registered users and manage platform admin access"
-        meta={
-          <>
+    <div className="space-y-4">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            User management
+            <Badge variant="secondary">Platform admin</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            View registered users and manage platform admin access
+          </p>
+          <p className="text-xs text-muted-foreground">
             {filteredCount} {filteredCount === 1 ? "user" : "users"}
-          </>
-        }
-        actions={
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -343,13 +346,16 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
             )}
             Refresh
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 
       {loading ? (
-        <PageLoader compact />
+        <div className="space-y-4" role="status" aria-label="Loading">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-64 w-full" />
+        </div>
       ) : (
         <div className="space-y-3">
           <DataTableToolbar
@@ -360,9 +366,9 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
             ]}
           />
 
-          <div className="overflow-hidden rounded-md border">
+          <div className="overflow-hidden rounded-lg border">
             <div className="overflow-x-auto">
-              <Table className="console-table min-w-[760px]">
+              <Table className="min-w-[760px]">
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
@@ -460,7 +466,7 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
         }
       >
         {detailLoading || !detailUser ? (
-          <PageLoader compact />
+          <Skeleton className="h-40 w-full" />
         ) : (
           <div className="space-y-5">
             <div className="space-y-1">
@@ -472,24 +478,28 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
               </p>
             </div>
 
-            <div className="dlg-field-grid">
-              <div className="console-readout">
-                <span className="console-readout-label">Title</span>
-                <span className="console-readout-value">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">Title</span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">
                   {detailUser.professional_title ?? "—"}
                 </span>
               </div>
-              <div className="console-readout">
-                <span className="console-readout-label">Signup type</span>
-                <span className="console-readout-value">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">
+                  Signup type
+                </span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">
                   <Badge variant="outline">
                     {detailUser.auth_signup_account_type ?? "—"}
                   </Badge>
                 </span>
               </div>
-              <div className="console-readout">
-                <span className="console-readout-label">Platform admin</span>
-                <span className="console-readout-value">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">
+                  Platform admin
+                </span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">
                   {detailUser.is_platform_admin ? (
                     <Badge variant="purple">Yes</Badge>
                   ) : (
@@ -497,9 +507,9 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
                   )}
                 </span>
               </div>
-              <div className="console-readout">
-                <span className="console-readout-label">Joined</span>
-                <span className="console-readout-value">
+              <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+                <span className="shrink-0 text-muted-foreground">Joined</span>
+                <span className="min-w-0 break-words text-right font-medium text-foreground">
                   {formatDate(detailUser.created_at)}
                 </span>
               </div>
@@ -514,7 +524,7 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
                   No workspace memberships.
                 </p>
               ) : (
-                <ul className="divide-y rounded-md border">
+                <ul className="divide-y rounded-lg border">
                   {detailUser.workspaces.map((ws) => (
                     <li
                       key={ws.workspace_id}
@@ -560,6 +570,6 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </DashboardShell>
+    </div>
   );
 }

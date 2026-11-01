@@ -72,7 +72,10 @@ export default function PlatformOperatorWorkspaceShell({
 
   const noticeBanner =
     user.isPlatformAdmin ? undefined : (
-      <div className="hub-notice hub-notice-info" role="status">
+      <div
+        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-foreground"
+        role="status"
+      >
         <span>
           Platform operator access is not enabled for your account yet. A
           SiteSurveyor administrator must grant platform operator privileges before

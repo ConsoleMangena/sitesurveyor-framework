@@ -119,42 +119,42 @@ const KIND_THEMES: Record<
   listing: {
     label: "Equipment Listing",
     icon: Briefcase,
-    badgeBg: "bg-amber-500/10",
-    badgeText: "text-amber-700 dark:text-amber-400",
-    border: "border-amber-500/20",
-    bannerBg: "from-amber-500/10 via-amber-500/5 to-transparent",
+    badgeBg: "bg-warning/10",
+    badgeText: "text-warning",
+    border: "border-warning/20",
+    bannerBg: "from-warning/10 via-warning/5 to-transparent",
   },
   professional: {
     label: "Survey Professional",
     icon: UserRound,
-    badgeBg: "bg-cyan-500/10",
-    badgeText: "text-cyan-700 dark:text-cyan-400",
-    border: "border-cyan-500/20",
-    bannerBg: "from-cyan-500/10 via-cyan-500/5 to-transparent",
+    badgeBg: "bg-info/10",
+    badgeText: "text-info",
+    border: "border-info/20",
+    bannerBg: "from-info/10 via-info/5 to-transparent",
   },
   job: {
     label: "Job Opening",
     icon: HardHat,
-    badgeBg: "bg-violet-500/10",
-    badgeText: "text-violet-700 dark:text-violet-400",
-    border: "border-violet-500/20",
-    bannerBg: "from-violet-500/10 via-violet-500/5 to-transparent",
+    badgeBg: "bg-accent-purple/10",
+    badgeText: "text-accent-purple",
+    border: "border-accent-purple/20",
+    bannerBg: "from-accent-purple/10 via-accent-purple/5 to-transparent",
   },
   firm: {
     label: "Survey Firm",
     icon: Building2,
-    badgeBg: "bg-emerald-500/10",
-    badgeText: "text-emerald-700 dark:text-emerald-400",
-    border: "border-emerald-500/20",
-    bannerBg: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+    badgeBg: "bg-success/10",
+    badgeText: "text-success",
+    border: "border-success/20",
+    bannerBg: "from-success/10 via-success/5 to-transparent",
   },
   event: {
     label: "Training & Event",
     icon: GraduationCap,
-    badgeBg: "bg-rose-500/10",
-    badgeText: "text-rose-700 dark:text-rose-400",
-    border: "border-rose-500/20",
-    bannerBg: "from-rose-500/10 via-rose-500/5 to-transparent",
+    badgeBg: "bg-error/10",
+    badgeText: "text-error",
+    border: "border-error/20",
+    bannerBg: "from-error/10 via-error/5 to-transparent",
   },
 };
 
@@ -285,7 +285,7 @@ export function MarketDetailDialog({
               <DialogTitle className="market-dialog-title flex items-start gap-2 text-balance text-foreground">
                 <span>{dot.name}</span>
                 {professional?.is_verified || firm?.verified ? (
-                  <BadgeCheck className="mt-1 size-5 shrink-0 text-cyan-600" aria-label="Verified" />
+                  <BadgeCheck className="mt-1 size-5 shrink-0 text-info" aria-label="Verified" />
                 ) : null}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
@@ -297,7 +297,7 @@ export function MarketDetailDialog({
                 type="button"
                 variant="outline"
                 size="icon"
-                className={cn("size-10 shrink-0 rounded-full bg-background/80", favoriteId ? "text-rose-500 hover:text-rose-600" : "text-muted-foreground hover:text-foreground")}
+                className={cn("size-10 shrink-0 rounded-full bg-background/80", favoriteId ? "text-error/80 hover:text-error" : "text-muted-foreground hover:text-foreground")}
                 onClick={toggleFavorite}
                 disabled={favoriteBusy}
                 aria-label={favoriteId ? "Remove favorite" : "Add favorite"}
@@ -373,8 +373,8 @@ export function MarketDetailDialog({
                   <h3 className="text-sm font-semibold text-foreground">Core skills and tools</h3>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {professional.skills.map((skill) => (
-                      <span key={skill} className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-1.5 text-xs font-medium text-cyan-800 dark:text-cyan-300">
-                        <Sparkles className="size-3.5 text-cyan-500" />
+                      <span key={skill} className="inline-flex items-center gap-1.5 rounded-lg border border-info/20 bg-info/5 px-3 py-1.5 text-xs font-medium text-info">
+                        <Sparkles className="size-3.5 text-info" />
                         {skill}
                       </span>
                     ))}
@@ -388,7 +388,7 @@ export function MarketDetailDialog({
                   <ul className="mt-3 space-y-2.5 text-sm leading-6 text-foreground/85">
                     {job.requirements.map((req) => (
                       <li key={req} className="flex items-start gap-2.5">
-                        <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-violet-600" />
+                        <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-accent-purple" />
                         <span>{req}</span>
                       </li>
                     ))}
@@ -401,7 +401,7 @@ export function MarketDetailDialog({
                   <h3 className="text-sm font-semibold text-foreground">Survey services</h3>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {firm.services.map((service) => (
-                      <span key={service} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                      <span key={service} className="rounded-lg border border-success/20 bg-success/5 px-3 py-1.5 text-xs font-medium text-success">
                         {service}
                       </span>
                     ))}
@@ -415,7 +415,7 @@ export function MarketDetailDialog({
                   <div className="mt-3 flex flex-wrap gap-2">
                     {professional.certifications.map((cert) => (
                       <span key={cert} className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground">
-                        <Award className="size-3.5 text-cyan-600" aria-hidden="true" />
+                        <Award className="size-3.5 text-info" aria-hidden="true" />
                         {cert}
                       </span>
                     ))}
@@ -438,8 +438,8 @@ export function MarketDetailDialog({
                   <h3 className="text-sm font-semibold text-foreground">Accreditations</h3>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {firm.accreditations.map((accreditation) => (
-                      <span key={accreditation} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-300">
-                        <ShieldCheck className="size-3.5 text-emerald-600" aria-hidden="true" />
+                      <span key={accreditation} className="inline-flex items-center gap-1.5 rounded-lg border border-success/20 bg-success/5 px-3 py-1.5 text-xs font-medium text-success">
+                        <ShieldCheck className="size-3.5 text-success" aria-hidden="true" />
                         {accreditation}
                       </span>
                     ))}
@@ -480,7 +480,7 @@ export function MarketDetailDialog({
                   <h3 className="text-sm font-semibold text-foreground">Benefits</h3>
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {job.benefits.map((benefit) => (
-                      <li key={benefit} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-1.5 text-xs font-medium text-violet-800 dark:text-violet-300">
+                      <li key={benefit} className="inline-flex items-center gap-1.5 rounded-lg border border-accent-purple/20 bg-accent-purple/5 px-3 py-1.5 text-xs font-medium text-accent-purple">
                         <ShieldCheck className="size-3.5" aria-hidden="true" />
                         {benefit}
                       </li>
@@ -517,7 +517,7 @@ export function MarketDetailDialog({
                   <ol className="mt-3 space-y-2 text-sm leading-6 text-foreground/85">
                     {event.agenda.map((entry, index) => (
                       <li key={entry} className="flex items-start gap-2.5">
-                        <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-micro font-semibold text-rose-700">
+                        <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-error/10 text-micro font-semibold text-error">
                           {index + 1}
                         </span>
                         <span>{entry}</span>
@@ -592,7 +592,7 @@ export function MarketDetailDialog({
                     </span>
                   ) : event ? (
                     <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
-                      {event.price > 0 ? <>{event.price.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">{event.currency}</span></> : <span className="font-sans text-lg font-semibold text-emerald-700">Free registration</span>}
+                      {event.price > 0 ? <>{event.price.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">{event.currency}</span></> : <span className="font-sans text-lg font-semibold text-success">Free registration</span>}
                     </span>
                   ) : firm ? (
                     <span className="text-xl font-bold text-foreground">{firm.services?.length ?? 0} core services</span>
@@ -600,32 +600,32 @@ export function MarketDetailDialog({
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {listing?.condition ? <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">Condition: {listing.condition}</span> : null}
-                  {listing?.listing_type ? <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold capitalize text-amber-700">{listing.listing_type}</span> : null}
-                  {professional?.availability ? <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700">{professional.availability}</span> : null}
+                  {listing?.listing_type ? <span className="rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 text-xs font-semibold capitalize text-warning">{listing.listing_type}</span> : null}
+                  {professional?.availability ? <span className="rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-xs font-medium text-success">{professional.availability}</span> : null}
                   {professional?.rating != null && professional.rating > 0 ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                      <Star className="size-3.5 fill-amber-500 text-amber-500" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning">
+                      <Star className="size-3.5 fill-warning text-warning" />
                       {professional.rating.toFixed(1)}
                     </span>
                   ) : null}
-                  {job?.employment_type ? <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-xs font-semibold capitalize text-violet-700">{job.employment_type}</span> : null}
-                  {event?.seats_left != null ? <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-700">{event.seats_left} seats remaining</span> : null}
+                  {job?.employment_type ? <span className="rounded-full border border-accent-purple/20 bg-accent-purple/10 px-2.5 py-1 text-xs font-semibold capitalize text-accent-purple">{job.employment_type}</span> : null}
+                  {event?.seats_left != null ? <span className="rounded-full border border-error/20 bg-error/10 px-2.5 py-1 text-xs font-medium text-error">{event.seats_left} seats remaining</span> : null}
                   {listing?.negotiable ? <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">Negotiable</span> : null}
                   {listing?.is_verified ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:text-cyan-400">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-info/20 bg-info/10 px-2.5 py-1 text-xs font-semibold text-info">
                       <BadgeCheck className="size-3.5" aria-hidden="true" />
                       Verified seller
                     </span>
                   ) : null}
                   {(listing?.is_remote || professional?.is_remote || job?.is_remote || firm?.is_remote || event?.is_remote) ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-700 dark:text-sky-400">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-info/20 bg-info/10 px-2.5 py-1 text-xs font-medium text-info">
                       <Globe2 className="size-3.5" aria-hidden="true" />
                       Remote
                     </span>
                   ) : null}
                   {firm && reviewCount > 0 ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                      <Star className="size-3.5 fill-amber-500 text-amber-500" aria-hidden="true" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning">
+                      <Star className="size-3.5 fill-warning text-warning" aria-hidden="true" />
                       {(reviewAverage ?? 0).toFixed(1)} ({reviewCount})
                     </span>
                   ) : null}
@@ -705,7 +705,7 @@ export function MarketDetailDialog({
                     </span>
                   </div>
                   <button type="button" onClick={copyCoordinates} className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted hover:text-primary">
-                    {coordsCopied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+                    {coordsCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
                     <span>{coordsCopied ? "Copied" : "Copy"}</span>
                   </button>
                 </div>
@@ -1041,7 +1041,7 @@ function StarRow({ value, className }: { value: number; className?: string }) {
           key={n}
           className={cn(
             "size-3.5",
-            n <= value ? "fill-amber-500 text-amber-500" : "text-muted-foreground/40",
+            n <= value ? "fill-warning text-warning" : "text-muted-foreground/40",
           )}
         />
       ))}
@@ -1118,7 +1118,7 @@ function MarketReviews({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">Reviews</h3>
         {average != null && average > 0 ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning">
             <StarRow value={Math.round(average)} />
             {average.toFixed(1)} · {count} review{count === 1 ? "" : "s"}
           </span>
@@ -1170,7 +1170,7 @@ function MarketReviews({
                     <Star
                       className={cn(
                         "size-5",
-                        n <= rating ? "fill-amber-500 text-amber-500" : "text-muted-foreground/50",
+                        n <= rating ? "fill-warning text-warning" : "text-muted-foreground/50",
                       )}
                     />
                   </button>

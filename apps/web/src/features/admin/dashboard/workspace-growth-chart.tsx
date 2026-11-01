@@ -90,8 +90,8 @@ export function WorkspaceGrowthChart({ workspaces }: WorkspaceGrowthChartProps) 
       </div>
 
       {total === 0 ? (
-        <div className="dash-empty flex-1">
-          <TrendingUp className="dash-empty-icon" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center text-sm text-muted-foreground">
+          <TrendingUp className="h-5 w-5 text-muted-foreground" />
           <p>No workspaces created in the last 30 days.</p>
         </div>
       ) : (

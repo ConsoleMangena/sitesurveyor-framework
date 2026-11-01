@@ -1,5 +1,5 @@
 import SurveyLoader from "./SurveyLoader.tsx";
-import "../styles/page-loader.css";
+import { cn } from "@/lib/utils";
 
 interface PageLoaderProps {
   className?: string;
@@ -8,16 +8,20 @@ interface PageLoaderProps {
 }
 
 export default function PageLoader({
-  className = "",
+  className,
   compact = false,
   label,
 }: PageLoaderProps) {
-  const classes = ["page-loader", compact ? "compact" : "", className]
-    .filter(Boolean)
-    .join(" ");
-
   return (
-    <div className={classes} role="status" aria-label={label ?? "Loading"}>
+    <div
+      className={cn(
+        "flex w-full items-center justify-center",
+        compact ? "min-h-30 p-5" : "min-h-60 p-8",
+        className,
+      )}
+      role="status"
+      aria-label={label ?? "Loading"}
+    >
       <SurveyLoader size={compact ? "sm" : "md"} label={label} />
     </div>
   );

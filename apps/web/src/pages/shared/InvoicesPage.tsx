@@ -1057,7 +1057,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
 
   if (loading) {
     return (
-      <div className="hub-body invoices-page p-6">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
@@ -1359,8 +1359,9 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
   }
 
   return (
-    <DashboardShell className="hub-body invoices-page">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
+        className="print:hidden"
         title="Invoices"
         subtitle="Track payments, issue bills, and manage revenue"
         actions={
@@ -1403,6 +1404,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
       ) : null}
 
       <MetricStrip
+        className="print:hidden"
         metrics={[
           {
             label: "Outstanding",

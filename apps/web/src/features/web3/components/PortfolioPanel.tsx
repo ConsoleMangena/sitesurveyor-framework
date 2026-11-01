@@ -81,47 +81,32 @@ export function PortfolioPanel({
         </button>
       </div>
 
-      <div className="web3-panel-body" style={{ display: "grid", gap: 18 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+      <div className="web3-panel-body grid gap-4">
+        <div className="flex flex-wrap gap-6">
           <div>
             <p className="web3-kicker">Total value</p>
-            <p
-              className="web3-mono"
-              style={{
-                margin: "6px 0 0",
-                fontSize: "var(--web3-text-3xl)",
-                fontWeight: 600,
-                letterSpacing: "-0.02em",
-                color: "var(--web3-text)",
-              }}
-            >
+            <p className="web3-mono mt-1.5 text-3xl font-semibold tracking-tight text-foreground">
               {formatUsd(snapshot.totalValue)}
             </p>
           </div>
           <div>
             <p className="web3-kicker">24h change</p>
             <p
-              className={`web3-mono ${deltaClass(snapshot.change24h)}`}
-              style={{ margin: "6px 0 0", fontSize: "var(--web3-text-2xl)", fontWeight: 600 }}
+              className={`web3-mono mt-1.5 text-2xl font-semibold ${deltaClass(snapshot.change24h)}`}
             >
               {formatPercent(snapshot.change24h)}
             </p>
           </div>
           <div>
             <p className="web3-kicker">Holdings</p>
-            <p
-              className="web3-mono"
-              style={{ margin: "6px 0 0", fontSize: "var(--web3-text-2xl)", fontWeight: 600 }}
-            >
+            <p className="web3-mono mt-1.5 text-2xl font-semibold text-foreground">
               {snapshot.tokens.length}
             </p>
           </div>
         </div>
 
         {error ? (
-          <p className="web3-panel-sub" style={{ margin: 0 }}>
-            {error}
-          </p>
+          <p className="web3-panel-sub mt-0">{error}</p>
         ) : null}
 
         {snapshot.tokens.length === 0 ? (
@@ -134,15 +119,13 @@ export function PortfolioPanel({
         ) : (
           <>
             <div>
-              <p className="web3-kicker" style={{ margin: "0 0 6px" }}>
-                Allocation
-              </p>
+              <p className="web3-kicker mb-1.5">Allocation</p>
               {snapshot.tokens.slice(0, 6).map((token) => (
                 <div className="web3-alloc-row" key={`alloc-${token.mint}`}>
                   <span className="web3-alloc-name">
                     {token.symbol}
                     {token.name && token.name !== token.symbol ? (
-                      <span style={{ color: "var(--web3-text-dim)" }}>
+                      <span className="text-muted-foreground/70">
                         {" "}
                         · {token.name}
                       </span>
@@ -162,9 +145,7 @@ export function PortfolioPanel({
             </div>
 
             <div>
-              <p className="web3-kicker" style={{ margin: "0 0 4px" }}>
-                Holdings
-              </p>
+              <p className="web3-kicker mb-1">Holdings</p>
               {snapshot.tokens.map((token) => (
                 <div className="web3-token-row" key={token.mint}>
                   <span className="web3-token-icon">
@@ -201,7 +182,7 @@ export function PortfolioPanel({
       </div>
 
       <div className="web3-panel-foot">
-        <p className="web3-panel-sub" style={{ margin: 0 }}>
+        <p className="web3-panel-sub mt-0">
           {snapshot.updatedAt
             ? `Last synced ${formatClock(snapshot.updatedAt)}`
             : "Waiting for the first sync"}

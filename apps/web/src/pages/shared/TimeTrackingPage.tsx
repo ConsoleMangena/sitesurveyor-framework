@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Clock, DollarSign, Plus, Search, Trash2, CalendarDays, FileText } from "lucide-react";
-import PageLoader from "../../components/PageLoader.tsx";
+import { Clock, DollarSign, Plus, Search, Trash2, CalendarDays, FileText, Check } from "lucide-react";
 import {
   createExpenseEntry,
   createTimeEntry,
@@ -47,12 +46,15 @@ import {
   TableRow,
 } from "../../components/ui/table.tsx";
 import { ResponsiveTable } from "../../components/ui/responsive-table.tsx";
+import { Skeleton } from "../../components/ui/skeleton.tsx";
 import {
-  DashboardHeader,
-  DashboardShell,
-} from "../../components/dashboard/DashboardShell.tsx";
-import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
-import "../../styles/pages.css";
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../../components/ui/empty.tsx";
 
 interface TimeTrackingPageProps {
   workspaceId: string;
@@ -272,8 +274,15 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
 
   if (loading) {
     return (
-      <div className="hub-body">
-        <PageLoader />
+      <div className="space-y-4">
+        <Skeleton className="h-9 w-64" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -663,39 +672,41 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
       sub: `${billableHours.toFixed(2)}h billable`,
       value: `${totalHours.toFixed(2)}h`,
       icon: Clock,
-      tone: "success" as const,
+      iconClassName: "h-5 w-5 text-success",
     },
     {
       label: "This Week",
       sub: "Mon–Sun",
       value: `${thisWeekHours.toFixed(2)}h`,
       icon: Clock,
-      tone: "success" as const,
+      iconClassName: "h-5 w-5 text-success",
     },
     {
       label: "Total Expenses",
       sub: `$${reimbursableExpenses.toLocaleString()} reimbursable`,
       value: `$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
       icon: DollarSign,
-      tone: "warning" as const,
+      iconClassName: "h-5 w-5 text-warning",
     },
     {
       label: "Entries",
       sub: activeTab,
       value: entryCount.toString(),
       icon: Clock,
-      tone: "info" as const,
+      iconClassName: "h-5 w-5 text-primary",
     },
   ];
 
   const renderEmptyState = () => (
-    <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <Search className="h-12 w-12 text-muted-foreground/50" />
-      <div className="space-y-1">
-        <p className="font-medium text-foreground">
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Search className="h-5 w-5" />
+        </EmptyMedia>
+        <EmptyTitle>
           No {activeTab === "time" ? "time" : "expense"} entries match
-        </p>
-        <p className="text-sm text-muted-foreground">
+        </EmptyTitle>
+        <EmptyDescription>
           Try adjusting your search or project filters, or{" "}
           <button
             className="text-primary underline underline-offset-2 hover:no-underline"
@@ -704,29 +715,34 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
             log your first {activeTab === "time" ? "time entry" : "expense"}
           </button>
           .
-        </p>
-      </div>
-    </CardContent>
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent />
+    </Empty>
   );
 
   return (
-    <DashboardShell className="hub-body">
-      <DashboardHeader
-        badge={<Badge variant="secondary">Field log</Badge>}
-        title="Time & Expenses"
-        subtitle="Log your hours and site costs against real projects"
-        meta={
-          <>
+    <div className="space-y-4">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Time &amp; Expenses
+            <Badge variant="secondary">Field log</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Log your hours and site costs against real projects
+          </p>
+          <p className="text-xs text-muted-foreground">
             {entryCount} {entryCount === 1 ? "entry" : "entries"}
-          </>
-        }
-        actions={
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
           <Button size="sm" className="gap-2" onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4" />
             {activeTab === "time" ? "Log Time" : "Log Expense"}
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {error && (
         <Alert variant="destructive">
@@ -734,16 +750,18 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <KpiCard
-            key={stat.label}
-            title={stat.label}
-            value={stat.value}
-            subtext={stat.sub}
-            icon={<stat.icon className="h-4 w-4" />}
-            tone={stat.tone}
-          />
+          <Card key={stat.label}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
+              <stat.icon className={stat.iconClassName} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.sub}</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
@@ -757,8 +775,8 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
           </Tabs>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="console-toolbar">
-            <div className="console-toolbar-search relative">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={
@@ -769,31 +787,36 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
                 className="pl-9"
               />
             </div>
-            <select
-              className="h-9 rounded-none border border-input bg-background px-3 py-1 text-sm shadow-sm transition-[color,box-shadow]
-              focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1"
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
+            <Select
+              value={projectFilter === "" ? "internal" : projectFilter}
+              onValueChange={(value) =>
+                setProjectFilter(value === "internal" ? "" : value)
+              }
             >
-              <option value="all">All projects</option>
-              <option value="">Internal / No project</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full sm:w-48" aria-label="Filter by project">
+                <SelectValue placeholder="All projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All projects</SelectItem>
+                <SelectItem value="internal">Internal / No project</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <span className="text-xs text-muted-foreground sm:ml-auto">
               {entryCount} {entryCount === 1 ? "entry" : "entries"} shown
             </span>
           </div>
 
           {activeTab === "time" ? (
-            <ResponsiveTable records>
+            <ResponsiveTable>
               {filteredTimeEntries.length === 0 ? (
                 renderEmptyState()
               ) : (
-                <Table className="console-table min-w-[720px]">
+                <Table className="min-w-[720px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[100px]">Date</TableHead>
@@ -826,7 +849,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
                         </TableCell>
                         <TableCell data-label="Billable" className="align-middle text-center">
                           {e.billable ? (
-                            <span className="text-emerald-600">✓</span>
+                            <Check className="h-4 w-4 text-success" />
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
@@ -852,11 +875,11 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               )}
             </ResponsiveTable>
           ) : (
-            <ResponsiveTable records>
+            <ResponsiveTable>
               {filteredExpenseEntries.length === 0 ? (
                 renderEmptyState()
               ) : (
-                <Table className="console-table min-w-[720px]">
+                <Table className="min-w-[720px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[100px]">Date</TableHead>
@@ -921,6 +944,6 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </DashboardShell>
+    </div>
   );
 }

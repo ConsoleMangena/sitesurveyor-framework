@@ -497,7 +497,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
 
   if (loading) {
     return (
-      <div className="hub-body p-6">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
@@ -1224,7 +1224,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
   }
 
   return (
-    <DashboardShell className="hub-body">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         title="My Instruments"
         subtitle="Track, calibrate and deploy your survey fleet"
@@ -1479,9 +1479,9 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                       <Badge variant="default" className="shrink-0">Deployed</Badge>
                     </div>
                     <div className="space-y-1 text-sm">
-                      <div className="console-readout"><span className="console-readout-label">Crew</span><span className="console-readout-value">{inst.assignedTo}</span></div>
-                      <div className="console-readout"><span className="console-readout-label">Project</span><span className="console-readout-value">{inst.assignedProject}</span></div>
-                      <div className="console-readout"><span className="console-readout-label">Serial</span><code className="console-readout-value">{inst.serial}</code></div>
+                      <div className="flex items-baseline justify-between gap-4 py-1.5"><span className="shrink-0 text-muted-foreground">Crew</span><span className="min-w-0 text-right font-medium break-words">{inst.assignedTo}</span></div>
+                      <div className="flex items-baseline justify-between gap-4 py-1.5"><span className="shrink-0 text-muted-foreground">Project</span><span className="min-w-0 text-right font-medium break-words">{inst.assignedProject}</span></div>
+                      <div className="flex items-baseline justify-between gap-4 py-1.5"><span className="shrink-0 text-muted-foreground">Serial</span><code className="min-w-0 text-right font-medium break-words">{inst.serial}</code></div>
                     </div>
                     <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); void handleStatusChange(inst.dbId, "available", { current_project_name: null }); }}>
                       Check In
@@ -1503,8 +1503,8 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                           <Badge variant="success" className="shrink-0">Available</Badge>
                         </div>
                         <div className="space-y-1 text-sm">
-                          <div className="console-readout"><span className="console-readout-label">Type</span><span className="console-readout-value">{inst.type}</span></div>
-                          <div className="console-readout"><span className="console-readout-label">Serial</span><code className="console-readout-value">{inst.serial}</code></div>
+                          <div className="flex items-baseline justify-between gap-4 py-1.5"><span className="shrink-0 text-muted-foreground">Type</span><span className="min-w-0 text-right font-medium break-words">{inst.type}</span></div>
+                          <div className="flex items-baseline justify-between gap-4 py-1.5"><span className="shrink-0 text-muted-foreground">Serial</span><code className="min-w-0 text-right font-medium break-words">{inst.serial}</code></div>
                         </div>
                         <Button size="sm" onClick={(e) => openDeployModal(e, inst.dbId)}>Deploy</Button>
                       </CardContent>

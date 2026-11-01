@@ -6,6 +6,7 @@ import { Check, Download, Loader2, LockKeyhole, ShieldCheck, Wallet } from "luci
 import { Button } from "@/components/ui/button";
 import FieldError from "@/components/errors/FieldError.tsx";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -319,18 +320,21 @@ export default function WalletMethodsCard({
   };
 
   return (
-    <Card id="wallet-methods" className="wallet-methods-card">
-      <CardHeader className="wallet-methods-head">
-        <div className="flex items-start gap-3">
-          <span className="wallet-methods-mark">
-            <Wallet size={18} />
+    <Card id="wallet-methods" className="gap-0 border-border">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
+            <Wallet className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="wallet-methods-eyebrow-row">
-              <p className="treasury-eyebrow">Receiving wallets</p>
-              <span className="treasury-cluster-chip">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Receiving wallets
+              </p>
+              <Badge variant="secondary" className="gap-1.5">
+                <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
                 {SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}
-              </span>
+              </Badge>
             </div>
             <CardTitle className="mt-1 text-base">Wallet methods</CardTitle>
             <CardDescription>
@@ -341,10 +345,10 @@ export default function WalletMethodsCard({
         </div>
       </CardHeader>
 
-      <CardContent className="wallet-methods-body space-y-3">
+      <CardContent className="space-y-3">
         {error ? <FieldError>{error}</FieldError> : null}
 
-        <div className="wallet-method-register">
+        <div className="overflow-hidden rounded-lg border border-border">
           {options.map((option) => {
             const entry = wallets.find(
               (wallet) => wallet.adapter.name === option.adapterName,
@@ -377,27 +381,35 @@ export default function WalletMethodsCard({
             return (
               <div
                 key={option.key}
-                className="wallet-method-row"
+                className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
                 data-saved={saved || undefined}
               >
-                <span className="wallet-method-icon">
+                <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted text-muted-foreground">
                   {option.icon ? (
-                    <img src={option.icon} alt="" />
+                    <img src={option.icon} alt="" className="size-5 object-contain" />
                   ) : (
-                    <Wallet size={18} />
+                    <Wallet className="h-4 w-4" />
                   )}
                 </span>
-                <span className="wallet-method-copy">
-                  <span className="wallet-method-name">{option.name}</span>
-                  <span className="wallet-method-detail">
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-sm font-medium">{option.name}</span>
+                  <span className="truncate font-mono text-xs text-muted-foreground">
                     {saved && savedAddress ? shorten(savedAddress) : option.detail}
                   </span>
                 </span>
-                <span className="wallet-method-state">{state}</span>
-                <span className="wallet-method-action">
+                <span
+                  className={
+                    saved
+                      ? "text-xs font-semibold uppercase tracking-wider text-success"
+                      : "text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                  }
+                >
+                  {state}
+                </span>
+                <span className="ml-auto shrink-0">
                   {saved && connected ? (
                     <Button variant="ghost" size="sm" disabled className="gap-1.5">
-                      <Check size={14} />
+                      <Check className="h-4 w-4" />
                       Saved
                     </Button>
                   ) : option.action === "install" ? (
@@ -407,7 +419,7 @@ export default function WalletMethodsCard({
                       className="gap-1.5"
                       onClick={() => void handleMethod(option)}
                     >
-                      <Download size={14} />
+                      <Download className="h-4 w-4" />
                       Install
                     </Button>
                   ) : saved ? (
@@ -419,15 +431,15 @@ export default function WalletMethodsCard({
                       onClick={() => void handleMethod(option)}
                     >
                       {busy ? (
-                        <Loader2 size={14} className="animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Wallet size={14} />
+                        <Wallet className="h-4 w-4" />
                       )}
                       {busy ? "Connecting…" : "Connect"}
                     </Button>
                   ) : connected && !canManageBilling ? (
                     <Button variant="ghost" size="sm" disabled className="gap-1.5">
-                      <Check size={14} />
+                      <Check className="h-4 w-4" />
                       Connected
                     </Button>
                   ) : (
@@ -439,11 +451,11 @@ export default function WalletMethodsCard({
                       onClick={() => void handleMethod(option)}
                     >
                       {busy ? (
-                        <Loader2 size={14} className="animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : option.action === "handoff" ? (
-                        <Wallet size={14} />
+                        <Wallet className="h-4 w-4" />
                       ) : (
-                        <Check size={14} />
+                        <Check className="h-4 w-4" />
                       )}
                       {busy
                         ? "Connecting…"
@@ -460,15 +472,15 @@ export default function WalletMethodsCard({
           })}
 
           <div
-            className="wallet-method-row"
+            className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
             data-saved={customWalletMethod || customActive || undefined}
           >
-            <span className="wallet-method-icon">
-              <img src="/logo.svg" alt="" />
+            <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+              <img src="/logo.svg" alt="" className="size-5 object-contain" />
             </span>
-            <span className="wallet-method-copy">
-              <span className="wallet-method-name">{CUSTOM_WALLET_NAME}</span>
-              <span className="wallet-method-detail">
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-sm font-medium">{CUSTOM_WALLET_NAME}</span>
+              <span className="truncate font-mono text-xs text-muted-foreground">
                 {customWalletMethod?.detail
                   ? shorten(customWalletMethod.detail)
                   : customActive
@@ -478,7 +490,7 @@ export default function WalletMethodsCard({
                       : "Built-in app wallet"}
               </span>
             </span>
-            <span className="wallet-method-state">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {customActive
                 ? "Connected"
                 : customWalletMethod
@@ -487,11 +499,11 @@ export default function WalletMethodsCard({
                     ? "Locked"
                     : "Not created"}
             </span>
-            <span className="wallet-method-action">
+            <span className="ml-auto shrink-0">
               {customActive ? (
                 customWalletMethod || !canManageBilling ? (
                   <Button variant="ghost" size="sm" disabled className="gap-1.5">
-                    <Check size={14} />
+                    <Check className="h-4 w-4" />
                     {customWalletMethod ? "Saved" : "Connected"}
                   </Button>
                 ) : (
@@ -501,7 +513,7 @@ export default function WalletMethodsCard({
                     className="gap-1.5"
                     onClick={() => void saveActiveCustomWallet()}
                   >
-                    <Check size={14} />
+                    <Check className="h-4 w-4" />
                     Save method
                   </Button>
                 )
@@ -515,7 +527,7 @@ export default function WalletMethodsCard({
                     setCustomDialogOpen(true);
                   }}
                 >
-                  <LockKeyhole size={14} />
+                  <LockKeyhole className="h-4 w-4" />
                   {hasStoredCustomWallet ? "Unlock" : "Create"}
                 </Button>
               ) : null}
@@ -523,8 +535,8 @@ export default function WalletMethodsCard({
           </div>
         </div>
 
-        <p className="wallet-methods-note">
-          <ShieldCheck size={14} />
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
           {canManageBilling
             ? "SiteSurveyor saves the wallet address only — never your keys or seed phrase."
             : "You can connect a wallet to pay invoices. A finance manager saves receiving wallets."}
@@ -556,9 +568,9 @@ export default function WalletMethodsCard({
               className="gap-2"
             >
               {customBusy ? (
-                <Loader2 size={15} className="animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <LockKeyhole size={15} />
+                <LockKeyhole className="h-4 w-4" />
               )}
               {hasStoredCustomWallet ? "Unlock" : "Create wallet"}
             </Button>

@@ -284,40 +284,6 @@
     }
   }
 
-  /* ── Detail rows inside popups ── */
-  .dlg-field {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 7px 0;
-    border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
-    font-size: 13px;
-  }
-
-  .dlg-field:last-child {
-    border-bottom: none;
-  }
-
-  .dlg-field-label {
-    flex: none;
-    color: var(--text-muted);
-  }
-
-  .dlg-field-value {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    text-align: right;
-    color: var(--foreground);
-    font-weight: 500;
-  }
-
-  .dlg-field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 4px 24px;
-  }
-
   /* ── Confirmation sheet ── */
   .dlg-alert {
     --dlg-w: 28rem;

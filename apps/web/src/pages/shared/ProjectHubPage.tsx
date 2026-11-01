@@ -22,9 +22,8 @@ import {
   X,
 } from 'lucide-react'
 
-import '../../styles/project-hub.css'
-import '../../styles/pages.css'
 import ErrorNotice from '@/components/errors/ErrorNotice.tsx'
+import { cn } from '@/lib/utils'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -48,6 +47,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ResponsiveTable } from '@/components/ui/responsive-table'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+} from '@/components/ui/empty'
 import { generateLocalId } from '@/lib/localDb/utils'
 import { DashboardShell, DashboardHeader } from '@/components/dashboard/DashboardShell.tsx'
 import { DashboardCard } from '@/components/dashboard/DashboardCard.tsx'
@@ -127,9 +132,9 @@ const statusBadgeVariant: Record<string, BadgeProps['variant']> = {
 }
 
 const tabIcons: Record<ProjectTab, React.ReactNode> = {
-  overview: <LayoutGrid size={17} />,
-  files: <FolderOpen size={17} />,
-  settings: <Settings size={17} />,
+  overview: <LayoutGrid className="h-4 w-4" />,
+  files: <FolderOpen className="h-4 w-4" />,
+  settings: <Settings className="h-4 w-4" />,
 }
 
 const tabLabels: Record<ProjectTab, string> = {
@@ -668,29 +673,29 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
       label: 'Team Members',
       value: `${activeProject.members.length}`,
       sub: 'Personnel currently assigned',
-      accentColor: '#8b5cf6',
-      icon: <Settings size={16} />,
+      tone: 'purple' as const,
+      icon: <Settings className="h-4 w-4" />,
     },
     {
       label: 'Deployed Assets',
       value: `${deployedAssets.length}`,
       sub: 'Assets assigned to this project',
-      accentColor: '#3b82f6',
-      icon: <Layers size={16} />,
+      tone: 'info' as const,
+      icon: <Layers className="h-4 w-4" />,
     },
     {
       label: 'Activities',
       value: `${activities.length}`,
       sub: 'Notes, actions and system events',
-      accentColor: '#10b981',
-      icon: <Activity size={16} />,
+      tone: 'success' as const,
+      icon: <Activity className="h-4 w-4" />,
     },
     {
       label: 'Status',
       value: activeProject.status,
       sub: `${activeProject.phase} phase`,
-      accentColor: '#f59e0b',
-      icon: <CheckCircle2 size={16} />,
+      tone: 'warning' as const,
+      icon: <CheckCircle2 className="h-4 w-4" />,
     },
   ] : []
 
@@ -755,7 +760,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
   if (loading) {
     return (
-      <div className="hub-body p-6">
+      <div className="w-full p-6">
         <PageLoader />
       </div>
     )
@@ -768,7 +773,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
         description="Create a new project environment."
         onBack={() => setShowNewModal(false)}
         footer={
-          <Button type="submit" form="new-project-form" className="w-full sm:w-auto rounded-none" disabled={saving}>{saving ? 'Creating...' : 'Launch Environment'}</Button>
+          <Button type="submit" form="new-project-form" className="w-full sm:w-auto" disabled={saving}>{saving ? 'Creating...' : 'Launch Environment'}</Button>
         }
       >
         <form id="new-project-form" className="mx-auto w-full max-w-6xl" onSubmit={handleCreateProject}>
@@ -778,8 +783,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
-                      <ClipboardList size={15} />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardList className="h-4 w-4" />
                     </div>
                     <div>
                       <CardTitle className="text-base">
@@ -852,8 +857,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/10 text-primary">
-                      <MapPin size={15} />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <MapPin className="h-4 w-4" />
                     </div>
                     <div>
                       <CardTitle className="text-base">
@@ -952,7 +957,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
   }
 
   return (
-      <DashboardShell className={`hub-body project-hub-body ${activeProject ? 'project-hub-body-fullscreen p-0 gap-0' : ''}`}>
+      <DashboardShell className={cn('w-full max-w-none overflow-x-hidden', activeProject && 'h-full min-h-0 gap-0 overflow-hidden sm:gap-0')}>
       {error ? (
         <ErrorNotice tone="danger">
           {error}
@@ -960,30 +965,32 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
       ) : null}
 
       {notice && (
-        <div className={`flex items-center justify-between rounded-none px-4 py-3 text-sm ${notice.type === 'success' ? 'border border-emerald-200 bg-emerald-50 text-emerald-800' : 'border border-blue-200 bg-blue-50 text-blue-800'}`} role="status" aria-live="polite">
+        <div className={`flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm ${notice.type === 'success' ? 'border border-success/30 bg-success/10 text-success' : 'border border-border bg-muted text-foreground'}`} role="status" aria-live="polite">
           <span>{notice.message}</span>
-          <button type="button" onClick={() => setNotice(null)} className="text-lg leading-none" aria-label="Dismiss notice">×</button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => setNotice(null)} aria-label="Dismiss notice" className="size-7 shrink-0">
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       )}
 
       {syncStatus.status !== 'idle' && syncStatus.status !== 'synced' && (
         <div
-          className={`flex items-center justify-between rounded-none px-4 py-2 text-sm ${
+          className={`flex items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm ${
             syncStatus.status === 'error'
-              ? 'border border-amber-200 bg-amber-50 text-amber-800'
-              : 'border border-blue-200 bg-blue-50 text-blue-800'
+              ? 'border border-warning/30 bg-warning/10 text-warning'
+              : 'border border-border bg-muted text-foreground'
           }`}
           role="status"
           aria-live="polite"
         >
           <span className="flex items-center gap-2">
             {syncStatus.status === 'syncing' ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : syncStatus.status === 'error' &&
               (syncStatus.lastError?.toLowerCase().includes('offline') ? (
-                <CloudOff size={16} />
+                <CloudOff className="h-4 w-4" />
               ) : (
-                <RefreshCw size={16} />
+                <RefreshCw className="h-4 w-4" />
               ))}
             {syncStatus.status === 'syncing'
               ? 'Syncing projects…'
@@ -994,7 +1001,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 : null}
           </span>
           {syncStatus.status === 'error' && !syncStatus.lastError?.toLowerCase().includes('offline') && (
-            <Button variant="ghost" size="sm" onClick={() => void fetchProjects()} className="rounded-none">
+            <Button variant="ghost" size="sm" onClick={() => void fetchProjects()}>
               Retry
             </Button>
           )}
@@ -1012,14 +1019,14 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
               'fixed lg:static inset-y-0 left-0 z-50 lg:z-auto',
               'h-dvh lg:h-auto w-64',
               projectSidebarCollapsed ? 'lg:w-16' : 'lg:w-64',
-              'border-r bg-background shadow-2xl lg:shadow-none',
+              'border-r bg-background',
               projectMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
               'lg:translate-x-0',
             ].join(' ')}
           >
             <div className="p-4 border-b">
-              <Button variant="outline" size="sm" className="w-full justify-start gap-2 rounded-none" onClick={exitProject} title="Back to Projects">
-                <ArrowLeft size={16} />
+              <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={exitProject} title="Back to Projects">
+                <ArrowLeft className="h-4 w-4" />
                 {!projectSidebarCollapsed && <span>Back to Projects</span>}
               </Button>
               {!projectSidebarCollapsed && (
@@ -1034,7 +1041,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 <Button
                   key={tab}
                   variant={effectiveProjectTab === tab ? 'secondary' : 'ghost'}
-                  className="w-full justify-start gap-2 rounded-none"
+                  className="w-full justify-start gap-2"
                   onClick={() => { setActiveProjectTab(tab); setProjectMobileMenuOpen(false); }}
                 >
                   {tabIcons[tab]}
@@ -1043,8 +1050,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
               ))}
             </nav>
             <div className="p-3 border-t">
-              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 rounded-none" onClick={() => setProjectSidebarCollapsed(v => !v)} title={projectSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-                {projectSidebarCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => setProjectSidebarCollapsed(v => !v)} title={projectSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+                {projectSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 {!projectSidebarCollapsed && <span>Collapse</span>}
               </Button>
             </div>
@@ -1052,13 +1059,13 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
             <div className="flex flex-col gap-4 p-4 sm:p-6">
-                <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <header className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3 min-w-0">
-                    <Button variant="outline" size="icon" className="lg:hidden shrink-0 rounded-none" onClick={() => setProjectMobileMenuOpen(true)}>
-                      <Menu size={18} />
+                    <Button variant="outline" size="icon" className="lg:hidden shrink-0" onClick={() => setProjectMobileMenuOpen(true)} aria-label="Open project navigation">
+                      <Menu className="h-4 w-4" />
                     </Button>
                     <div className="min-w-0">
-                      <h1 className="text-xl font-bold truncate">{activeProject.name}</h1>
+                      <h1 className="text-2xl font-bold tracking-tight truncate">{activeProject.name}</h1>
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{activeProject.id}</code>
                         <span>·</span>
@@ -1067,7 +1074,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setSelectedProject(activeProject)} className="rounded-none">Details</Button>
+                    <Button size="sm" variant="outline" onClick={() => setSelectedProject(activeProject)}>Details</Button>
                   </div>
                 </header>
 
@@ -1156,8 +1163,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
             title="Projects"
             subtitle="Manage tracking, computations, and deployments for active field operations"
             actions={
-              <Button onClick={() => setShowNewModal(true)} disabled={!canEditProjects} className="gap-2 rounded-none">
-                <Plus size={16} /> New Project
+              <Button onClick={() => setShowNewModal(true)} disabled={!canEditProjects} className="gap-2">
+                <Plus className="h-4 w-4" /> New Project
               </Button>
             }
           />
@@ -1197,10 +1204,10 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
           <DashboardCard
             title="Projects"
-            icon={<LayoutGrid size={16} />}
+            icon={<LayoutGrid className="h-4 w-4" />}
             titleAction={
               <div className="relative w-full sm:w-64">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="project-search"
                   name="project-search"
@@ -1211,7 +1218,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 />
                 {searchQuery && (
                   <button type="button" onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search">
-                    <X size={14} />
+                    <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -1224,10 +1231,10 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                   variant={activeFilter === tab ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveFilter(tab)}
-                  className="gap-1.5 rounded-none"
+                  className="gap-1.5"
                 >
                   {tab}
-                  <Badge variant={activeFilter === tab ? 'secondary' : 'outline'} className="h-5 px-1.5 text-[10px]">{counts[tab]}</Badge>
+                  <Badge variant={activeFilter === tab ? 'secondary' : 'outline'} className="h-5 px-1.5 text-xs">{counts[tab]}</Badge>
                 </Button>
               ))}
             </div>
@@ -1281,8 +1288,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                       <TableCell className="align-middle text-right hidden sm:table-cell font-mono font-semibold">{p.points.toLocaleString()}</TableCell>
                       <TableCell className="align-middle hidden md:table-cell">
                         <div className="flex items-center gap-2">
-                          <div className="h-2 flex-1 rounded-none bg-muted overflow-hidden">
-                            <div className="h-full rounded-none bg-primary" style={{ width: `${p.progress}%` }} />
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
                           </div>
                           <span className="text-xs font-semibold w-8 text-right">{p.progress}%</span>
                         </div>
@@ -1305,7 +1312,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 return (
                   <article
                     key={p.dbId}
-                    className="cursor-pointer rounded-none border border-border/40 bg-muted/30 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="cursor-pointer rounded-lg border border-border/40 bg-muted/30 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => setSelectedProject(p)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedProject(p); } }}
                     tabIndex={0}
@@ -1332,8 +1339,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                       </p>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-none bg-muted overflow-hidden">
-                        <div className="h-full rounded-none bg-primary" style={{ width: `${p.progress}%` }} />
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
                       </div>
                       <span className="w-9 shrink-0 text-right text-xs font-semibold">{p.progress}%</span>
                       <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{p.points.toLocaleString()} pts</span>
@@ -1344,9 +1351,16 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
             </div>
 
             {filteredProjects.length === 0 && (
-              <div className="p-12 text-center text-muted-foreground">
-                {projects.length === 0 ? 'No projects yet. Create your first project to get started.' : 'No projects found.'}
-              </div>
+              <Empty className="border-none">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <FolderOpen />
+                  </EmptyMedia>
+                  <EmptyDescription>
+                    {projects.length === 0 ? 'No projects yet. Create your first project to get started.' : 'No projects found.'}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
           </DashboardCard>
         </div>
@@ -1361,8 +1375,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
         size="md"
         footer={
           <>
-            <Button type="button" variant="outline" onClick={() => setShowAssignModal(false)} className="rounded-none">Cancel</Button>
-            <Button type="submit" form="assign-member-form" disabled={assigningMember} className="rounded-none">{assigningMember ? 'Sending...' : 'Send Invitation'}</Button>
+            <Button type="button" variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
+            <Button type="submit" form="assign-member-form" disabled={assigningMember}>{assigningMember ? 'Sending...' : 'Send Invitation'}</Button>
           </>
         }
       >
@@ -1411,18 +1425,18 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
           <>
             {selectedProject.status === 'Archived' ? (
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => handleUnarchiveProject(selectedProject.dbId)} className="rounded-none">Restore Project</Button>
-                <Button variant="destructive" onClick={() => setShowPermanentDeleteConfirm(true)} className="rounded-none">Delete Forever</Button>
+                <Button variant="outline" onClick={() => handleUnarchiveProject(selectedProject.dbId)}>Restore Project</Button>
+                <Button variant="destructive" onClick={() => setShowPermanentDeleteConfirm(true)}>Delete Forever</Button>
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => setShowDeleteConfirm(true)} className="rounded-none">Archive Project</Button>
-                <Button variant="destructive" onClick={() => setShowPermanentDeleteConfirm(true)} className="rounded-none">Delete Project</Button>
+                <Button variant="outline" onClick={() => setShowDeleteConfirm(true)}>Archive Project</Button>
+                <Button variant="destructive" onClick={() => setShowPermanentDeleteConfirm(true)}>Delete Project</Button>
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => { setSelectedProject(null); setShowDeleteConfirm(false); setShowPermanentDeleteConfirm(false); setDeleteConfirmText(''); }} className="rounded-none">Close</Button>
-              <Button onClick={() => openProject(selectedProject)} className="rounded-none">Open Project</Button>
+              <Button variant="outline" onClick={() => { setSelectedProject(null); setShowDeleteConfirm(false); setShowPermanentDeleteConfirm(false); setDeleteConfirmText(''); }}>Close</Button>
+              <Button onClick={() => openProject(selectedProject)}>Open Project</Button>
             </div>
           </>
         ) : undefined}
@@ -1430,27 +1444,27 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
         {selectedProject && (
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-              <div className="rounded-none border p-3 space-y-1">
+              <div className="rounded-lg border p-3 space-y-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Status</span>
                 <Badge variant={statusBadgeVariant[selectedProject.status] ?? 'secondary'}>{selectedProject.status}</Badge>
               </div>
-              <div className="rounded-none border p-3 space-y-1">
+              <div className="rounded-lg border p-3 space-y-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Client</span>
                 <p className="font-medium">{selectedProject.client}</p>
               </div>
-              <div className="rounded-none border p-3 space-y-1">
+              <div className="rounded-lg border p-3 space-y-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Datum</span>
                 <p className="font-medium">{selectedProject.datum}</p>
               </div>
-              <div className="rounded-none border p-3 space-y-1">
+              <div className="rounded-lg border p-3 space-y-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Points</span>
                 <p className="font-medium">{selectedProject.points.toLocaleString()}</p>
               </div>
-              <div className="rounded-none border p-3 space-y-1">
+              <div className="rounded-lg border p-3 space-y-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Created</span>
                 <p className="font-medium">{selectedProject.createdAt}</p>
               </div>
-              <div className="rounded-none border p-3 space-y-1">
+              <div className="rounded-lg border p-3 space-y-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Last Activity</span>
                 <p className="font-medium">{selectedProject.lastActivity}</p>
               </div>
@@ -1459,8 +1473,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
             <div className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Progress</span>
               <div className="flex items-center gap-3">
-                <div className="h-2.5 flex-1 rounded-none bg-muted overflow-hidden">
-                  <div className="h-full rounded-none bg-primary" style={{ width: `${selectedProject.progress}%` }} />
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${selectedProject.progress}%` }} />
                 </div>
                 <span className="text-sm font-bold w-10 text-right">{selectedProject.progress}%</span>
               </div>
@@ -1478,7 +1492,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team ({selectedProject.members.length})</span>
                 <div className="space-y-2">
                   {selectedProject.members.map((m, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-none border p-3 text-sm">
+                    <div key={i} className="flex items-center justify-between rounded-lg border p-3 text-sm">
                       <div>
                         <p className="font-medium">{m.name}</p>
                         <p className="text-xs text-muted-foreground">{m.role}</p>
@@ -1491,23 +1505,23 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
             )}
 
             {showPermanentDeleteConfirm ? (
-              <div className="rounded-none border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
                 <p className="text-sm font-semibold text-destructive">Are you sure you want to PERMANENTLY DELETE this project?</p>
                 <p className="text-sm text-destructive">This will destroy all related field data. Type <strong>{selectedProject.name}</strong> to confirm.</p>
                 <Input id="delete-project-confirm" name="delete-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { setShowPermanentDeleteConfirm(false); setDeleteConfirmText(''); }} className="rounded-none">Cancel</Button>
-                  <Button size="sm" variant="destructive" disabled={deleteConfirmText !== selectedProject.name} onClick={() => handlePermanentDeleteProject(selectedProject.dbId)} className="rounded-none">Delete Project Permanently</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setShowPermanentDeleteConfirm(false); setDeleteConfirmText(''); }}>Cancel</Button>
+                  <Button size="sm" variant="destructive" disabled={deleteConfirmText !== selectedProject.name} onClick={() => handlePermanentDeleteProject(selectedProject.dbId)}>Delete Project Permanently</Button>
                 </div>
               </div>
             ) : showDeleteConfirm ? (
-              <div className="rounded-none border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
                 <p className="text-sm font-semibold text-destructive">Are you sure you want to archive this project?</p>
                 <p className="text-sm text-destructive">Type <strong>{selectedProject.name}</strong> to confirm.</p>
                 <Input id="archive-project-confirm" name="archive-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }} className="rounded-none">Cancel</Button>
-                  <Button size="sm" variant="destructive" disabled={deleteConfirmText !== selectedProject.name} onClick={() => handleArchiveProject(selectedProject.dbId)} className="rounded-none">Archive Project</Button>
+                  <Button variant="outline" size="sm" onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}>Cancel</Button>
+                  <Button size="sm" variant="destructive" disabled={deleteConfirmText !== selectedProject.name} onClick={() => handleArchiveProject(selectedProject.dbId)}>Archive Project</Button>
                 </div>
               </div>
             ) : null}

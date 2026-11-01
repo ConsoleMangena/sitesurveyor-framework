@@ -11,12 +11,13 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { KpiCard } from "@/components/dashboard/KpiCard";
-import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import {
-  DashboardHeader,
-  DashboardSection,
-} from "@/components/dashboard/DashboardShell";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import type { WorkspaceRowAdmin } from "@/lib/repositories/adminPlatform";
 
 import { RecentWorkspacesTable } from "./recent-workspaces-table";
@@ -59,110 +60,185 @@ export function AdminPlatformDashboard({
 
   return (
     <>
-      <DashboardHeader
-        badge={<Badge variant="secondary">Platform admin</Badge>}
-        title="Platform overview"
-        subtitle={format(new Date(), "EEEE, MMMM d, yyyy")}
-        description="Every workspace, owner and account across SiteSurveyor."
-        actions={
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-            {lastRefreshed && !loading ? (
-              <span className="text-xs text-muted-foreground">
-                Refreshed{" "}
-                {lastRefreshed.toLocaleTimeString(undefined, {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void onRefresh()}
-              disabled={loading}
-              className="w-full gap-2 sm:w-auto"
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : undefined} />
-              Refresh
-            </Button>
-          </div>
-        }
-      />
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Platform overview
+            <Badge variant="secondary">Platform admin</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {format(new Date(), "EEEE, MMMM d, yyyy")}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Every workspace, owner and account across SiteSurveyor.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {lastRefreshed && !loading ? (
+            <span className="text-xs text-muted-foreground">
+              Refreshed{" "}
+              {lastRefreshed.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          ) : null}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void onRefresh()}
+            disabled={loading}
+            className="w-full gap-2 sm:w-auto"
+          >
+            <RefreshCw
+              className={`h-4 w-4${loading ? " animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+        </div>
+      </div>
 
       {loading && workspaces.length === 0 ? (
         <DashboardSkeleton kpis={4} rail={4} />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <KpiCard
-              title="Active workspaces"
-              value={formatStat(stats.active)}
-              subtext={`${stats.personal} personal · ${stats.business} business`}
-              icon={<Briefcase className="size-4" />}
-              tone="primary"
-            />
-            <KpiCard
-              title="User profiles"
-              value={userCount === null ? "—" : formatStat(userCount)}
-              subtext="Registered accounts"
-              icon={<Users className="size-4" />}
-              tone="info"
-            />
-            <KpiCard
-              title="Personal workspaces"
-              value={formatStat(stats.personal)}
-              subtext="Individual accounts"
-              icon={<Users className="size-4" />}
-              tone="success"
-            />
-            <KpiCard
-              title="Business workspaces"
-              value={formatStat(stats.business)}
-              subtext="Organizations"
-              icon={<Building2 className="size-4" />}
-              tone="purple"
-            />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Active workspaces
+                </CardTitle>
+                <Briefcase className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatStat(stats.active)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.personal} personal · {stats.business} business
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">User profiles</CardTitle>
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {userCount === null ? "—" : formatStat(userCount)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Registered accounts
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Personal workspaces
+                </CardTitle>
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {formatStat(stats.personal)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Individual accounts
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Business workspaces
+                </CardTitle>
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {formatStat(stats.business)}
+                </div>
+                <p className="text-xs text-muted-foreground">Organizations</p>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
-            <KpiCard
-              size="compact"
-              title="Archived"
-              value={formatStat(stats.archived)}
-              icon={<Archive className="size-3.5" />}
-              tone="neutral"
-            />
-            <KpiCard
-              size="compact"
-              title="New · 30 days"
-              value={formatStat(stats.newIn30)}
-              icon={<Sparkles className="size-3.5" />}
-              tone="success"
-            />
-            <KpiCard
-              size="compact"
-              title="Owners labelled"
-              value={formatStat(ownerLabels.size)}
-              icon={<Users className="size-3.5" />}
-              tone="info"
-            />
-            <KpiCard
-              size="compact"
-              title="Workspace total"
-              value={formatStat(workspaces.length)}
-              icon={<Briefcase className="size-3.5" />}
-              tone="neutral"
-            />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="flex items-center gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <Archive className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Archived
+                  </p>
+                  <p className="text-xl font-bold">{formatStat(stats.archived)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-center gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <Sparkles className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    New · 30 days
+                  </p>
+                  <p className="text-xl font-bold">{formatStat(stats.newIn30)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-center gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Owners labelled
+                  </p>
+                  <p className="text-xl font-bold">
+                    {formatStat(ownerLabels.size)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-center gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <Briefcase className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Workspace total
+                  </p>
+                  <p className="text-xl font-bold">
+                    {formatStat(workspaces.length)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Both cards take the full row: the growth trend reads better wide,
               and the workspace records clip beside anything narrower. */}
-          <DashboardSection title="Growth & workspaces">
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Growth &amp; workspaces
+            </h2>
             <div className="flex flex-col gap-4 sm:gap-5">
               <WorkspaceGrowthChart workspaces={workspaces} />
               <RecentWorkspacesTable workspaces={workspaces} ownerLabels={ownerLabels} />
             </div>
-          </DashboardSection>
+          </section>
         </>
       )}
     </>

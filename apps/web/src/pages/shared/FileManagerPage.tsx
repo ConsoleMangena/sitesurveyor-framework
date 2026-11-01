@@ -82,7 +82,6 @@ import {
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import type { AttachmentRow } from "../../lib/repositories/attachments.ts";
 
-import "../../styles/pages.css";
 
 interface FileManagerPageProps {
   workspaceId: string;
@@ -660,14 +659,14 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
 
   if (loading) {
     return (
-      <div className="hub-body p-6 file-manager-page">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
   }
 
   return (
-    <DashboardShell className="hub-body file-manager-page">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         badge={<Badge variant="secondary">Secure storage</Badge>}
         title="File Manager"

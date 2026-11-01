@@ -243,7 +243,7 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /create account/i }));
 
-    const businessCard = screen.getByText("Business Firm").closest(".web3-type-card");
+    const businessCard = screen.getByText("Business Firm").closest("label");
     expect(businessCard).toBeInTheDocument();
     if (businessCard) fireEvent.click(businessCard);
 

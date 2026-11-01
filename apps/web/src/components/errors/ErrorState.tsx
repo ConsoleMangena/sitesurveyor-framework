@@ -11,9 +11,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { clearSiteData } from "@/lib/clearSiteData.ts";
 import { isDynamicImportError } from "@/components/appErrorUtils.ts";
-import "@/styles/error-surfaces.css";
 
 export type AppErrorKind = "runtime" | "chunk" | "offline" | "not-found";
 
@@ -28,20 +34,16 @@ const content: Record<
   AppErrorKind,
   {
     code: string;
-    eyebrow: string;
     title: string;
     message: string;
-    visualLabel: string;
     steps: string[];
   }
 > = {
   runtime: {
     code: "ERR_RUNTIME",
-    eyebrow: "Unexpected interruption",
     title: "We hit a temporary problem",
     message:
       "The page could not finish loading. Your work is safe. Try again or return to the home page.",
-    visualLabel: "Signal interrupted",
     steps: [
       "Retry the page — most interruptions clear on a second load.",
       "Check that your connection is stable.",
@@ -50,11 +52,9 @@ const content: Record<
   },
   chunk: {
     code: "ERR_UPDATE",
-    eyebrow: "App update detected",
     title: "This page needs a fresh copy",
     message:
       "The app was updated while this page was open. Refreshing the app cache should restore the latest version.",
-    visualLabel: "New version ready",
     steps: [
       "Refresh the app to pull the latest version.",
       "The app cache is cleared during this step, so you may need to sign in again.",
@@ -63,11 +63,9 @@ const content: Record<
   },
   offline: {
     code: "ERR_OFFLINE",
-    eyebrow: "Connection unavailable",
     title: "You appear to be offline",
     message:
       "Reconnect to the internet and try again. Previously loaded workspace data may still be available.",
-    visualLabel: "Signal lost",
     steps: [
       "Reconnect to Wi-Fi or mobile data.",
       "Cached pages and recent changes stay available.",
@@ -76,10 +74,8 @@ const content: Record<
   },
   "not-found": {
     code: "404",
-    eyebrow: "Page not found",
     title: "That page moved or does not exist",
     message: "Check the address or return to your workspace and continue from there.",
-    visualLabel: "Marker missing",
     steps: [
       "Check the address for typos or a missing segment.",
       "Return home and navigate to the page from there.",
@@ -95,7 +91,12 @@ const icons: Record<AppErrorKind, LucideIcon> = {
   "not-found": Compass,
 };
 
-export default function ErrorState({ kind = "runtime", error, onRetry, onHome }: ErrorStateProps) {
+export default function ErrorState({
+  kind = "runtime",
+  error,
+  onRetry,
+  onHome,
+}: ErrorStateProps) {
   const resolvedKind: AppErrorKind =
     kind === "runtime" && error && isDynamicImportError(error) ? "chunk" : kind;
   const copy = content[resolvedKind];
@@ -135,50 +136,31 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
   };
 
   return (
-    <main className="error-state-screen" data-state={resolvedKind}>
-      <div className="error-state-backdrop" aria-hidden="true" />
-
-      <section className="error-state-card" role="alert" aria-labelledby="error-state-title">
-        <div className="error-state-visual" aria-hidden="true">
-          <span className="error-state-code">{copy.code}</span>
-          <div className="error-state-signal">
-            <span className="error-state-signal-ring" />
-            <span className="error-state-signal-ring" />
-            <span className="error-state-signal-icon">
-              <Icon size={38} strokeWidth={1.7} />
-            </span>
+    <main className="flex min-h-svh w-full items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-xl gap-0 py-0">
+        <CardHeader className="gap-4 border-b py-6">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
+            <Icon className="size-5" aria-hidden="true" />
           </div>
-          <span className="error-state-visual-label">{copy.visualLabel}</span>
-        </div>
-
-        <div className="error-state-content">
-          <div className="error-state-brand">
-            <img src="/logo.svg" alt="" className="error-state-logo" />
-            <span className="error-state-brand-name">
-              SiteSurveyor
-              <span className="error-state-brand-sub">Field survey operations</span>
-            </span>
-          </div>
-
-          <div className="error-state-copy">
-            <p className="error-state-eyebrow">{copy.eyebrow}</p>
-            <h1
-              ref={headingRef}
-              id="error-state-title"
-              className="error-state-title"
-              tabIndex={-1}
-            >
+          <CardTitle className="text-2xl tracking-tight">
+            <h1 ref={headingRef} id="error-state-title" tabIndex={-1}>
               {copy.title}
             </h1>
-            <p className="error-state-message">{copy.message}</p>
-          </div>
+          </CardTitle>
+        </CardHeader>
 
-          <div className="error-state-guide">
-            <p className="error-state-guide-title">What you can try</p>
-            <ol className="error-state-steps">
+        <CardContent className="space-y-6 py-6">
+          <p className="text-sm text-muted-foreground">{copy.message}</p>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-foreground">What you can try</p>
+            <ol className="space-y-2">
               {copy.steps.map((step, index) => (
-                <li key={step}>
-                  <span className="error-state-step-num" aria-hidden="true">
+                <li key={step} className="flex gap-3 text-sm text-muted-foreground">
+                  <span
+                    aria-hidden="true"
+                    className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums text-muted-foreground"
+                  >
                     {index + 1}
                   </span>
                   <span>{step}</span>
@@ -187,52 +169,53 @@ export default function ErrorState({ kind = "runtime", error, onRetry, onHome }:
             </ol>
           </div>
 
-          <div className="error-state-actions">
-            {resolvedKind !== "not-found" ? (
-              <Button type="button" onClick={handlePrimary} className="error-state-primary">
-                {resolvedKind === "chunk" ? (
-                  <RefreshCw size={16} aria-hidden="true" />
-                ) : (
-                  <RotateCw size={16} aria-hidden="true" />
-                )}
-                {resolvedKind === "chunk" ? "Refresh app" : "Try again"}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant={resolvedKind === "not-found" ? "default" : "outline"}
-              onClick={handleHome}
-              className="error-state-secondary"
-            >
-              <Home size={16} aria-hidden="true" />
-              Go home
-            </Button>
-            {resolvedKind === "not-found" ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleBack}
-                className="error-state-back"
-              >
-                <ArrowLeft size={16} aria-hidden="true" />
-                Go back
-              </Button>
-            ) : null}
-          </div>
-
           {import.meta.env.DEV && error ? (
-            <details className="error-state-dev">
-              <summary>Technical details</summary>
-              <pre>{error.message}</pre>
+            <details className="rounded-lg border bg-muted/40 p-3 text-sm">
+              <summary className="cursor-pointer font-medium text-foreground">
+                Technical details
+              </summary>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs text-muted-foreground">
+                {error.message}
+              </pre>
             </details>
           ) : null}
-        </div>
-      </section>
+        </CardContent>
 
-      <p className="error-state-footer">
-        <LifeBuoy size={14} aria-hidden="true" />
-        Still stuck? Ask your workspace administrator to check your access.
-      </p>
+        <CardFooter className="flex-wrap gap-2 border-t py-4">
+          {resolvedKind !== "not-found" ? (
+            <Button type="button" onClick={handlePrimary}>
+              {resolvedKind === "chunk" ? (
+                <RefreshCw size={16} aria-hidden="true" />
+              ) : (
+                <RotateCw size={16} aria-hidden="true" />
+              )}
+              {resolvedKind === "chunk" ? "Refresh app" : "Try again"}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant={resolvedKind === "not-found" ? "default" : "outline"}
+            onClick={handleHome}
+          >
+            <Home size={16} aria-hidden="true" />
+            Go home
+          </Button>
+          {resolvedKind === "not-found" ? (
+            <Button type="button" variant="ghost" onClick={handleBack}>
+              <ArrowLeft size={16} aria-hidden="true" />
+              Go back
+            </Button>
+          ) : null}
+
+          <p className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+              {copy.code}
+            </code>
+            <LifeBuoy size={14} aria-hidden="true" />
+            Still stuck? Ask your workspace administrator to check your access.
+          </p>
+        </CardFooter>
+      </Card>
     </main>
   );
 }

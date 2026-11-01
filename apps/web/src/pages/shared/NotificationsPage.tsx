@@ -5,18 +5,25 @@ import {
   type NotificationRow,
 } from "../../lib/repositories/notifications.ts";
 import type { WorkspaceView } from "../../features/workspace/types.ts";
-import PageLoader from "../../components/PageLoader.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Badge } from "../../components/ui/badge.tsx";
-import { Card, CardContent } from "../../components/ui/card.tsx";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card.tsx";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { ScrollArea } from "../../components/ui/scroll-area.tsx";
 import {
-  DashboardHeader,
-  DashboardShell,
-} from "../../components/dashboard/DashboardShell.tsx";
-import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../../components/ui/empty.tsx";
+import { Skeleton } from "../../components/ui/skeleton.tsx";
 import { cn } from "../../lib/utils.ts";
 
 interface NotificationsPageProps {
@@ -87,60 +94,78 @@ export default function NotificationsPage({
   };
 
   const summary = [
-    { label: "Total", value: notifications.length, tone: "neutral" as const, icon: Bell },
-    { label: "Unread", value: unreadCount, tone: "primary" as const, icon: Bell },
-    { label: "Read", value: readCount, tone: "success" as const, icon: Check },
+    {
+      label: "Total",
+      value: notifications.length,
+      icon: Bell,
+      iconClassName: "h-5 w-5 text-muted-foreground",
+    },
+    {
+      label: "Unread",
+      value: unreadCount,
+      icon: Bell,
+      iconClassName: "h-5 w-5 text-primary",
+    },
+    {
+      label: "Read",
+      value: readCount,
+      icon: Check,
+      iconClassName: "h-5 w-5 text-muted-foreground",
+    },
   ];
 
   return (
-    <DashboardShell className="hub-body">
-      <DashboardHeader
-        badge={<Badge variant="secondary">Signal feed</Badge>}
-        title="Notifications"
-        subtitle="Review workspace updates, assignments, invitations, and quote activity."
-        meta={
-          <>
+    <div className="space-y-4">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Notifications
+            <Badge variant="secondary">Signal feed</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Review workspace updates, assignments, invitations, and quote activity.
+          </p>
+          <p className="text-xs text-muted-foreground">
             {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-          </>
-        }
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={refreshing}
-              onClick={() => void handleRefresh()}
-            >
-              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-              {refreshing ? "Refreshing" : "Refresh"}
-            </Button>
-            <Button
-              size="sm"
-              disabled={unreadCount === 0 || markingAllRead}
-              onClick={() => void handleMarkAllRead()}
-            >
-              <Check className="h-4 w-4" />
-              {markingAllRead ? "Updating" : "Mark all as read"}
-              {unreadCount > 0 && !markingAllRead && (
-                <Badge variant="secondary" className="ml-2">
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-          </>
-        }
-      />
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={refreshing}
+            onClick={() => void handleRefresh()}
+          >
+            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+            {refreshing ? "Refreshing" : "Refresh"}
+          </Button>
+          <Button
+            size="sm"
+            disabled={unreadCount === 0 || markingAllRead}
+            onClick={() => void handleMarkAllRead()}
+          >
+            <Check className="h-4 w-4" />
+            {markingAllRead ? "Updating" : "Mark all as read"}
+            {unreadCount > 0 && !markingAllRead && (
+              <Badge variant="secondary" className="ml-2">
+                {unreadCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         {summary.map((item) => (
-          <KpiCard
-            key={item.label}
-            title={item.label}
-            value={item.value}
-            icon={<item.icon className="h-4 w-4" />}
-            tone={item.tone}
-            size="compact"
-          />
+          <Card key={item.label}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
+              <item.icon className={item.iconClassName} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{item.value}</div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
@@ -163,21 +188,25 @@ export default function NotificationsPage({
       <Card>
         <CardContent className="p-0">
           {loading && notifications.length === 0 ? (
-            <div className="p-8">
-              <PageLoader compact />
+            <div className="space-y-3 p-6" role="status" aria-label="Loading">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
           ) : filteredNotifications.length === 0 ? (
-            <div className="console-empty">
-              <span className="console-empty-icon" aria-hidden="true">
-                <Bell size={18} />
-              </span>
-              <p className="console-empty-title">No notifications</p>
-              <p>
-                {filter === "all"
-                  ? "You're all caught up."
-                  : `No ${filter} notifications found.`}
-              </p>
-            </div>
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon" aria-hidden="true">
+                  <Bell className="h-5 w-5" />
+                </EmptyMedia>
+                <EmptyTitle>No notifications</EmptyTitle>
+                <EmptyDescription>
+                  {filter === "all"
+                    ? "You're all caught up."
+                    : `No ${filter} notifications found.`}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <ScrollArea className="h-[min(600px,calc(100dvh-18rem))] pb-[env(safe-area-inset-bottom,0px)]">
               <div className="divide-y">
@@ -231,6 +260,6 @@ export default function NotificationsPage({
           )}
         </CardContent>
       </Card>
-    </DashboardShell>
+    </div>
   );
 }

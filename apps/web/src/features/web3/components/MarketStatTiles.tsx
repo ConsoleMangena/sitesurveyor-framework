@@ -30,7 +30,8 @@ function Sparkline({ change24h }: { change24h: number | null }) {
   return (
     <svg width={60} height={28} viewBox="0 0 60 28" fill="none" aria-hidden="true"
          style={{ display: "block" }}>
-      <path d={d} stroke={up ? "#16a34a" : "#dc2626"} strokeWidth={1.5}
+      <path d={d} strokeWidth={1.5}
+            style={{ stroke: up ? "var(--color-success)" : "var(--color-error)" }}
             fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -47,7 +48,7 @@ export function MarketStatTiles({
   const tiles: {
     label: string;
     value: string;
-    note?: string;
+    note: string;
     className?: string;
     icon: React.ReactNode;
     iconClass: string;
@@ -96,32 +97,24 @@ export function MarketStatTiles({
   ];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: 12,
-        gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))",
-      }}
-    >
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(175px,1fr))] gap-3">
       {tiles.map((tile) => (
         <div className="web3-tile" key={tile.label}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span className="web3-tile-label">
-              <span className={`web3-stat-icon ${tile.iconClass}`} style={{ width: 28, height: 28, borderRadius: 8 }}>
-                {tile.icon}
-              </span>
-              {tile.label}
+          <div className="flex items-center justify-between gap-2">
+            <span className="web3-tile-label">{tile.label}</span>
+            <span className={`web3-stat-icon ${tile.iconClass}`}>
+              {tile.icon}
             </span>
-            {tile.sparkline && (
-              <Sparkline change24h={snapshot.change24h} />
-            )}
           </div>
           <span className={`web3-tile-value ${tile.className ?? ""}`}>
             {tile.value}
           </span>
-          {tile.note ? (
+          <div className="flex items-center justify-between gap-2">
             <span className="web3-tile-note">{tile.note}</span>
-          ) : null}
+            {tile.sparkline ? (
+              <Sparkline change24h={snapshot.change24h} />
+            ) : null}
+          </div>
         </div>
       ))}
     </div>

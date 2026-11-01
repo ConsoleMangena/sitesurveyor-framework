@@ -20,6 +20,15 @@ import { Input } from "@/components/ui/input.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card.tsx";
 import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
+import {
   Table,
   TableBody,
   TableCell,
@@ -83,16 +92,17 @@ function formatDate(iso: string): string {
 
 function FileTypeIcon({ path, mime }: { path: string; mime: string | null }) {
   const ext = getFileExtension(path);
+  const className = "h-4 w-4 text-muted-foreground";
   if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "tif", "tiff"].includes(ext)) {
-    return <FileImage size={18} className="text-sky-500" />;
+    return <FileImage className={className} />;
   }
   if (["csv", "xlsx", "xls"].includes(ext)) {
-    return <FileSpreadsheet size={18} className="text-emerald-500" />;
+    return <FileSpreadsheet className={className} />;
   }
   if (["dxf", "dwg", "geojson", "pdf", "txt"].includes(ext) || mime?.startsWith("text/")) {
-    return <FileText size={18} className="text-amber-500" />;
+    return <FileText className={className} />;
   }
-  return <FileIcon size={18} className="text-muted-foreground" />;
+  return <FileIcon className={className} />;
 }
 
 export function EntityFilesCard({
@@ -270,8 +280,13 @@ export function EntityFilesCard({
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 size={16} className="animate-spin" /> Loading files…
+        <CardContent className="space-y-4 p-6">
+          <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading files…
+          </p>
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-3/4" />
         </CardContent>
       </Card>
     );
@@ -280,8 +295,8 @@ export function EntityFilesCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <FolderOpen size={18} /> {title}
+        <CardTitle className="flex items-center gap-2 text-base">
+          <FolderOpen className="h-5 w-5" /> {title}
         </CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
@@ -293,17 +308,24 @@ export function EntityFilesCard({
         ) : null}
 
         {notice && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
             <span>{notice}</span>
-            <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss notice" className="text-lg leading-none">
-              ×
-            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setNotice(null)}
+              aria-label="Dismiss notice"
+              className="size-7 shrink-0 text-success hover:text-success"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <Button onClick={openFilePicker} disabled={uploading} className="gap-2">
-            <Upload size={16} />
+            <Upload className="h-4 w-4" />
             {uploading ? `Uploading ${completedUploads}/${uploadQueue.length}…` : "Upload Files"}
           </Button>
           <input
@@ -314,8 +336,8 @@ export function EntityFilesCard({
             accept={accept}
             onChange={(e) => void handleUploadFiles(e.target.files)}
           />
-          <div className="relative flex-1 max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search files…"
               value={search}
@@ -329,16 +351,16 @@ export function EntityFilesCard({
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label="Clear search"
               >
-                <X size={14} />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
         </div>
 
         {uploading && uploadQueue.length > 0 && (
-          <div className="rounded-lg border bg-muted/50 p-2 flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-2 text-xs">
             <span className="shrink-0">Uploading {completedUploads} of {uploadQueue.length} files…</span>
-            <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgressPct}%` }} />
             </div>
             <span className="shrink-0">{uploadProgressPct}%</span>
@@ -349,7 +371,7 @@ export function EntityFilesCard({
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-muted-foreground">Types:</span>
             {fileCategories.map((cat) => (
-              <Badge key={cat} variant="secondary" className="text-[10px]">
+              <Badge key={cat} variant="secondary" className="text-xs">
                 {cat}
               </Badge>
             ))}
@@ -359,22 +381,28 @@ export function EntityFilesCard({
 
       <CardContent className="p-0">
         {filteredFiles.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            <FolderOpen size={40} className="mx-auto mb-3 text-muted-foreground/60" />
-            <h3 className="text-lg font-semibold text-foreground">
-              {files.length === 0 ? "No files yet" : "No matching files"}
-            </h3>
-            <p className="text-sm mt-1 max-w-md mx-auto">
-              {files.length === 0
-                ? "Upload documents and reference files to keep them with this record."
-                : "Try adjusting your search."}
-            </p>
+          <Empty className="border-none">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FolderOpen />
+              </EmptyMedia>
+              <EmptyTitle>
+                {files.length === 0 ? "No files yet" : "No matching files"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {files.length === 0
+                  ? "Upload documents and reference files to keep them with this record."
+                  : "Try adjusting your search."}
+              </EmptyDescription>
+            </EmptyHeader>
             {files.length === 0 && (
-              <Button size="sm" onClick={openFilePicker} className="mt-4">
-                Upload your first file
-              </Button>
+              <EmptyContent>
+                <Button size="sm" onClick={openFilePicker}>
+                  Upload your first file
+                </Button>
+              </EmptyContent>
             )}
-          </div>
+          </Empty>
         ) : (
           <ResponsiveTable>
             <Table>
@@ -382,7 +410,7 @@ export function EntityFilesCard({
                 <TableRow>
                   <TableHead>File</TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Size</TableHead>
+                  <TableHead className="hidden text-right md:table-cell">Size</TableHead>
                   <TableHead className="hidden lg:table-cell">Uploaded</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -398,20 +426,20 @@ export function EntityFilesCard({
                         <div className="flex items-center gap-2">
                           <FileTypeIcon path={file.storage_path} mime={file.mime_type} />
                           <div>
-                            <p className="font-medium truncate max-w-[180px] sm:max-w-[260px]" title={name}>
+                            <p className="max-w-[180px] truncate font-medium sm:max-w-[260px]" title={name}>
                               {name}
                             </p>
                             <p className="text-xs text-muted-foreground">{category}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                      <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
                         {category}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-right text-muted-foreground text-sm">
+                      <TableCell className="hidden text-right text-sm text-muted-foreground md:table-cell">
                         {formatSize(file.size_bytes)}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                      <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
                         {formatDate(file.created_at)}
                       </TableCell>
                       <TableCell>
@@ -420,31 +448,38 @@ export function EntityFilesCard({
                             size="icon"
                             variant="ghost"
                             title="Download"
+                            aria-label="Download"
                             onClick={() => void handleDownload(file)}
                             disabled={isBusy}
                           >
-                            <Download size={16} />
+                            <Download className="h-4 w-4" />
                           </Button>
                           {canPreview(file) && (
                             <Button
                               size="icon"
                               variant="ghost"
                               title="Preview"
+                              aria-label="Preview"
                               onClick={() => void openPreview(file)}
                               disabled={isBusy}
                             >
-                              <Eye size={16} />
+                              <Eye className="h-4 w-4" />
                             </Button>
                           )}
                           <Button
                             size="icon"
                             variant="ghost"
                             title="Remove"
+                            aria-label="Remove"
                             className="text-destructive hover:text-destructive"
                             onClick={() => void handleDelete(file)}
                             disabled={isBusy}
                           >
-                            {isBusy ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            {isBusy ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>
@@ -464,18 +499,18 @@ export function EntityFilesCard({
         size="2xl"
         className="sm:max-w-3xl"
       >
-        <div className="flex-1 overflow-auto min-h-[200px] flex items-center justify-center">
-          {previewLoading && <Loader2 size={24} className="animate-spin text-muted-foreground" />}
+        <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-auto">
+          {previewLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
           {!previewLoading && previewUrl && previewFile && (previewFile.mime_type?.startsWith("image/") || getFileName(previewFile.storage_path).match(/\.(jpg|jpeg|png|gif|webp|bmp|svg|tif|tiff)$/)) && (
-            <img src={previewUrl} alt={getFileName(previewFile.storage_path)} className="max-w-full max-h-[60vh] object-contain" />
+            <img src={previewUrl} alt={getFileName(previewFile.storage_path)} className="max-h-[60vh] max-w-full object-contain" />
           )}
           {!previewLoading && previewUrl && previewText !== null && (
-            <pre className="w-full max-h-[60vh] overflow-auto text-xs bg-muted p-4 rounded whitespace-pre-wrap">
+            <pre className="w-full max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-xs">
               {previewText}
             </pre>
           )}
           {!previewLoading && previewUrl && !previewText && (previewFile?.mime_type === "application/pdf" || getFileName(previewFile?.storage_path ?? "").endsWith(".pdf")) && (
-            <iframe src={previewUrl} title={getFileName(previewFile?.storage_path ?? "")} className="w-full h-[60vh] border rounded" />
+            <iframe src={previewUrl} title={getFileName(previewFile?.storage_path ?? "")} className="h-[60vh] w-full rounded-md border" />
           )}
         </div>
       </DialogTemplate>

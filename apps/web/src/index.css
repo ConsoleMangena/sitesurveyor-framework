@@ -14,28 +14,37 @@
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
+  /* Brand red is the accent: primary actions, live state, market highlights.
+     Everything structural stays the template's slate neutral. */
+  --primary: oklch(0.576 0.208 29.6);
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
   --muted-foreground: oklch(0.554 0.046 257.417);
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* Darker and browner than the brand red, so "delete" never reads as "save". */
+  --destructive: oklch(0.45 0.19 20);
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --ring: oklch(0.576 0.208 29.6);
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+  --brand-hover: oklch(0.512 0.19 29.6);
+  --brand-text: oklch(0.512 0.19 29.6);
+  --brand-muted: oklch(0.576 0.208 29.6 / 0.12);
+  --brand-border: oklch(0.576 0.208 29.6 / 0.32);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-1: oklch(0.576 0.208 29.6);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --chart-5: oklch(0.55 0.22 295);
   --sidebar: var(--background);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -51,10 +60,6 @@
   --surface: var(--background);
   --surface-muted: var(--muted);
   --border-heavy: var(--border);
-  --accent-bg: color-mix(in oklab, var(--accent) 12%, transparent);
-  --accent-border: color-mix(in oklab, var(--accent) 30%, transparent);
-  --placeholder: var(--muted-foreground);
-  --text-secondary: var(--muted-foreground);
   --text-muted: var(--muted-foreground);
   --muted-foreground: var(--muted-foreground);
   --code-bg: var(--surface-muted);
@@ -62,7 +67,36 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
   --shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04);
   --shadow-hover: 0 8px 24px rgb(0 0 0 / 0.1);
-  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px color-mix(in srgb, var(--brand) 55%, transparent);
+
+  /* Motion curve. dialog.css is the only consumer left, but an undefined
+     duration makes the whole `animation` shorthand invalid at computed-value
+     time, which silently drops the sheet transition instead of slowing it. */
+  --motion-fast: 160ms;
+  --motion-base: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --color-error: var(--sem-error);
+  --color-error-bg: oklch(0.984 0.003 247.858 / 0.15);
+  --color-error-border: oklch(0.929 0.013 255.508);
+  --color-success: var(--sem-success);
+  --color-success-bg: oklch(0.97 0.01 150 / 0.2);
+  --color-success-border: oklch(0.929 0.013 255.508);
+  --color-warning: var(--sem-warning);
+  --color-warning-bg: oklch(0.98 0.01 85 / 0.2);
+  --color-warning-border: oklch(0.929 0.013 255.508);
+  --color-info: var(--sem-info);
+  --color-info-bg: oklch(0.97 0.01 255 / 0.2);
+  --color-info-border: oklch(0.929 0.013 255.508);
+  /* Raw semantic values behind the theme tokens below. Dark enough to read as
+     text on the light surface, light enough to read on the dark one. */
+  --sem-error: var(--destructive);
+  --sem-success: oklch(0.48 0.12 152);
+  --sem-warning: oklch(0.48 0.12 65);
+  --sem-info: oklch(0.55 0.18 255);
+  --sem-accent-purple: oklch(0.45 0.2 300);
+  --accent-purple: var(--sem-accent-purple);
 
   --radius: 0.625rem;
   --panel-pad: 16px;
@@ -98,24 +132,27 @@
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
+  --primary: oklch(0.576 0.208 29.6);
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
   --muted-foreground: oklch(0.704 0.04 256.788);
   --accent: oklch(0.279 0.041 260.031);
   --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
+  /* Light destructive on a dark ground needs dark text, not white. */
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: oklch(0.145 0.03 22);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
+  --ring: oklch(0.68 0.17 29.6);
+  --brand-hover: oklch(0.62 0.19 29.6);
+  --brand-text: oklch(0.72 0.15 29.6);
+  --chart-1: oklch(0.7 0.17 29.6);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --chart-5: oklch(0.7 0.14 250);
   --sidebar: var(--background);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -131,10 +168,6 @@
   --surface: var(--background);
   --surface-muted: var(--muted);
   --border-heavy: var(--border);
-  --accent-bg: color-mix(in oklab, var(--accent) 18%, transparent);
-  --accent-border: color-mix(in oklab, var(--accent) 35%, transparent);
-  --placeholder: var(--muted-foreground);
-  --text-secondary: var(--muted-foreground);
   --text-muted: var(--muted-foreground);
   --muted-foreground: var(--muted-foreground);
   --code-bg: var(--surface-muted);
@@ -142,7 +175,20 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.25);
   --shadow: 0 1px 3px rgb(0 0 0 / 0.3);
   --shadow-hover: 0 8px 24px rgb(0 0 0 / 0.3);
-  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px color-mix(in srgb, var(--brand) 45%, transparent);
+
+  --color-error-bg: oklch(0.3 0.02 25 / 0.2);
+  --color-error-border: oklch(0.7 0.19 22);
+  --color-success-bg: oklch(0.2 0.02 150 / 0.2);
+  --color-success-border: oklch(0.76 0.15 155);
+  --color-warning-bg: oklch(0.3 0.02 85 / 0.2);
+  --color-warning-border: oklch(0.78 0.15 80);
+  --color-info-bg: oklch(0.2 0.02 255 / 0.2);
+  --color-info-border: oklch(0.55 0.18 255);
+  --sem-success: oklch(0.76 0.15 155);
+  --sem-warning: oklch(0.78 0.15 80);
+  --sem-info: oklch(0.75 0.13 240);
+  --sem-accent-purple: oklch(0.78 0.14 300);
 
   --table-head-bg: var(--surface-muted);
   --table-row-hover-bg: var(--surface-muted);
@@ -214,6 +260,38 @@ body {
   }
 }
 
+/* ── Base layer ──────────────────────────────────────────────────
+   The template ships its element defaults here: every border picks up the
+   token colour (Tailwind v4 preflight otherwise leaves currentColor) and
+   focus outlines use the ring. Legacy element fallbacks live in the same
+   layer so ported utilities always win over them. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply overflow-x-hidden;
+  }
+
+  body {
+    @apply min-h-svh w-full bg-background text-foreground;
+  }
+
+  /* Radix scroll locking fights the sticky header. */
+  body[data-scroll-locked] {
+    overflow: unset !important;
+  }
+
+  /* Prevent focus zoom on mobile devices. */
+  @media screen and (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
 /* ── Typography ── */
 h1,
 h2 {
@@ -238,68 +316,15 @@ p {
   margin: 0;
 }
 
-code,
-.counter {
+code {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 6px;
   color: var(--text-h);
-}
-
-code {
   font-size: 14px;
   line-height: 135%;
   padding: 2px 6px;
   background: var(--code-bg);
-}
-
-/* ── Global Form Elements ── */
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-.form-label-optional {
-  font-weight: 400;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.input-field {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--text-h);
-  background: var(--surface);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
-  width: 100%;
-  box-sizing: border-box;
-  appearance: none;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-bg);
-}
-
-.input-field::placeholder {
-  color: var(--placeholder);
-}
-
-textarea.input-field {
-  font-family: var(--sans);
-  line-height: 1.5;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -322,19 +347,6 @@ textarea.input-field {
   object-fit: contain;
 }
 
-.splash-screen .splash-logo-wrap {
-  --splash-logo-size: clamp(56px, 12vw, 84px);
-}
-
-.splash-screen .splash-logo {
-  width: var(--splash-logo-size);
-  height: var(--splash-logo-size);
-  max-width: 84px;
-  max-height: 84px;
-  object-fit: contain;
-  display: block;
-}
-
 /* ── Professional UI polish layer ── */
 
 html {
@@ -346,109 +358,11 @@ body {
   background: var(--bg);
 }
 
-/* Consistent shadcn/ui admin surfaces across authenticated, public and auth views. */
-:root {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
-  --shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04);
-  --shadow-hover: 0 8px 24px rgb(0 0 0 / 0.1);
-  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent);
-  --color-error: var(--destructive);
-  --color-error-bg: oklch(0.984 0.003 247.858 / 0.15);
-  --color-error-border: oklch(0.929 0.013 255.508);
-  --color-success: oklch(0.5 0.15 150);
-  --color-success-bg: oklch(0.97 0.01 150 / 0.2);
-  --color-success-border: oklch(0.929 0.013 255.508);
-  --color-warning: oklch(0.75 0.18 85);
-  --color-warning-bg: oklch(0.98 0.01 85 / 0.2);
-  --color-warning-border: oklch(0.929 0.013 255.508);
-  --color-info: oklch(0.55 0.18 255);
-  --color-info-bg: oklch(0.97 0.01 255 / 0.2);
-  --color-info-border: oklch(0.929 0.013 255.508);
-}
-
-.dark,
-[data-theme="dark"] {
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.25);
-  --shadow: 0 1px 3px rgb(0 0 0 / 0.3);
-  --shadow-hover: 0 8px 24px rgb(0 0 0 / 0.3);
-  --color-error-bg: oklch(0.3 0.02 25 / 0.2);
-  --color-error-border: oklch(0.704 0.191 22.216);
-  --color-success-bg: oklch(0.2 0.02 150 / 0.2);
-  --color-success-border: oklch(0.5 0.15 150);
-  --color-warning-bg: oklch(0.3 0.02 85 / 0.2);
-  --color-warning-border: oklch(0.75 0.18 85);
-  --color-info-bg: oklch(0.2 0.02 255 / 0.2);
-  --color-info-border: oklch(0.55 0.18 255);
-}
-
-body {
-  min-width: 320px;
-  background: var(--bg);
-}
-
-.hub-screen {
-  background: var(--bg) !important;
-  animation: none !important;
-}
-
-.hub-screen::before,
-.hub-screen::after {
-  content: none !important;
-}
-
-.hub-sidebar,
-.hub-topbar {
-  background: var(--surface);
-  box-shadow: none;
-}
-
-.hub-main-content {
-  background: var(--bg);
-}
-
-.hub-side-tab.active {
-  border-color: transparent;
-  background: var(--surface-muted);
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-
-.card,
-.table-card,
-.billing-card,
-.admin-console-card,
-.settings-card,
-.project-dashboard-card,
-.mkt-card,
-.pro-card,
-.equipment-card,
-.crew-card {
-  border-radius: var(--radius-lg);
-  border-color: var(--border);
-  box-shadow: none;
-}
-
 button,
 input,
 select,
 textarea {
   font-family: var(--font-app);
-}
-
-.input-field {
-  border-radius: var(--radius-md);
-  box-shadow: none;
-}
-
-.input-field:focus {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
-}
-
-::selection {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 * {
@@ -479,29 +393,12 @@ button:not(:disabled),
 
 button:focus-visible,
 a:focus-visible,
-.input-field:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
-.input-field {
-  min-height: 40px;
-  border-color: var(--border);
-  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--text-h) 0.04, transparent);
-}
-
-.input-field:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
-}
-
-.input-field:focus {
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
-
-.input-field:disabled,
 button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
@@ -545,14 +442,15 @@ h2 {
 }
 
 /* mapcn: leaflet chrome themed via shadcn tokens */
-@layer base {
-  .leaflet-container {
+
+.leaflet-container {
     width: 100%;
     height: 100%;
     background: transparent;
     font: inherit;
-  }
-  .leaflet-control-attribution {
+}
+
+.leaflet-control-attribution {
     @apply bg-background! text-muted-foreground! border-border! rounded-md! border! shadow-sm!;
   }
   .leaflet-control-attribution a {
@@ -570,18 +468,5 @@ h2 {
   }
 }
 
-/* shadcn-admin visual system overrides: slate surfaces, crisp borders and restrained motion. */
-body { background: var(--bg); }
-.hub-screen { background: var(--bg) !important; animation: none !important; }
-.hub-screen::before, .hub-screen::after { content: none !important; }
-.hub-sidebar, .hub-topbar { background: var(--surface); box-shadow: none; }
-.hub-main-content { background: var(--bg); }
-.hub-side-tab.active { border-color: transparent; background: var(--surface-muted); box-shadow: inset 2px 0 0 var(--accent); }
-.card, .table-card, .billing-card, .admin-console-card, .settings-card,
-.project-dashboard-card, .mkt-card, .pro-card, .equipment-card, .crew-card {
-  border-color: var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: none;
-}
-.input-field { border-radius: var(--radius-md); box-shadow: none; }
-.input-field:focus { box-shadow: 0 0 0 3px var(--accent-bg); }
+/* shadcn-admin visual system overrides live in the token blocks above; the
+   rules that used to be repeated here are now single-sourced there. */

@@ -17,11 +17,6 @@ import {
   Clock,
   type LucideIcon,
 } from "lucide-react";
-import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
-import {
-  DashboardHeader,
-  DashboardShell,
-} from "../../components/dashboard/DashboardShell.tsx";
 import {
   archiveJob,
   createJob,
@@ -33,8 +28,15 @@ import { type ProjectWithOrg } from "../../lib/repositories/projects.ts";
 import { listAllJobs, listAllProjects } from "../../lib/repositories/adminPlatform.ts";
 import { mapStatus } from "../../lib/mappers.ts";
 import type { Database } from "../../lib/supabase/types.ts";
-import PageLoader from "../../components/PageLoader.tsx";
 import { EntityFilesCard } from "../../components/files/EntityFilesCard";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "../../components/ui/empty.tsx";
+import { Skeleton } from "../../components/ui/skeleton.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
@@ -63,8 +65,6 @@ import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import { Separator } from "../../components/ui/separator.tsx";
 import { cn } from "../../lib/utils.ts";
-import "../../styles/pages.css";
-import "../../styles/console.css";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -113,11 +113,11 @@ const JOB_TYPE_OPTIONS = [
 ];
 
 const jobTypeColors: Record<string, string> = {
-  Topographical: "bg-blue-100 text-blue-700",
-  Cadastral: "bg-emerald-100 text-emerald-700",
-  Engineering: "bg-amber-100 text-amber-700",
-  Mining: "bg-purple-100 text-purple-700",
-  Monitoring: "bg-orange-100 text-orange-700",
+  Topographical: "bg-primary/10 text-primary",
+  Cadastral: "bg-success/15 text-success",
+  Engineering: "bg-warning/15 text-warning",
+  Mining: "bg-accent-purple/15 text-accent-purple",
+  Monitoring: "bg-muted text-foreground",
 };
 
 function JobTypeIcon({ type }: { type: string | null }) {
@@ -318,8 +318,20 @@ export default function JobsPage({
 
   if (loading) {
     return (
-      <div className="hub-body">
-        <PageLoader />
+      <div className="space-y-4">
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -551,63 +563,81 @@ export default function JobsPage({
   }
 
   return (
-    <DashboardShell className="hub-body">
+    <div className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <DashboardHeader
-        badge={<Badge variant="secondary">Field jobs</Badge>}
-        title="Jobs"
-        subtitle="View field jobs, site visits, and survey assignments"
-        meta={
-          !isPlatformAdmin
-            ? "Maintained by platform administrators"
-            : `${jobStats.total} ${jobStats.total === 1 ? "job" : "jobs"}`
-        }
-        actions={
-          isPlatformAdmin ? (
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            Jobs
+            <Badge variant="secondary">Field jobs</Badge>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            View field jobs, site visits, and survey assignments
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {!isPlatformAdmin
+              ? "Maintained by platform administrators"
+              : `${jobStats.total} ${jobStats.total === 1 ? "job" : "jobs"}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {isPlatformAdmin ? (
             <Button onClick={openCreateEditor}>
               <Plus className="h-4 w-4" /> Add job
             </Button>
-          ) : undefined
-        }
-      />
-
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <KpiCard
-          title="Total Jobs"
-          value={String(jobStats.total)}
-          subtext="All survey jobs"
-          icon={<Briefcase className="size-4" />}
-          tone="primary"
-        />
-        <KpiCard
-          title="Planned"
-          value={String(jobStats.planned)}
-          subtext="Yet to start"
-          icon={<Clock className="size-4" />}
-          tone="neutral"
-        />
-        <KpiCard
-          title="In Progress"
-          value={String(jobStats.inProgress)}
-          subtext="Active field work"
-          icon={<PlayCircle className="size-4" />}
-          tone="warning"
-        />
-        <KpiCard
-          title="Completed"
-          value={String(jobStats.completed)}
-          subtext="Finished jobs"
-          icon={<CheckCircle2 className="size-4" />}
-          tone="success"
-        />
+          ) : undefined}
+        </div>
       </div>
 
-      <div className="console-toolbar">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
+            <Briefcase className="h-5 w-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{String(jobStats.total)}</div>
+            <p className="text-xs text-muted-foreground">All survey jobs</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Planned</CardTitle>
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{String(jobStats.planned)}</div>
+            <p className="text-xs text-muted-foreground">Yet to start</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <PlayCircle className="h-5 w-5 text-warning" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{String(jobStats.inProgress)}</div>
+            <p className="text-xs text-muted-foreground">Active field work</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CheckCircle2 className="h-5 w-5 text-success" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{String(jobStats.completed)}</div>
+            <p className="text-xs text-muted-foreground">Finished jobs</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={typeFilter} onValueChange={(value) => setTypeFilter(value as JobFilter)}>
           <TabsList className="h-auto flex-wrap">
             {filterTabs.map((f) => (
@@ -617,7 +647,7 @@ export default function JobsPage({
             ))}
           </TabsList>
         </Tabs>
-        <div className="console-toolbar-search relative">
+        <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search jobs..."
@@ -677,21 +707,21 @@ export default function JobsPage({
             </p>
             <Card>
               <CardContent className="space-y-1 py-4 text-sm">
-                <div className="console-readout">
-                  <span className="console-readout-label">Scheduled Start</span>
-                  <span className="console-readout-value">
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                  <span className="shrink-0 text-muted-foreground">Scheduled Start</span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">
                     {formatDate(selectedJob.scheduled_start)}
                   </span>
                 </div>
-                <div className="console-readout">
-                  <span className="console-readout-label">Scheduled End</span>
-                  <span className="console-readout-value">
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                  <span className="shrink-0 text-muted-foreground">Scheduled End</span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">
                     {formatDate(selectedJob.scheduled_end)}
                   </span>
                 </div>
-                <div className="console-readout">
-                  <span className="console-readout-label">Project</span>
-                  <span className="console-readout-value">
+                <div className="flex items-baseline justify-between gap-4 py-1.5">
+                  <span className="shrink-0 text-muted-foreground">Project</span>
+                  <span className="min-w-0 break-words text-right font-medium text-foreground">
                     {selectedJob.project_name ?? "—"}
                   </span>
                 </div>
@@ -713,19 +743,19 @@ export default function JobsPage({
       </DialogTemplate>
 
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="console-empty">
-            <span className="console-empty-icon" aria-hidden="true">
-              <Briefcase size={18} />
-            </span>
-            <p className="console-empty-title">No jobs found</p>
-            <p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon" aria-hidden="true">
+              <Briefcase className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>No jobs found</EmptyTitle>
+            <EmptyDescription>
               {jobs.length === 0
                 ? "No jobs available in the system yet."
                 : "Try adjusting your search criteria."}
-            </p>
-          </CardContent>
-        </Card>
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -734,7 +764,7 @@ export default function JobsPage({
               return (
                 <Card
                   key={job.id}
-                  className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+                  className="cursor-pointer transition-colors hover:border-primary"
                   onClick={() => setSelectedJob(job)}
                   role="button"
                   tabIndex={0}
@@ -808,7 +838,7 @@ export default function JobsPage({
           </div>
 
           {filtered.length > pageSize && (
-            <div className="console-pagination">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               <Button
                 variant="outline"
                 size="sm"
@@ -838,6 +868,6 @@ export default function JobsPage({
         onOpenChange={() => setSuccessMessage(null)}
         message={successMessage ?? ""}
       />
-    </DashboardShell>
+    </div>
   );
 }

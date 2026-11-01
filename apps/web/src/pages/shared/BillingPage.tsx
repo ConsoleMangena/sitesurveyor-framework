@@ -13,21 +13,35 @@ import {
 } from "lucide-react";
 import type { Connection, Transaction } from "@solana/web3.js";
 
-import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ComboboxField } from "@/components/templates/ComboboxField.tsx";
 import { PageForm } from "@/components/templates/PageForm.tsx";
-import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import WalletMethodsCard from "../../features/phantom/components/WalletMethodsCard.tsx";
 import PaymentRails from "../../components/finance/PaymentRails.tsx";
 import MetricsTiles from "../../components/finance/MetricsTiles.tsx";
 import TransactionTable from "../../components/finance/TransactionTable.tsx";
 import MarketplaceWalletCard from "../../components/finance/MarketplaceWalletCard.tsx";
 import { formatCurrency } from "../../components/finance/FinanceUtils.ts";
+import { cn } from "@/lib/utils";
 
 import { listInvoices } from "../../lib/repositories/invoices.ts";
 import type { InvoiceWithDetails } from "../../lib/repositories/invoices.ts";
@@ -68,7 +82,6 @@ import {
   SOLANA_TREASURY_ADDRESS,
   SOLANA_USDC_MINT,
 } from "../../features/phantom/lib/config.ts";
-import "../../styles/billing.css";
 
 interface BillingPageProps {
   workspaceId: string;
@@ -94,9 +107,12 @@ function formatAmount(value: number | null, maxDp: number): string {
 
 function methodIcon(method: PaymentMethodRow) {
   const label = method.label.toLowerCase();
-  if (label.includes("metamask")) return <img src="/metamask.svg" alt="" />;
-  if (label.includes("solflare")) return <img src="/solflare.svg" alt="" />;
-  if (method.type === "Crypto Wallet") return <img src="/solanaLogoMark.svg" alt="" />;
+  if (label.includes("metamask"))
+    return <img src="/metamask.svg" alt="" className="size-5 object-contain" />;
+  if (label.includes("solflare"))
+    return <img src="/solflare.svg" alt="" className="size-5 object-contain" />;
+  if (method.type === "Crypto Wallet")
+    return <img src="/solanaLogoMark.svg" alt="" className="size-5 object-contain" />;
   return <span>{method.label.slice(0, 2).toUpperCase()}</span>;
 }
 
@@ -598,7 +614,9 @@ export default function BillingPage({
                 Cancel
               </Button>
               <Button onClick={submitRecordPayment} disabled={recordingPayment}>
-                {recordingPayment && <Loader2 size={14} className="mr-2 animate-spin" />}
+                {recordingPayment && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
                 {recordingPayment ? "Saving..." : "Save payment"}
               </Button>
             </>
@@ -608,13 +626,14 @@ export default function BillingPage({
         <div className="mx-auto w-full max-w-6xl">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
-              <Card className="rounded-2xl border-border/60">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Banknote size={15} />
-                    </div>
-                    <div>
+              {/* ── Invoice ─────────────────────────────────── */}
+              <Card className="gap-4 border-border">
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Banknote className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
                       <CardTitle className="text-base">Invoice</CardTitle>
                       <CardDescription>
                         {railsMode
@@ -624,7 +643,7 @@ export default function BillingPage({
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ComboboxField
                     label="Invoice"
                     value={paymentInvoiceId}
@@ -640,14 +659,20 @@ export default function BillingPage({
                   />
 
                   {selectedInvoice ? (
-                    <div className="payment-ticket">
-                      <div>
-                        <p className="payment-ticket-name">{selectedInvoice.invoice_number}</p>
-                        <span className="payment-ticket-flag">{selectedInvoice.status}</span>
+                    <div className="flex flex-wrap items-end justify-between gap-4 rounded-lg border border-border bg-muted/50 p-4">
+                      <div className="min-w-0">
+                        <p className="payment-ticket-name font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          {selectedInvoice.invoice_number}
+                        </p>
+                        <span className="mt-2 inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          {selectedInvoice.status}
+                        </span>
                       </div>
-                      <p className="payment-ticket-amount">
+                      <p className="flex items-baseline gap-2 font-mono text-2xl font-semibold tabular-nums">
                         {formatCurrency(selectedInvoice.total)}
-                        <span>{selectedInvoice.currency_code}</span>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {selectedInvoice.currency_code}
+                        </span>
                       </p>
                     </div>
                   ) : null}
@@ -660,13 +685,14 @@ export default function BillingPage({
 
               {railsMode ? (
                 <>
-                  <Card className="rounded-2xl border-border/60">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <CreditCard size={15} />
-                        </div>
-                        <div>
+                  {/* ── Payment rail ─────────────────────────── */}
+                  <Card className="gap-4 border-border">
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <CreditCard className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
                           <CardTitle className="text-base">Payment rail</CardTitle>
                           <CardDescription>
                             Wallets settle in USDC; the PesePay balance settles in USD.
@@ -675,31 +701,49 @@ export default function BillingPage({
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="rail-choice-grid" role="group" aria-label="Payment rail">
+                      <div
+                        className="grid gap-3 sm:grid-cols-2"
+                        role="group"
+                        aria-label="Payment rail"
+                      >
                         <button
                           type="button"
-                          className="rail-choice"
-                          data-selected={paymentSource === "crypto" || undefined}
                           aria-pressed={paymentSource === "crypto"}
                           onClick={() => setPaymentSource("crypto")}
+                          className={cn(
+                            "flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors",
+                            paymentSource === "crypto"
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-card hover:border-primary/40",
+                          )}
                         >
-                          <span className="rail-choice-head">
-                            <span className="rail-choice-mark" aria-hidden="true">
-                              <Wallet size={15} />
+                          <span className="flex items-center gap-2">
+                            <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
+                              <Wallet className="h-4 w-4" />
                             </span>
-                            <span className="rail-choice-title">Crypto wallet</span>
-                            <span className="rail-choice-check" aria-hidden="true">
-                              {paymentSource === "crypto" ? <Check size={11} /> : null}
+                            <span className="truncate text-sm font-semibold">
+                              Crypto wallet
+                            </span>
+                            <span
+                              className={cn(
+                                "ml-auto flex size-4 shrink-0 items-center justify-center rounded-full border",
+                                paymentSource === "crypto"
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border text-transparent",
+                              )}
+                              aria-hidden="true"
+                            >
+                              <Check className="h-3 w-3" />
                             </span>
                           </span>
-                          <span className="rail-choice-meta">
+                          <span className="truncate font-mono text-xs text-muted-foreground">
                             {cryptoAddress
                               ? `${cryptoWalletName ?? "Connected wallet"} · ${shorten(cryptoAddress, 4, 4)}${
                                   cryptoConnected ? "" : " · saved"
                                 }`
                               : "No wallet connected"}
                           </span>
-                          <span className="rail-choice-figure">
+                          <span className="font-mono text-lg font-semibold tabular-nums">
                             {solanaBalances.usdc === null
                               ? solanaBalances.loading
                                 ? "…"
@@ -710,51 +754,66 @@ export default function BillingPage({
 
                         <button
                           type="button"
-                          className="rail-choice"
-                          data-selected={paymentSource === "pesepay" || undefined}
                           aria-pressed={paymentSource === "pesepay"}
                           onClick={() => setPaymentSource("pesepay")}
+                          className={cn(
+                            "flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors",
+                            paymentSource === "pesepay"
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-card hover:border-primary/40",
+                          )}
                         >
-                          <span className="rail-choice-head">
-                            <span className="rail-choice-mark" aria-hidden="true">
-                              <CreditCard size={15} />
+                          <span className="flex items-center gap-2">
+                            <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
+                              <CreditCard className="h-4 w-4" />
                             </span>
-                            <span className="rail-choice-title">PesePay balance</span>
-                            <span className="rail-choice-check" aria-hidden="true">
-                              {paymentSource === "pesepay" ? <Check size={11} /> : null}
+                            <span className="truncate text-sm font-semibold">
+                              PesePay balance
+                            </span>
+                            <span
+                              className={cn(
+                                "ml-auto flex size-4 shrink-0 items-center justify-center rounded-full border",
+                                paymentSource === "pesepay"
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border text-transparent",
+                              )}
+                              aria-hidden="true"
+                            >
+                              <Check className="h-3 w-3" />
                             </span>
                           </span>
-                          <span className="rail-choice-meta">
+                          <span className="truncate font-mono text-xs text-muted-foreground">
                             {pesepayBalanceLoading
                               ? "Loading balance…"
                               : "Prepaid USD · invoices and storage"}
                           </span>
-                          <span className="rail-choice-figure">
+                          <span className="font-mono text-lg font-semibold tabular-nums">
                             {pesepayBalanceLoading ? "—" : formatCurrency(pesepayBalanceValue)}
                           </span>
                         </button>
                       </div>
 
                       {paymentSource === "crypto" ? (
-                        <div className="rail-panel">
+                        <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/40 p-4">
                           {cryptoReady ? (
                             <>
-                              <div className="rail-panel-row">
+                              <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                                 <span>Pay from</span>
-                                <strong>
-                                  {cryptoWalletName ?? "Connected wallet"} ·{" "}
-                                  {shorten(cryptoAddress ?? "", 4, 4)}
+                                <strong className="min-w-0 truncate font-mono text-xs font-semibold text-foreground">
+                                  {cryptoWalletName ?? "Connected wallet"} · {shorten(cryptoAddress ?? "", 4, 4)}
                                 </strong>
                               </div>
-                              <div className="rail-panel-row">
+                              <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                                 <span>USDC available</span>
-                                <span className="rail-panel-figure">
+                                <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
                                   {formatAmount(solanaBalances.usdc, 2)} USDC
                                 </span>
                               </div>
-                              <div className="rail-panel-row">
+                              <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                                 <span>Network fee</span>
-                                <span className="rail-panel-figure">{solanaFeeEstimate ?? "—"}</span>
+                                <span className="font-mono text-xs font-semibold text-foreground">
+                                  {solanaFeeEstimate ?? "—"}
+                                </span>
                               </div>
                               {cryptoConnected ? (
                                 <Button
@@ -770,7 +829,7 @@ export default function BillingPage({
                                   aria-busy={solanaBusy}
                                 >
                                   {solanaBusy ? (
-                                    <Loader2 size={16} className="animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     <SolanaLogo size={16} />
                                   )}
@@ -783,11 +842,11 @@ export default function BillingPage({
                                   className="w-full gap-2"
                                   onClick={manageWalletsFromComposer}
                                 >
-                                  <Wallet size={16} />
+                                  <Wallet className="h-4 w-4" />
                                   Connect {cryptoWalletName ?? "this wallet"} to pay
                                 </Button>
                               )}
-                              <p className="rail-panel-note">
+                              <p className="text-xs leading-relaxed text-muted-foreground">
                                 {!selectedInvoice
                                   ? "Select an invoice to pay with a wallet."
                                   : !currencySupported
@@ -802,18 +861,20 @@ export default function BillingPage({
                               </p>
                             </>
                           ) : (
-                            <div className="rail-panel-empty">
-                              <p>Connect a Solana wallet to pay with USDC.</p>
+                            <div className="space-y-3">
+                              <p className="text-xs text-muted-foreground">
+                                Connect a Solana wallet to pay with USDC.
+                              </p>
                               <Button
                                 type="button"
                                 variant="outline"
                                 className="gap-2"
                                 onClick={manageWalletsFromComposer}
                               >
-                                <Wallet size={15} />
+                                <Wallet className="h-4 w-4" />
                                 Manage wallets
                               </Button>
-                              <p className="rail-panel-note">
+                              <p className="text-xs leading-relaxed text-muted-foreground">
                                 Connect in the Payment rails section, then come back — your
                                 invoice stays selected.
                               </p>
@@ -821,18 +882,18 @@ export default function BillingPage({
                           )}
                         </div>
                       ) : (
-                        <div className="rail-panel">
-                          <div className="rail-panel-row">
+                        <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/40 p-4">
+                          <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                             <span>PesePay balance</span>
-                            <span className="rail-panel-figure">
+                            <span className="font-mono text-xs font-semibold text-foreground">
                               {pesepayBalanceLoading
                                 ? "Loading…"
                                 : formatCurrency(pesepayBalanceValue)}
                             </span>
                           </div>
-                          <div className="rail-panel-row">
+                          <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                             <span>Invoice amount</span>
-                            <span className="rail-panel-figure">
+                            <span className="font-mono text-xs font-semibold text-foreground">
                               {selectedInvoice
                                 ? `${formatCurrency(selectedInvoice.total)} ${selectedInvoice.currency_code}`
                                 : "—"}
@@ -854,13 +915,13 @@ export default function BillingPage({
                             aria-busy={balancePaymentBusy}
                           >
                             {balancePaymentBusy ? (
-                              <Loader2 size={16} className="animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <Wallet size={16} />
+                              <Wallet className="h-4 w-4" />
                             )}
                             {balancePaymentBusy ? "Paying…" : "Pay from PesePay balance"}
                           </Button>
-                          <p className="rail-panel-note">
+                          <p className="text-xs leading-relaxed text-muted-foreground">
                             {!selectedInvoice
                               ? "Select a USD invoice to pay from your balance."
                               : !currencySupported
@@ -880,12 +941,16 @@ export default function BillingPage({
                               className="gap-2 self-start"
                               onClick={openPesepaySettings}
                             >
-                              <Plus size={14} />
+                              <Plus className="h-4 w-4" />
                               Add funds
                             </Button>
                           ) : null}
 
-                          <div className="rail-panel-divider">or pay another way</div>
+                          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                            or pay another way
+                            <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                          </div>
 
                           <Button
                             type="button"
@@ -901,21 +966,23 @@ export default function BillingPage({
                             }
                           >
                             {pesepayBusy ? (
-                              <Loader2 size={16} className="animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <CreditCard size={16} />
+                              <CreditCard className="h-4 w-4" />
                             )}
                             {pesepayBusy ? "Opening PesePay…" : "Pay with PesePay checkout"}
                           </Button>
-                          <p className="rail-panel-note">
+                          <p className="text-xs leading-relaxed text-muted-foreground">
                             EcoCash, InnBucks, cards, and Zimswitch open in a secure PesePay
                             checkout.
                           </p>
                           {pesepayReference ? (
-                            <p className="rail-panel-note">Reference: {pesepayReference}</p>
+                            <p className="font-mono text-xs text-muted-foreground">
+                              Reference: {pesepayReference}
+                            </p>
                           ) : null}
                           {pesepayBalanceError ? (
-                            <div className="rail-panel-error">
+                            <div className="flex items-center justify-between gap-3 text-xs text-destructive">
                               <span>{pesepayBalanceError}</span>
                               <Button
                                 type="button"
@@ -933,9 +1000,13 @@ export default function BillingPage({
                   </Card>
 
                   {canManageBilling ? (
-                    <p className="rail-offline-link">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
                       Received cash or a bank transfer?{" "}
-                      <button type="button" onClick={openOfflineRecording}>
+                      <button
+                        type="button"
+                        onClick={openOfflineRecording}
+                        className="font-semibold text-foreground underline underline-offset-4 hover:text-primary"
+                      >
                         Record an offline payment
                       </button>
                     </p>
@@ -943,13 +1014,14 @@ export default function BillingPage({
                 </>
               ) : (
                 <>
-                  <Card className="rounded-2xl border-border/60">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <Banknote size={15} />
-                        </div>
-                        <div>
+                  {/* ── Offline payment ──────────────────────── */}
+                  <Card className="gap-4 border-border">
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <Banknote className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
                           <CardTitle className="text-base">Offline payment</CardTitle>
                           <CardDescription>
                             Cash, bank transfer, or a card taken outside SiteSurveyor.
@@ -1011,8 +1083,12 @@ export default function BillingPage({
                     </CardContent>
                   </Card>
 
-                  <p className="rail-offline-link">
-                    <button type="button" onClick={() => setPaymentMode("rails")}>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode("rails")}
+                      className="font-semibold text-foreground underline underline-offset-4 hover:text-primary"
+                    >
                       Pay an invoice with a wallet or balance instead
                     </button>
                   </p>
@@ -1021,8 +1097,8 @@ export default function BillingPage({
             </div>
 
             <aside className="h-fit space-y-6 lg:sticky lg:top-0">
-              <Card className="gap-4 rounded-2xl border-border/60">
-                <CardHeader>
+              <Card className="gap-4 border-border">
+                <CardHeader className="space-y-0 pb-2">
                   <CardTitle className="text-base">Payment</CardTitle>
                   <CardDescription>Summary at a glance.</CardDescription>
                 </CardHeader>
@@ -1036,7 +1112,7 @@ export default function BillingPage({
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Amount</dt>
-                      <dd className="font-semibold tabular-nums">
+                      <dd className="font-mono font-semibold tabular-nums">
                         {railsMode
                           ? selectedInvoice
                             ? formatCurrency(selectedInvoice.total)
@@ -1058,10 +1134,10 @@ export default function BillingPage({
                     </div>
                     {selectedInvoice ? (
                       <div className="border-t pt-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                           Invoice total
                         </p>
-                        <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                        <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums">
                           {formatCurrency(selectedInvoice.total)}{" "}
                           <span className="text-xs font-medium text-muted-foreground">
                             {selectedInvoice.currency_code}
@@ -1071,7 +1147,7 @@ export default function BillingPage({
                     ) : null}
                   </dl>
                   {railsMode ? (
-                    <p className="rail-summary-note">
+                    <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
                       Crypto payments settle wallet to wallet. PesePay checkout returns to
                       Treasury once the network confirms.
                     </p>
@@ -1086,45 +1162,52 @@ export default function BillingPage({
   }
 
   return (
-    <DashboardShell className="hub-body billing-page finance-page">
-      <DashboardHeader
-        badge={
-          <span className="treasury-badge">
-            <span className="treasury-badge-dot" />
-            Treasury
-          </span>
-        }
-        title="Treasury"
-        subtitle="Crypto wallets · PesePay balance"
-        description="Pay with a Solana wallet or your PesePay balance. One ledger for both."
-        actions={
-          <div className="flex flex-wrap gap-2">
+    <div className="space-y-4">
+      {/* ── Page header ──────────────────────────────────── */}
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">Treasury</h1>
+          <p className="text-sm text-muted-foreground">
+            Pay with a Solana wallet or your PesePay balance. One ledger for both.
+          </p>
+          <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-0.5 font-medium text-foreground">
+              <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+              Treasury
+            </span>
+            <span>Crypto wallets · PesePay balance</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadStatementCsv}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+          {canManageBilling && (
             <Button
-              variant="outline"
               size="sm"
-              onClick={downloadStatementCsv}
-              className="gap-2 rounded-lg"
+              onClick={openPaymentComposer}
+              disabled={invoicesLoading || payableInvoices.length === 0}
+              className="gap-2"
             >
-              <Download size={16} />
-              Export
+              <Plus className="h-4 w-4" />
+              Make a payment
             </Button>
-            {canManageBilling && (
-              <Button
-                size="sm"
-                onClick={openPaymentComposer}
-                disabled={invoicesLoading || payableInvoices.length === 0}
-                className="gap-2 rounded-lg"
-              >
-                <Plus size={16} />
-                Make a payment
-              </Button>
-            )}
-          </div>
-        }
-      />
+          )}
+        </div>
+      </div>
 
       {notice && (
-        <div className="treasury-notice" role="status">
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-foreground"
+        >
+          <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
           {notice}
         </div>
       )}
@@ -1151,8 +1234,8 @@ export default function BillingPage({
         invoiceCount={invoices.length}
       />
 
-      <div className="treasury-layout">
-        <div className="treasury-main">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.62fr)_minmax(300px,1fr)] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
           <WalletMethodsCard
             workspaceId={workspaceId}
             paymentMethods={paymentMethods}
@@ -1161,110 +1244,125 @@ export default function BillingPage({
             onNotice={showNotice}
           />
 
-          <section className="method-ledger" aria-labelledby="saved-methods-title">
-            <div className="method-ledger-head">
+          {/* ── Saved methods ───────────────────────────── */}
+          <Card className="gap-0 border-border" aria-labelledby="saved-methods-title">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-4">
               <div>
-                <p className="treasury-eyebrow">Saved methods</p>
-                <h2 id="saved-methods-title" className="method-ledger-title">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Saved methods
+                </p>
+                <h2 id="saved-methods-title" className="mt-1 text-base font-semibold">
                   Receiving accounts
                 </h2>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2 rounded-lg"
+                className="gap-2"
                 onClick={scrollToWalletMethods}
               >
-                <Plus size={14} />
+                <Plus className="h-4 w-4" />
                 {canManageBilling ? "Add wallet method" : "Connect a wallet"}
               </Button>
-            </div>
+            </CardHeader>
 
-            {methodsLoading ? (
-              <div className="method-ledger-loading">
-                <PageLoader compact />
-              </div>
-            ) : paymentMethods.length === 0 ? (
-              <div className="method-ledger-empty">
-                <p className="method-ledger-empty-title">No saved methods yet</p>
-                <p className="method-ledger-empty-hint">
-                  Connect a wallet above to save its address for invoices and
-                  marketplace payouts.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 rounded-lg"
-                  onClick={scrollToWalletMethods}
-                >
-                  <Wallet size={14} />
-                  Choose a wallet
-                </Button>
-              </div>
-            ) : (
-              <div className="method-ledger-list">
-                {paymentMethods.map((method) => {
-                  const isCrypto = method.type === "Crypto Wallet";
-                  const detail = method.detail
-                    ? isCrypto
-                      ? shorten(method.detail)
-                      : method.detail
-                    : "No detail saved";
-                  const meta = isCrypto
-                    ? clusterLabelFor(method.expiry)
-                    : method.expiry
-                      ? `Expires ${method.expiry}`
-                      : method.type;
-
-                  return (
-                    <div
-                      key={method.id}
-                      className="method-ledger-row"
-                      data-default={method.is_default || undefined}
+            <CardContent>
+              {methodsLoading ? (
+                <div className="space-y-2" aria-busy="true">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : paymentMethods.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Wallet className="h-5 w-5" />
+                    </EmptyMedia>
+                    <EmptyTitle>No saved methods yet</EmptyTitle>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <p className="max-w-[46ch] text-sm text-muted-foreground">
+                      Connect a wallet above to save its address for invoices and
+                      marketplace payouts.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={scrollToWalletMethods}
                     >
-                      <span className="method-ledger-icon">{methodIcon(method)}</span>
-                      <span className="method-ledger-copy">
-                        <span className="method-ledger-name">
-                          {method.label}
-                          {method.is_default && (
-                            <span className="method-ledger-flag">Default</span>
+                      <Wallet className="h-4 w-4" />
+                      Choose a wallet
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              ) : (
+                <div className="overflow-hidden rounded-lg border border-border">
+                  {paymentMethods.map((method) => {
+                    const isCrypto = method.type === "Crypto Wallet";
+                    const detail = method.detail
+                      ? isCrypto
+                        ? shorten(method.detail)
+                        : method.detail
+                      : "No detail saved";
+                    const meta = isCrypto
+                      ? clusterLabelFor(method.expiry)
+                      : method.expiry
+                        ? `Expires ${method.expiry}`
+                        : method.type;
+
+                    return (
+                      <div
+                        key={method.id}
+                        className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
+                        data-default={method.is_default || undefined}
+                      >
+                        <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted text-xs font-semibold text-foreground">
+                          {methodIcon(method)}
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="flex items-center gap-2 text-sm font-medium">
+                            {method.label}
+                            {method.is_default && (
+                              <Badge variant="success">Default</Badge>
+                            )}
+                          </span>
+                          <span className="truncate font-mono text-xs text-muted-foreground">
+                            {isCrypto ? `${meta} · ${detail}` : `${detail} · ${meta}`}
+                          </span>
+                        </span>
+                        <span className="ml-auto flex shrink-0 items-center gap-2">
+                          {canManageBilling && !method.is_default && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void setDefaultMethod(method.id)}
+                            >
+                              Set default
+                            </Button>
+                          )}
+                          {canManageBilling && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground"
+                              onClick={() => void removeMethod(method.id)}
+                            >
+                              Remove
+                            </Button>
                           )}
                         </span>
-                        <span className="method-ledger-meta">
-                          {isCrypto ? `${meta} · ${detail}` : `${detail} · ${meta}`}
-                        </span>
-                      </span>
-                      <span className="method-ledger-actions">
-                        {canManageBilling && !method.is_default && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => void setDefaultMethod(method.id)}
-                          >
-                            Set default
-                          </Button>
-                        )}
-                        {canManageBilling && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="rounded-lg text-muted-foreground"
-                            onClick={() => void removeMethod(method.id)}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        <aside className="treasury-side">
+        <aside className="flex min-w-0 flex-col gap-4">
           <MarketplaceWalletCard
             workspaceId={workspaceId}
             connectedAddress={phantomWallet.address}
@@ -1277,49 +1375,62 @@ export default function BillingPage({
             onNotice={showNotice}
           />
 
-          <section className="side-card settlement-card" aria-labelledby="settlement-title">
-            <div className="side-card-head">
-              <span className="side-card-mark">
-                <ShieldCheck size={17} />
-              </span>
-              <div>
-                <p className="treasury-eyebrow">Settlement</p>
-                <h2 id="settlement-title" className="side-card-title">
-                  How funds move
-                </h2>
+          {/* ── Settlement ───────────────────────────────── */}
+          <Card className="gap-0 border-border" aria-labelledby="settlement-title">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
+                  <ShieldCheck className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Settlement
+                  </p>
+                  <h2 id="settlement-title" className="mt-1 text-sm font-semibold">
+                    How funds move
+                  </h2>
+                </div>
               </div>
-            </div>
-            <div className="side-card-body">
-              <dl className="settlement-list">
-                <div className="settlement-row">
-                  <dt>Network</dt>
-                  <dd>Solana {clusterLabel}</dd>
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+              <dl className="flex flex-col divide-y divide-border">
+                <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0">
+                  <dt className="text-xs text-muted-foreground">Network</dt>
+                  <dd className="font-mono text-xs">Solana {clusterLabel}</dd>
                 </div>
-                <div className="settlement-row">
-                  <dt>Token</dt>
-                  <dd>USDC · {shorten(SOLANA_USDC_MINT, 4, 4)}</dd>
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="text-xs text-muted-foreground">Token</dt>
+                  <dd className="font-mono text-xs">USDC · {shorten(SOLANA_USDC_MINT, 4, 4)}</dd>
                 </div>
-                <div className="settlement-row">
-                  <dt>Treasury</dt>
-                  <dd>
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="text-xs text-muted-foreground">Treasury</dt>
+                  <dd className="flex min-w-0 items-center justify-end gap-2 font-mono text-xs">
                     {SOLANA_TREASURY_ADDRESS ? (
                       <>
-                        <span>{shorten(SOLANA_TREASURY_ADDRESS)}</span>
+                        <span className="truncate">
+                          {shorten(SOLANA_TREASURY_ADDRESS)}
+                        </span>
                         <button
                           type="button"
-                          className="settlement-copy"
+                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
                           onClick={() => void copyTreasuryAddress()}
                           aria-label="Copy treasury address"
                         >
-                          {copiedTreasury ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedTreasury ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
                         </button>
                         <a
                           href={explorerAccountUrl(SOLANA_TREASURY_ADDRESS)}
                           target="_blank"
                           rel="noreferrer"
                           aria-label="View treasury on Solana Explorer"
+                          className="shrink-0 text-muted-foreground hover:text-primary"
                         >
-                          <ExternalLink size={12} />
+                          <ExternalLink className="h-4 w-4" />
                         </a>
                       </>
                     ) : (
@@ -1328,22 +1439,26 @@ export default function BillingPage({
                   </dd>
                 </div>
               </dl>
-              <p className="settlement-note">
-                <ShieldCheck size={13} />
+
+              <p className="flex items-start gap-2 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 SiteSurveyor never holds funds. Payments move wallet to wallet; this
                 ledger keeps the record.
               </p>
-            </div>
-          </section>
+            </CardContent>
+          </Card>
         </aside>
       </div>
 
-      <Card className="treasury-history-card">
-        <div className="treasury-history-head">
+      {/* ── Payment history ──────────────────────────────── */}
+      <Card className="gap-0 border-border">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-4">
           <div>
-            <p className="treasury-eyebrow">Ledger</p>
-            <h2 className="treasury-history-title">Payment history</h2>
-            <p className="treasury-history-sub">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Ledger
+            </p>
+            <h2 className="mt-1 text-base font-semibold">Payment history</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
               {filteredHistory.length} of {history.length}{" "}
               {history.length === 1 ? "entry" : "entries"}
             </p>
@@ -1351,23 +1466,27 @@ export default function BillingPage({
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 rounded-lg"
+            className="gap-2"
             onClick={downloadStatementCsv}
           >
-            <Download size={14} />
+            <Download className="h-4 w-4" />
             Export CSV
           </Button>
-        </div>
+        </CardHeader>
 
-        <div className="treasury-history-toolbar">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-y border-border bg-muted/50 px-6 py-3">
           <Input
             placeholder="Search transactions..."
             value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)}
-            className="treasury-search"
+            className="max-w-[300px]"
             aria-label="Search transactions"
           />
-          <div className="treasury-sort-group" role="group" aria-label="Sort payments">
+          <div
+            className="inline-flex overflow-hidden rounded-md border border-border"
+            role="group"
+            aria-label="Sort payments"
+          >
             {[
               { value: "date-desc", label: "Newest" },
               { value: "date-asc", label: "Oldest" },
@@ -1376,7 +1495,12 @@ export default function BillingPage({
               <button
                 key={option.value}
                 type="button"
-                className="treasury-sort-btn"
+                className={cn(
+                  "border-l border-border px-3 py-1.5 text-xs font-medium first:border-l-0",
+                  historySort === option.value
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
                 aria-pressed={historySort === option.value}
                 onClick={() => setHistorySort(option.value as typeof historySort)}
               >
@@ -1386,14 +1510,14 @@ export default function BillingPage({
           </div>
         </div>
 
-        <div className="treasury-history-body">
+        <CardContent className="pt-4">
           <TransactionTable
             rows={filteredHistory}
             loading={historyLoading}
             error={historyError}
           />
-        </div>
+        </CardContent>
       </Card>
-    </DashboardShell>
+    </div>
   );
 }

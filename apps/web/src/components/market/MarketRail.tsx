@@ -42,7 +42,7 @@ export function KindIcon({
 
 export function NewBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-micro font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+    <span className="inline-flex shrink-0 items-center rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-micro font-semibold uppercase tracking-wider text-success">
       New
     </span>
   );
@@ -77,7 +77,7 @@ function RailTile({
       onClick={() => onSelect(item)}
       className={cn(
         "group flex w-[82vw] max-w-[300px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border/80 bg-card text-left transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-border hover:shadow-[0_16px_36px_rgba(17,24,39,0.09)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-[280px]",
-        highlighted && "ring-2 ring-amber-500/70",
+        highlighted && "ring-2 ring-warning/70",
       )}
       style={highlighted ? { borderColor: accent } : undefined}
     >
@@ -109,15 +109,15 @@ function RailTile({
           <span className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary">
             {item.title}
           </span>
-          {item.verified ? <BadgeCheck className="mt-0.5 size-4 shrink-0 text-cyan-600" aria-label="Verified" /> : null}
+          {item.verified ? <BadgeCheck className="mt-0.5 size-4 shrink-0 text-info" aria-label="Verified" /> : null}
         </span>
 
         {item.meta || rating ? (
           <span className="flex items-center gap-2">
             {item.meta ? <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{item.meta}</span> : <span className="flex-1" />}
             {rating ? (
-              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-                <Star className="size-3.5 fill-amber-500 text-amber-500" aria-hidden="true" />
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-warning">
+                <Star className="size-3.5 fill-warning text-warning" aria-hidden="true" />
                 {rating.toFixed(1)}
               </span>
             ) : null}

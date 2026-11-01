@@ -50,7 +50,6 @@ import {
   DashboardHeader,
   DashboardShell,
 } from "../../components/dashboard/DashboardShell.tsx";
-import "../../styles/console.css";
 
 const COUNTRIES: { code: string; name: string }[] = [
   { code: "ZW", name: "Zimbabwe" },
@@ -268,14 +267,14 @@ export default function ProfileSettingsPage() {
 
   if (loading) {
     return (
-      <div className="hub-body">
+      <div className="w-full max-w-full">
         <PageLoader />
       </div>
     );
   }
 
   return (
-    <DashboardShell className="hub-body">
+    <DashboardShell className="w-full max-w-full">
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -638,10 +637,10 @@ export default function ProfileSettingsPage() {
             <CardDescription>How you receive product updates</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="console-setting">
-              <div className="console-setting-text">
-                <p className="console-setting-title">Email notifications</p>
-                <p className="console-setting-hint">
+            <div className="flex flex-col gap-2 border-b py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Email notifications</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   Receive updates about invites, approvals and activity in your workspaces
                 </p>
               </div>

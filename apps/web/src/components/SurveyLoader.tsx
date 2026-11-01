@@ -1,4 +1,4 @@
-import "../styles/survey-loader.css";
+import { cn } from "@/lib/utils";
 
 type SurveyLoaderSize = "sm" | "md" | "lg";
 
@@ -8,38 +8,37 @@ interface SurveyLoaderProps {
   className?: string;
 }
 
-/**
- * shadcn-style loading spinner.
- *
- * Size tokens map to the template's radius scale: sm → small ring,
- * md → default (44px), lg → large ring. Text is styled with the slate
- * palette (text-foreground / muted-foreground) so the loader matches the
- * shadcn-admin design language instead of the legacy plan-sheet motif.
- */
+const sizeClasses: Record<SurveyLoaderSize, { ring: string; label: string }> = {
+  sm: { ring: "size-7 border-2", label: "text-xs" },
+  md: { ring: "size-11 border-2", label: "text-sm" },
+  lg: { ring: "size-14 border-2", label: "text-base" },
+};
+
 export default function SurveyLoader({
   size = "md",
   label,
   className,
 }: SurveyLoaderProps) {
-  const sizeVar =
-    size === "sm" ? "28px" : size === "lg" ? "62px" : "44px";
-  const textSize = size === "sm" ? "12px" : "14px";
-  const sizeClass = `sv-loader--${size}`;
-
-  const classes = [sizeClass, className].filter(Boolean).join(" ");
+  const sizes = sizeClasses[size];
 
   return (
     <div
-      className={classes}
+      className={cn("inline-flex flex-col items-center gap-3", className)}
       role="status"
       aria-live="polite"
       aria-label={label ?? "Loading"}
     >
-      <div className="sv-loader-frame" aria-hidden="true" />
+      <div
+        aria-hidden="true"
+        className={cn(
+          "rounded-full border-primary/20 border-t-primary motion-safe:animate-spin",
+          sizes.ring,
+        )}
+      />
       {label ? (
-        <span className="sv-loader-label">{label}</span>
+        <span className={cn("font-medium text-muted-foreground", sizes.label)}>{label}</span>
       ) : (
-        <span className="sv-loader-sr">Loading</span>
+        <span className="sr-only">Loading</span>
       )}
     </div>
   );

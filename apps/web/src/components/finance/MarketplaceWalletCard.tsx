@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TriangleAlert, Wallet } from "lucide-react";
 
-import PageLoader from "@/components/PageLoader.tsx";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -108,34 +110,37 @@ export default function MarketplaceWalletCard({
   };
 
   return (
-    <section className="side-card marketplace-wallet" aria-labelledby="marketplace-wallet-title">
-      <div className="side-card-head">
-        <span className="side-card-mark">
-          <Wallet size={17} />
-        </span>
-        <div>
-          <p className="treasury-eyebrow">Marketplace</p>
-          <h2 id="marketplace-wallet-title" className="side-card-title">
-            Receiving wallet
-          </h2>
+    <Card className="gap-4 border-border" aria-labelledby="marketplace-wallet-title">
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
+            <Wallet className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Marketplace
+            </p>
+            <h2 id="marketplace-wallet-title" className="mt-1 text-sm font-semibold">
+              Receiving wallet
+            </h2>
+          </div>
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="side-card-body">
-        <p className="side-card-copy">
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
           Solana address that receives sale and hire payments from the marketplace.
         </p>
 
         {loading ? (
-          <div className="marketplace-loading">
-            <PageLoader compact />
-          </div>
+          <Skeleton className="h-9 w-full rounded-md" aria-busy="true" />
         ) : (
           <>
             {error ? (
-              <p className="marketplace-error" role="alert">
-                {error}
-              </p>
+              <Alert variant="destructive">
+                <TriangleAlert className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             ) : null}
 
             {options.length > 0 ? (
@@ -145,7 +150,6 @@ export default function MarketplaceWalletCard({
                 disabled={saving || !canManage}
               >
                 <SelectTrigger
-                  className="marketplace-select"
                   aria-label="Marketplace receiving wallet"
                   aria-busy={saving}
                 >
@@ -165,8 +169,8 @@ export default function MarketplaceWalletCard({
             ) : null}
 
             {!wallet && (
-              <div className="marketplace-empty">
-                <TriangleAlert size={14} />
+              <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
+                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   {canManage
                     ? "No wallet assigned. Buyers see “Seller has no wallet” until you pick one."
@@ -176,7 +180,7 @@ export default function MarketplaceWalletCard({
                       {" "}
                       <button
                         type="button"
-                        className="marketplace-empty-action"
+                        className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
                         onClick={onAddWallet}
                       >
                         Add a wallet method
@@ -188,7 +192,7 @@ export default function MarketplaceWalletCard({
             )}
           </>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

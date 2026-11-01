@@ -271,7 +271,7 @@ export default function ProfessionalsPage({
 
   if (loading) {
     return (
-      <div className="hub-body pro-body p-6">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
@@ -615,7 +615,7 @@ export default function ProfessionalsPage({
   }
 
   return (
-    <DashboardShell className="hub-body pro-body">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         title="Professionals Directory"
         subtitle="Browse qualified surveyors and geomaticians across Zimbabwe"

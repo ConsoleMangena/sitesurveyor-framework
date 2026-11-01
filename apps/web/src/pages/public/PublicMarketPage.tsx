@@ -722,11 +722,11 @@ export default function PublicMarketPage() {
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="ghost"
-                  className={`hub-avatar-btn ${marketUserMenuOpen ? "open" : ""}`}
+                  variant="outline"
+                  className="group h-10 gap-2 rounded-full py-1.5 pl-1.5 pr-3"
                   aria-label={`Open account menu (${user.name})`}
                 >
-                  <Avatar className="hub-avatar-btn-avatar">
+                  <Avatar className="size-8 shrink-0">
                     {avatarUrl && (
                       <AvatarImage
                         src={avatarUrl}
@@ -738,17 +738,18 @@ export default function PublicMarketPage() {
                       {initialsOf(user.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hub-avatar-name">{user.name}</span>
-                  <ChevronDown className="hub-avatar-chevron" aria-hidden="true" />
+                  <span className="max-w-[132px] truncate text-sm font-semibold max-sm:hidden">
+                    {user.name}
+                  </span>
+                  <ChevronDown
+                    className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+                    aria-hidden="true"
+                  />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                forceMount
-                className="hub-profile-dropdown web3-theme"
-              >
-                <div className="hub-profile-menu-header">
-                  <Avatar className="hub-profile-menu-avatar">
+              <DropdownMenuContent align="end" forceMount className="w-64 web3-theme">
+                <div className="mb-1.5 flex items-center gap-3 rounded-lg border bg-muted/40 p-2.5">
+                  <Avatar className="size-10 shrink-0">
                     {avatarUrl && (
                       <AvatarImage
                         src={avatarUrl}
@@ -760,32 +761,35 @@ export default function PublicMarketPage() {
                       {initialsOf(user.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="hub-profile-menu-identity">
-                    <span className="hub-profile-menu-name">{user.name}</span>
-                    <span className="hub-profile-menu-email">{user.email}</span>
+                  <div className="flex min-w-0 flex-col items-start gap-0.5">
+                    <span className="max-w-[180px] truncate text-sm font-semibold">
+                      {user.name}
+                    </span>
+                    <span className="max-w-[180px] truncate text-xs text-muted-foreground">
+                      {user.email}
+                    </span>
                     <Badge
                       variant={user.accountType === "business" ? "default" : "secondary"}
-                      className="hub-profile-menu-badge"
                     >
                       {getWorkspaceShellAccountLabel(user)}
                     </Badge>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="hub-profile-menu-divider" />
-                <DropdownMenuItem className="hub-profile-menu-item" asChild>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
                   <Link to="/">
                     <LayoutGrid /> Open your workspace
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="hub-profile-menu-divider" />
-                <DropdownMenuItem className="hub-profile-menu-item" asChild>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
                   <Link to="/?view=marketplace">
                     <PackageSearch /> My marketplace requests
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="hub-profile-menu-divider" />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="hub-profile-menu-item hub-profile-menu-item-danger"
+                  className="text-destructive focus:text-destructive"
                   onClick={handleSignOut}
                 >
                   <LogOut /> Sign out
@@ -824,7 +828,7 @@ export default function PublicMarketPage() {
               </span>
             </div>
             {addedThisWeek > 0 ? (
-              <p className="mt-4 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              <p className="mt-4 text-sm font-medium text-success">
                 {addedThisWeek} new {addedThisWeek === 1 ? "item" : "items"} added this week
               </p>
             ) : null}
@@ -1004,7 +1008,7 @@ export default function PublicMarketPage() {
                       className={cn(
                         "inline-flex min-h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-medium transition-colors",
                         remoteOnly
-                          ? "border-sky-600 bg-sky-600 text-white"
+                          ? "border-primary bg-primary text-primary-foreground"
                           : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
                       )}
                     >
@@ -1421,7 +1425,7 @@ function RateBenchmarks({
       {benchmarks.map(({ type, median, count }) => (
         <span key={type} className="inline-flex items-baseline gap-1 text-xs">
           <span className="font-medium text-foreground">{type}</span>
-          <span className="font-mono font-semibold tabular-nums text-amber-800 dark:text-amber-400">
+          <span className="font-mono font-semibold tabular-nums text-warning">
             ${median.toLocaleString()}
           </span>
           <span className="text-muted-foreground">/day</span>
@@ -1453,7 +1457,7 @@ function LoadErrorPanel({
           : "The market data couldn't be loaded."}
       </p>
       {failure.missingRelation ? (
-        <p className="mx-auto mt-3 max-w-md rounded-md border border-amber-600/30 bg-amber-500/10 px-3 py-2 text-left text-xs text-amber-800">
+        <p className="mx-auto mt-3 max-w-md rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-left text-xs text-warning">
           public_market views not found — apply backend/sql migrations 0001–0004
           to this Supabase project (supabase db push).
         </p>

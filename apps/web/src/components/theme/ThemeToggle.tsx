@@ -36,7 +36,7 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
       size="icon"
-      className="hub-theme-toggle"
+      className="rounded-full"
       onClick={toggle}
       title={isDark ? "Switch to light theme" : "Switch to dark theme"}
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}

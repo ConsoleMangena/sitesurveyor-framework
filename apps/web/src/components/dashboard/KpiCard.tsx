@@ -1,8 +1,12 @@
 import * as React from "react";
 
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import "./dashboard.css";
 
 type KpiTone =
   | "neutral"
@@ -12,13 +16,13 @@ type KpiTone =
   | "warning"
   | "purple";
 
-const TONE_ACCENTS: Record<KpiTone, string> = {
-  neutral: "var(--text-muted)",
-  primary: "var(--accent)",
-  success: "var(--color-success)",
-  info: "var(--color-info)",
-  warning: "var(--color-warning)",
-  purple: "var(--accent-purple)",
+const TONE_CHIP: Record<KpiTone, string> = {
+  neutral: "bg-muted text-muted-foreground",
+  primary: "bg-primary/10 text-primary",
+  success: "bg-success/10 text-success",
+  info: "bg-info/10 text-info",
+  warning: "bg-warning/10 text-warning",
+  purple: "bg-accent-purple/10 text-accent-purple",
 };
 
 interface KpiCardProps {
@@ -43,22 +47,24 @@ export function KpiCard({
   size = "default",
   className,
 }: KpiCardProps) {
-  const accent = { "--kpi-accent": TONE_ACCENTS[tone] } as React.CSSProperties;
-
   if (size === "compact") {
     return (
-      <Card
-        style={accent}
-        className={cn("kpi-tile kpi-tile--compact", className)}
-      >
-        <span aria-hidden className="kpi-tile-rule" />
-        <CardContent className="kpi-tile-content">
-          <span aria-hidden className="kpi-tile-chip">
+      <Card className={cn("gap-0 py-0", className)}>
+        <CardContent className="flex items-center gap-3 p-3">
+          <span
+            aria-hidden
+            className={cn(
+              "inline-flex size-7 shrink-0 items-center justify-center rounded-md",
+              TONE_CHIP[tone],
+            )}
+          >
             {icon}
           </span>
-          <div className="kpi-tile-text">
-            <p className="kpi-tile-label">{title}</p>
-            <p className="kpi-tile-value">{value}</p>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-muted-foreground">
+              {title}
+            </p>
+            <p className="truncate text-lg font-bold tabular-nums">{value}</p>
           </div>
           {badge ? <div className="ml-auto shrink-0">{badge}</div> : null}
         </CardContent>
@@ -67,27 +73,40 @@ export function KpiCard({
   }
 
   return (
-    <Card style={accent} className={cn("kpi-tile", className)}>
-      <span aria-hidden className="kpi-tile-rule" />
-      <CardContent className="kpi-tile-content">
-        <div className="kpi-tile-top">
-          <span aria-hidden className="kpi-tile-chip">
+    <Card className={cn("gap-3 py-4", className)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-0">
+        <CardTitle className="text-sm font-medium" title={title}>
+          {title}
+        </CardTitle>
+        {badge ? <div className="shrink-0">{badge}</div> : null}
+      </CardHeader>
+      <CardContent className="px-4">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className={cn(
+              "inline-flex size-9 shrink-0 items-center justify-center rounded-lg",
+              TONE_CHIP[tone],
+            )}
+          >
             {icon}
           </span>
-          {badge}
-        </div>
-        <div className="kpi-tile-text">
-          <p className="kpi-tile-label" title={title}>
-            {title}
-          </p>
-          <p className="kpi-tile-value" title={typeof value === "string" ? value : undefined}>
-            {value}
-          </p>
-          {subtext ? (
-            <p className="kpi-tile-sub" title={typeof subtext === "string" ? subtext : undefined}>
-              {subtext}
+          <div className="min-w-0">
+            <p
+              className="truncate text-2xl font-bold tabular-nums"
+              title={typeof value === "string" ? value : undefined}
+            >
+              {value}
             </p>
-          ) : null}
+            {subtext ? (
+              <p
+                className="truncate text-xs text-muted-foreground"
+                title={typeof subtext === "string" ? subtext : undefined}
+              >
+                {subtext}
+              </p>
+            ) : null}
+          </div>
         </div>
       </CardContent>
     </Card>

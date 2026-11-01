@@ -395,7 +395,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
 
   if (loading) {
     return (
-      <div className="hub-body p-6">
+      <div className="w-full max-w-full p-6">
         <PageLoader />
       </div>
     );
@@ -619,7 +619,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
   }
 
   return (
-    <DashboardShell className="hub-body">
+    <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         title="My Schedule"
         subtitle="Weekly site visits, lodgements, and appointments"
