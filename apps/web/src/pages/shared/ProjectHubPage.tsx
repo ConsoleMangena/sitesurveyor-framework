@@ -657,6 +657,11 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
   const openProject = (p: HubProject) => {
     setActiveProjectTab('overview')
     setActiveProjectId(p.dbId)
+    // Persist synchronously: the fullscreen toggle remounts this page in some
+    // layouts, and the effect below never runs on an instance that is torn
+    // down first. Writing here means a remount still finds the active id and
+    // reopens the project instead of bouncing back to the list.
+    localStorage.setItem(ACTIVE_PROJECT_KEY, p.dbId)
     onEnterFullscreenProject?.()
     setSelectedProject(null)
     setShowDeleteConfirm(false)
@@ -665,6 +670,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
   const exitProject = () => {
     setActiveProjectId(null)
+    localStorage.removeItem(ACTIVE_PROJECT_KEY)
     onExitFullscreenProject?.()
   }
 

@@ -18,6 +18,7 @@ import type {
   WorkspaceView,
 } from "@/features/workspace/types";
 import { getCookie } from "@/lib/cookies";
+import { cn } from "@/lib/utils";
 
 interface WorkspaceShellProps {
   user: UiUser;
@@ -51,16 +52,12 @@ export default function WorkspaceShell({
     [],
   );
 
-  if (shouldHideGlobalChrome) {
-    return (
-      <div className="relative flex h-dvh flex-col overflow-hidden bg-background">
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
-          {children}
-        </main>
-      </div>
-    );
-  }
-
+  // Keep ONE stable tree for both modes: swapping the whole return between a
+  // bare `<main>` and the sidebar layout changed the root element type, which
+  // made React unmount and remount `children`. That wiped ProjectHubPage's
+  // `activeProjectId` state (its localStorage write effect never ran), so
+  // "Open Project" always dropped the user back on the project list. Only the
+  // chrome is toggled in place now — `children` never changes position.
   return (
     <SearchProvider
       navGroups={navGroups}
@@ -68,37 +65,54 @@ export default function WorkspaceShell({
       onChangeView={onChangeView}
     >
       <LayoutProvider>
-        <SidebarProvider defaultOpen={defaultSidebarOpen} className="bg-background">
-          <SkipToMain />
-          <AppSidebar
-            user={user}
-            accountLabel={accountLabel}
-            navGroups={navGroups}
-            activeView={activeView}
-            onChangeView={onChangeView}
-            onProfile={() => onChangeView("profile")}
-            onLogout={onLogout}
-          />
+        <SidebarProvider
+          defaultOpen={defaultSidebarOpen}
+          className={cn(
+            "bg-background",
+            // Fullscreen project mode: the shell owns the viewport so the
+            // page below can size and scroll itself.
+            shouldHideGlobalChrome && "h-dvh min-h-0 overflow-hidden",
+          )}
+        >
+          {shouldHideGlobalChrome ? null : <SkipToMain />}
+          {shouldHideGlobalChrome ? null : (
+            <AppSidebar
+              user={user}
+              accountLabel={accountLabel}
+              navGroups={navGroups}
+              activeView={activeView}
+              onChangeView={onChangeView}
+              onProfile={() => onChangeView("profile")}
+              onLogout={onLogout}
+            />
+          )}
 
-          <SidebarInset className="flex h-svh flex-col overflow-hidden @container/content">
-            <Header fixed>
-              <Search />
-              <div className="ms-auto flex items-center gap-1.5">
-                <ThemeToggle />
-                <WorkspaceNotifications
-                  workspaceId={user.workspaceId}
-                  onChangeView={onChangeView}
-                />
-                <ConfigDrawer />
-                <ProfileDropdown
-                  user={user}
-                  onChangeView={onChangeView}
-                  onLogout={onLogout}
-                />
-              </div>
-            </Header>
+          <SidebarInset
+            className={cn(
+              "flex h-svh flex-col overflow-hidden @container/content",
+              shouldHideGlobalChrome && "min-h-0 h-full",
+            )}
+          >
+            {shouldHideGlobalChrome ? null : (
+              <Header fixed>
+                <Search />
+                <div className="ms-auto flex items-center gap-1.5">
+                  <ThemeToggle />
+                  <WorkspaceNotifications
+                    workspaceId={user.workspaceId}
+                    onChangeView={onChangeView}
+                  />
+                  <ConfigDrawer />
+                  <ProfileDropdown
+                    user={user}
+                    onChangeView={onChangeView}
+                    onLogout={onLogout}
+                  />
+                </div>
+              </Header>
+            )}
 
-            {noticeBanner ? (
+            {noticeBanner && !shouldHideGlobalChrome ? (
               <div className="shrink-0 px-4 pt-2">{noticeBanner}</div>
             ) : null}
 
@@ -107,7 +121,12 @@ export default function WorkspaceShell({
                 contract the pre-sidebar shell had. */}
             <Main
               fluid
-              className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-background px-4 pt-4 pb-[max(3.5rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-16"
+              className={cn(
+                "min-h-0 min-w-0 flex-1 bg-background",
+                shouldHideGlobalChrome
+                  ? "overflow-hidden"
+                  : "overflow-y-auto px-4 pt-4 pb-[max(3.5rem,env(safe-area-inset-bottom,0px))] sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 lg:pb-16",
+              )}
             >
               {children}
             </Main>
