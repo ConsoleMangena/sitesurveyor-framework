@@ -861,8 +861,9 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9"
+                            className="relative h-9 w-9 after:absolute after:-inset-1 after:content-['']"
                             onClick={() => handleDelete(e.id, "time")}
+                            aria-label="Delete time entry"
                             title="Delete time entry"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -922,8 +923,9 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9"
+                            className="relative h-9 w-9 after:absolute after:-inset-1 after:content-['']"
                             onClick={() => handleDelete(e.id, "expense")}
+                            aria-label="Delete expense entry"
                             title="Delete expense entry"
                           >
                             <Trash2 className="h-4 w-4" />

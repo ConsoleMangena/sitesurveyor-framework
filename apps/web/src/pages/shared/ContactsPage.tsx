@@ -15,6 +15,7 @@ import { listContacts, createContact, archiveContact } from "../../lib/repositor
 import { listOrganizations } from "../../lib/repositories/organizations.ts";
 import type { OrganizationRow } from "../../lib/repositories/organizations.ts";
 import { mapContactRowToUi, type UiContact } from "../../lib/mappers.ts";
+import { initialsOf } from "../../lib/initials";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
@@ -541,12 +542,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => {
-            const initials = c.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .substring(0, 2)
-              .toUpperCase();
+            const initials = initialsOf(c.name);
             return (
               <Card
                 key={c.id}

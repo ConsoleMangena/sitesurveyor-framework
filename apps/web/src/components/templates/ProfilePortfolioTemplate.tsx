@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { Separator } from "@/components/ui/separator";
+import { initialsOf } from "@/lib/initials";
 import { cn } from "@/lib/utils";
 
 /** One project-showcase entry on the public portfolio. */
@@ -53,16 +54,6 @@ export interface ProfilePortfolioData {
   verified?: boolean;
   showcase?: PortfolioShowcaseItem[];
   fallbackInitials?: string;
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 interface ProfilePortfolioTemplateProps {
@@ -151,7 +142,7 @@ export function ProfilePortfolioTemplate({
             <Avatar className="relative h-24 w-24 border-4 border-background shadow-md">
               <AvatarImage src={avatarUrl ?? undefined} alt={name} />
               <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
-                {getInitials(name || fallbackInitials || "U")}
+                {initialsOf(name || fallbackInitials || "")}
               </AvatarFallback>
             </Avatar>
           </div>

@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import type { WorkspaceMemberWithProfile } from "@/lib/repositories/workspaceMembers";
 import type { ChatMessage } from "@/lib/repositories/chat";
+import { initialsOf } from "@/lib/initials";
 import { cn } from "@/lib/utils";
 import {
   deriveMemberPreviews,
@@ -20,15 +21,6 @@ function avatarBg(userId: string) {
   let h = 0;
   for (const c of userId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return colors[h % colors.length];
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
 }
 
 function roleLabel(role?: string) {
@@ -118,7 +110,7 @@ export function ChatRoster({
               >
                 <Avatar className="h-9 w-9 shrink-0">
                   <AvatarFallback className={cn("text-xs text-white", avatarBg(m.user_id))}>
-                    {initials(m.full_name || m.email || m.user_id.slice(0, 8))}
+                    {initialsOf(m.full_name || m.email || m.user_id.slice(0, 8))}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">

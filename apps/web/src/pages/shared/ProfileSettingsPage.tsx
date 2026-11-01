@@ -21,6 +21,7 @@ import {
   requestAccountDeletion,
 } from "../../lib/repositories/profiles.ts";
 import { signOut } from "../../lib/auth/session.ts";
+import { initialsOf } from "../../lib/initials";
 import PageLoader from "../../components/PageLoader.tsx";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar.tsx";
 import { Button } from "../../components/ui/button.tsx";
@@ -247,13 +248,7 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const initials =
-    fullName
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "?";
+  const initials = initialsOf(fullName);
 
   const specializationTags = specializations
     .split(",")

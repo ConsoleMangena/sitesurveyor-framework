@@ -86,18 +86,19 @@ describe("AccountMenu", () => {
     expect(await screen.findByText("No email")).toBeTruthy();
   });
 
-  it("renders every row with a 16px leading icon and a destructive sign out", async () => {
+  it("sizes row icons from the menu primitive and confirms sign out is destructive", async () => {
     renderMenu();
     openMenu();
 
     const billing = await screen.findByRole("menuitem", { name: "Billing" });
-    expect(billing.querySelector("svg")?.getAttribute("class")).toContain("size-4");
-    expect(
-      screen.getByRole("menuitem", { name: "Public market" }).querySelector("svg")
-        ?.getAttribute("class"),
-    ).toContain("size-4");
+    expect(billing.className).toContain("[&_svg:not([class*='size-'])]:size-4");
+    const iconClass = billing.querySelector("svg")?.getAttribute("class") ?? "";
+    expect(iconClass).not.toMatch(/(?:size-|me-|mr-)/);
 
-    fireEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
+    const signOut = screen.getByRole("menuitem", { name: "Sign out" });
+    expect(signOut.getAttribute("data-variant")).toBe("destructive");
+
+    fireEvent.click(signOut);
     expect(
       await screen.findByText(/reconnect your wallet/i),
     ).toBeTruthy();

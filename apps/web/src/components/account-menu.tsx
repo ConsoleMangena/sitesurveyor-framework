@@ -64,7 +64,7 @@ export function AccountMenuItem({
     return (
       <DropdownMenuItem asChild>
         <Link to={to}>
-          <Icon className="me-2 size-4" />
+          <Icon />
           {label}
         </Link>
       </DropdownMenuItem>
@@ -73,7 +73,7 @@ export function AccountMenuItem({
 
   return (
     <DropdownMenuItem onClick={onClick} className="cursor-pointer">
-      <Icon className="me-2 size-4" />
+      <Icon />
       {label}
     </DropdownMenuItem>
   );
@@ -130,7 +130,6 @@ export function AccountMenu({
               </p>
               <Badge
                 variant={user.accountType === "business" ? "default" : "secondary"}
-                className="text-[10px]"
               >
                 {getWorkspaceShellAccountLabel(user)}
               </Badge>
@@ -148,7 +147,7 @@ export function AccountMenu({
             className="cursor-pointer"
             onClick={() => setSignOutOpen(true)}
           >
-            <LogOut className="me-2 size-4" />
+            <LogOut />
             Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>

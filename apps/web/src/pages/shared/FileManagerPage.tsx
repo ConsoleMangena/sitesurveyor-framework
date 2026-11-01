@@ -816,13 +816,13 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                 {viewMode !== "trash" ? (
                   <>
                     <Button size="sm" variant="outline" onClick={handleBulkCopyLinks}>Copy Links</Button>
-                    <Button size="sm" variant="outline" onClick={() => setMoveMenuFileId("__bulk__")}><FolderInput size={14} className="mr-1" /> Move</Button>
-                    <Button size="sm" variant="destructive" onClick={handleBulkDelete}><Trash2 size={14} className="mr-1" /> Trash</Button>
+                    <Button size="sm" variant="outline" onClick={() => setMoveMenuFileId("__bulk__")}><FolderInput /> Move</Button>
+                    <Button size="sm" variant="destructive" onClick={handleBulkDelete}><Trash2 /> Trash</Button>
                   </>
                 ) : (
                   <>
-                    <Button size="sm" variant="outline" onClick={handleBulkRestore}><RotateCcw size={14} className="mr-1" /> Restore</Button>
-                    <Button size="sm" variant="destructive" onClick={handleBulkDelete}><Trash2 size={14} className="mr-1" /> Delete forever</Button>
+                    <Button size="sm" variant="outline" onClick={handleBulkRestore}><RotateCcw /> Restore</Button>
+                    <Button size="sm" variant="destructive" onClick={handleBulkDelete}><Trash2 /> Delete forever</Button>
                   </>
                 )}
               </div>
@@ -901,33 +901,33 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                             {!isTrash ? (
                               <>
                                 <DropdownMenuItem onClick={() => void handleFileDownload(file)}>
-                                  <Download size={14} className="mr-2" /> Open / Download
+                                  <Download /> Open / Download
                                 </DropdownMenuItem>
                                 {canPreviewFile(file) && (
                                   <DropdownMenuItem onClick={() => void openPreview(file)}>
-                                    <Eye size={14} className="mr-2" /> Preview
+                                    <Eye /> Preview
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem onClick={() => void handleCopyFileLink(file)}>
-                                  <Link2 size={14} className="mr-2" /> Copy Link
+                                  <Link2 /> Copy Link
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openShare(file)}>
-                                  <Share2 size={14} className="mr-2" /> Share link
+                                  <Share2 /> Share link
                                 </DropdownMenuItem>
                                 {file.content_hash && (
                                   <DropdownMenuItem onClick={() => void handleVerifyIntegrity(file)} disabled={busyFileId === file.id}>
-                                    <ShieldCheck size={14} className="mr-2" /> Verify integrity
+                                    <ShieldCheck /> Verify integrity
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => openRename(file)}>
-                                  <Pencil size={14} className="mr-2" /> Rename
+                                  <Pencil /> Rename
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setMoveMenuFileId(file.id)}>
-                                  <FolderInput size={14} className="mr-2" /> Move to folder
+                                  <FolderInput /> Move to folder
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setTagMenuFileId(file.id)}>
-                                  <Tags size={14} className="mr-2" /> Tags
+                                  <Tags /> Tags
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => {
@@ -936,10 +936,10 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                                   }}
                                   disabled={busyFileId === file.id}
                                 >
-                                  <Upload size={14} className="mr-2" /> Upload new version
+                                  <Upload /> Upload new version
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => void openVersionHistory(file)}>
-                                  <History size={14} className="mr-2" /> Version history
+                                  <History /> Version history
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -947,24 +947,24 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                                     deleteFileRef.current = file;
                                     deleteState.setOpen(true);
                                   }}
-                                  className="text-destructive focus:text-destructive"
+                                  variant="destructive"
                                 >
-                                  <Trash2 size={14} className="mr-2" /> Move to trash
+                                  <Trash2 /> Move to trash
                                 </DropdownMenuItem>
                               </>
                             ) : (
                               <>
                                 <DropdownMenuItem onClick={() => void handleRestore(file)}>
-                                  <RotateCcw size={14} className="mr-2" /> Restore
+                                  <RotateCcw /> Restore
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => {
                                     deleteFileRef.current = file;
                                     deleteState.setOpen(true);
                                   }}
-                                  className="text-destructive focus:text-destructive"
+                                  variant="destructive"
                                 >
-                                  <Trash2 size={14} className="mr-2" /> Delete forever
+                                  <Trash2 /> Delete forever
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -1089,7 +1089,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           <>
             {previewFile && (
               <Button variant="outline" onClick={() => void handleFileDownload(previewFile)}>
-                <Download size={14} className="mr-2" /> Download
+                <Download /> Download
               </Button>
             )}
             <Button
@@ -1348,7 +1348,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                         }
                       }}
                     >
-                      <Download size={14} className="mr-2" /> Download
+                      <Download /> Download
                     </Button>
                   </div>
                 ))}

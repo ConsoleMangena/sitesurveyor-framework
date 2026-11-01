@@ -14,7 +14,6 @@ interface DashboardCardProps {
   titleAction?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  accent?: boolean;
   className?: string;
   contentClassName?: string;
 }
@@ -25,40 +24,21 @@ export function DashboardCard({
   titleAction,
   children,
   footer,
-  accent = false,
   className,
   contentClassName,
 }: DashboardCardProps) {
   return (
-    <Card
-      className={cn(
-        "flex flex-col",
-        accent && "border-l-4 border-l-primary",
-        className,
-      )}
-    >
+    <Card className={cn("flex flex-col", className)}>
       {(title || titleAction || icon) && (
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between pb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             {icon && (
-              <span
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60",
-                  accent
-                    ? "bg-primary/10 text-primary"
-                    : "bg-muted/70 text-muted-foreground",
-                )}
-              >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/70 text-muted-foreground">
                 {icon}
               </span>
             )}
             {title && (
-              <CardTitle
-                className={cn(
-                  "text-base font-semibold leading-tight",
-                  accent && "text-primary",
-                )}
-              >
+              <CardTitle className="text-base font-semibold leading-tight">
                 {title}
               </CardTitle>
             )}

@@ -39,12 +39,8 @@ import { markChatNotificationsRead } from "../../lib/repositories/notifications.
 import { getCurrentUser } from "../../lib/auth/session.ts";
 import { AiMessageText } from "./AiMessageText.tsx";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { initialsOf } from "@/lib/initials";
+import { cn } from "@/lib/utils";
 
 interface TeamChatPageProps {
   workspaceId: string;
@@ -81,13 +77,6 @@ function avatarColor(userId: string | null): string {
     hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
   }
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function truncate(s: string, n: number) {
@@ -172,7 +161,7 @@ function MessageBubble({
       </div>
       <div
         className={cn(
-          "mt-1 flex items-center gap-0.5",
+          "mt-1 flex items-center gap-1",
           isMe ? "justify-end" : "justify-start",
           "opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
           "transition-opacity",
@@ -182,7 +171,7 @@ function MessageBubble({
           type="button"
           onClick={() => onReply(msg)}
           aria-label="Reply to message"
-          className="flex h-7 w-7 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
+          className="flex h-9 w-9 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
         >
           <Reply className="h-3.5 w-3.5" />
         </button>
@@ -191,7 +180,7 @@ function MessageBubble({
             type="button"
             onClick={() => onStartEdit(msg)}
             aria-label="Edit message"
-            className="flex h-7 w-7 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
+            className="flex h-9 w-9 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:h-6 sm:w-6"
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
@@ -201,7 +190,7 @@ function MessageBubble({
             type="button"
             onClick={() => onDelete(msg)}
             aria-label="Delete message"
-            className="flex h-7 w-7 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive sm:h-6 sm:w-6"
+            className="flex h-9 w-9 items-center justify-center rounded-none text-muted-foreground/70 hover:bg-destructive/10 hover:text-destructive sm:h-6 sm:w-6"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -254,10 +243,14 @@ function TypingIndicator({ names }: TypingIndicatorProps) {
       aria-live="polite"
       className="flex items-center gap-2 px-1 text-[11px] text-muted-foreground"
     >
-      <span className="flex items-center gap-0.5">
-        <span className="h-1.5 w-1.5 animate-bounce rounded-none bg-muted-foreground/60 [animation-delay:0ms]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-none bg-muted-foreground/60 [animation-delay:150ms]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-none bg-muted-foreground/60 [animation-delay:300ms]" />
+      <span className="flex items-center gap-1">
+        {[0, 160, 320].map((delay) => (
+          <span
+            key={delay}
+            className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        ))}
       </span>
       <span>{label}…</span>
     </div>
@@ -719,8 +712,8 @@ export default function TeamChatPage({
               variant="ghost"
               size="icon"
               onClick={() => setShowMobileRoster(true)}
-              className="h-8 w-8 rounded-none"
-              aria-label="Back to inbox"
+              className="relative size-9 rounded-none after:absolute after:-inset-1 after:content-['']"
+              aria-label="Back to conversations"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -780,7 +773,7 @@ export default function TeamChatPage({
             )}
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[100%] border p-3">
+                <div className="mb-4 flex size-16 items-center justify-center rounded-full border p-3">
                   <MessageSquare className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <p className="text-sm font-medium text-foreground">
@@ -845,7 +838,7 @@ export default function TeamChatPage({
                               : avatarColor(msg.user_id)
                           )}
                         >
-                          {initials(msg.senderName)}
+                          {initialsOf(msg.senderName)}
                         </AvatarFallback>
                       </Avatar>
                     ) : (
@@ -976,7 +969,7 @@ export default function TeamChatPage({
             type="button"
             variant="ghost"
             size="icon"
-            className="hidden h-8 w-8 rounded-none text-muted-foreground lg:inline-flex"
+            className="hidden size-9 rounded-none text-muted-foreground lg:inline-flex"
             aria-label="Add files"
           >
             <Plus className="h-4 w-4" />
@@ -985,7 +978,7 @@ export default function TeamChatPage({
             type="button"
             variant="ghost"
             size="icon"
-            className="hidden h-8 w-8 rounded-none text-muted-foreground lg:inline-flex"
+            className="hidden size-9 rounded-none text-muted-foreground lg:inline-flex"
             aria-label="Attach image"
           >
             <ImagePlus className="h-4 w-4" />
@@ -994,7 +987,7 @@ export default function TeamChatPage({
             type="button"
             variant="ghost"
             size="icon"
-            className="hidden h-8 w-8 rounded-none text-muted-foreground lg:inline-flex"
+            className="hidden size-9 rounded-none text-muted-foreground lg:inline-flex"
             aria-label="Attach file"
           >
             <Paperclip className="h-4 w-4" />
@@ -1017,7 +1010,7 @@ export default function TeamChatPage({
             size="icon"
             disabled={!inputValue.trim() || isSending}
             aria-label="Send message"
-            className="h-9 w-9 shrink-0 rounded-none"
+            className="relative size-10 shrink-0 rounded-none after:absolute after:-inset-1 after:content-['']"
           >
             {isSending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
