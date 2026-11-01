@@ -8,6 +8,7 @@ import { Main } from "@/components/layout/main";
 import { Search } from "@/components/layout/search";
 import { SkipToMain } from "@/components/layout/skip-to-main";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { ProfileDropdown } from "@/components/profile-dropdown";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { WorkspaceNotifications } from "@/components/workspace/WorkspaceNotifications";
 import { LayoutProvider } from "@/context/layout-provider";
@@ -83,13 +84,18 @@ export default function WorkspaceShell({
           <SidebarInset className="flex h-svh flex-col overflow-hidden @container/content">
             <Header fixed>
               <Search />
-              <div className="ms-auto flex items-center gap-1">
+              <div className="ms-auto flex items-center gap-1.5">
                 <ThemeToggle />
                 <WorkspaceNotifications
                   workspaceId={user.workspaceId}
                   onChangeView={onChangeView}
                 />
                 <ConfigDrawer />
+                <ProfileDropdown
+                  user={user}
+                  onChangeView={onChangeView}
+                  onLogout={onLogout}
+                />
               </div>
             </Header>
 

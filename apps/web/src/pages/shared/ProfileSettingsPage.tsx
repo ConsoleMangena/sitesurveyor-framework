@@ -22,6 +22,7 @@ import {
 } from "../../lib/repositories/profiles.ts";
 import { signOut } from "../../lib/auth/session.ts";
 import PageLoader from "../../components/PageLoader.tsx";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import { Textarea } from "../../components/ui/textarea.tsx";
@@ -309,10 +310,10 @@ export default function ProfileSettingsPage() {
               <img
                 src={avatarUrl}
                 alt="Profile photo"
-                className="h-20 w-20 rounded-none object-cover ring-4 ring-primary/15 shadow-sm"
+                className="h-20 w-20 rounded-full object-cover ring-4 ring-primary/15 shadow-sm"
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-none bg-gradient-to-br from-primary to-indigo-500 text-2xl font-bold text-primary-foreground ring-4 ring-primary/15">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-indigo-500 text-2xl font-bold text-primary-foreground ring-4 ring-primary/15">
                 {initials}
               </div>
             )}
