@@ -255,6 +255,72 @@ export async function verifyAttachmentIntegrity(
   return { ok: actual === attachment.content_hash, expected: attachment.content_hash, actual };
 }
 
+export type AnchorStatus = AttachmentRow["chain_status"];
+
+export interface AnchorWrite {
+  signature: string;
+  network: string;
+  status: AnchorStatus;
+  anchoredAt?: string;
+}
+
+async function writeAttachmentAnchor(
+  attachment: Pick<AttachmentRow, "id" | "workspace_id" | "content_hash">,
+  write: AnchorWrite,
+): Promise<AttachmentRow> {
+  const { data, error } = await supabase
+    .from("attachments")
+    .update({
+      chain_status: write.status,
+      chain_tx_signature: write.signature,
+      chain_network: write.network,
+      anchored_at: write.anchoredAt ?? null,
+    })
+    .eq("id", attachment.id)
+    .eq("workspace_id", attachment.workspace_id)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  if (write.status === "anchored" || write.status === "failed") {
+    await logActivity(
+      attachment.workspace_id,
+      "attachments",
+      attachment.id,
+      write.status === "anchored" ? "attachment_anchored" : "attachment_anchor_failed",
+      {
+        signature: write.signature,
+        network: write.network,
+        content_hash: attachment.content_hash,
+      },
+    );
+  }
+
+  return data;
+}
+
+/** Record that a signature exists but Solana has not confirmed it yet. */
+export async function markAttachmentAnchorPending(
+  attachment: Pick<AttachmentRow, "id" | "workspace_id" | "content_hash">,
+  result: { signature: string; network: string },
+): Promise<AttachmentRow> {
+  return writeAttachmentAnchor(attachment, { ...result, status: "pending" });
+}
+
+/** Record the final outcome of an anchor attempt. */
+export async function saveAttachmentAnchor(
+  attachment: Pick<AttachmentRow, "id" | "workspace_id" | "content_hash">,
+  result: {
+    signature: string;
+    network: string;
+    status: Extract<AnchorStatus, "anchored" | "failed">;
+    anchoredAt?: string;
+  },
+): Promise<AttachmentRow> {
+  return writeAttachmentAnchor(attachment, result);
+}
+
 export async function getAttachmentAccessUrl(
   attachment: Pick<AttachmentRow, "bucket_name" | "storage_path" | "visibility">,
   expiresInSeconds = 60 * 60,

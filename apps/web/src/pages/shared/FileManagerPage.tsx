@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Upload,
   Search,
@@ -19,6 +19,7 @@ import {
   Loader2,
   Pencil,
   History,
+  Anchor,
 } from "lucide-react";
 
 import {
@@ -45,6 +46,19 @@ import {
   type ActivityLogEntry,
   type AttachmentVersionRow,
 } from "../../lib/repositories/attachments.ts";
+import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
+import {
+  anchorAttachment,
+  buildAnchorMemo,
+  estimateAnchorFeeLamports,
+  type AnchorSigner,
+} from "../../features/phantom/anchor/fileAnchor.ts";
+import {
+  SOLANA_CLUSTER,
+  SOLANA_CLUSTER_LABEL,
+  explorerTxUrl,
+  type SolanaCluster,
+} from "../../features/phantom/lib/config.ts";
 import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
@@ -132,6 +146,13 @@ const formatDateLabel = (isoDate: string): string =>
 const shortSig = (sig: string): string =>
   sig.length > 12 ? `${sig.slice(0, 6)}…${sig.slice(-4)}` : sig;
 
+/** Cluster recorded on the row, falling back to the one this build targets. */
+const asCluster = (network: string | null): SolanaCluster =>
+  network === "mainnet-beta" || network === "testnet" ? network : SOLANA_CLUSTER;
+
+const formatLamports = (lamports: number): string =>
+  `${lamports.toLocaleString()} lamports`;
+
 export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const [files, setFiles] = useState<AttachmentRow[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
@@ -178,6 +199,23 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const versionTargetRef = useRef<AttachmentRow | null>(null);
   const deleteFileRef = useRef<AttachmentRow | null>(null);
   const deleteState = useDialogState();
+
+  const wallet = useSiteSurveyorWallet();
+  const {
+    publicKey: walletPublicKey,
+    sendTransaction: walletSendTransaction,
+  } = wallet;
+  const [anchorFile, setAnchorFile] = useState<AttachmentRow | null>(null);
+  const [anchorFee, setAnchorFee] = useState<string | null>(null);
+  const [anchoring, setAnchoring] = useState(false);
+
+  const anchorSigner = useMemo<AnchorSigner | null>(() => {
+    if (!walletPublicKey || !walletSendTransaction) return null;
+    return {
+      publicKey: walletPublicKey,
+      sendTransaction: (tx, connection) => walletSendTransaction(tx, connection),
+    };
+  }, [walletPublicKey, walletSendTransaction]);
 
   const fetchFiles = useCallback(async () => {
     try {
@@ -405,6 +443,65 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
       setError(err instanceof Error ? err.message : "Failed to verify file integrity.");
     } finally {
       setBusyFileId(null);
+    }
+  };
+
+  const openAnchorDialog = (file: AttachmentRow) => {
+    setAnchorFile(file);
+    setAnchorFee(anchorSigner && file.content_hash ? "…" : null);
+  };
+
+  const closeAnchorDialog = () => {
+    setAnchorFile(null);
+    setAnchorFee(null);
+  };
+
+  // openAnchorDialog seeds the "…" placeholder; this resolves the RPC estimate.
+  useEffect(() => {
+    const hash = anchorFile?.content_hash;
+    if (!hash || !walletPublicKey) return;
+    const fileId = anchorFile.id;
+    let cancelled = false;
+    void estimateAnchorFeeLamports(buildAnchorMemo(fileId, hash), walletPublicKey)
+      .then((lamports) => {
+        if (!cancelled) setAnchorFee(formatLamports(lamports));
+      })
+      .catch(() => {
+        if (!cancelled) setAnchorFee(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [anchorFile, walletPublicKey]);
+
+  const handleAnchorFile = async () => {
+    if (!anchorFile || !anchorSigner) return;
+    const file = anchorFile;
+    setAnchoring(true);
+    setBusyFileId(file.id);
+    setError(null);
+    try {
+      const { signature } = await anchorAttachment(file, anchorSigner);
+      closeAnchorDialog();
+      await fetchFiles();
+      showNotice(
+        `Hash anchored on ${SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}: ${shortSig(signature)}`,
+      );
+    } catch (err) {
+      // The row records how far the attempt got, so always reload it.
+      await fetchFiles();
+      setError(err instanceof Error ? err.message : "Failed to anchor file on Solana.");
+    } finally {
+      setAnchoring(false);
+      setBusyFileId(null);
+    }
+  };
+
+  const handleConnectForAnchor = async () => {
+    try {
+      await wallet.connect();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect your wallet.");
     }
   };
 
@@ -881,6 +978,35 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                               <span>{fileTags.map((t) => t.name).join(", ")}</span>
                             </div>
                           )}
+                          {file.chain_status !== "none" && (
+                            <div className="text-xs">
+                              {file.chain_status === "anchored" && file.chain_tx_signature ? (
+                                <a
+                                  href={explorerTxUrl(
+                                    file.chain_tx_signature,
+                                    asCluster(file.chain_network),
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                >
+                                  <Anchor className="size-3" />
+                                  Anchored on {SOLANA_CLUSTER_LABEL[asCluster(file.chain_network)]} ·{" "}
+                                  {shortSig(file.chain_tx_signature)}
+                                </a>
+                              ) : file.chain_status === "pending" ? (
+                                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                  <Loader2 className="size-3 animate-spin" />
+                                  Anchoring on {SOLANA_CLUSTER_LABEL[asCluster(file.chain_network)]}…
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-destructive">
+                                  <Anchor className="size-3" />
+                                  Anchor failed
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">
@@ -917,6 +1043,14 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                                 {file.content_hash && (
                                   <DropdownMenuItem onClick={() => void handleVerifyIntegrity(file)} disabled={busyFileId === file.id}>
                                     <ShieldCheck /> Verify integrity
+                                  </DropdownMenuItem>
+                                )}
+                                {file.content_hash && file.chain_status !== "anchored" && (
+                                  <DropdownMenuItem
+                                    onClick={() => openAnchorDialog(file)}
+                                    disabled={busyFileId === file.id || file.chain_status === "pending"}
+                                  >
+                                    <Anchor /> Anchor hash on Solana
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
@@ -1219,6 +1353,85 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                 )}
                 Generate link
               </Button>
+            )}
+          </div>
+        )}
+      </DialogTemplate>
+
+      {/* Anchor on Solana Dialog */}
+      <DialogTemplate
+        open={anchorFile !== null}
+        onOpenChange={(open) => {
+          if (!open && !anchoring) closeAnchorDialog();
+        }}
+        kicker="Proof of existence"
+        title="Anchor file hash on Solana"
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" disabled={anchoring} onClick={closeAnchorDialog}>
+              Cancel
+            </Button>
+            {anchorSigner ? (
+              <Button
+                onClick={() => void handleAnchorFile()}
+                disabled={anchoring || anchorFile?.chain_status === "pending"}
+              >
+                {anchoring ? <Loader2 className="animate-spin" /> : <Anchor />}
+                {anchoring ? "Anchoring…" : "Sign anchor transaction"}
+              </Button>
+            ) : (
+              <Button onClick={() => void handleConnectForAnchor()} disabled={wallet.connecting}>
+                {wallet.connecting ? <Loader2 className="animate-spin" /> : null}
+                Connect Solana wallet
+              </Button>
+            )}
+          </>
+        }
+      >
+        {anchorFile && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Writes this file&rsquo;s SHA-256 hash to a Solana transaction signed by your wallet.
+              The file itself stays in workspace storage.
+            </p>
+            <dl className="flex flex-col divide-y divide-border">
+              <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0">
+                <dt className="text-xs text-muted-foreground">File</dt>
+                <dd className="min-w-0 truncate text-xs font-medium text-foreground">
+                  {getFileName(anchorFile.storage_path)}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Network</dt>
+                <dd className="font-mono text-xs">
+                  Solana {SOLANA_CLUSTER_LABEL[asCluster(anchorFile.chain_network)]}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Hash</dt>
+                <dd className="font-mono text-xs">
+                  sha256 · {shortSig(anchorFile.content_hash ?? "")}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Network fee</dt>
+                <dd className="font-mono text-xs font-semibold">{anchorFee ?? "—"}</dd>
+              </div>
+            </dl>
+            {anchorSigner ? (
+              <p className="flex items-start gap-2 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
+                Signed by {wallet.wallet?.adapter.name ?? "your wallet"} ({wallet.shortAddress}).
+                A confirmed anchor is permanent on {SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}.
+              </p>
+            ) : (
+              <p className="flex items-start gap-2 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
+                {wallet.address
+                  ? `${wallet.wallet?.adapter.name ?? "This wallet"} has a saved address but isn't connected in this session. Connect it to sign the anchor.`
+                  : "Connect a Solana wallet to sign the anchor transaction."}
+              </p>
             )}
           </div>
         )}
