@@ -16,6 +16,7 @@ if (typeof globalAny.global === 'undefined') {
   globalAny.global = globalThis
 }
 import App from './App.tsx'
+import { FontProvider } from './context/font-provider.tsx'
 import { SolanaWalletProvider } from './features/phantom/SolanaWalletProvider.tsx'
 import { registerSW } from 'virtual:pwa-register'
 import { clearSiteData } from './lib/clearSiteData.ts'
@@ -61,8 +62,10 @@ if (import.meta.env.VITE_MOBILE_BUILD === 'true') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SolanaWalletProvider>
-      <App />
-    </SolanaWalletProvider>
+    <FontProvider>
+      <SolanaWalletProvider>
+        <App />
+      </SolanaWalletProvider>
+    </FontProvider>
   </StrictMode>,
 )

@@ -6,6 +6,18 @@
    ───────────────────────────────────────────────────────────── */
 
 @theme inline {
+  /* Typography — the shadcn-admin font system. Each `--font-*` token
+     generates a `font-<name>` utility; `FontProvider` puts one of those
+     classes on <html>, which remaps `--font-app` further down. Because every
+     face in the app (Tailwind's `font-sans`, the legacy `--sans` / `--heading`
+     consumers, the document font) resolves through `--font-app`, a single
+     class switches the whole UI. */
+  --font-inter: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-manrope: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-system: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-sans: var(--font-app);
+  --font-mono: var(--mono);
+
   --color-background: var(--bg);
   --color-foreground: var(--text-h);
   --color-card: var(--surface);
@@ -123,12 +135,19 @@
   --lift-sm: translateY(-1px) scale(1.01);
   --lift-md: translateY(-3px) scale(1.015);
 
-  /* Typography — Inter */
-  --sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, Arial, sans-serif;
-  --heading: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, Arial, sans-serif;
+  /* Typography — one switchable family for UI and headings, one mono for
+     code and measured values. `--font-app` is the switch; the rest alias it. */
+  --font-app: var(--font-inter);
+  --sans: var(--font-app);
+  --heading: var(--font-app);
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
-  font: 14px/150% var(--sans);
+  /* 16px root: the rem base that Tailwind's text and spacing scale is
+     calibrated to, so the shadcn primitives render at their designed size.
+     Console density comes from `body`, never from shrinking the root. */
+  font-size: 16px;
+  font-family: var(--font-app);
+  line-height: 1.5;
   letter-spacing: 0.01em;
   color-scheme: light;
   color: var(--text);
@@ -137,10 +156,16 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
 
-  @media (max-width: 1024px) {
-    font-size: 15px;
-  }
+/* ── Typeface switch (appearance drawer / FontProvider) ──
+   Higher specificity than `:root` above, so the class wins; the aliases
+   inherit the new value through `--font-app`. */
+html.font-manrope {
+  --font-app: var(--font-manrope);
+}
+html.font-system {
+  --font-app: var(--font-system);
 }
 
 /* ── Dark console theme ── */
@@ -209,8 +234,29 @@
 
 body {
   margin: 0;
+  /* Console reading density lives here, not on the root, so `rem` keeps
+     resolving against 16px and the shadcn scale stays true. */
+  font-size: 0.875rem;
+  line-height: 1.5;
   background: var(--bg);
   color: var(--text);
+}
+
+/* Phones and tablets read better one step up — the density bump the shell
+   used to get from a 15px root, without distorting the rem scale. */
+@media (max-width: 1024px) {
+  body {
+    font-size: 0.9375rem;
+  }
+}
+
+/* iOS zooms the whole viewport to focus any control under 16px. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 @keyframes ui-fade-in-up {
@@ -402,6 +448,15 @@ input,
 select,
 textarea {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Tailwind v4's preflight dropped the pointer cursor from <button>, and the
+   shadcn primitives carry no `cursor-pointer` of their own — without this the
+   whole ported component set (sidebar trigger, dialog actions, table controls)
+   hovers with an arrow. From the template's base layer. */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
 }
 
 button:focus-visible,

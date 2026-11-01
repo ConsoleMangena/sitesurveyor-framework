@@ -6,7 +6,7 @@
     <link rel="manifest" href="./manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..800;1,14..32,400..800&family=Manrope:wght@400..800&display=swap" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="SiteSurveyor — multi-tenant survey operations platform for projects, dispatch, assets, quotes, and invoicing." />
     <meta name="theme-color" content="#d92d20" />
@@ -31,6 +31,17 @@
           root.style.colorScheme = dark ? "dark" : "light";
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute("content", dark ? "#0d0f0e" : "#d92d20");
+
+          // Same treatment for the UI typeface: the choice lives in a `font`
+          // cookie and the class must exist before the first paint, or Manrope
+          // users get an Inter flash. Unknown values fall back to the default.
+          var font = "inter";
+          try {
+            var match = document.cookie.match(/(?:^|; )font=([^;]*)/);
+            var saved = match ? decodeURIComponent(match[1]) : "";
+            if (saved === "manrope" || saved === "system") font = saved;
+          } catch (e) {}
+          root.classList.add("font-" + font);
         } catch (e) {}
       })();
     </script>
