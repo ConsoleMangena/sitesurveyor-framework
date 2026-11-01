@@ -5,7 +5,6 @@ import {
   ChevronDown,
   Globe2,
   LayoutGrid,
-  LogOut,
   PackageSearch,
   RefreshCw,
   Search,
@@ -15,24 +14,14 @@ import {
 import { cn } from "../../lib/utils.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
-import { useMyAvatar } from "../../lib/hooks/useMyAvatar.ts";
 import { signOut } from "../../lib/auth/session.ts";
-import { getWorkspaceShellAccountLabel } from "../../features/workspace/account.ts";
+import {
+  AccountMenu,
+  AccountMenuAvatar,
+  AccountMenuItem,
+} from "../../components/account-menu.tsx";
 import { Web3MarketTerminal } from "../../features/web3/components/Web3MarketTerminal.tsx";
 import { useSolanaMarketFeed } from "../../features/web3/hooks/useSolanaMarketFeed.ts";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../../components/ui/avatar.tsx";
-import { Badge } from "../../components/ui/badge.tsx";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../../components/ui/dropdown-menu.tsx";
 import {
   buildMarketDots,
   MARKET_DOT_COLORS,
@@ -134,21 +123,10 @@ function syncItemParam(kind: MarketDotKind | null, id?: string): void {
   );
 }
 
-function initialsOf(name: string): string {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 export default function PublicMarketPage() {
   const user = useAuthStore((s) => s.user);
-  const avatarUrl = useMyAvatar();
   const navigate = useNavigate();
   const market = useSolanaMarketFeed();
-  const [marketUserMenuOpen, setMarketUserMenuOpen] = useState(false);
   const [data, setData] = useState<MarketData | null>(null);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -716,28 +694,16 @@ export default function PublicMarketPage() {
             <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor’s Market</span>
           </span>
           {user ? (
-            <DropdownMenu
-              open={marketUserMenuOpen}
-              onOpenChange={setMarketUserMenuOpen}
-            >
-              <DropdownMenuTrigger asChild>
+            <AccountMenu
+              user={user}
+              onLogout={handleSignOut}
+              trigger={
                 <Button
                   variant="outline"
                   className="group h-10 gap-2 rounded-full py-1.5 pl-1.5 pr-3"
                   aria-label={`Open account menu (${user.name})`}
                 >
-                  <Avatar className="size-8 shrink-0">
-                    {avatarUrl && (
-                      <AvatarImage
-                        src={avatarUrl}
-                        alt={user.name}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                    <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
-                      {initialsOf(user.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <AccountMenuAvatar user={user} />
                   <span className="max-w-[132px] truncate text-sm font-semibold max-sm:hidden">
                     {user.name}
                   </span>
@@ -746,56 +712,19 @@ export default function PublicMarketPage() {
                     aria-hidden="true"
                   />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" forceMount className="w-64 web3-theme">
-                <div className="mb-1.5 flex items-center gap-3 rounded-lg border bg-muted/40 p-2.5">
-                  <Avatar className="size-10 shrink-0">
-                    {avatarUrl && (
-                      <AvatarImage
-                        src={avatarUrl}
-                        alt={user.name}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                    <AvatarFallback className="bg-muted text-foreground text-base font-semibold">
-                      {initialsOf(user.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex min-w-0 flex-col items-start gap-0.5">
-                    <span className="max-w-[180px] truncate text-sm font-semibold">
-                      {user.name}
-                    </span>
-                    <span className="max-w-[180px] truncate text-xs text-muted-foreground">
-                      {user.email}
-                    </span>
-                    <Badge
-                      variant={user.accountType === "business" ? "default" : "secondary"}
-                    >
-                      {getWorkspaceShellAccountLabel(user)}
-                    </Badge>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/">
-                    <LayoutGrid /> Open your workspace
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/?view=marketplace">
-                    <PackageSearch /> My marketplace requests
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={handleSignOut}
-                >
-                  <LogOut /> Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+            >
+              <AccountMenuItem
+                icon={LayoutGrid}
+                label="Open your workspace"
+                to="/"
+              />
+              <AccountMenuItem
+                icon={PackageSearch}
+                label="My marketplace requests"
+                to="/?view=marketplace"
+              />
+            </AccountMenu>
           ) : (
             <Link to="/login" className="web3-btn web3-btn-primary">
               Sign in

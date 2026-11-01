@@ -73,12 +73,7 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        <NavUser
-          user={user}
-          accountLabel={accountLabel}
-          onProfile={onProfile}
-          onLogout={onLogout}
-        />
+        <NavUser user={user} onProfile={onProfile} onLogout={onLogout} />
       </SidebarFooter>
 
       <SidebarRail />
