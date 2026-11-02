@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { usePhantomWallet } from "./usePhantomWallet.ts";
 import { CUSTOM_WALLET_NAME } from "../lib/customWalletAdapter.ts";
+import { detectProvider, isWalletConnected, getConnectedWalletAddress } from "../lib/provider.ts";
 
 export function useSiteSurveyorWallet() {
   const adapter = useWallet();
@@ -16,11 +17,42 @@ export function useSiteSurveyorWallet() {
   const connect = useCallback(async () => {
     setConnecting(true);
     try {
+      // Custom wallet: use the wallet-adapter path (requires unlock first)
       if (adapter.wallet?.adapter.name === CUSTOM_WALLET_NAME) {
         await adapter.connect();
         return adapter.publicKey?.toBase58() ?? null;
       }
-      return await legacy.connect();
+
+      // Non-custom wallet: use legacy injected-provider path,
+      // but ALSO select it in the wallet-adapter context so that
+      // `adapter.sendTransaction`, `adapter.publicKey`, etc. are populated.
+      const walletAddress = await legacy.connect();
+
+      // After legacy connects, the injected provider (e.g. Phantom) is approved.
+      // Find the matching wallet-adapter entry and select+connect it so the
+      // adapter context reflects the active wallet. This makes
+      // `adapter.sendTransaction` and `adapter.publicKey` available to callers.
+      const provider = detectProvider();
+      if (provider && adapter.wallets) {
+        // Match by the wallet-adapter's known names. Phantom and Solflare
+        // adapters have distinct names; the injected provider exposes `isPhantom`.
+        const isPhantomProvider = provider.isPhantom === true;
+        const matched = adapter.wallets.find((w) => {
+          if (w.adapter.name === CUSTOM_WALLET_NAME) return false;
+          if (w.readyState !== "Installed") return false;
+          if (isPhantomProvider) return /phantom/i.test(w.adapter.name);
+          // Default to first installed non-custom wallet (e.g. Solflare)
+          return true;
+        });
+        if (matched) {
+          adapter.select(matched.adapter.name);
+          if (!matched.adapter.connected) {
+            await matched.adapter.connect();
+          }
+        }
+      }
+
+      return walletAddress;
     } finally {
       setConnecting(false);
     }
