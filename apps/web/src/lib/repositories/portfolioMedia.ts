@@ -21,6 +21,9 @@ const MAX_DIMENSIONS: Record<PortfolioMediaKind, number> = {
 /** Stable public URL for a portfolio-media path; null when unset. */
 export function portfolioMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;
+  if (path.startsWith("/") || path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
   const { data } = supabase.storage.from(PORTFOLIO_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }

@@ -145,7 +145,7 @@ export function toJobItem(row: JobRow): RailItem {
       row.rate != null && row.rate > 0
         ? `${row.rate.toLocaleString()} ${row.currency}/${row.rate_per ?? "day"}`
         : "Negotiable",
-    photoUrl: null,
+    photoUrl: assetMediaUrl(row.photo_path ?? null),
     createdAt: row.created_at,
     lat: row.latitude,
     lng: row.longitude,
@@ -164,7 +164,7 @@ export function toFirmItem(row: FirmRow): RailItem {
     meta: (row.services ?? []).slice(0, 3).join(" · "),
     location: row.location,
     priceLabel: `${(row.services ?? []).length} services`,
-    photoUrl: null,
+    photoUrl: assetMediaUrl(row.logo_path ?? null),
     createdAt: row.created_at,
     lat: row.latitude,
     lng: row.longitude,
@@ -185,7 +185,7 @@ export function toEventItem(row: EventRow): RailItem {
       .join(" · "),
     location: row.location,
     priceLabel: row.price > 0 ? `${row.price.toLocaleString()} ${row.currency}` : "Free",
-    photoUrl: null,
+    photoUrl: assetMediaUrl(row.photo_path ?? null),
     createdAt: row.created_at,
     lat: row.latitude,
     lng: row.longitude,

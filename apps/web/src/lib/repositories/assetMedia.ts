@@ -27,6 +27,9 @@ export async function uploadAssetPhoto(file: File, workspaceId: string): Promise
 
 export function assetMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;
+  if (path.startsWith("/") || path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
   const { data } = supabase.storage.from(ASSET_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }

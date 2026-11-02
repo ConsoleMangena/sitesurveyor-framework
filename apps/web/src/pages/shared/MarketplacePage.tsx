@@ -79,6 +79,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 import { Switch } from "../../components/ui/switch.tsx";
 import { cn } from "../../lib/utils.ts";
 import { assetMediaUrl } from "../../lib/repositories/assetMedia.ts";
+import { getEquipmentPlaceholder } from "../../components/market/marketPlaceholders.ts";
 
 /* ── SVG Icon Components ── */
 function IconTotalStation() {
@@ -1083,6 +1084,25 @@ export default function MarketplacePage({
           >
             {selectedListing && (
               <div className="space-y-4">
+                <div className="overflow-hidden rounded-lg border border-border/60 bg-muted">
+                  <img
+                    src={
+                      selectedListing.assets?.photos?.[0]
+                        ? assetMediaUrl(selectedListing.assets.photos[0]) ??
+                          getEquipmentPlaceholder(selectedListing.type, selectedListing.category)
+                        : getEquipmentPlaceholder(selectedListing.type, selectedListing.category)
+                    }
+                    alt={selectedListing.name}
+                    onError={(e) => {
+                      const fb = getEquipmentPlaceholder(
+                        selectedListing.type,
+                        selectedListing.category,
+                      );
+                      if (e.currentTarget.src !== fb) e.currentTarget.src = fb;
+                    }}
+                    className="aspect-[16/9] w-full object-cover"
+                  />
+                </div>
                 <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-3">
                   <p className="text-2xl font-semibold tracking-tight text-foreground">
                     ${selectedListing.price.toLocaleString()}{" "}
@@ -1395,16 +1415,21 @@ export default function MarketplacePage({
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-2 py-3">
-                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-none bg-muted">
-                              {l.assets?.photos?.[0] ? (
-                                <img
-                                  src={assetMediaUrl(l.assets.photos[0]) ?? undefined}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <ListingIcon type={l.type} />
-                              )}
+                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-muted">
+                              <img
+                                src={
+                                  l.assets?.photos?.[0]
+                                    ? assetMediaUrl(l.assets.photos[0]) ??
+                                      getEquipmentPlaceholder(l.type, l.category)
+                                    : getEquipmentPlaceholder(l.type, l.category)
+                                }
+                                alt=""
+                                onError={(e) => {
+                                  const fb = getEquipmentPlaceholder(l.type, l.category);
+                                  if (e.currentTarget.src !== fb) e.currentTarget.src = fb;
+                                }}
+                                className="h-full w-full object-cover"
+                              />
                             </div>
                             <h3 className="text-center text-lg font-semibold text-foreground">{l.name}</h3>
                             <p className="text-sm text-muted-foreground">{l.type}</p>
@@ -1450,16 +1475,21 @@ export default function MarketplacePage({
                               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-primary/10 text-xs font-semibold text-primary">
                                 {itemNumber}
                               </span>
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-none bg-muted">
-                                {l.assets?.photos?.[0] ? (
-                                  <img
-                                    src={assetMediaUrl(l.assets.photos[0]) ?? undefined}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <ListingIcon type={l.type} />
-                                )}
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                                <img
+                                  src={
+                                    l.assets?.photos?.[0]
+                                      ? assetMediaUrl(l.assets.photos[0]) ??
+                                        getEquipmentPlaceholder(l.type, l.category)
+                                      : getEquipmentPlaceholder(l.type, l.category)
+                                  }
+                                  alt=""
+                                  onError={(e) => {
+                                    const fb = getEquipmentPlaceholder(l.type, l.category);
+                                    if (e.currentTarget.src !== fb) e.currentTarget.src = fb;
+                                  }}
+                                  className="h-full w-full object-cover"
+                                />
                               </div>
                             </div>
                             <div className="flex flex-wrap justify-end gap-1">

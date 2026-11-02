@@ -37,6 +37,10 @@ import {
 } from "./marketFeed.ts";
 import { ListingGallery } from "./ListingGallery.tsx";
 import {
+  getEquipmentPlaceholder,
+  getKindPlaceholder,
+} from "./marketPlaceholders.ts";
+import {
   getMarketFavorite,
   addMarketFavorite,
   removeMarketFavorite,
@@ -337,27 +341,102 @@ export function MarketDetailDialog({
             <div className="space-y-7 px-5 py-6 sm:px-7 sm:py-7">
               {listing && (listing.photos?.length ?? 0) > 0 ? (
                 <ListingGallery paths={listing.photos} />
+              ) : listing ? (
+                <img
+                  src={getEquipmentPlaceholder(listing.type, listing.category)}
+                  alt={listing.name}
+                  loading="lazy"
+                  className="h-64 w-full rounded-xl border border-border/80 object-cover"
+                />
               ) : null}
 
-              {job?.photo_path || event?.photo_path ? (
+              {professional ? (
+                <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+                  <img
+                    src={
+                      portfolioMediaUrl(professional.avatar_path) ??
+                      getKindPlaceholder("professional")
+                    }
+                    alt={professional.name}
+                    loading="lazy"
+                    onError={(e) => {
+                      const fallback = getKindPlaceholder("professional");
+                      if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                    }}
+                    className="size-20 shrink-0 rounded-full border-2 border-border/80 object-cover shadow-sm"
+                  />
+                  <div className="min-w-0">
+                    <h4 className="truncate text-base font-semibold text-foreground">
+                      {professional.name}
+                    </h4>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {professional.title} {professional.discipline ? `· ${professional.discipline}` : ""}
+                    </p>
+                    {professional.experience ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {professional.experience} experience
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {job ? (
                 <img
                   src={
-                    assetMediaUrl(job?.photo_path ?? event?.photo_path ?? null) ??
-                    undefined
+                    assetMediaUrl(job.photo_path) ??
+                    getKindPlaceholder("job")
                   }
-                  alt=""
+                  alt={job.title ?? "Job opening"}
                   loading="lazy"
+                  onError={(e) => {
+                    const fallback = getKindPlaceholder("job");
+                    if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                  }}
                   className="h-52 w-full rounded-xl border border-border/80 object-cover"
                 />
               ) : null}
 
-              {firm?.logo_path ? (
+              {event ? (
                 <img
-                  src={assetMediaUrl(firm.logo_path) ?? undefined}
-                  alt={`${firm.name} logo`}
+                  src={
+                    assetMediaUrl(event.photo_path) ??
+                    getKindPlaceholder("event")
+                  }
+                  alt={event.title ?? "Training event"}
                   loading="lazy"
-                  className="size-16 rounded-xl border border-border/80 bg-background object-contain p-1.5"
+                  onError={(e) => {
+                    const fallback = getKindPlaceholder("event");
+                    if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                  }}
+                  className="h-52 w-full rounded-xl border border-border/80 object-cover"
                 />
+              ) : null}
+
+              {firm ? (
+                <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+                  <img
+                    src={
+                      assetMediaUrl(firm.logo_path) ??
+                      getKindPlaceholder("firm")
+                    }
+                    alt={`${firm.name} logo`}
+                    loading="lazy"
+                    onError={(e) => {
+                      const fallback = getKindPlaceholder("firm");
+                      if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                    }}
+                    className="size-16 shrink-0 rounded-xl border border-border/80 bg-background object-contain p-2 shadow-sm"
+                  />
+                  <div className="min-w-0">
+                    <h4 className="truncate text-base font-semibold text-foreground">
+                      {firm.name}
+                    </h4>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {firm.location}
+                    </p>
+                  </div>
+                </div>
               ) : null}
 
               {listing?.description ||

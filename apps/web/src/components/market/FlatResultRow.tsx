@@ -2,6 +2,7 @@ import { ArrowUpRight, MapPin } from "lucide-react";
 import { cn } from "../../lib/utils.ts";
 import { MARKET_DOT_COLORS } from "./marketDots";
 import { isNew, type RailItem } from "./marketItems";
+import { getKindPlaceholder } from "./marketPlaceholders";
 import { KindIcon, NewBadge } from "./MarketRail.tsx";
 
 export default function FlatResultRow({
@@ -14,6 +15,7 @@ export default function FlatResultRow({
   onOpen: () => void;
 }) {
   const accent = MARKET_DOT_COLORS[item.kind];
+  const photo = item.photoUrl || getKindPlaceholder(item.kind, item.meta);
   return (
     <li>
       <button
@@ -29,16 +31,18 @@ export default function FlatResultRow({
         )}
         style={{ borderLeftColor: accent }}
       >
-        {item.photoUrl ? (
-          <img src={item.photoUrl} alt="" loading="lazy" className="h-[88px] w-[88px] rounded-xl object-cover sm:h-[96px] sm:w-[120px]" />
-        ) : (
-          <span
-            className="flex h-[88px] w-[88px] items-center justify-center rounded-xl sm:h-[96px] sm:w-[120px]"
-            style={{ background: `linear-gradient(135deg, ${accent}22, ${accent}0a)` }}
-          >
-            <KindIcon kind={item.kind} className="size-7 text-foreground/45" />
-          </span>
-        )}
+        <img
+          src={photo}
+          alt=""
+          loading="lazy"
+          onError={(e) => {
+            const fallback = getKindPlaceholder(item.kind, item.meta);
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
+          className="h-[88px] w-[88px] rounded-xl object-cover sm:h-[96px] sm:w-[120px]"
+        />
 
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

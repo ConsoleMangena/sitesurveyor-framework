@@ -15,6 +15,7 @@ import {
 import { cn } from "../../lib/utils.ts";
 import { MARKET_DOT_COLORS, type MarketDotKind } from "./marketDots";
 import { isNew, type MarketRailData, type RailItem } from "./marketItems";
+import { getKindPlaceholder } from "./marketPlaceholders";
 
 export function KindIcon({
   kind,
@@ -68,6 +69,7 @@ function RailTile({
   const accent = MARKET_DOT_COLORS[item.kind];
   const isPrice = item.kind !== "firm";
   const rating = item.rating != null && item.rating > 0 ? item.rating : null;
+  const photo = item.photoUrl || getKindPlaceholder(item.kind, item.meta);
   return (
     <button
       type="button"
@@ -82,22 +84,19 @@ function RailTile({
       style={highlighted ? { borderColor: accent } : undefined}
     >
       <div className="relative h-40 w-full shrink-0 overflow-hidden bg-muted">
-        {item.photoUrl ? (
-          <img
-            src={item.photoUrl}
-            alt=""
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${accent}22, ${accent}0a)` }}
-          >
-            <KindIcon kind={item.kind} className="size-10 text-foreground/35" />
-          </div>
-        )}
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/95 px-2.5 py-1 text-micro font-semibold text-foreground/80">
+        <img
+          src={photo}
+          alt=""
+          loading="lazy"
+          onError={(e) => {
+            const fallback = getKindPlaceholder(item.kind, item.meta);
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        />
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/95 px-2.5 py-1 text-micro font-semibold text-foreground/80 backdrop-blur-xs">
           <KindIcon kind={item.kind} className="size-3" />
           {KIND_LABELS[item.kind]}
         </span>
