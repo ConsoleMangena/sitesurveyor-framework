@@ -66,11 +66,10 @@ describe("MarketConcierge", () => {
   });
 
   it("sends a typed message on Enter and passes prior turns as history", async () => {
-    let resolveFirst: () => void;
-    const firstPromise = new Promise<void>((r) => (resolveFirst = r));
+    const gates: Array<() => void> = [];
     vi.mocked(streamMarketReply).mockImplementation(async (_m, _h, handlers) => {
       handlers.onFinal("");
-      await firstPromise;
+      await new Promise<void>((r) => gates.push(r));
     });
     const user = userEvent.setup();
     render(<MarketConcierge />);
@@ -82,14 +81,8 @@ describe("MarketConcierge", () => {
     await waitFor(() => expect(streamMarketReply).toHaveBeenCalledTimes(1));
 
     // First reply resolves (resets streaming)
-    resolveFirst();
+    gates[0]();
 
-    let resolveSecond: () => void;
-    const secondPromise = new Promise<void>((r) => (resolveSecond = r));
-    vi.mocked(streamMarketReply).mockImplementation(async (_m, _h, handlers) => {
-      handlers.onFinal("");
-      await secondPromise;
-    });
     await user.type(composer, "In Nairobi{Enter}");
     await waitFor(() => expect(streamMarketReply).toHaveBeenCalledTimes(2));
 
@@ -98,7 +91,7 @@ describe("MarketConcierge", () => {
       { role: "user", content: "Open survey jobs" },
       { role: "assistant", content: "" },
     ]);
-    resolveSecond();
+    gates[1]();
   });
 
   it("keeps the send button disabled while a reply streams", async () => {
