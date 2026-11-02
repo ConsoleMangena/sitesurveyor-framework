@@ -64,6 +64,12 @@ export interface RunAgentOptions {
   conversationId?: string;
   /** Chat-list context (dashboard vs cad); default 'dashboard'. */
   context?: string;
+  /**
+   * Agent surface. "workspace" (default) is the full signed-in assistant.
+   * "market" is the anonymous public-market concierge: read-only tools over
+   * the published market views, market-specific prompt, no skills/memory.
+   */
+  mode?: "workspace" | "market";
 }
 
 const NVIDIA_NIM_URL =
@@ -148,6 +154,19 @@ const READ_TABLES = new Set([
   "project_cad_drawings",
 ]);
 
+/**
+ * Tables the anonymous public-market concierge may read: the published market
+ * views only (available listings, open jobs, upcoming training — never
+ * workspace records). Backs the `market-chat` surface.
+ */
+const MARKET_READ_TABLES = new Set([
+  "public_market_listings",
+  "public_market_professionals",
+  "public_market_jobs",
+  "public_market_firms",
+  "public_market_events",
+]);
+
 /** Tables the agent may mutate. */
 const WRITE_TABLES = new Set([
   "quotes",
@@ -203,67 +222,86 @@ function filterSchema(): Record<string, unknown> {
   };
 }
 
+/**
+ * The read-only tool trio (inspect columns / query rows / count rows) built
+ * against a table allowlist. The workspace assistant gets every readable
+ * table; the public market concierge gets the published market views only.
+ */
+function readTools(tables: ReadonlySet<string>): ToolSchema[] {
+  return [
+    {
+      type: "function",
+      function: {
+        name: "inspect_columns",
+        description:
+          "List the column names of a table (from one sample row). Use when unsure which columns exist before filtering or writing.",
+        parameters: {
+          type: "object",
+          properties: {
+            table: { type: "string", enum: [...tables] },
+          },
+          required: ["table"],
+          additionalProperties: false,
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "query_site_data",
+        description:
+          "Read rows from the SiteSurveyor platform database. Always narrow broad tables with filters or a small limit.",
+        parameters: {
+          type: "object",
+          properties: {
+            table: {
+              type: "string",
+              enum: [...tables],
+              description: "Table to read.",
+            },
+            filters: filterSchema(),
+            order_by: { type: "string", description: "Column to sort by." },
+            order_dir: { type: "string", enum: ["asc", "desc"] },
+            limit: {
+              type: "integer",
+              description: "Max rows to return (default 20, max 100).",
+            },
+          },
+          required: ["table"],
+          additionalProperties: false,
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "count_site_data",
+        description:
+          "Count rows matching optional filters. Cheaper than fetching rows — prefer this for 'how many' questions.",
+        parameters: {
+          type: "object",
+          properties: {
+            table: { type: "string", enum: [...tables] },
+            filters: filterSchema(),
+          },
+          required: ["table"],
+          additionalProperties: false,
+        },
+      },
+    },
+  ];
+}
+
+/** Read-only tool set for the anonymous public-market concierge. */
+const MARKET_TOOLS: ToolSchema[] = readTools(MARKET_READ_TABLES);
+
+/** Tool names the read-only market concierge is allowed to execute. */
+const MARKET_TOOL_NAMES: ReadonlySet<string> = new Set(
+  MARKET_TOOLS.map((tool) => tool.function.name),
+);
+
 const TOOLS: ToolSchema[] = [
-  {
-    type: "function",
-    function: {
-      name: "inspect_columns",
-      description:
-        "List the column names of a table (from one sample row). Use when unsure which columns exist before filtering or writing.",
-      parameters: {
-        type: "object",
-        properties: {
-          table: { type: "string", enum: [...READ_TABLES] },
-        },
-        required: ["table"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "query_site_data",
-      description:
-        "Read rows from the SiteSurveyor platform database. Always narrow broad tables with filters or a small limit.",
-      parameters: {
-        type: "object",
-        properties: {
-          table: {
-            type: "string",
-            enum: [...READ_TABLES],
-            description: "Table to read.",
-          },
-          filters: filterSchema(),
-          order_by: { type: "string", description: "Column to sort by." },
-          order_dir: { type: "string", enum: ["asc", "desc"] },
-          limit: {
-            type: "integer",
-            description: "Max rows to return (default 20, max 100).",
-          },
-        },
-        required: ["table"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "count_site_data",
-      description:
-        "Count rows matching optional filters. Cheaper than fetching rows — prefer this for 'how many' questions.",
-      parameters: {
-        type: "object",
-        properties: {
-          table: { type: "string", enum: [...READ_TABLES] },
-          filters: filterSchema(),
-        },
-        required: ["table"],
-        additionalProperties: false,
-      },
-    },
-  },
+  ...readTools(READ_TABLES),
   {
     type: "function",
     function: {
@@ -632,6 +670,65 @@ function systemPrompt(supabaseUrl: string): string {
   ].join("\n");
 }
 
+/**
+ * System prompt for the anonymous public-market concierge served by the
+ * `market-chat` endpoint. Read-only by construction: its tool set is the
+ * market views only, so the rules below steer behaviour, not capability.
+ */
+function marketSystemPrompt(supabaseUrl: string): string {
+  return [
+    "You are the SiteSurveyor Market Concierge — the AI guide to SiteSurveyor's",
+    "public marketplace for the surveying profession. Visitors browse the market",
+    "without an account and ask you to find what they need: instruments and",
+    "accessories, professionals to hire, open jobs, firms and training courses.",
+    "When asked who or what powers you, say you are the SiteSurveyor Market",
+    "Concierge, running on NVIDIA Nemotron.",
+    "",
+    "You search the live published market through read-only tools:",
+    "- public_market_listings — gear for sale or hire (name, type, condition,",
+    "  price/currency, seller, location, category instrument|accessory,",
+    "  listing_type hire|sale, specs, is_remote, city/country, saves).",
+    "- public_market_professionals — people for hire (name, title, discipline,",
+    "  rate/rate_per/currency, availability, rating/reviews, skills, location,",
+    "  is_remote, saves).",
+    "- public_market_jobs — open roles (title, discipline, employment_type,",
+    "  rate/rate_per, company, location, seniority, closes_at, is_remote, saves).",
+    "- public_market_firms — firms (name, services, rating/reviews, staff_count,",
+    "  location, service_areas, is_remote, saves).",
+    "- public_market_events — training and courses (title, kind, provider,",
+    "  starts_at/ends_at, price, seats_left, cpd_points, certification_body,",
+    "  location, is_remote, saves).",
+    `Data lives in Supabase (REST base: ${supabaseUrl}).`,
+    "",
+    "Rules:",
+    "1. Answer from tool results with real values — never invent rows, prices,",
+    "   counts or ratings. When a search returns nothing, say so plainly and",
+    "   widen one dimension (location, price, remote, kind) instead of guessing.",
+    "2. Narrow the search: text match with `ilike` and % wildcards (name ilike",
+    "   %total station%), location via city/country, price/rate with gt/lt,",
+    "   remote with is_remote eq true, rating/saves with gte. Batch independent",
+    "   lookups into one round and never repeat a call whose result you have.",
+    "3. Format: headline answer first, then up to five short bullets —",
+    "   'Name — location — price/rate'. Keep each row's own currency and rate",
+    "   unit; never convert. For comparisons order by price or rate and give the",
+    "   range in one line.",
+    "4. You are read-only: you cannot save, message, request, publish or apply.",
+    "   For those actions point at the control that does it — open the item on",
+    "   the map or in the registry below, or sign in (header, 'Sign in') to save,",
+    "   request or contact.",
+    "5. Stay on the public market. Workspace questions (projects, quotes,",
+    "   invoices, dispatch, accounts) need sign-in: say that in one line, then",
+    "   offer to help with the market instead.",
+    "6. This build's catalogue is sample data published by SiteSurveyor demo",
+    "   workspaces. If asked whether the listings are real, say they are",
+    "   demonstration data.",
+    "7. Ask ONE short question only when a request is genuinely ambiguous (for",
+    "   example which country to search). Otherwise answer.",
+    "8. Keep replies compact: no preamble, no restating the question — plain",
+    "   lines or short markdown bullets, headline first.",
+  ].join("\n");
+}
+
 // ── Live schema awareness ─────────────────────────────────────────────────
 // Fetched once per runtime from PostgREST's OpenAPI root so the model sees
 // REAL column names for whitelisted tables instead of guessing. Cached
@@ -669,7 +766,11 @@ function loadTableSchemas(
           }
         >;
       };
-      for (const table of new Set([...READ_TABLES, ...WRITE_TABLES])) {
+      for (const table of new Set([
+        ...READ_TABLES,
+        ...WRITE_TABLES,
+        ...MARKET_READ_TABLES,
+      ])) {
         const def = api.definitions?.[table];
         if (!def?.properties) continue;
         const columns = Object.keys(def.properties);
@@ -811,6 +912,8 @@ async function executeTool(
     workspaceId?: string;
     conversationId?: string;
     schemas: Map<string, TableSchemaInfo>;
+    /** When set, only these tools may execute (public market concierge). */
+    allowedTools?: ReadonlySet<string>;
   },
 ): Promise<string> {
   let args: Record<string, unknown>;
@@ -818,6 +921,13 @@ async function executeTool(
     args = JSON.parse(rawArgs || "{}") as Record<string, unknown>;
   } catch {
     return JSON.stringify({ error: "Invalid JSON arguments." });
+  }
+  // Surface guard: the schema already hides other tools from the model, this
+  // stops a hallucinated call (writes, CAD, workflows) from ever executing.
+  if (ctx.allowedTools && !ctx.allowedTools.has(name)) {
+    return JSON.stringify({
+      error: `Tool '${name}' is not available on this agent.`,
+    });
   }
 
   const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -1432,6 +1542,8 @@ function callKey(tc: StreamedToolCall): string {
  */
 export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEvent> {
   const supabaseUrl = opts.supabaseUrl.replace(/\/$/, "");
+  /** Public market concierge surface: read-only market tools, no workspace. */
+  const market = opts.mode === "market";
   // Hard allowlist: unknown/empty falls back to the default. Serve paths
   // (ai-chat, ai-gateway-server) call resolveModel() so this rarely fires,
   // but it keeps the boundary enforced even for direct internal callers
@@ -1449,11 +1561,15 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
   }
   const [schemas, loadedSkills, memoryFacts] = await Promise.all([
     loadTableSchemas(supabaseUrl, opts.serviceKey),
-    loadSkills(
-      { supabaseFetch },
-      { supabaseUrl, serviceKey: opts.serviceKey },
-    ),
-    opts.conversationId
+    // The public market concierge has no skills library or structured memory:
+    // skip both fetches and keep its prompt on the market alone.
+    market
+      ? Promise.resolve([])
+      : loadSkills(
+          { supabaseFetch },
+          { supabaseUrl, serviceKey: opts.serviceKey },
+        ),
+    !market && opts.conversationId
       ? loadMemory(
           { supabaseFetch },
           {
@@ -1470,6 +1586,7 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     workspaceId: opts.workspaceId,
     conversationId: opts.conversationId,
     schemas,
+    allowedTools: market ? MARKET_TOOL_NAMES : undefined,
   };
   const trace: { name: string; args: unknown }[] = [];
   let finalText = "";
@@ -1486,7 +1603,7 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
       conversation_id: opts.conversationId ?? null,
       project_id: opts.projectId ?? null,
       model: opts.model || DEFAULT_MODEL,
-      context: opts.context ?? "dashboard",
+      context: opts.context ?? (market ? "marketplace" : "dashboard"),
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       rounds: round,
@@ -1497,10 +1614,15 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     });
   };
   const selectedSkills = selectSkills(opts.userMessage, loadedSkills);
+  // Market mode sees only the published market views in its schema section;
+  // the workspace prompt and its writable-table markers stay out of it.
+  const promptSchemas = market
+    ? new Map([...schemas].filter(([table]) => MARKET_READ_TABLES.has(table)))
+    : schemas;
   const system =
-    systemPrompt(supabaseUrl) +
+    (market ? marketSystemPrompt(supabaseUrl) : systemPrompt(supabaseUrl)) +
     "\n" +
-    schemaSection(schemas) +
+    schemaSection(promptSchemas) +
     formatSkillContext(selectedSkills) +
     formatMemoryBlock(memoryFacts) +
     (opts.memoryNote?.trim()
@@ -1540,7 +1662,7 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
       nvidiaApiKey: opts.nvidiaApiKey,
       model: opts.model || DEFAULT_MODEL,
       messages: outbound,
-      tools: TOOLS,
+      tools: market ? MARKET_TOOLS : TOOLS,
       externalSignal: opts.signal,
       phase:
         round === 1 ? "thinking" : `working (step ${round}/${maxRounds})`,

@@ -3,6 +3,52 @@ import { supabase } from "../supabase/client.ts";
 const SUPABASE_URL =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
 
+/** One parsed NDJSON event from either AI runtime. */
+export interface AiStreamEvent {
+  type?: string;
+  text?: string;
+  message?: string;
+  name?: string;
+  phase?: string;
+}
+
+/** Parse a single NDJSON line; unparseable lines are ignored (null). */
+export function parseAiStreamLine(line: string): AiStreamEvent | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed) as AiStreamEvent;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read an NDJSON response body line by line, handing each complete line to
+ * `onLine`. Shared by the authenticated chat and the public market chat so
+ * both runtimes' framing is decoded the same way.
+ */
+export async function readNdjsonLines(
+  body: ReadableStream<Uint8Array>,
+  onLine: (line: string) => void,
+): Promise<void> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+      onLine(line);
+    }
+  }
+  if (buffer.trim()) onLine(buffer);
+}
+
 export interface AiStreamHandlers {
   /** Incremental reply text as it streams. */
   onDelta: (text: string) => void;
@@ -88,21 +134,13 @@ export async function streamAiReply(
     return;
   }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
+  const reader = res.body;
   let finalText = "";
   let streamError: string | null = null;
 
   const consumeLine = (line: string) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    let event: { type?: string; text?: string; message?: string; name?: string; phase?: string };
-    try {
-      event = JSON.parse(trimmed);
-    } catch {
-      return;
-    }
+    const event = parseAiStreamLine(line);
+    if (!event) return;
     if (event.type === "delta") handlers.onDelta(event.text ?? "");
     else if (event.type === "final") finalText = event.text ?? "";
     else if (event.type === "error") streamError = event.message ?? "Agent error.";
@@ -111,18 +149,7 @@ export async function streamAiReply(
   };
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let idx: number;
-      while ((idx = buffer.indexOf("\n")) >= 0) {
-        const line = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 1);
-        consumeLine(line);
-      }
-    }
-    if (buffer.trim()) consumeLine(buffer);
+    await readNdjsonLines(reader, consumeLine);
   } catch (err) {
     streamError = streamError ?? `Stream failed: ${(err as Error).message}`;
   }

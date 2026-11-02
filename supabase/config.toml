@@ -390,4 +390,10 @@ verify_jwt = false
 # Gateway callbacks use the integration key; browser calls still require a user JWT.
 verify_jwt = false
 
+[functions.market-chat]
+# The public market concierge on /market: visitors browse anonymously, so the
+# JWT check is disabled and the function applies its own per-IP rate limiting
+# with read-only tools over the published market views.
+verify_jwt = false
+
 # Experimental features may be deprecated at any time

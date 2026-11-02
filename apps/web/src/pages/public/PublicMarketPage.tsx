@@ -28,6 +28,7 @@ import {
   type MarketDot,
   type MarketDotKind,
 } from "../../components/market/marketDots";
+import { MarketConcierge } from "../../components/market/MarketConcierge.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import {
@@ -734,37 +735,41 @@ export default function PublicMarketPage() {
       </header>
 
       <main>
-        <section className="mx-auto grid w-full max-w-7xl items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
-          <div className="max-w-xl">
-            <h1 className="market-hero-title text-balance text-[var(--web3-text)]">
-              The Surveyor’s <span className="text-[var(--web3-brand)]">Market.</span>
-            </h1>
-            <p className="mt-4 max-w-[46ch] text-sm leading-6 text-[var(--web3-text-muted)] sm:text-base sm:leading-7">
-              Instruments, professionals, open jobs, firms and training, published by the SiteSurveyor workspaces that list them.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={scrollToRegistry}
-                className="web3-btn web3-btn-primary min-h-11 px-5 text-sm"
-              >
-                Browse the registry
-                <ChevronDown className="size-4" aria-hidden="true" />
-              </button>
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
-                <span className="web3-live-dot" aria-hidden="true" />
-                Live marketplace
-              </span>
-            </div>
-            {addedThisWeek > 0 ? (
-              <p className="mt-4 text-sm font-medium text-success">
-                {addedThisWeek} new {addedThisWeek === 1 ? "item" : "items"} added this week
+        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
+          <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
+            <div className="max-w-xl">
+              <h1 className="market-hero-title text-balance text-[var(--web3-text)]">
+                The Surveyor’s <span className="text-[var(--web3-brand)]">Market.</span>
+              </h1>
+              <p className="mt-4 max-w-[46ch] text-sm leading-6 text-[var(--web3-text-muted)] sm:text-base sm:leading-7">
+                Instruments, professionals, open jobs, firms and training, published by the SiteSurveyor workspaces that list them.
               </p>
-            ) : null}
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={scrollToRegistry}
+                  className="web3-btn web3-btn-primary min-h-11 px-5 text-sm"
+                >
+                  Browse the registry
+                  <ChevronDown className="size-4" aria-hidden="true" />
+                </button>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                  <span className="web3-live-dot" aria-hidden="true" />
+                  Live marketplace
+                </span>
+              </div>
+              {addedThisWeek > 0 ? (
+                <p className="mt-4 text-sm font-medium text-success">
+                  {addedThisWeek} new {addedThisWeek === 1 ? "item" : "items"} added this week
+                </p>
+              ) : null}
+            </div>
+
+            <MarketConcierge className="lg:flex-1" />
           </div>
 
-          <div aria-label="Interactive market map" className="market-map-frame overflow-hidden rounded-2xl border border-border/80 bg-card">
-            <div className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
+          <div aria-label="Interactive market map" className="market-map-frame flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card">
+            <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2.5">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-accent-bg text-[var(--web3-brand)]">
                   <Globe2 className="size-4" aria-hidden="true" />
@@ -778,20 +783,22 @@ export default function PublicMarketPage() {
                 {liveTotals ? `${liveTotals.items} live items` : "Loading activity"}
               </span>
             </div>
-            <Suspense fallback={<div className="h-[360px] w-full animate-pulse bg-muted/30 sm:h-[440px] lg:h-[500px]" />}>
-              <PublicMarketGlobe
-                ref={globeRef}
-                dots={dots}
-                totalPoints={totalPoints}
-                matchKeys={matchKeys}
-                fitKey={scope}
-                failed={failed}
-                onSelect={handlePinSelect}
-                onRetry={retry}
-                heightClassName="h-[360px] sm:h-[440px] lg:h-[500px]"
-              />
-            </Suspense>
-            <div className="flex items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground sm:px-5">
+            <div className="flex min-h-0 flex-1">
+              <Suspense fallback={<div className="h-[360px] w-full animate-pulse bg-muted/30 sm:h-[440px] lg:h-full lg:min-h-[500px]" />}>
+                <PublicMarketGlobe
+                  ref={globeRef}
+                  dots={dots}
+                  totalPoints={totalPoints}
+                  matchKeys={matchKeys}
+                  fitKey={scope}
+                  failed={failed}
+                  onSelect={handlePinSelect}
+                  onRetry={retry}
+                  heightClassName="h-[360px] sm:h-[440px] lg:h-full lg:min-h-[500px]"
+                />
+              </Suspense>
+            </div>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground sm:px-5">
               <span>Two-way map and registry discovery</span>
               <span className="shrink-0 font-mono tabular-nums">{totalPoints} mapped</span>
             </div>

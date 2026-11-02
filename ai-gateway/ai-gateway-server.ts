@@ -2,7 +2,9 @@
 //
 // Serves the built frontend (frontend/dist) and exposes /api/chat — the
 // offline-fallback runtime for the SiteSurveyor AI agent (primary is the
-// `ai-chat` Supabase Edge Function). Both speak identical NDJSON events:
+// `ai-chat` Supabase Edge Function). /api/market-chat is the same fallback
+// for the anonymous public-market concierge (`market-chat` Edge Function).
+// Both speak identical NDJSON events:
 // {"type":"delta"|"final"|"error"|"status", ...}.
 //
 // Agent engine: the inline streaming NVIDIA NIM (Nemotron)
@@ -333,6 +335,117 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
   }
 }
 
+// ── Public market concierge (anonymous, read-only) ─────────────────────────
+// Fallback for the `market-chat` Edge Function: same NDJSON contract, same
+// shared agent core in `market` mode. No auth and no persistence — only a
+// per-IP rate limit and hard size caps, since the endpoint is public.
+
+const marketChatBuckets = new Map<string, { count: number; resetAt: number }>();
+const MARKET_CHAT_LIMIT = { limit: 8, windowMs: 60_000 };
+const MARKET_MAX_MESSAGE_CHARS = 2_000;
+const MARKET_MAX_HISTORY_TURNS = 8;
+const MARKET_MAX_HISTORY_TURN_CHARS = 1_200;
+
+function requestIp(req: http.IncomingMessage): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const first = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return first?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+}
+
+function marketChatAllowed(ip: string): boolean {
+  const now = Date.now();
+  if (marketChatBuckets.size > 10_000) {
+    for (const [key, bucket] of marketChatBuckets) {
+      if (bucket.resetAt <= now) marketChatBuckets.delete(key);
+      if (marketChatBuckets.size <= 10_000) break;
+    }
+  }
+  const bucket = marketChatBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    marketChatBuckets.set(ip, { count: 1, resetAt: now + MARKET_CHAT_LIMIT.windowMs });
+    return true;
+  }
+  if (bucket.count >= MARKET_CHAT_LIMIT.limit) return false;
+  bucket.count += 1;
+  return true;
+}
+
+function sanitizeMarketHistory(raw: unknown): { role: "user" | "assistant"; content: string }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .slice(-MARKET_MAX_HISTORY_TURNS)
+    .map((turn) => {
+      if (!turn || typeof turn !== "object") return null;
+      const role = (turn as { role?: unknown }).role;
+      const content = (turn as { content?: unknown }).content;
+      if (role !== "user" && role !== "assistant") return null;
+      if (typeof content !== "string" || !content.trim()) return null;
+      return { role, content: content.slice(0, MARKET_MAX_HISTORY_TURN_CHARS) };
+    })
+    .filter((turn): turn is { role: "user" | "assistant"; content: string } => turn !== null);
+}
+
+async function handleMarketChat(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (!NVIDIA_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return json(res, 503, { error: "The market concierge is not configured on this host." });
+  }
+  if (!streamRunAgent) {
+    return json(res, 503, { error: "No agent engine available on this host." });
+  }
+  if (!marketChatAllowed(requestIp(req))) {
+    return json(res, 429, { error: "Too many messages — wait a minute and try again." });
+  }
+
+  let payload: { message?: unknown; history?: unknown; model?: unknown };
+  try {
+    const raw = await new Promise<string>((resolve) => {
+      let data = "";
+      req.on("data", (chunk) => (data += chunk));
+      req.on("end", () => resolve(data));
+    });
+    payload = JSON.parse(raw || "{}");
+  } catch {
+    return json(res, 400, { error: "Invalid JSON body." });
+  }
+
+  const message = typeof payload.message === "string" ? payload.message.trim() : "";
+  if (!message) return json(res, 400, { error: "message is required." });
+  if (message.length > MARKET_MAX_MESSAGE_CHARS) {
+    return json(res, 400, {
+      error: `Keep the message under ${MARKET_MAX_MESSAGE_CHARS} characters.`,
+    });
+  }
+
+  const history = sanitizeMarketHistory(payload.history);
+  const rawModel = typeof payload.model === "string" ? payload.model.trim() : "";
+  const model = resolveModel(rawModel || undefined, scoreComplexity(message, 0));
+
+  res.writeHead(200, {
+    "Content-Type": "application/x-ndjson; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+  });
+  const send = (event: Record<string, unknown>) =>
+    res.write(JSON.stringify(event) + "\n");
+  try {
+    for await (const event of streamRunAgent.runAgent({
+      mode: "market",
+      context: "marketplace",
+      history,
+      userMessage: message,
+      nvidiaApiKey: NVIDIA_API_KEY,
+      supabaseUrl: SUPABASE_URL,
+      serviceKey: SUPABASE_SERVICE_ROLE_KEY,
+      model,
+    })) {
+      send(event);
+    }
+  } catch (err) {
+    send({ type: "error", message: (err as Error).message });
+  } finally {
+    res.end();
+  }
+}
+
 // ── Static file serving ────────────────────────────────────────────────────
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -370,8 +483,13 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse) {
 }
 
 const server = http.createServer((req, res) => {
-  if ((req.url ?? "").split("?")[0] === "/api/chat") {
+  const route = (req.url ?? "").split("?")[0];
+  if (route === "/api/chat") {
     void handleChat(req, res);
+    return;
+  }
+  if (route === "/api/market-chat") {
+    void handleMarketChat(req, res);
     return;
   }
   serveStatic(req, res);
