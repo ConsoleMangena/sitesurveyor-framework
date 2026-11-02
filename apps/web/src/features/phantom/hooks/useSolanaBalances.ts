@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
-import { SOLANA_USDC_MINT } from "../lib/config.ts";
+import { SOLANA_CLUSTER, SOLANA_USDC_MINT } from "../lib/config.ts";
 import { getAssociatedTokenAddress } from "../payments/phantomPay.ts";
-import { supabase } from "@/lib/supabase/client.ts";
 
 export interface SolanaBalances {
   sol: number | null;
@@ -24,7 +23,7 @@ async function rpcProxy<T>(method: string, params: unknown[]): Promise<T> {
   const res = await fetch(EDGE_FUNCTION_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "rpc", method, params }),
+    body: JSON.stringify({ action: "rpc", method, params, cluster: SOLANA_CLUSTER }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

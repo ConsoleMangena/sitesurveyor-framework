@@ -2,9 +2,12 @@
  * `solana-data` — server-side Solana data proxy for the public web3 market.
  *
  * Why this exists: browser-reachable public RPCs refuse the account methods
- * the portfolio needs (`getTokenAccountsByOwner`) and `api.mainnet-beta.solana.com`
- * rejects CORS requests. From the edge runtime (no Origin header) the mainnet
- * endpoint serves them, so the browser talks to this function instead.
+ * the portfolio needs (`getTokenAccountsByOwner`) and public RPCs block CORS
+ * from the browser. From the edge runtime (no Origin header) the endpoint
+ * serves them, so the browser talks to this function instead.
+ *
+ * The target cluster is driven by the `SOLANA_RPC_URL` / `SOLANA_CLUSTER`
+ * environment variables (default: devnet, matching the app default).
  *
  * Actions:
  *   - `rpc`    → JSON-RPC passthrough: { action: "rpc", method, params }
@@ -20,7 +23,26 @@
 import { checkRateLimit, clientIp } from "../_shared/rate_limit.ts";
 import { adminClient, corsHeaders, json } from "../_shared/supabase.ts";
 
-const MAINNET_RPC = "https://api.mainnet-beta.solana.com";
+/**
+ * Solana cluster the proxy talks to. Matches the frontend default (devnet) so
+ * balance and account queries hit the same cluster the wallet is funded on.
+ * Override per deployment via the SOLANA_RPC_URL environment variable (or
+ * SOLANA_CLUSTER to pick a built-in cluster endpoint).
+ */
+const SOLANA_CLUSTER =
+  (Deno.env.get("SOLANA_CLUSTER") as
+    | "devnet"
+    | "mainnet-beta"
+    | "testnet") ?? "devnet";
+
+const DEFAULT_RPC_URL: Record<string, string> = {
+  devnet: "https://api.devnet.solana.com",
+  "mainnet-beta": "https://api.mainnet-beta.solana.com",
+  testnet: "https://api.testnet.solana.com",
+};
+
+const RPC_URL = Deno.env.get("SOLANA_RPC_URL") ?? DEFAULT_RPC_URL[SOLANA_CLUSTER];
+
 const COINGECKO_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true";
 const DEFILLAMA_URL = "https://api.llama.fi/v2/chains";
@@ -88,11 +110,15 @@ async function fetchJson(url: string): Promise<unknown> {
   }
 }
 
-async function rpcCall(method: string, params: unknown[]): Promise<unknown> {
+async function rpcCall(
+  method: string,
+  params: unknown[],
+  rpcUrl?: string,
+): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch(MAINNET_RPC, {
+    const response = await fetch(rpcUrl ?? RPC_URL, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
@@ -211,12 +237,19 @@ async function handleMarket(): Promise<Response> {
   return noStore(json(snapshot));
 }
 
-async function handleRpc(method: string, params: unknown[]): Promise<Response> {
+async function handleRpc(
+  method: string,
+  params: unknown[],
+  cluster?: string,
+): Promise<Response> {
   if (!ALLOWED_METHODS.has(method)) {
     return json({ error: `Method not allowed: ${method}` }, 400);
   }
+  // Per-request cluster override (sent by the frontend) beats the env default.
+  const rpcUrl =
+    cluster && DEFAULT_RPC_URL[cluster] ? DEFAULT_RPC_URL[cluster] : undefined;
   try {
-    const result = await rpcCall(method, params);
+    const result = await rpcCall(method, params, rpcUrl);
     return noStore(json({ result }));
   } catch (error) {
     return json(
@@ -234,7 +267,12 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
-  let body: { action?: string; method?: string; params?: unknown[] };
+  let body: {
+    action?: string;
+    method?: string;
+    params?: unknown[];
+    cluster?: string;
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -270,7 +308,7 @@ Deno.serve(async (req: Request) => {
         429,
       );
     }
-    return await handleRpc(body.method ?? "", body.params ?? []);
+    return await handleRpc(body.method ?? "", body.params ?? [], body.cluster);
   }
 
   return json({ error: `Unknown action: ${action}` }, 400);
