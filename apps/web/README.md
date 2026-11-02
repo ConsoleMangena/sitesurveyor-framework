@@ -103,7 +103,7 @@ The `apps/desktop`, `apps/mobile`, and `apps/live` directories elsewhere in the 
 
 `src/features/phantom/lib/config.ts` resolves the selected cluster, RPC endpoint, USDC mint, treasury, and Explorer URLs. Keep those values consistent. A signature or Explorer link must always be interpreted on its recorded cluster.
 
-`src/features/phantom/anchor/fileAnchor.ts` writes only the versioned attachment ID and SHA-256 digest to Solana Memo Program v3. Original files remain in Supabase Storage.
+`src/features/phantom/anchor/fileAnchor.ts` writes only the versioned attachment ID and SHA-256 digest to Solana Memo Program v3. Original files remain in Supabase Storage in this implemented hash-only mode. The optional full-file product model, meaning ordered, verifiable chunks committed across multiple transactions with a reassembly manifest, is not implemented in this package.
 
 ### Data access
 
@@ -116,6 +116,15 @@ The frontend calls the authenticated AI endpoint and consumes NDJSON status, too
 ### Coming-soon tools
 
 `src/features/projects/tools/toolRegistry.ts` explicitly lists unimplemented project tools. Keep their `soon` behaviour until a real workflow exists; do not make a card appear operational by changing only its copy.
+
+### Public market sample media
+
+The public market seed shows surveying equipment, jobs, firms, and events. Every photograph attached to a seed item has to depict that item, because a wrong picture teaches users to distrust the listing rather than the demo.
+
+- Item media lives in the `asset-media` Storage bucket under the seed workspace prefix `e0000000-0000-4000-8000-000000000001/`. `public/images/market/**` holds byte-identical local copies so the demo still renders when Storage is unavailable; keep the two in step when a seed image changes.
+- `public/images/market/ATTRIBUTIONS.json` records the source file, author, licence, page URL, and used dimensions for every image sourced under licence. Add a record whenever a seed image is replaced.
+- Several seed images are freely licensed photographs from Wikimedia Commons (public domain, CC0, CC BY, and CC BY-SA). Those licences require visible attribution for the CC BY and CC BY-SA files, so the attribution record is part of the seed and is not optional.
+- Items with no honest photograph carry no media path and fall back to the category placeholder from `src/components/market/marketPlaceholders.ts`. The Trimble TSC7 and Leica CS20 field controllers, the tablet sunshade bracket, and the drone mapping pilot post are in that state. Clearing a path is the correct fix; attaching an unrelated image is not.
 
 ## Styling and accessibility
 
