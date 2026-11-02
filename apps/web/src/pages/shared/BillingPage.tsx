@@ -3,7 +3,6 @@ import {
   Banknote,
   Check,
   Copy,
-  CreditCard,
   Download,
   ExternalLink,
   Loader2,
@@ -65,6 +64,7 @@ import {
   type WorkspaceMemberRow,
 } from "../../lib/repositories/workspaces.ts";
 import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
+import PesepayLogo from "../../features/phantom/components/PesepayLogo.tsx";
 import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
 import { useSolanaBalances } from "../../features/phantom/hooks/useSolanaBalances.ts";
 import { CUSTOM_WALLET_NAME } from "../../features/phantom/lib/customWalletAdapter.ts";
@@ -690,7 +690,7 @@ export default function BillingPage({
                     <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                       <div className="flex min-w-0 items-start gap-3">
                         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <CreditCard className="h-4 w-4" />
+                          <Wallet className="h-4 w-4" />
                         </span>
                         <div className="min-w-0">
                           <CardTitle className="text-base">Payment rail</CardTitle>
@@ -719,7 +719,7 @@ export default function BillingPage({
                         >
                           <span className="flex items-center gap-2">
                             <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
-                              <Wallet className="h-4 w-4" />
+                              <SolanaLogo size={20} />
                             </span>
                             <span className="truncate text-sm font-semibold">
                               Crypto wallet
@@ -765,7 +765,7 @@ export default function BillingPage({
                         >
                           <span className="flex items-center gap-2">
                             <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
-                              <CreditCard className="h-4 w-4" />
+                              <PesepayLogo size={20} />
                             </span>
                             <span className="truncate text-sm font-semibold">
                               PesePay balance
@@ -968,7 +968,7 @@ export default function BillingPage({
                             {pesepayBusy ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <CreditCard className="h-4 w-4" />
+                              <PesepayLogo size={20} />
                             )}
                             {pesepayBusy ? "Opening PesePay…" : "Pay with PesePay checkout"}
                           </Button>
