@@ -20,9 +20,9 @@
 
 ---
 
-SiteSurveyor is an **Eineva Labs product and open-source initiative**. It brings the surveying business into one connected workspace: quotes, projects, schedules, dispatch, CAD-aware assistance, field evidence, assets, time and expenses, invoices, payments, and a professional marketplace.
+SiteSurveyor is an **Eineva Labs product and open-source initiative**. It brings the whole job into one connected workspace, giving a surveyor the complete set of tools their work demands, from the first enquiry to a settled payment, rather than a paper field book and a patchwork of disconnected systems.
 
-Its **hybrid Web3 architecture** keeps sensitive survey content in controlled off-chain storage by default while using Solana where it adds clear value: wallet-native sign-in, USDC settlement, and tamper-evident file-hash anchors. SiteSurveyor AI connects to real workspace tools so a surveyor can move from a question to a verified action without switching systems.
+Its **hybrid Web3 architecture** keeps sensitive survey content in controlled off-chain storage by default while using Solana where it adds clear value: wallet-native sign-in, USDC settlement, and tamper-evident file-hash anchors. SiteSurveyor AI can work directly with that same toolset, so a surveyor moves from a question to a verified action without leaving the workspace.
 
 > **Development status:** the repository defaults to **Solana devnet** and **PesePay sandbox**. Devnet transactions are for development and demonstration, not production evidence or settlement. Complete a deployment security review before using live funds, production chains, or sensitive client data.
 
@@ -30,7 +30,7 @@ Its **hybrid Web3 architecture** keeps sensitive survey content in controlled of
 
 Surveying is moving from paper field books, manual hand-offs, and disconnected office systems toward digital collection, processing, and project management. That transition can improve efficiency, but cybersecurity is too often left behind. Boundary data, coordinates, plans, client records, and construction information can become exposed to breaches, tampering, and unauthorised access, while centralised workflows can make provenance and change history difficult to inspect.
 
-Eineva Labs created SiteSurveyor as an open-source response: a framework for embracing digital fieldwork without treating security as an afterthought. The goal is one safer digital workspace for work that would otherwise depend on a paper field book and a patchwork of tools—combining practical survey operations, AI assistance, transparent integrity records, and security-conscious data management.
+Eineva Labs created SiteSurveyor as an open-source response: a framework for embracing digital fieldwork without treating security as an afterthought. The goal is one safer digital workspace for work that would otherwise depend on a paper field book and a patchwork of tools, combining practical survey operations, AI assistance, transparent integrity records, and security-conscious data management.
 
 Open source makes the framework inspectable, adaptable, and available for surveying firms, researchers, and contributors to improve together. Blockchain is used selectively for integrity, transparency, and settlement; it is not treated as a replacement for access control, encryption, professional QA, or responsible information governance.
 
@@ -85,7 +85,7 @@ flowchart LR
 | Marketplace | Instruments, professionals, jobs, firms, training, map discovery, filters, and market detail views |
 | Administration | Personal and business workspaces plus platform-operator views for users, workspaces, activity, and audit |
 
-Some project-tool cards—currently instrument calibration, field notes, and QA flags—are explicitly marked **coming soon** in the application. They are not presented as working capabilities.
+Some project-tool cards (currently instrument calibration, field notes, and QA flags) are explicitly marked **coming soon** in the application. They are not presented as working capabilities.
 
 ## Security at a glance
 
@@ -102,9 +102,9 @@ SiteSurveyor defaults to blockchain for **integrity and settlement**, not as a p
 
 ### Two file-storage models
 
-**Hash-only anchoring — implemented.** The original file stays in Supabase Storage. Solana receives only its attachment ID and SHA-256 digest, providing a tamper-evident reference without publishing the file.
+**Hash-only anchoring (implemented).** The original file stays in Supabase Storage. Solana receives only its attachment ID and SHA-256 digest, providing a tamper-evident reference without publishing the file.
 
-**Full-file on-chain storage — optional product direction, not yet implemented.** Where a deployment enables this mode, a file is divided into **ordered, verifiable data chunks** and committed across multiple Solana transactions instead of being uploaded as one large transaction. A manifest links the chunks, records their order and transaction references, and connects them to the complete-file integrity record so the payload can be reassembled and verified. Sensitive content must be encrypted **before chunking**, and users must explicitly opt in because on-chain data is public and effectively permanent.
+**Full-file on-chain storage (optional product direction, not yet implemented).** Where a deployment enables this mode, a file is divided into **ordered, verifiable data chunks** and committed across multiple Solana transactions instead of being uploaded as one large transaction. A manifest links the chunks, records their order and transaction references, and connects them to the complete-file integrity record so the payload can be reassembled and verified. Sensitive content must be encrypted **before chunking**, and users must explicitly opt in because on-chain data is public and effectively permanent.
 
 A hash anchor proves that a particular wallet anchored a particular digest at a particular time. It does **not** prove authorship, ownership, survey accuracy, or legal validity, and it does not encrypt the file.
 
@@ -148,14 +148,24 @@ See [System architecture & design](DESIGN.md) for component responsibilities and
 - **AI:** NVIDIA NIM, an allowlisted model router, streaming tool calling, structured memory, and an optional Model Context Protocol server.
 - **Quality & delivery:** Vitest, Testing Library, ESLint, TypeScript project checks, Docker/Nginx, and Render static-site configuration.
 
+## Platform targets
+
+| Client | Technology | Current status |
+| --- | --- | --- |
+| Web | React 19 + TypeScript, responsive PWA | **Implemented** in `apps/web` |
+| Desktop | .NET | Target platform; `apps/desktop` is reserved for the native shell |
+| Mobile | Java Android SDK | Target platform; `apps/mobile` is reserved for the Android client |
+
+The current repository contains the web implementation only. Naming the native technology targets does not imply that those clients are already available.
+
 ## Repository layout
 
 ```text
 sitesurveyor-framework/
 ├── apps/
 │   ├── web/                 # Implemented responsive React application
-│   ├── desktop/             # Reserved placeholder; no desktop shell implemented
-│   ├── mobile/              # Reserved placeholder; no native app implemented
+│   ├── desktop/             # .NET desktop target; source placeholder
+│   ├── mobile/              # Java Android SDK target; source placeholder
 │   └── live/                # Reserved placeholder
 ├── ai-gateway/              # Optional Node host and AI fallback
 │   └── sitesurveyor-mcp/    # MCP exposure of AI data, CAD, memory, and workflow tools
@@ -267,17 +277,18 @@ Open **http://localhost:8080**. Supply deployment-specific build values through 
 
 ## Current boundaries
 
-- This repository implements a **responsive web application/PWA**. The desktop, mobile, and live directories are placeholders.
+- This repository currently implements the **responsive React web application/PWA**. **.NET desktop** and **Java Android SDK mobile** are platform targets; their directories remain placeholders.
+- The current web client implements **hash-only anchoring**. Chunked full-file on-chain storage is an optional product direction and is not yet implemented or generally available.
 - Solana development defaults to **devnet**. A transaction on one cluster cannot be treated as proof on another; preserve the recorded network and signature.
 - The AI gateway still needs network access to NVIDIA and Supabase. “Fallback” means an alternate host, not offline inference.
 - AI output requires professional review. A user must execute CAD command blocks, and destructive operations have confirmation safeguards.
 - Marketplace sample content and synthetic chart/portfolio data are demonstration material, not verified public market evidence.
-- Blockchain anchoring does not replace access control, encryption, backups, retention policy, professional QA, or legal records management.
+- Blockchain anchoring does not replace access control, encryption, backups, retention policy, professional QA, or legal records management. Full-file storage additionally requires pre-chunk encryption for sensitive content and explicit user consent.
 
 ## Contributing
 
-Keep product claims tied to implemented behaviour, preserve the distinction between private off-chain data and public on-chain proofs, and update the relevant guide when a workflow or configuration changes. Follow the [Code of Conduct](CODE_OF_CONDUCT.md) and run the checks above before submitting changes.
+Keep product claims tied to implemented behaviour, preserve the distinction between default private off-chain storage, public hash proofs, and any future opt-in full-file mode, and update the relevant guide when a workflow or configuration changes. Follow the [Code of Conduct](CODE_OF_CONDUCT.md) and run the checks above before submitting changes.
 
 ## License
 
-SiteSurveyor is available under the [MIT License](LICENSE).
+SiteSurveyor is an **Eineva Labs product and open-source initiative**, available under the [MIT License](LICENSE).

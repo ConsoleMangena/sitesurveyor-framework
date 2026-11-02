@@ -43,10 +43,10 @@ survey evidence (plans, point clouds, site photos) from phones and desktops.
 
 Secondary audiences:
 
-- Firm leads and workspace owners — pricing, team, assets, billing and settings.
-- Clients of surveying firms — they arrive at the public market to find and hire
+- Firm leads and workspace owners: pricing, team, assets, billing and settings.
+- Clients of surveying firms. They arrive at the public market to find and hire
   surveyors, publish work, and compare instruments, services and training.
-- Platform operators — the admin area covering users, workspaces, audit and growth.
+- Platform operators: the admin area covering users, workspaces, audit and growth.
 
 ## Product Purpose
 
@@ -63,9 +63,10 @@ workflows and produce user-reviewed CAD commands. Solana adds wallet-native
 identity, USDC settlement and tamper-evident file-hash anchors while sensitive
 survey files remain off-chain by default.
 
-Success means a field professional can run a job end to end — quote, schedule,
-capture, prove, invoice, get paid — without leaving the workspace, and a client
-can find and engage a surveyor without knowing the firm's internal tooling.
+Success means a field professional can run a job end to end, from quote and
+schedule to capture, proof, invoice and payment, without leaving the workspace,
+and a client can find and engage a surveyor without knowing the firm's internal
+tooling.
 
 ## Positioning
 
@@ -83,10 +84,10 @@ Sensitive payloads must be encrypted before chunking and require explicit user
 opt-in. This is a separate product direction, not an implemented feature of the
 current web client.
 
-The marketplace is not a marketing page bolted onto a tool — it is the same
+The marketplace is not a marketing page bolted onto a tool; it is the same
 listing, job and instrument data the workspace produces. AI is not a detached
-chatbot — it uses the same operational and CAD records the surveyor is working
-on. Blockchain is not a default public filing cabinet — standard operation uses
+chatbot; it uses the same operational and CAD records the surveyor is working
+on. Blockchain is not a default public filing cabinet; standard operation uses
 it for verifiable proofs and settlement while access-controlled systems hold
 sensitive content.
 
@@ -114,8 +115,14 @@ sensitive content.
   reporting and record tools, quote/scheduling workflows, CAD inspection and
   user-executed drafting commands, with read-back verification for record writes.
 - Evidence integrity: SHA-256 file hashes, integrity verification, version
-  history and optional wallet-signed Solana Memo anchors. Original files stay in
-  Supabase Storage; only the attachment ID and digest are written on-chain.
+  history and optional wallet-signed Solana Memo anchors. In the implemented
+  hash-only mode, original files stay in Supabase Storage and only the
+  attachment ID and digest are written on-chain.
+- Full-file on-chain storage is an optional product direction, not a current web
+  feature: where enabled, files will be divided into ordered, verifiable chunks
+  and committed across multiple transactions, with a manifest for reassembly
+  and verification. Sensitive payloads must be encrypted before chunking and
+  require explicit user opt-in.
 - Public market: listings by category (instruments, professionals, jobs, firms,
   training), geo map of live listings, search and category filters, and a market
   terminal showing a Solana-priced index, chart, ticker and portfolio.
@@ -123,7 +130,7 @@ sensitive content.
   and behaviourally distinct so the two settlement paths never read as one.
 - Wallet sign-in supports account type, name and email; incomplete accounts are
   prefilled into a finish-setup flow rather than dropped.
-- Constraints: PesePay runs on sandbox keys only — keys stay out of the repo and
+- Constraints: PesePay runs on sandbox keys only. Keys stay out of the repo and
   out of any printed output, are rotated before production, and no live charge is
   ever made from a development session. Solana work targets devnet by default;
   mobile wallet hand-off is via Solflare, desktop sign-in via Phantom.
@@ -140,8 +147,8 @@ sensitive content.
   be redesigned.
 - Signature red (#d92d20) is the brand accent. The 2026 visual decision is the
   shadcn-admin (satnaing) template's structure, component language and neutral
-  slate palette, with the red retained as the accent — brand marks, primary
-  actions, live indicators and market highlights — rather than a bespoke
+  slate palette, with the red retained as the accent (brand marks, primary
+  actions, live indicators and market highlights) rather than a bespoke
   red-and-dark console theme.
 - Voice: practical, field-competent, plain. Controls name their action; errors
   name the problem and the recovery.
@@ -171,6 +178,11 @@ sensitive content.
    visitor becomes a customer in a workspace.
 5. One design language. The template's structure and primitives govern every
    surface; a surface that keeps its character still uses the shared tokens.
+6. Security travels with digitisation. Moving beyond paper field books must not
+   normalise silent exposure, tampering or unauthorised access; efficiency and
+   cybersecurity are designed together.
+7. Open by default. Eineva Labs maintains SiteSurveyor as an MIT-licensed
+   framework whose security boundaries and product claims remain inspectable.
 
 ## Accessibility & Inclusion
 

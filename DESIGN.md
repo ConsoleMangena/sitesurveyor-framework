@@ -45,12 +45,13 @@ flowchart TB
 
     UI --> AUTH
     UI --> DB
-    FM --> STORE
+    FM -->|"Default: original files"| STORE
     UI --> AI
     UI --> SD
     UI --> PP
     WA --> SOL
     FM -->|"Signed SHA-256 Memo"| SOL
+    FM -. "Planned opt-in: encrypted, ordered chunks" .-> SOL
     AI --> NIM
     AI --> DB
     NODE --> NIM
@@ -74,7 +75,7 @@ flowchart TB
 | `ai-gateway` | Optional Node static host and self-hosted `/api/chat` fallback using the same agent contract |
 | `ai-gateway/sitesurveyor-mcp` | MCP server exposing equivalent data, CAD, memory, and workflow tools over stdio |
 | `scripts/ai-eval` | Evaluation and consistency checks for models, memory, skills, and tool rounds |
-| `apps/desktop`, `apps/mobile`, `apps/live` | Empty reserved directories; no implemented native or live shell |
+| `apps/desktop`, `apps/mobile`, `apps/live` | Reserved directories for the .NET desktop and Java Android SDK targets plus a live shell; none is implemented, so the web client is the only shipped surface |
 
 ## 4. Frontend architecture
 
@@ -227,7 +228,7 @@ sequenceDiagram
 
 The Memo is self-describing so a chain reader can associate the proof with an attachment without publishing the file. In this implemented hash-only mode, the original file remains off-chain. A hash proves byte equivalence only; it does not establish provenance, ownership, correctness, or regulatory acceptance.
 
-### Full-file chunked storage model — planned
+### Full-file chunked storage model (planned)
 
 The product framework also defines an optional full-file on-chain model. This is not implemented in the current web client and must not be inferred from the existing `fileAnchor.ts` flow.
 
@@ -261,7 +262,7 @@ The UI and documentation must never blur a pending Solana transaction, a sandbox
 | --- | --- | --- | --- | --- | --- |
 | Account/workspace profile | Yes | No | Only relevant supplied context | Wallet address may be public through transactions | Only required payment context |
 | Operational records | Yes | No | Relevant query/tool context | No | Payment-related subset where applicable |
-| Original survey files | Metadata only | Yes | Only if explicitly supplied through an AI workflow | **No** | No |
+| Original survey files | Metadata only | Yes by default | Only if explicitly supplied through an AI workflow | **No by default; encrypted chunks only in the planned opt-in full-file mode** | No |
 | File SHA-256 + attachment ID | Yes | No | Only if supplied | **Yes, on anchor** | No |
 | AI conversations/memory | Yes | No | Prompt/history/tool context | No | No |
 | Solana transaction | Signature/status metadata | No | Only if supplied | Yes | No |

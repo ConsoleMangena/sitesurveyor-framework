@@ -73,7 +73,7 @@ HOST=127.0.0.1
 | `SUPABASE_URL` | For chat | Supabase Auth/REST base URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | For chat | Privileged server-side persistence and tool access |
 | `PORT` | No | HTTP port; defaults to `8787` |
-| `HOST` | No | Bind address; defaults to `0.0.0.0` in code—use a restricted address for local-only work |
+| `HOST` | No | Bind address; defaults to `0.0.0.0` in code, so use a restricted address for local-only work |
 | `USE_OPENCLAW` | No | Set to `1` to use the optional buffered OpenClaw runtime |
 
 Never copy these values into `apps/web/.env`, a `VITE_*` variable, the frontend bundle, logs, screenshots, or documentation containing real credentials.

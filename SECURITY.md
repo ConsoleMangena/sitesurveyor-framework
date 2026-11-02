@@ -193,7 +193,7 @@ Complete and record these checks before using live client data, mainnet assets, 
 
 ### Access and data
 
-- [ ] Review the entire deployed schema, views, functions, and storage policies—not only incremental migrations.
+- [ ] Review the entire deployed schema, views, functions, and storage policies, not only incremental migrations.
 - [ ] Test cross-user and cross-workspace access with non-privileged accounts.
 - [ ] Confirm sensitive buckets are private and sharing/download URLs follow policy.
 - [ ] Configure backups, restoration tests, retention, deletion, and evidence-export procedures.
@@ -211,6 +211,7 @@ Complete and record these checks before using live client data, mainnet assets, 
 - [ ] Use separate reviewed production wallets, treasury addresses, RPC endpoints, and USDC mint.
 - [ ] Confirm cluster consistency across sign-in UX, anchors, payments, Explorer links, and records.
 - [ ] Complete a wallet/key-management review, including the optional built-in wallet and recovery process.
+- [ ] Keep full-file chunked storage disabled until its encryption, manifest, chunk-recovery, reassembly, consent, and retention design has passed a dedicated review.
 - [ ] Rotate sandbox or previously exposed payment credentials and enable live payments only through an approved release.
 - [ ] Test pending, failed, delayed, duplicate, and reconciled transaction states.
 

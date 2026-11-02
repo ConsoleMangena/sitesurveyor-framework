@@ -2,7 +2,7 @@
 
 **Plan the work. Execute the survey. Preserve the evidence. Settle the job.**
 
-SiteSurveyor is an **Eineva Labs product and open-source initiative**: an AI-powered, Web3-enabled framework for safer digital surveying. It connects daily operations—quotes, projects, crews, CAD, files, time, expenses, invoices, and payments—with Solana wallet identity and optional blockchain proofs of file integrity. Its purpose is to help surveying teams move beyond paper field books and disconnected tools without overlooking cybersecurity.
+SiteSurveyor is an **Eineva Labs product and open-source initiative**: an AI-powered, Web3-enabled framework for safer digital surveying. It gathers the complete set of tools a surveyor needs into one connected workspace, with Solana wallet identity and optional blockchain proofs of file integrity running underneath. Its purpose is to help surveying teams move beyond paper field books and disconnected tools without overlooking cybersecurity.
 
 > **Privacy by default:** your original survey files stay in Supabase Storage; when you use standard hash-only anchoring, only the attachment ID and SHA-256 hash are written to Solana. A separate full-file on-chain storage model may be offered by a deployment as an explicit opt-in; it is not the default and is not implemented in the current web client.
 
@@ -34,7 +34,7 @@ Development deployments normally use **Solana devnet**. Devnet SOL and USDC have
 
 ## 2. A typical project workflow
 
-### Step 1 — Plan and price
+### Step 1: Plan and price
 
 1. Create or select a **contact** for the client.
 2. Prepare a **quote** with its line items, rates, taxes, and notes.
@@ -44,7 +44,7 @@ Development deployments normally use **Solana devnet**. Devnet SOL and USDC have
 
 You can ask SiteSurveyor AI to summarise existing records or help create allowed projects, contacts, quotes, jobs, invoices, and assets. Review names, dates, quantities, rates, and coordinates before relying on the result.
 
-### Step 2 — Prepare and execute
+### Step 2: Prepare and execute
 
 - Use **Dispatch** and **Schedule** to organise jobs, dates, assignments, and job events.
 - Use **Projects** to work with project drawings and CAD content.
@@ -54,7 +54,7 @@ You can ask SiteSurveyor AI to summarise existing records or help create allowed
 
 Instrument calibration, field-notes, and QA-flag cards inside the project tool area are currently marked **coming soon**. Use the implemented asset and project records for current workflows rather than treating those cards as completed tools.
 
-### Step 3 — Keep evidence with the work
+### Step 3: Keep evidence with the work
 
 Use the **File Manager** to upload, organise, preview, download, version, restore, or permanently remove files according to your permissions.
 
@@ -68,7 +68,7 @@ For sensitive material:
 
 A successful integrity check detects changes relative to the recorded hash. It does not certify that the survey itself is correct.
 
-### Step 4 — Anchor a file hash on Solana
+### Step 4: Anchor a file hash on Solana
 
 Anchoring adds a public, tamper-evident reference for a file version without publishing the file itself.
 
@@ -106,7 +106,7 @@ This mode has a fundamentally different privacy and cost profile from hash-only 
 
 **Current status:** the repository implements hash-only anchoring. Chunked full-file storage is a product direction and is not available in the current web client, so the steps above are design guidance rather than an operating procedure for a shipped feature.
 
-### Step 5 — Invoice and settle
+### Step 5: Invoice and settle
 
 1. Confirm delivered work, time, expenses, and quote details.
 2. Create or review the **invoice** and its line items.
