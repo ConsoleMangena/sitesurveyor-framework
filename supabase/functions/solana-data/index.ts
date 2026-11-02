@@ -34,6 +34,7 @@ const CACHE_ROW_ID = 1;
 /** Methods the proxy is willing to forward. */
 const ALLOWED_METHODS = new Set([
   "getBalance",
+  "getTokenAccountBalance",
   "getEpochInfo",
   "getSlot",
   "getBlockHeight",

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
 import { SOLANA_USDC_MINT } from "../lib/config.ts";
-import { getAssociatedTokenAddress, getConnection } from "../payments/phantomPay.ts";
+import { getAssociatedTokenAddress } from "../payments/phantomPay.ts";
+import { supabase } from "@/lib/supabase/client.ts";
 
 export interface SolanaBalances {
   sol: number | null;
@@ -13,6 +14,45 @@ export interface SolanaBalances {
 }
 
 const POLL_MS = 30_000;
+const EDGE_FUNCTION_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "") +
+  "/functions/v1/solana-data";
+
+/** Call the solana-data Edge Function for a single RPC method. */
+async function rpcProxy<T>(method: string, params: unknown[]): Promise<T> {
+  if (!EDGE_FUNCTION_URL) throw new Error("solana-data Edge Function URL not configured");
+  const res = await fetch(EDGE_FUNCTION_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "rpc", method, params }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `RPC proxy failed (${res.status})`);
+  }
+  const { result } = await res.json();
+  return result as T;
+}
+
+/** Fetch SOL + USDC balances via the RPC proxy (CORS-safe). */
+async function fetchBalancesViaProxy(address: string): Promise<{ sol: number | null; usdc: number | null }> {
+  const owner = new PublicKey(address);
+  const mint = new PublicKey(SOLANA_USDC_MINT);
+  const ata = getAssociatedTokenAddress(mint, owner);
+
+  const [lamports, tokenAccount] = await Promise.all([
+    rpcProxy<number>("getBalance", [address, { commitment: "confirmed" }]),
+    rpcProxy<{ value: { amount: string; decimals: number; uiAmount: number | null } } | null>(
+      "getTokenAccountBalance",
+      [ata.toBase58(), { commitment: "confirmed" }],
+    ).catch(() => null),
+  ]);
+
+  return {
+    sol: lamports != null ? lamports / LAMPORTS_PER_SOL : null,
+    usdc: tokenAccount?.value?.uiAmount ?? 0,
+  };
+}
 
 export function useSolanaBalances(address: string | null): SolanaBalances {
   const [sol, setSol] = useState<number | null>(null);
@@ -31,18 +71,10 @@ export function useSolanaBalances(address: string | null): SolanaBalances {
     const load = async () => {
       setLoading(true);
       try {
-        const conn = getConnection();
-        const owner = new PublicKey(address);
-        const mint = new PublicKey(SOLANA_USDC_MINT);
-        const ata = getAssociatedTokenAddress(mint, owner);
-        const [lamports, tokenBalance] = await Promise.all([
-          conn.getBalance(owner, "confirmed"),
-          // A wallet with no USDC token account yet simply holds 0 USDC.
-          conn.getTokenAccountBalance(ata, "confirmed").catch(() => null),
-        ]);
+        const { sol, usdc } = await fetchBalancesViaProxy(address);
         if (cancelled) return;
-        setSol(lamports / LAMPORTS_PER_SOL);
-        setUsdc(tokenBalance?.value?.uiAmount ?? 0);
+        setSol(sol);
+        setUsdc(usdc);
         setError(null);
       } catch (err) {
         if (cancelled) return;

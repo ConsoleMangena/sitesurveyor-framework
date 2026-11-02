@@ -1,30 +1,64 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
-const mockConn = vi.hoisted(() => ({
-  getBalance: vi.fn(),
-  getTokenAccountBalance: vi.fn(),
-}));
-
-vi.mock("../payments/phantomPay.ts", () => ({
-  getConnection: () => mockConn,
-  getAssociatedTokenAddress: () => ({ toBase58: () => "ATA_MOCK" }),
+vi.mock("@/lib/supabase/client.ts", () => ({
+  supabase: {},
 }));
 
 import { useSolanaBalances } from "./useSolanaBalances.ts";
 
 const VALID_ADDRESS = "11111111111111111111111111111111";
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("useSolanaBalances", () => {
+  const makeResponse = (body: unknown, init: ResponseInit = {}) =>
+    new Response(JSON.stringify(body), { status: 200, ...init, headers: { "Content-Type": "application/json" } });
+
+  const successResponse = (sol: number, usdc: number) =>
+    new Response(JSON.stringify({ result: sol }), { status: 200, headers: { "Content-Type": "application/json" } });
+
+  const tokenResponse = (usdc: number) =>
+    new Response(
+      JSON.stringify({
+        result: {
+          value: { amount: String(usdc * 1_000_000), decimals: 6, uiAmount: usdc },
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+
+  const errorResponse = (message: string) =>
+    new Response(JSON.stringify({ error: message }), { status: 502, headers: { "Content-Type": "application/json" } });
+
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+    vi.stubGlobal("import", { meta: { env: { VITE_SUPABASE_URL: "https://example.supabase.co" } } });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("returns SOL and USDC balances for an address", async () => {
-    mockConn.getBalance.mockResolvedValue(2_500_000_000); // 2.5 SOL
-    mockConn.getTokenAccountBalance.mockResolvedValue({
-      value: { uiAmount: 123.45 },
-    });
+    (mockFetch as any)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ result: 2_500_000_000 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            result: {
+              value: { amount: String(123.45 * 1_000_000), decimals: 6, uiAmount: 123.45 },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        )
+      );
 
     const { result } = renderHook(() => useSolanaBalances(VALID_ADDRESS));
 
@@ -35,8 +69,19 @@ describe("useSolanaBalances", () => {
   });
 
   it("treats a missing USDC token account as zero, not an error", async () => {
-    mockConn.getBalance.mockResolvedValue(1_000_000_000);
-    mockConn.getTokenAccountBalance.mockRejectedValue(new Error("AccountNotFound"));
+    mockFetch
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ result: 1_000_000_000 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "AccountNotFound" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
 
     const { result } = renderHook(() => useSolanaBalances(VALID_ADDRESS));
 
@@ -47,7 +92,12 @@ describe("useSolanaBalances", () => {
   });
 
   it("surfaces RPC failures as an error with null balances", async () => {
-    mockConn.getBalance.mockRejectedValue(new Error("RPC unreachable"));
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "RPC unreachable" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
 
     const { result } = renderHook(() => useSolanaBalances(VALID_ADDRESS));
 
@@ -62,6 +112,6 @@ describe("useSolanaBalances", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.sol).toBeNull();
     expect(result.current.usdc).toBeNull();
-    expect(mockConn.getBalance).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });
