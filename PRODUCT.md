@@ -133,8 +133,11 @@ sensitive content.
 
 ## Brand Commitments
 
-- Name: SiteSurveyor. The logo lockup and the SiteSurveyor mark are confirmed
-  assets and are not to be redesigned.
+- Name: SiteSurveyor, an Eineva Labs product and open-source initiative. Product
+  and initiative attribution should remain visible in primary documentation and
+  appropriate product/about surfaces.
+- The logo lockup and the SiteSurveyor mark are confirmed assets and are not to
+  be redesigned.
 - Signature red (#d92d20) is the brand accent. The 2026 visual decision is the
   shadcn-admin (satnaing) template's structure, component language and neutral
   slate palette, with the red retained as the accent — brand marks, primary

@@ -118,8 +118,9 @@ flowchart TB
 
     W -->|"Sign In With Solana"| A["Supabase Auth"]
     W -->|"Workspace data + user JWT"| D["Supabase Postgres + RLS"]
-    W -->|"Original files"| S["Supabase Storage"]
+    W -->|"Default: original files"| S["Supabase Storage"]
     W -->|"Wallet-signed anchors + USDC"| C["Solana RPC / cluster"]
+    W -. "Planned opt-in: encrypted, ordered file chunks" .-> C
 
     W -->|"Authenticated chat"| E["ai-chat Edge Function"]
     E -->|"Prompts + tool context"| N["NVIDIA NIM models"]

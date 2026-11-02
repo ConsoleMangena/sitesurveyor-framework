@@ -226,8 +226,8 @@ Complete and record these checks before using live client data, mainnet assets, 
 Unless separately implemented and verified in a deployment, do not describe SiteSurveyor as providing:
 
 - End-to-end encryption of all workspace data or AI prompts.
-- Decentralised storage of original survey files.
-- Confidential blockchain storage.
+- Automatic decentralised storage of all original survey files. The current client implements hash-only anchoring; full-file chunked storage is planned and opt-in.
+- Confidential blockchain storage merely because a payload is chunked. Sensitive full-file payloads require reviewed encryption before chunking.
 - Legal certification of document authenticity, land ownership, or survey accuracy.
 - Automatic regulatory compliance.
 - Fully offline AI, payments, or blockchain verification.
