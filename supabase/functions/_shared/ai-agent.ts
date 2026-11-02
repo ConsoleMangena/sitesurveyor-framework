@@ -947,7 +947,10 @@ async function executeTool(
 
   if (name === "query_site_data" || name === "count_site_data") {
     const table = str(args.table);
-    if (!READ_TABLES.has(table)) return JSON.stringify({ error: `Table '${table}' is not readable.` });
+    // Allow both workspace tables (READ_TABLES) and public market views (MARKET_READ_TABLES)
+    if (!READ_TABLES.has(table) && !MARKET_READ_TABLES.has(table)) {
+      return JSON.stringify({ error: `Table '${table}' is not readable.` });
+    }
     const tableSchema = ctx.schemas.get(table);
     const filters = Array.isArray(args.filters)
       ? (args.filters as { column?: unknown; op?: unknown; value?: unknown }[])
