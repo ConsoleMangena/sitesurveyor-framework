@@ -3800,6 +3800,10 @@ export type Database = {
         Args: { p_amount: number; p_currency_code: string; p_reference: string }
         Returns: undefined
       }
+      update_marketplace_wallet: {
+        Args: { p_workspace_id: string; p_address: string }
+        Returns: undefined
+      }
       shares_workspace_with_profile: {
         Args: { target_profile_id: string }
         Returns: boolean

@@ -142,18 +142,12 @@ export async function updateMarketplaceWallet(
   workspaceId: string,
   address: string | null,
 ): Promise<void> {
-  const { data, error } = await supabase
-    .from("workspaces")
-    .update({ marketplace_wallet_address: address })
-    .eq("id", workspaceId)
-    .select("id");
+  const { error } = await supabase.rpc("update_marketplace_wallet", {
+    p_workspace_id: workspaceId,
+    p_address: address ?? "",
+  });
 
-  if (error) throw normalizeWorkspaceError(error);
-  if (!data?.length) {
-    throw new Error(
-      "This workspace's receiving wallet wasn't updated. Only workspace managers can change it.",
-    );
-  }
+  if (error) throw new Error(error.message);
 }
 
 export async function switchDefaultWorkspace(
