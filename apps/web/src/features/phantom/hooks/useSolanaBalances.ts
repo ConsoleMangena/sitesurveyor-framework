@@ -40,8 +40,8 @@ async function fetchBalancesViaProxy(address: string): Promise<{ sol: number | n
   const mint = new PublicKey(SOLANA_USDC_MINT);
   const ata = getAssociatedTokenAddress(mint, owner);
 
-  const [lamports, tokenAccount] = await Promise.all([
-    rpcProxy<number>("getBalance", [address, { commitment: "confirmed" }]),
+  const [balanceResult, tokenAccount] = await Promise.all([
+    rpcProxy<{ value: number; context: unknown }>("getBalance", [address, { commitment: "confirmed" }]),
     rpcProxy<{ value: { amount: string; decimals: number; uiAmount: number | null } } | null>(
       "getTokenAccountBalance",
       [ata.toBase58(), { commitment: "confirmed" }],
@@ -49,7 +49,7 @@ async function fetchBalancesViaProxy(address: string): Promise<{ sol: number | n
   ]);
 
   return {
-    sol: lamports != null ? lamports / LAMPORTS_PER_SOL : null,
+    sol: balanceResult?.value != null ? balanceResult.value / LAMPORTS_PER_SOL : null,
     usdc: tokenAccount?.value?.uiAmount ?? 0,
   };
 }

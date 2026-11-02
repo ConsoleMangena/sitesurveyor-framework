@@ -44,7 +44,7 @@ describe("useSolanaBalances", () => {
   it("returns SOL and USDC balances for an address", async () => {
     (mockFetch as any)
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ result: 2_500_000_000 }), {
+        new Response(JSON.stringify({ result: { value: 2_500_000_000, context: { slot: 123 } } }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
@@ -71,7 +71,7 @@ describe("useSolanaBalances", () => {
   it("treats a missing USDC token account as zero, not an error", async () => {
     mockFetch
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ result: 1_000_000_000 }), {
+        new Response(JSON.stringify({ result: { value: 1_000_000_000, context: { slot: 123 } } }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         })
