@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
 import { cn } from "../../lib/utils.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
@@ -692,45 +693,48 @@ export default function PublicMarketPage() {
               />
               <span className="web3-brand-name">SiteSurveyor</span>
             </Link>
-            <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor’s Market</span>
+            <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor's Market</span>
           </span>
-          {user ? (
-            <AccountMenu
-              user={user}
-              onLogout={handleSignOut}
-              trigger={
-                <Button
-                  variant="outline"
-                  className="group h-10 gap-2 rounded-full py-1.5 pl-1.5 pr-3"
-                  aria-label={`Open account menu (${user.name})`}
-                >
-                  <AccountMenuAvatar user={user} />
-                  <span className="max-w-[132px] truncate text-sm font-semibold max-sm:hidden">
-                    {user.name}
-                  </span>
-                  <ChevronDown
-                    className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
-                    aria-hidden="true"
-                  />
-                </Button>
-              }
-            >
-              <AccountMenuItem
-                icon={LayoutGrid}
-                label="Open your workspace"
-                to="/"
-              />
-              <AccountMenuItem
-                icon={PackageSearch}
-                label="My marketplace requests"
-                to="/?view=marketplace"
-              />
-            </AccountMenu>
-          ) : (
-            <Link to="/login" className="web3-btn web3-btn-primary">
-              Sign in
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {user ? (
+              <AccountMenu
+                user={user}
+                onLogout={handleSignOut}
+                trigger={
+                  <Button
+                    variant="outline"
+                    className="group h-10 gap-2 rounded-full py-1.5 pl-1.5 pr-3"
+                    aria-label={`Open account menu (${user.name})`}
+                  >
+                    <AccountMenuAvatar user={user} />
+                    <span className="max-w-[132px] truncate text-sm font-semibold max-sm:hidden">
+                      {user.name}
+                    </span>
+                    <ChevronDown
+                      className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+                      aria-hidden="true"
+                    />
+                  </Button>
+                }
+              >
+                <AccountMenuItem
+                  icon={LayoutGrid}
+                  label="Open your workspace"
+                  to="/"
+                />
+                <AccountMenuItem
+                  icon={PackageSearch}
+                  label="My marketplace requests"
+                  to="/?view=marketplace"
+                />
+              </AccountMenu>
+            ) : (
+              <Link to="/login" className="web3-btn web3-btn-primary">
+                Sign in
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 
