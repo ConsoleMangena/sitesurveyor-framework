@@ -95,7 +95,7 @@ src/
 └── main.tsx                # Browser bootstrap and polyfills
 ```
 
-The `apps/desktop`, `apps/mobile`, and `apps/live` directories elsewhere in the repository are placeholders. This package is the implemented application.
+The `apps/desktop`, `apps/mobile`, and `apps/live` directories elsewhere in the repository are placeholders. This package is the implemented application. The native targets are **.NET desktop** in `apps/desktop` and **Java Android SDK** in `apps/mobile`; no native shell is currently implemented.
 
 ## Key implementation contracts
 

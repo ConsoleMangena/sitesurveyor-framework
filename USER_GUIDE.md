@@ -93,6 +93,19 @@ ssv1:<attachment-id>:sha256:<lowercase-file-digest>
 
 > Solana transactions are public and effectively permanent. Never place client names, coordinates, legal descriptions, secrets, or other sensitive text in a custom on-chain memo. The built-in flow only includes the attachment ID and digest.
 
+### Optional full-file blockchain storage
+
+The product framework also defines a separate full-file storage model for deployments that explicitly offer it. In clearer terms, **the file is divided into ordered, verifiable data chunks and committed across multiple Solana transactions**, rather than being uploaded as one large transaction. A manifest records how those chunks fit together and links them to the complete-file integrity record so the payload can be reassembled and verified.
+
+This mode has a fundamentally different privacy and cost profile from hash-only anchoring:
+
+- It must be an explicit user choice, never a silent default.
+- Sensitive files must be encrypted before they are chunked or committed on-chain.
+- Encryption keys require an approved recovery and access-control process; deleting a database record cannot erase the on-chain chunks.
+- Users must understand network fees, public permanence, reassembly requirements, and any legal or client restrictions before uploading.
+
+**Current status:** the repository implements hash-only anchoring. Chunked full-file storage is a product direction and is not available in the current web client, so the steps above are design guidance rather than an operating procedure for a shipped feature.
+
 ### Step 5 — Invoice and settle
 
 1. Confirm delivered work, time, expenses, and quote details.

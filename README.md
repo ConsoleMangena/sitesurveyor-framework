@@ -89,18 +89,24 @@ Some project-tool cards—currently instrument calibration, field notes, and QA 
 
 ## Security at a glance
 
-SiteSurveyor uses blockchain for **integrity and settlement**, not as a public database for confidential survey records.
+SiteSurveyor defaults to blockchain for **integrity and settlement**, not as a public database for confidential survey records. Full-file on-chain storage is a separate, explicit product model with a different privacy and cost profile.
 
 | Information | Primary location | Written to Solana? |
 | --- | --- | --- |
-| Survey plans, photos, point clouds, and other original files | Supabase Storage | **No** |
+| Survey plans, photos, point clouds, and other original files | Supabase Storage by default; encrypted chunks only under the optional full-file model | **No by default; yes only with explicit full-file opt-in, once available** |
 | Projects, clients, quotes, jobs, invoices, and workspace records | Supabase Postgres | **No** |
 | AI conversations and operational tool results | Supabase Postgres; prompts/context processed by the configured AI provider | **No** |
-| File attachment ID and lowercase SHA-256 digest | Attachment metadata and a wallet-signed Solana Memo transaction | **Yes, when anchoring** |
+| File attachment ID and lowercase SHA-256 digest | Attachment metadata and a wallet-signed Solana Memo transaction | **Yes, when hash anchoring** |
 | Solana payment transaction | Solana | **Yes** |
 | PesePay fiat transaction | PesePay and off-chain payment records | **No** |
 
-A file anchor proves that a particular wallet anchored a particular digest at a particular time. It does **not** prove authorship, ownership, survey accuracy, or legal validity, and it does not encrypt the file.
+### Two file-storage models
+
+**Hash-only anchoring — implemented.** The original file stays in Supabase Storage. Solana receives only its attachment ID and SHA-256 digest, providing a tamper-evident reference without publishing the file.
+
+**Full-file on-chain storage — optional product direction, not yet implemented.** Where a deployment enables this mode, a file is divided into **ordered, verifiable data chunks** and committed across multiple Solana transactions instead of being uploaded as one large transaction. A manifest links the chunks, records their order and transaction references, and connects them to the complete-file integrity record so the payload can be reassembled and verified. Sensitive content must be encrypted **before chunking**, and users must explicitly opt in because on-chain data is public and effectively permanent.
+
+A hash anchor proves that a particular wallet anchored a particular digest at a particular time. It does **not** prove authorship, ownership, survey accuracy, or legal validity, and it does not encrypt the file.
 
 Read the [security model](SECURITY.md) before deploying with real project data.
 

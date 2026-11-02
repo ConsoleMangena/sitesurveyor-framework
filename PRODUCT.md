@@ -60,8 +60,8 @@ open jobs, firms and training, so demand and supply meet in one place.
 SiteSurveyor AI turns the workspace into an interactive assistant: it can query
 real operational and CAD data, prepare reports, execute allowlisted record
 workflows and produce user-reviewed CAD commands. Solana adds wallet-native
-identity, USDC settlement and tamper-evident file-hash anchors without putting
-sensitive survey files on a public chain.
+identity, USDC settlement and tamper-evident file-hash anchors while sensitive
+survey files remain off-chain by default.
 
 Success means a field professional can run a job end to end — quote, schedule,
 capture, prove, invoice, get paid — without leaving the workspace, and a client
@@ -72,15 +72,23 @@ can find and engage a surveyor without knowing the firm's internal tooling.
 The combination no neighbouring product can truthfully copy: an AI-powered
 field-service operating system for the surveying trade that owns its own
 supply-and-demand marketplace, with a Web3 trust layer for identity, settlement
-and evidence integrity. SiteSurveyor uses a hybrid architecture: confidential
-files and operational records stay off-chain, while only explicit transactions
-and minimal SHA-256 anchor statements go to Solana.
+and evidence integrity. SiteSurveyor uses a hybrid architecture by default:
+confidential files and operational records stay off-chain, while explicit
+transactions and minimal SHA-256 anchor statements go to Solana.
+
+The product model also allows for explicitly enabled full-file on-chain storage:
+files are divided into ordered, verifiable chunks and committed across multiple
+transactions, with a manifest supporting reassembly and integrity verification.
+Sensitive payloads must be encrypted before chunking and require explicit user
+opt-in. This is a separate product direction, not an implemented feature of the
+current web client.
 
 The marketplace is not a marketing page bolted onto a tool — it is the same
 listing, job and instrument data the workspace produces. AI is not a detached
 chatbot — it uses the same operational and CAD records the surveyor is working
-on. Blockchain is not a public filing cabinet — it provides verifiable proofs
-and settlement while access-controlled systems hold sensitive content.
+on. Blockchain is not a default public filing cabinet — standard operation uses
+it for verifiable proofs and settlement while access-controlled systems hold
+sensitive content.
 
 ## Operating Context
 

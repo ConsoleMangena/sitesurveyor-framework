@@ -225,7 +225,21 @@ sequenceDiagram
     end
 ```
 
-The Memo is self-describing so a chain reader can associate the proof with an attachment without publishing the file. The original file remains off-chain. A hash proves byte equivalence only; it does not establish provenance, ownership, correctness, or regulatory acceptance.
+The Memo is self-describing so a chain reader can associate the proof with an attachment without publishing the file. In this implemented hash-only mode, the original file remains off-chain. A hash proves byte equivalence only; it does not establish provenance, ownership, correctness, or regulatory acceptance.
+
+### Full-file chunked storage model — planned
+
+The product framework also defines an optional full-file on-chain model. This is not implemented in the current web client and must not be inferred from the existing `fileAnchor.ts` flow.
+
+Where enabled, the intended behaviour is:
+
+1. The user explicitly selects full-file storage and reviews the cluster, permanence, privacy, and cost implications.
+2. Sensitive content is encrypted before any chunk is created or transmitted. Key custody and recovery are part of the storage design, not an afterthought.
+3. The payload is divided into ordered, verifiable chunks sized for Solana transaction constraints; a large file is not treated as one blockchain transaction.
+4. Chunks are committed separately. A manifest records the complete-payload integrity value, chunk order, chunk integrity values, and transaction references needed for retrieval.
+5. During retrieval, the client resolves the manifest, fetches and verifies the chunks, reassembles the payload, verifies the complete-file integrity record, and decrypts it where applicable.
+
+Hash-only anchoring and full-file storage must remain separate user choices, configuration paths, UI labels, and threat models. Full-file mode requires dedicated implementation and security review before it can be described as available.
 
 ## 8. Payments
 
