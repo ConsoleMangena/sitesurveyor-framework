@@ -201,7 +201,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
           </span>
           <div className="min-w-0">
             <h2 className="market-map-title truncate text-foreground">
-              Market concierge
+              SiteSurveyor
             </h2>
             <p className="truncate text-micro text-muted-foreground">
               Ask about listings, people, jobs, training
@@ -210,7 +210,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
         </div>
         <span
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-background px-2.5 py-1 font-mono text-[11px] font-semibold text-muted-foreground"
-          title="The assistant answering you runs on NVIDIA Nemotron"
+          title="Powered by NVIDIA Nemotron"
         >
           <span className="web3-live-dot" aria-hidden="true" />
           Nemotron
