@@ -1,12 +1,4 @@
-import {
-  CircleDollarSign,
-  Coins,
-  CreditCard,
-  Plus,
-  RefreshCw,
-  ShieldCheck,
-  Wallet,
-} from "lucide-react";
+import { Plus, RefreshCw, ShieldCheck } from "lucide-react";
 
 import FieldError from "@/components/errors/FieldError.tsx";
 import { Button } from "@/components/ui/button";
@@ -16,6 +8,8 @@ import { cn } from "@/lib/utils";
 import type { SolanaBalances } from "../../features/phantom/hooks/useSolanaBalances.ts";
 import { SOLANA_CLUSTER, SOLANA_CLUSTER_LABEL } from "../../features/phantom/lib/config.ts";
 import type { PesepayWalletRow } from "../../lib/repositories/pesepay.ts";
+import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
+import PesepayLogo from "../../features/phantom/components/PesepayLogo.tsx";
 
 interface PaymentRailsProps {
   address: string | null;
@@ -79,7 +73,7 @@ export default function PaymentRails({
                 className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground"
                 aria-hidden="true"
               >
-                <Wallet className="h-4 w-4" />
+                <SolanaLogo size={20} />
               </span>
               <div className="min-w-0">
                 <h3 className="text-sm font-semibold">Crypto wallets</h3>
@@ -120,7 +114,7 @@ export default function PaymentRails({
               <div className="flex flex-wrap items-end gap-6">
                 <div className="min-w-0">
                   <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    <CircleDollarSign className="h-4 w-4" />
+                    <SolanaLogo size={12} />
                     USDC available
                   </span>
                   {solana.loading && solana.usdc === null ? (
@@ -139,7 +133,7 @@ export default function PaymentRails({
 
                 <div className="min-w-0">
                   <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    <Coins className="h-4 w-4" />
+                    <SolanaLogo size={12} />
                     SOL for fees
                   </span>
                   {solana.loading && solana.sol === null ? (
@@ -179,14 +173,14 @@ export default function PaymentRails({
                 className="gap-2"
                 onClick={onManageWallets}
               >
-                <Wallet className="h-4 w-4" />
+                <SolanaLogo size={14} />
                 {connected ? "Manage wallets" : "Connect wallet"}
               </Button>
             </div>
 
             {address && !connected ? (
               <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <SolanaLogo size={14} className="mt-0.5 shrink-0 text-primary" />
                 Saved for payments. Connect it to sign USDC transfers.
               </p>
             ) : null}
@@ -207,7 +201,7 @@ export default function PaymentRails({
                 className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground"
                 aria-hidden="true"
               >
-                <CreditCard className="h-4 w-4" />
+                <PesepayLogo size={20} />
               </span>
               <div className="min-w-0">
                 <h3 className="text-sm font-semibold">PesePay balance</h3>
@@ -237,7 +231,8 @@ export default function PaymentRails({
             </div>
 
             <div>
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <PesepayLogo size={12} />
                 Available balance
               </span>
               {pesepayLoading ? (
