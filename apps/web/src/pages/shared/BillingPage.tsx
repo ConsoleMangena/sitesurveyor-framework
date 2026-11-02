@@ -743,7 +743,8 @@ export default function BillingPage({
                                 }`
                               : "No wallet connected"}
                           </span>
-                          <span className="font-mono text-lg font-semibold tabular-nums">
+                          <span className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-muted-foreground">
+                            <SolanaLogo size={12} />
                             {solanaBalances.usdc === null
                               ? solanaBalances.loading
                                 ? "…"
@@ -787,7 +788,8 @@ export default function BillingPage({
                               ? "Loading balance…"
                               : "Prepaid USD · invoices and storage"}
                           </span>
-                          <span className="font-mono text-lg font-semibold tabular-nums">
+                          <span className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-muted-foreground">
+                            <PesepayLogo size={12} />
                             {pesepayBalanceLoading ? "—" : formatCurrency(pesepayBalanceValue)}
                           </span>
                         </button>
@@ -805,7 +807,8 @@ export default function BillingPage({
                               </div>
                               <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                                 <span>USDC available</span>
-                                <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+                                <span className="flex items-center gap-1 font-mono text-xs font-semibold tabular-nums text-foreground">
+                                  <SolanaLogo size={10} />
                                   {formatAmount(solanaBalances.usdc, 2)} USDC
                                 </span>
                               </div>
@@ -885,10 +888,9 @@ export default function BillingPage({
                         <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/40 p-4">
                           <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                             <span>PesePay balance</span>
-                            <span className="font-mono text-xs font-semibold text-foreground">
-                              {pesepayBalanceLoading
-                                ? "Loading…"
-                                : formatCurrency(pesepayBalanceValue)}
+                            <span className="flex items-center gap-1 font-mono text-xs font-semibold text-foreground">
+                              <PesepayLogo size={10} />
+                              {pesepayBalanceLoading ? "Loading…" : formatCurrency(pesepayBalanceValue)}
                             </span>
                           </div>
                           <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
@@ -917,7 +919,7 @@ export default function BillingPage({
                             {balancePaymentBusy ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <Wallet className="h-4 w-4" />
+                              <PesepayLogo size={16} />
                             )}
                             {balancePaymentBusy ? "Paying…" : "Pay from PesePay balance"}
                           </Button>
