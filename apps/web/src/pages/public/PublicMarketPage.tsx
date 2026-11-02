@@ -739,8 +739,8 @@ export default function PublicMarketPage() {
             <h1 className="market-hero-title text-balance text-[var(--web3-text)]">
               The Surveyor’s <span className="text-[var(--web3-brand)]">Market.</span>
             </h1>
-            <p className="mt-5 max-w-[58ch] text-base leading-7 text-[var(--web3-text-muted)] sm:text-lg sm:leading-8">
-              Instruments, professionals, jobs, firms, and training — published live by SiteSurveyor workspaces worldwide.
+            <p className="mt-4 max-w-[46ch] text-sm leading-6 text-[var(--web3-text-muted)] sm:text-base sm:leading-7">
+              Instruments, professionals, open jobs, firms and training, published by the SiteSurveyor workspaces that list them.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <button
