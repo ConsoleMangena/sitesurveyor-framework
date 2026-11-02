@@ -64,13 +64,12 @@ export function encodeMemoData(memo: string): Buffer {
   return data;
 }
 
-export function buildAnchorInstruction(
-  memo: string,
-  signer: PublicKey,
-): TransactionInstruction {
+export function buildAnchorInstruction(memo: string): TransactionInstruction {
+  // Memo program v3 takes no accounts — the transaction feePayer is the author.
+  // Including an explicit signer key causes "Missing signature" errors.
   return new TransactionInstruction({
     programId: MEMO_PROGRAM_ID,
-    keys: [{ pubkey: signer, isSigner: true, isWritable: false }],
+    keys: [],
     data: encodeMemoData(memo),
   });
 }
@@ -88,7 +87,7 @@ export function buildAnchorTransaction(
   const transaction = new Transaction();
   transaction.feePayer = signer;
   transaction.recentBlockhash = recentBlockhash;
-  transaction.add(buildAnchorInstruction(memo, signer));
+  transaction.add(buildAnchorInstruction(memo));
   return transaction;
 }
 

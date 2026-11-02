@@ -72,13 +72,10 @@ describe("encodeMemoData", () => {
 });
 
 describe("buildAnchorInstruction", () => {
-  it("targets the memo program with the wallet as a read-only signer", () => {
-    const instruction = buildAnchorInstruction("ssv1:file-1:sha256:ab", signer);
+  it("targets the memo program with no accounts (feePayer is author)", () => {
+    const instruction = buildAnchorInstruction("ssv1:file-1:sha256:ab");
     expect(instruction.programId.toBase58()).toBe(MEMO_PROGRAM_ID.toBase58());
-    expect(instruction.keys).toHaveLength(1);
-    expect(instruction.keys[0].pubkey.toBase58()).toBe(signer.toBase58());
-    expect(instruction.keys[0].isSigner).toBe(true);
-    expect(instruction.keys[0].isWritable).toBe(false);
+    expect(instruction.keys).toHaveLength(0);
   });
 });
 
