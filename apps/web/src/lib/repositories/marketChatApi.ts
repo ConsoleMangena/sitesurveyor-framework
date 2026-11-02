@@ -79,6 +79,11 @@ export async function streamMarketReply(
         handlers.onError(payload?.error ?? `Request rejected (${attempt.status}).`);
         return;
       }
+      // 405 = method not allowed (function not deployed or wrong method) -> try next endpoint
+      if (attempt.status === 405) {
+        lastError = payload?.error ?? `Concierge runtime returned 405.`;
+        continue;
+      }
       lastError = payload?.error ?? `Concierge runtime returned ${attempt.status}.`;
     } catch (err) {
       lastError = (err as Error).message;

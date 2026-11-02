@@ -489,6 +489,18 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (route === "/api/market-chat") {
+    if (req.method !== "POST" && req.method !== "OPTIONS") {
+      res.writeHead(405, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ error: "Method not allowed. Use POST." }));
+    }
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+      });
+      return res.end();
+    }
     void handleMarketChat(req, res);
     return;
   }
