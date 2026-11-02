@@ -742,12 +742,6 @@ export default function PublicMarketPage() {
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
           <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
             <div className="max-w-xl">
-              <h1 className="market-hero-title text-balance text-[var(--web3-text)]">
-                The Surveyor’s <span className="text-[var(--web3-brand)]">Market.</span>
-              </h1>
-              <p className="mt-4 max-w-[46ch] text-sm leading-6 text-[var(--web3-text-muted)] sm:text-base sm:leading-7">
-                Instruments, professionals, open jobs, firms and training, published by the SiteSurveyor workspaces that list them.
-              </p>
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
