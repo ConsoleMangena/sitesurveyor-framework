@@ -987,7 +987,11 @@ export default function MarketplacePage({
 
           <DialogTemplate
             open={!!selectedListing}
-            onOpenChange={() => setSelectedListing(null)}
+            onOpenChange={() => {
+              setSelectedListing(null);
+              setShowRequestForm(false);
+              setShowPayment(false);
+            }}
             title={selectedListing?.name ?? "Listing Details"}
             description={
               selectedListing ? (
@@ -999,7 +1003,7 @@ export default function MarketplacePage({
                 </>
               ) : null
             }
-            size="screen"
+            size="lg"
             footer={
               selectedListing ? (
                 <>
@@ -1078,55 +1082,53 @@ export default function MarketplacePage({
             }
           >
             {selectedListing && (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
-                <div className="min-w-0 space-y-4">
-                  <p className="text-2xl font-semibold text-foreground">
-                  ${selectedListing.price.toLocaleString()}{" "}
-                  <span className="text-sm font-normal text-muted-foreground">
-                    {selectedListing.currency}{" "}
-                    {selectedListing.listing_type === "hire" ? "/ day" : "one-time"}
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-3">
+                  <p className="text-2xl font-semibold tracking-tight text-foreground">
+                    ${selectedListing.price.toLocaleString()}{" "}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {selectedListing.currency}{" "}
+                      {selectedListing.listing_type === "hire" ? "/ day" : "one-time"}
+                    </span>
+                  </p>
+                  <span className="text-xs text-muted-foreground">
+                    Posted {new Date(selectedListing.created_at).toLocaleDateString()}
                   </span>
-                </p>
+                </div>
 
                 {selectedListing.description && (
-                  <p className="text-sm text-muted-foreground">{selectedListing.description}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {selectedListing.description}
+                  </p>
                 )}
+
                 {selectedListing.specs && selectedListing.specs.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {selectedListing.specs.map((s) => (
-                      <Badge key={s} variant="secondary">
+                      <Badge key={s} variant="secondary" className="text-xs">
                         {s}
                       </Badge>
                     ))}
                   </div>
                 )}
 
-                <Card>
-                  <CardContent className="space-y-2 py-4 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
+                <Card className="bg-muted/30">
+                  <CardContent className="grid grid-cols-2 gap-3 py-3 text-xs sm:text-sm">
+                    <div>
+                      <span className="block text-micro text-muted-foreground">
                         {selectedListing.condition === "Service" ? "Provider" : "Seller"}
                       </span>
                       <span className="font-medium text-foreground">{selectedListing.seller}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Location</span>
+                    <div>
+                      <span className="block text-micro text-muted-foreground">Location</span>
                       <span className="font-medium text-foreground">{selectedListing.location}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Posted</span>
-                      <span className="font-medium text-foreground">
-                        {new Date(selectedListing.created_at).toLocaleDateString()}
-                      </span>
                     </div>
                   </CardContent>
                 </Card>
-                  </div>
-
-                <div className="min-w-0 space-y-4">
 
                 {showRequestForm && (
-                  <div className="space-y-3 rounded-none border bg-muted/40 p-4">
+                  <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
                     <h4 className="text-sm font-semibold">
                       {selectedListing.listing_type === "hire" ? "Request to Hire" : "Request to Purchase"}
                     </h4>
@@ -1183,7 +1185,7 @@ export default function MarketplacePage({
                 )}
 
                 {showPayment && selectedListing && (
-                  <div className="space-y-3 rounded-none border bg-muted/40 p-4">
+                  <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
                     <h4 className="text-sm font-semibold">Pay with Phantom</h4>
                     <div className="space-y-1">
                       <Label className="text-xs">Recipient wallet</Label>
@@ -1268,7 +1270,6 @@ export default function MarketplacePage({
                     </AlertDescription>
                   </Alert>
                 )}
-                  </div>
               </div>
             )}
           </DialogTemplate>
