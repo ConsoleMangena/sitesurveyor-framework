@@ -193,12 +193,12 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
     >
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/80 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-bg text-[var(--web3-brand)]"
+          <img
+            src="/logo.svg"
+            alt=""
+            className="size-8 shrink-0"
             aria-hidden="true"
-          >
-            <Bot className="size-4" />
-          </span>
+          />
           <div className="min-w-0">
             <h2 className="market-map-title truncate text-foreground">
               SiteSurveyor
