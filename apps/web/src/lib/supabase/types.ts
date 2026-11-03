@@ -889,6 +889,7 @@ export type Database = {
           tx_signature: string | null
           tx_slot: number | null
           fee_lamports: number | null
+          encryption: Json | null
           error_message: string | null
           verification_status: string
           verified_at: string | null
@@ -920,6 +921,7 @@ export type Database = {
           tx_signature?: string | null
           tx_slot?: number | null
           fee_lamports?: number | null
+          encryption?: Json | null
           error_message?: string | null
           verification_status?: string
           verified_at?: string | null
@@ -951,6 +953,7 @@ export type Database = {
           tx_signature?: string | null
           tx_slot?: number | null
           fee_lamports?: number | null
+          encryption?: Json | null
           error_message?: string | null
           verification_status?: string
           verified_at?: string | null
@@ -3131,6 +3134,9 @@ export type Database = {
           package_id: string | null
           pesepay_reference: string | null
           provider_status: string | null
+          refund_reason: string | null
+          refunded_at: string | null
+          refunded_by: string | null
           related_id: string | null
           status: string
           storage_mb: number | null
@@ -3153,6 +3159,9 @@ export type Database = {
           package_id?: string | null
           pesepay_reference?: string | null
           provider_status?: string | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
           related_id?: string | null
           status?: string
           storage_mb?: number | null
@@ -3175,6 +3184,9 @@ export type Database = {
           package_id?: string | null
           pesepay_reference?: string | null
           provider_status?: string | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
           related_id?: string | null
           status?: string
           storage_mb?: number | null
@@ -4085,6 +4097,31 @@ export type Database = {
           p_reason: string
         }
         Returns: { transaction_id: string; remaining_balance: number }[]
+      }
+      reverse_workspace_ai_credits: {
+        Args: {
+          p_workspace_id: string
+          p_transaction_id: string
+          p_reason: string
+        }
+        Returns: {
+          transaction_id: string
+          remaining_balance: number
+          credits_reversed: number
+        }[]
+      }
+      record_pesepay_transaction_refund: {
+        Args: {
+          p_transaction_id: string
+          p_reason: string
+        }
+        Returns: {
+          status: string
+          credits_granted: number
+          credits_reclaimed: number
+          storage_mb_revoked: number
+          balance_reclaimed: number
+        }[]
       }
       has_workspace_role: {
         Args: {

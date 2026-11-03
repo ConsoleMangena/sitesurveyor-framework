@@ -77,12 +77,14 @@ and evidence integrity. SiteSurveyor uses a hybrid architecture by default:
 confidential files and operational records stay off-chain, while explicit
 transactions and minimal SHA-256 anchor statements go to Solana.
 
-The product model also allows for explicitly enabled full-file on-chain storage:
-files are divided into ordered, verifiable chunks and committed across multiple
-transactions, with a manifest supporting reassembly and integrity verification.
-Sensitive payloads must be encrypted before chunking and require explicit user
-opt-in. This is a separate product direction, not an implemented feature of the
-current web client.
+The product also offers explicitly chosen full-file anchoring: the file is split
+into ordered chunks, each chunk is encrypted in the browser and stored privately,
+and a single wallet-signed Memo commits the file digest plus the chunk-manifest
+digest. Re-downloading, decrypting and reassembling the chunks proves the stored
+bytes still match what the chain recorded, and the rebuilt file can be downloaded
+for inspection. Encryption is mandatory in this mode — a fresh AES-256 key per
+operation, sealed under a passphrase only the user holds — and the user opts in to
+anchoring itself with a wallet signature.
 
 The marketplace is not a marketing page bolted onto a tool; it is the same
 listing, job and instrument data the workspace produces. AI is not a detached
@@ -136,7 +138,10 @@ sensitive content.
   mobile wallet hand-off is via Solflare, desktop sign-in via Phantom.
 - Explicitly coming soon: the project-tool cards for instrument calibration,
   field notes and QA flags. They must not be described as working tools.
-- Undecided: pricing tiers, seat licensing and any published rate card.
+- Undecided: seat licensing, a public rate card, and what happens to stored bytes
+  once a purchased storage allocation expires (files are never auto-deleted, so
+  the cost tail continues after the revenue stops). In-app package pricing is
+  live; its derivation and open assumptions are recorded in `PRICING.md`.
 
 ## Brand Commitments
 

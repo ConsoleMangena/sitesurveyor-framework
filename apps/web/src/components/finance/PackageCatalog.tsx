@@ -145,8 +145,9 @@ export default function PackageCatalog({
   if (packages.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No packages are on sale right now. Prices are set by the platform
-        administrator.
+        No packages are on sale right now. The catalog is published by the
+        deployment operator and read-only here, so nothing can be bought until a
+        package is marked active.
       </p>
     );
   }

@@ -11,7 +11,7 @@ The architecture is deliberately **hybrid by default**. Confidential survey cont
 3. **Minimise on-chain exposure by default.** Keep original survey files and sensitive project metadata out of the standard file-anchor Memo. Require explicit consent and pre-chunk encryption for sensitive content in any full-file storage mode.
 4. **Keep settlement rails distinct.** Solana USDC and PesePay fiat flows have separate configuration, behaviour, and confirmation semantics.
 5. **Support field and office use.** The web UI is responsive, accessible, installable as a PWA, and explicit about offline/network state; native targets share the same product and security contracts.
-6. **State limitations honestly.** Coming-soon tools, synthetic market data, development networks, planned chunked storage, and unimplemented native shells remain identifiable.
+6. **State limitations honestly.** Coming-soon tools, synthetic market data, development networks, legacy anchors whose chunk copies predate encryption, and unimplemented native shells remain identifiable.
 7. **Keep the framework open.** Eineva Labs develops SiteSurveyor as an inspectable, MIT-licensed framework that surveying teams and contributors can adapt and verify.
 
 ## 2. System context
@@ -230,17 +230,17 @@ The Memo is self-describing so a chain reader can associate the proof with an at
 
 ### Full-file chunked storage model (planned)
 
-The product framework also defines an optional full-file on-chain model. This is not implemented in the current web client and must not be inferred from the existing `fileAnchor.ts` flow.
+The product framework also defines an optional full-file anchoring model, implemented in the web client as the `ssv2` flow. It deliberately uses one Memo transaction rather than one per chunk, because bytes belong off-chain and only proofs belong on it.
 
-Where enabled, the intended behaviour is:
+The implemented behaviour is:
 
-1. The user explicitly selects full-file storage and reviews the cluster, permanence, privacy, and cost implications.
-2. Sensitive content is encrypted before any chunk is created or transmitted. Key custody and recovery are part of the storage design, not an afterthought.
-3. The payload is divided into ordered, verifiable chunks sized for Solana transaction constraints; a large file is not treated as one blockchain transaction.
-4. Chunks are committed separately. A manifest records the complete-payload integrity value, chunk order, chunk integrity values, and transaction references needed for retrieval.
-5. During retrieval, the client resolves the manifest, fetches and verifies the chunks, reassembles the payload, verifies the complete-file integrity record, and decrypts it where applicable.
+1. The user explicitly selects full-file anchoring and sees the cluster, chunk plan, wallet that pays the fee, and the storage cost of the extra copies.
+2. A per-operation AES-256 key encrypts the content before any chunk is uploaded; the key is stored only wrapped under a passphrase the user chooses. Key custody stays with the user and there is no recovery service — losing the passphrase costs the chunk copies, not the original file.
+3. The plaintext is divided into ordered, fixed-size chunks with a per-chunk digest, so a large file never becomes a large transaction.
+4. A manifest records the whole-file digest, chunk order, chunk sizes and digests, and the storage paths needed for retrieval. The manifest digest plus the file digest are what the Memo commits to.
+5. During verification the client resolves the manifest, downloads and decrypts the chunks, reassembles them in order, and re-hashes against the anchored digests before offering the rebuilt file for download.
 
-Hash-only anchoring and full-file storage must remain separate user choices, configuration paths, UI labels, and threat models. Full-file mode requires dedicated implementation and security review before it can be described as available.
+Hash-only anchoring and full-file anchoring remain separate user choices, records, UI labels, and threat models. Neither places file bytes on-chain.
 
 ## 8. Payments
 

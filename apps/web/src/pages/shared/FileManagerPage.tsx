@@ -85,6 +85,7 @@ import { DashboardHeader, DashboardShell } from "@/components/dashboard/Dashboar
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -175,6 +176,9 @@ const formatLamports = (lamports: number): string =>
 const chunkPlanFor = (sizeBytes: number | null): number =>
   Math.max(1, Math.ceil((sizeBytes ?? 0) / DEFAULT_FULL_FILE_CHUNK_SIZE));
 
+/** Short passphrases are brute-forceable from the wrapped key, so they are refused. */
+const ANCHOR_PASSPHRASE_MIN_LENGTH = 8;
+
 const ANCHOR_STATUS_LABELS: Record<string, string> = {
   preparing: "Preparing",
   uploading: "Storing chunks",
@@ -196,6 +200,21 @@ const formatAnchorError = (err: unknown): string => {
     return `Your wallet is on the wrong Solana network. Open your wallet, switch to ${SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}, reconnect it, and try signing again.`;
   }
   return message || "Failed to anchor file on Solana.";
+};
+
+/**
+ * A file can clear the client-side quota check and still be refused by the
+ * storage trigger, so that precise reason must reach the user instead of a
+ * generic "retry those files".
+ */
+const formatUploadFailures = (failures: unknown[]): string => {
+  const messages = failures.map((err) => (err instanceof Error ? err.message : String(err)));
+  if (messages.some((message) => /STORAGE_QUOTA_EXCEEDED/i.test(message))) {
+    return "Storage quota reached: new uploads are paused while existing files stay available. Buy more storage or free up space, then upload the rest.";
+  }
+  const detail = messages.find((message) => message && message !== "undefined") ?? "";
+  const count = failures.length;
+  return `${count} upload${count === 1 ? "" : "s"} failed${detail ? `: ${detail}` : ". Please retry those files."}`;
 };
 
 export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
@@ -264,12 +283,15 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const [anchoring, setAnchoring] = useState(false);
   const [anchorMode, setAnchorMode] = useState<AnchorMode>("hash");
   const [anchorProgress, setAnchorProgress] = useState<FullFileAnchorProgress | null>(null);
+  const [anchorPassphrase, setAnchorPassphrase] = useState("");
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
   const [detailsFile, setDetailsFile] = useState<AttachmentRow | null>(null);
   const [anchorRecords, setAnchorRecords] = useState<AnchorOperationRow[]>([]);
   const [anchorRecordsLoading, setAnchorRecordsLoading] = useState(false);
   const [verifyingOperationId, setVerifyingOperationId] = useState<string | null>(null);
   const [verificationNote, setVerificationNote] = useState<string | null>(null);
+  const [verifyPassphrase, setVerifyPassphrase] = useState("");
+  const [recoveryFile, setRecoveryFile] = useState<{ url: string; fileName: string } | null>(null);
 
   const anchorSigner = useMemo<AnchorSigner | null>(() => {
     if (!walletPublicKey || !walletSendTransaction) return null;
@@ -488,9 +510,9 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     });
   };
 
-  const finishUpload = async (successCount: number, failureCount: number) => {
-    if (failureCount > 0) {
-      setError(`${failureCount} upload${failureCount === 1 ? "" : "s"} failed. Please retry those files.`);
+  const finishUpload = async (successCount: number, failures: unknown[]) => {
+    if (failures.length > 0) {
+      setError(formatUploadFailures(failures));
     }
     if (successCount > 0) {
       showNotice(`${successCount} file${successCount === 1 ? "" : "s"} uploaded.`);
@@ -526,7 +548,10 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     );
 
     const successCount = results.filter((r) => r.status === "fulfilled").length;
-    await finishUpload(successCount, results.length - successCount);
+    const failures = results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .map((r) => r.reason);
+    await finishUpload(successCount, failures);
   };
 
   /**
@@ -560,7 +585,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     };
 
     let successCount = 0;
-    let failureCount = 0;
+    const failures: unknown[] = [];
     // Sequential: a parent folder has to exist before its children are created.
     for (const [index, entry] of entries.entries()) {
       try {
@@ -568,13 +593,13 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
         await uploadWorkspaceAttachment(workspaceId, entry.file, { folderId });
         markUpload(index, "done");
         successCount += 1;
-      } catch {
+      } catch (err) {
         markUpload(index, "error");
-        failureCount += 1;
+        failures.push(err);
       }
     }
 
-    await finishUpload(successCount, failureCount);
+    await finishUpload(successCount, failures);
   };
 
   const handleCreateFolder = async () => {
@@ -617,6 +642,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     setAnchorFile(file);
     setAnchorMode(mode);
     setAnchorProgress(null);
+    setAnchorPassphrase("");
     setAnchorFee(anchorSigner && file.content_hash ? "…" : null);
   };
 
@@ -624,6 +650,8 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     setAnchorFile(null);
     setAnchorFee(null);
     setAnchorProgress(null);
+    // Never leave an encryption passphrase sitting in component state.
+    setAnchorPassphrase("");
   };
 
   // openAnchorDialog seeds the "…" placeholder; this resolves the RPC estimate.
@@ -647,6 +675,12 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const handleAnchorFile = async () => {
     if (!anchorFile || !anchorSigner) return;
     const file = anchorFile;
+    if (anchorMode === "full_file" && anchorPassphrase.length < ANCHOR_PASSPHRASE_MIN_LENGTH) {
+      setError(
+        `Full-file anchoring encrypts the stored chunks, so choose a passphrase of at least ${ANCHOR_PASSPHRASE_MIN_LENGTH} characters.`,
+      );
+      return;
+    }
     setAnchoring(true);
     setBusyFileId(file.id);
     setError(null);
@@ -658,6 +692,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
               attachment: file,
               source: await downloadAttachmentBlob(file),
               signer: anchorSigner,
+              anchoringPassphrase: anchorPassphrase,
               onProgress: setAnchorProgress,
             });
       closeAnchorDialog();
@@ -677,10 +712,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     }
   };
 
-  const openFileDetails = async (file: AttachmentRow) => {
-    setDetailsFile(file);
-    setAnchorRecords([]);
-    setVerificationNote(null);
+  const loadAnchorRecords = async (file: AttachmentRow) => {
     setAnchorRecordsLoading(true);
     try {
       setAnchorRecords(await listAnchorOperations(workspaceId, { attachmentId: file.id }));
@@ -691,15 +723,34 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     }
   };
 
+  const openFileDetails = async (file: AttachmentRow) => {
+    setDetailsFile(file);
+    setAnchorRecords([]);
+    setVerificationNote(null);
+    setVerifyPassphrase("");
+    await loadAnchorRecords(file);
+  };
+
   const handleVerifyAnchorRecord = async (record: AnchorOperationRow) => {
     setVerifyingOperationId(record.id);
     setVerificationNote(null);
     try {
       if (record.mode === "full_file") {
-        const { verified } = await verifyFullFileAnchor(record);
+        if (record.encryption && !verifyPassphrase) {
+          setVerificationNote(
+            "These chunks are stored encrypted. Enter the anchoring passphrase to rebuild them.",
+          );
+          return;
+        }
+        const { verified, blob } = await verifyFullFileAnchor(record, verifyPassphrase);
+        if (verified.ok && blob) {
+          setRecoveryFile({ url: URL.createObjectURL(blob), fileName: record.file_name });
+        }
         setVerificationNote(
           verified.ok
-            ? `Rebuilt from ${verified.chunkCount} chunks — digest matches the chain commit.`
+            ? verified.encrypted
+              ? "Rebuilt from its encrypted chunks — the original digest matches the chain commit. Download it below to check the file itself."
+              : "Rebuilt from its stored chunks — the original digest matches the chain commit. Download it below to check the file itself."
             : `Reassembly did not match the anchored digest: ${verified.errors.join(" ")}`,
         );
       } else {
@@ -712,13 +763,26 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             : "Mismatch: the stored file no longer matches the anchored digest.",
         );
       }
-      if (detailsFile) await openFileDetails(detailsFile);
+      if (detailsFile) await loadAnchorRecords(detailsFile);
     } catch (err) {
       setVerificationNote(err instanceof Error ? err.message : "Verification failed.");
     } finally {
       setVerifyingOperationId(null);
     }
   };
+
+  const handleRecoveryDownload = () => {
+    if (!recoveryFile) return;
+    const anchor = document.createElement("a");
+    anchor.href = recoveryFile.url;
+    anchor.download = recoveryFile.fileName;
+    anchor.click();
+  };
+
+  useEffect(() => {
+    if (!recoveryFile) return;
+    return () => URL.revokeObjectURL(recoveryFile.url);
+  }, [recoveryFile]);
 
   const handleConnectForAnchor = async () => {
     try {
@@ -1765,7 +1829,12 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             {anchorSigner ? (
               <Button
                 onClick={() => void handleAnchorFile()}
-                disabled={anchoring || anchorFile?.chain_status === "pending"}
+                disabled={
+                  anchoring ||
+                  anchorFile?.chain_status === "pending" ||
+                  (anchorMode === "full_file" &&
+                    anchorPassphrase.length < ANCHOR_PASSPHRASE_MIN_LENGTH)
+                }
               >
                 {anchoring ? <Loader2 className="animate-spin" /> : <Anchor />}
                 {anchoring ? "Anchoring…" : "Sign anchor transaction"}
@@ -1803,7 +1872,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             <p className="text-sm text-muted-foreground">
               {anchorMode === "hash"
                 ? "Writes this file’s SHA-256 hash to a Solana transaction signed by your wallet. The file itself stays in workspace storage."
-                : "Splits the file into chunks, hashes every chunk, and writes the file digest plus the chunk-manifest digest on chain. The bytes stay in private workspace storage, and the anchor can be rebuilt and verified later."}
+                : "Splits the file into chunks, encrypts each one, hashes the plaintext chunks, and writes the file digest plus the chunk-manifest digest on chain. The originals stay in workspace storage; the chunk copies are unreadable without your passphrase."}
             </p>
 
             <dl className="flex flex-col divide-y divide-border">
@@ -1842,10 +1911,29 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             </dl>
 
             {anchorMode === "full_file" && (
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                One transaction either way: only the digests go on chain. The chunk copies count
-                toward workspace storage, so anchoring a large file needs free space.
-              </p>
+              <div className="space-y-2 border-t border-border pt-3">
+                <Label htmlFor="anchor-passphrase" className="text-xs">
+                  Chunk encryption passphrase
+                </Label>
+                <Input
+                  id="anchor-passphrase"
+                  type="password"
+                  autoComplete="new-password"
+                  value={anchorPassphrase}
+                  onChange={(event) => setAnchorPassphrase(event.target.value)}
+                  placeholder="At least 8 characters"
+                />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Encrypts the chunk copies before they upload — they are stored as AES-256-GCM
+                  ciphertext and only this passphrase can unlock them. It is not stored anywhere and
+                  cannot be reset for you. If you lose it, the file itself is safe in your workspace
+                  and the on-chain proof still stands; only rebuilding from chunks needs it.
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  One transaction either way: only the digests go on chain. The chunk copies count
+                  toward workspace storage, so anchoring a large file needs free space.
+                </p>
+              </div>
             )}
 
             {anchoring && anchorProgress && (
@@ -2052,14 +2140,46 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                             : record.mode === "full_file"
                               ? "not checked yet"
                               : "file re-hash only"}
+                        {record.mode === "full_file" &&
+                          ` · stored chunks ${record.encryption ? "encrypted" : "unencrypted (legacy)"}`}
                       </p>
                     </li>
                   ))}
                 </ul>
               )}
 
+              {anchorRecords.some(
+                (record) => record.mode === "full_file" && record.status === "anchored" && record.encryption,
+              ) && (
+                <div className="mt-3 space-y-1.5">
+                  <Label htmlFor="verify-passphrase" className="text-xs text-muted-foreground">
+                    Anchoring passphrase
+                  </Label>
+                  <Input
+                    id="verify-passphrase"
+                    type="password"
+                    autoComplete="off"
+                    value={verifyPassphrase}
+                    onChange={(event) => setVerifyPassphrase(event.target.value)}
+                    placeholder="Required to decrypt the stored chunks"
+                  />
+                </div>
+              )}
+
               {verificationNote && (
                 <p className="mt-2 text-xs text-muted-foreground">{verificationNote}</p>
+              )}
+
+              {recoveryFile && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 gap-2"
+                  onClick={handleRecoveryDownload}
+                >
+                  <Download size={14} />
+                  Download the rebuilt file
+                </Button>
               )}
             </div>
           </div>

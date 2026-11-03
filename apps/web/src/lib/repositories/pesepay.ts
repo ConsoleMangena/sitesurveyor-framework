@@ -205,6 +205,43 @@ export async function listPesepayTransactions(
   return data ?? [];
 }
 
+export interface RefundOutcome {
+  creditsGranted: number;
+  creditsReclaimed: number;
+  storageMbRevoked: number;
+  balanceReclaimed: number;
+}
+
+/**
+ * Records a refund that was already settled with PesePay and revokes whatever
+ * the payment granted. Platform administrators only; the server enforces that
+ * and takes back no more than the workspace still holds.
+ */
+export async function recordTransactionRefund(
+  transactionId: string,
+  reason: string,
+): Promise<RefundOutcome> {
+  const { data, error } = await supabase.rpc("record_pesepay_transaction_refund", {
+    p_transaction_id: transactionId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | {
+        credits_granted?: number | string;
+        credits_reclaimed?: number | string;
+        storage_mb_revoked?: number | string;
+        balance_reclaimed?: number | string;
+      }
+    | undefined;
+  return {
+    creditsGranted: Number(row?.credits_granted ?? 0),
+    creditsReclaimed: Number(row?.credits_reclaimed ?? 0),
+    storageMbRevoked: Number(row?.storage_mb_revoked ?? 0),
+    balanceReclaimed: Number(row?.balance_reclaimed ?? 0),
+  };
+}
+
 export async function listAiCreditTransactions(
   workspaceId: string,
   limit = 25,
@@ -217,6 +254,27 @@ export async function listAiCreditTransactions(
     .limit(limit);
   if (error) throw error;
   return data ?? [];
+}
+
+/**
+ * Appends a reversing entry for one credit-ledger row. Platform administrators
+ * only; the server enforces that and refuses to take the balance below zero.
+ */
+export async function reverseAiCreditEntry(
+  workspaceId: string,
+  transactionId: string,
+  reason: string,
+): Promise<number> {
+  const { data, error } = await supabase.rpc("reverse_workspace_ai_credits", {
+    p_workspace_id: workspaceId,
+    p_transaction_id: transactionId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { remaining_balance?: number | string }
+    | undefined;
+  return Number(row?.remaining_balance ?? 0);
 }
 
 export async function getAiCreditBalance(workspaceId: string): Promise<number> {

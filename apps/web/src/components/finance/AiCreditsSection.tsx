@@ -3,6 +3,7 @@ import { Loader2, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -23,6 +24,7 @@ import { DashboardSection } from "@/components/dashboard/DashboardShell.tsx";
 import {
   getAiCreditBalance,
   listAiCreditTransactions,
+  reverseAiCreditEntry,
   type AiCreditTransactionRow,
 } from "../../lib/repositories/pesepay.ts";
 import { formatDate } from "./FinanceUtils.ts";
@@ -36,12 +38,17 @@ const KIND_LABELS: Record<string, string> = {
   adjustment: "Adjustment",
 };
 
+/** Kinds a reversal can be appended against; reversals reverse nothing. */
+const REVERSIBLE_KINDS = new Set(["purchase", "usage", "refund"]);
+
 interface AiCreditsSectionProps {
   workspaceId: string;
   walletBalance: number;
   /** Bumped by the parent after a purchase or a verified return so tables reload. */
   refreshKey: number;
   onMessage: (message: PurchaseMessage | null) => void;
+  /** Reversing an entry is an accounting correction, so only admins get the control. */
+  isPlatformAdmin?: boolean;
 }
 
 export default function AiCreditsSection({
@@ -49,11 +56,15 @@ export default function AiCreditsSection({
   walletBalance,
   refreshKey,
   onMessage,
+  isPlatformAdmin = false,
 }: AiCreditsSectionProps) {
   const [balance, setBalance] = useState<number | null>(null);
   const [entries, setEntries] = useState<AiCreditTransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reversalFor, setReversalFor] = useState<string | null>(null);
+  const [reversalReason, setReversalReason] = useState("");
+  const [reversing, setReversing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +92,33 @@ export default function AiCreditsSection({
   const used = entries
     .filter((entry) => entry.kind === "usage")
     .reduce((sum, entry) => sum + Math.abs(Number(entry.credits_delta)), 0);
+
+  const reversedIds = new Set(
+    entries
+      .filter((entry) => entry.kind === "reversal" && entry.related_id)
+      .map((entry) => String(entry.related_id)),
+  );
+
+  const closeReversal = () => {
+    setReversalFor(null);
+    setReversalReason("");
+  };
+
+  const handleReverse = async (entryId: string) => {
+    setReversing(true);
+    setError(null);
+    try {
+      await reverseAiCreditEntry(workspaceId, entryId, reversalReason);
+      closeReversal();
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unable to reverse that entry.");
+    } finally {
+      setReversing(false);
+    }
+  };
+
+  const columnCount = isPlatformAdmin ? 6 : 5;
 
   return (
     <DashboardSection title="AI credits">
@@ -146,12 +184,13 @@ export default function AiCreditsSection({
                 <TableHead className="hidden sm:table-cell">Detail</TableHead>
                 <TableHead className="text-right">Credits</TableHead>
                 <TableHead className="hidden md:table-cell text-right">Balance after</TableHead>
+                {isPlatformAdmin && <TableHead className="text-right">Correction</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={columnCount}>
                     <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Loading credit ledger…
                     </div>
@@ -159,13 +198,13 @@ export default function AiCreditsSection({
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-sm text-destructive">
+                  <TableCell colSpan={columnCount} className="py-6 text-sm text-destructive">
                     {error}
                   </TableCell>
                 </TableRow>
               ) : entries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-sm text-muted-foreground">
+                  <TableCell colSpan={columnCount} className="py-6 text-sm text-muted-foreground">
                     No credit activity yet. Buy a package above to start using AI features.
                   </TableCell>
                 </TableRow>
@@ -192,6 +231,47 @@ export default function AiCreditsSection({
                     <TableCell className="hidden md:table-cell text-right font-mono text-sm tabular-nums">
                       {Number(entry.balance_after).toLocaleString()}
                     </TableCell>
+                    {isPlatformAdmin && (
+                      <TableCell className="text-right">
+                        {reversalFor === entry.id ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Input
+                              aria-label="Reason for this reversal"
+                              value={reversalReason}
+                              onChange={(event) => setReversalReason(event.target.value)}
+                              placeholder="Reason"
+                              className="h-8 w-32 text-xs"
+                            />
+                            <Button
+                              size="sm"
+                              disabled={reversing || reversalReason.trim().length < 3}
+                              onClick={() => void handleReverse(entry.id)}
+                            >
+                              {reversing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                              Confirm
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={closeReversal}>
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : REVERSIBLE_KINDS.has(entry.kind) && !reversedIds.has(entry.id) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setReversalFor(entry.id);
+                              setReversalReason("");
+                            }}
+                          >
+                            Reverse
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {reversedIds.has(entry.id) ? "Reversed" : "—"}
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -202,7 +282,9 @@ export default function AiCreditsSection({
       {!loading && entries.length > 0 && (
         <p className="text-xs text-muted-foreground">
           Showing the {entries.length} most recent ledger entries. The ledger is
-          append-only: purchases, usage and refunds can be added but never edited.
+          append-only: purchases, usage, refunds and administrator reversals are
+          added as new rows and never edited. A reversal corrects credits only —
+          money PesePay already captured is not moved by it.
         </p>
       )}
       <div className="flex justify-end">

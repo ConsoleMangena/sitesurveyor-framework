@@ -395,11 +395,49 @@ describe("FileManagerPage anchoring", () => {
       screen.getByText(/only the digests go on chain/i),
     ).toBeTruthy();
 
+    const passphraseField = screen.getByLabelText(/Chunk encryption passphrase/i);
+    fireEvent.change(passphraseField, { target: { value: "ridge-survey-2026" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign anchor transaction" }));
 
     expect(await screen.findByText(/Full file anchored on Devnet: 5nEyc/)).toBeTruthy();
     expect(vi.mocked(runFullFileAnchor).mock.calls[0][0].source).toBe(blob);
+    expect(vi.mocked(runFullFileAnchor).mock.calls[0][0].anchoringPassphrase).toBe(
+      "ridge-survey-2026",
+    );
     expect(vi.mocked(anchorAttachment)).not.toHaveBeenCalled();
+  });
+
+  it("refuses to store unencrypted chunks without a passphrase", async () => {
+    vi.mocked(downloadAttachmentBlob).mockResolvedValue(new Blob(["bytes"]));
+    vi.mocked(runFullFileAnchor).mockResolvedValue({
+      operationId: "op-1",
+      signature: SIGNATURE,
+      memo: "ssv2:file-1:sha256:aa:bb:1",
+      fileHash: HASH,
+      manifestHash: "bb",
+      chunkCount: 3,
+      feeLamports: 5000,
+      network: "devnet",
+      anchoredAt: "2026-10-21T09:20:00.000Z",
+    });
+
+    await renderFiles([makeFile()]);
+    openRowMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Anchor full file on Solana" }));
+    await screen.findByRole("dialog", { name: "Anchor full file on Solana" });
+
+    const confirm = screen.getByRole("button", { name: "Sign anchor transaction" });
+    expect(confirm).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/Chunk encryption passphrase/i), {
+      target: { value: "short" },
+    });
+    expect(screen.getByRole("button", { name: "Sign anchor transaction" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/Chunk encryption passphrase/i), {
+      target: { value: "ridge-survey-2026" },
+    });
+    expect(screen.getByRole("button", { name: "Sign anchor transaction" })).not.toBeDisabled();
   });
 
   it("lists every anchor attempt with its chain record and a way to retry", async () => {
@@ -556,5 +594,23 @@ describe("FileManagerPage anchoring", () => {
 
     expect(await screen.findByText("Storage quota reached")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Quota reached/ })).toBeDisabled();
+  });
+
+  it("names the quota when only the storage trigger knows about it", async () => {
+    vi.mocked(uploadWorkspaceAttachment).mockRejectedValue(
+      new Error(
+        "STORAGE_QUOTA_EXCEEDED: New uploads are paused. Existing files are retained; renew storage or remove files before uploading.",
+      ),
+    );
+    await renderFiles([makeFile()]);
+
+    fireEvent.change(screen.getByLabelText("Select files to upload"), {
+      target: { files: [new File(["bytes"], "late-invoice.pdf", { type: "application/pdf" })] },
+    });
+
+    expect(
+      await screen.findByText(/Buy more storage or free up space, then upload the rest\./),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Please retry those files/)).toBeNull();
   });
 });

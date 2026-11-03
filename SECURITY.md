@@ -2,7 +2,7 @@
 
 SiteSurveyor is an **Eineva Labs product and open-source initiative** created to help surveying teams adopt digital fieldwork without overlooking cybersecurity. Survey data can expose property boundaries, critical infrastructure, precise coordinates, client identity, commercial terms, and other sensitive information. SiteSurveyor therefore uses a **hybrid security model by default**: controlled off-chain storage for confidential content, and Solana for explicit wallet authentication, settlement, and minimal integrity proofs.
 
-> **Blockchain provides tamper-evidence, not confidentiality.** Never put unencrypted confidential survey files, client details, coordinates, private keys, seed phrases, or confidential project notes on-chain. Any optional full-file mode must encrypt sensitive content before chunking and require explicit user consent.
+> **Blockchain provides tamper-evidence, not confidentiality.** Never put unencrypted confidential survey files, client details, coordinates, private keys, seed phrases, or confidential project notes on-chain. The full-file anchoring mode encrypts every chunk in the browser before it is uploaded and requires the user to choose the passphrase that protects those copies; the chain still only ever sees digests.
 
 This document describes implemented controls, planned storage behaviour, and important limitations. It is not a security certification, legal opinion, or substitute for an independent production audit.
 
@@ -31,15 +31,37 @@ This document describes implemented controls, planned storage behaviour, and imp
 
 ### File-anchor privacy
 
-The built-in anchor Memo is:
+The built-in hash-only anchor Memo is:
 
 ```text
 ssv1:<attachment-id>:sha256:<lowercase-file-digest>
 ```
 
-It does not contain the file name, file bytes, client name, project title, or coordinates. Nevertheless, the attachment ID and digest are public. A digest can also confirm that a suspected known file matches the anchored version. If even that disclosure is unacceptable for a particular workflow, do not anchor it publicly; use an approved alternative integrity-control design.
+Full-file anchoring writes one extra value — the digest of the chunk manifest — and nothing else:
+
+```text
+ssv2:<attachment-id>:sha256:<file-digest>:<manifest-digest>:<chunk-count>
+```
+
+Neither contains the file name, file bytes, client name, project title, or coordinates. Nevertheless, the attachment ID and digest are public. A digest can also confirm that a suspected known file matches the anchored version. If even that disclosure is unacceptable for a particular workflow, do not anchor it publicly; use an approved alternative integrity-control design.
 
 Deleting an off-chain file or database row does not remove an existing blockchain Memo. Plan retention and client disclosures accordingly.
+
+### Full-file chunk confidentiality
+
+Full-file anchoring stores private copies of the file so the anchor can be rebuilt and proved later. Those copies are encrypted before they leave the browser:
+
+- A fresh 256-bit key is generated per anchor operation and is never stored in the clear.
+- Every chunk, and the stored copy of the manifest, is sealed with AES-256-GCM using a random IV per chunk.
+- The operation key is persisted only wrapped under a key derived from the user's anchoring passphrase with PBKDF2-SHA-256 at 250,000 iterations. The passphrase itself is not stored, hashed for lookup, or transmitted.
+- Chunk digests recorded in the manifest and on chain describe the **plaintext** bytes, so the on-chain proof stays about the original file rather than about ciphertext.
+
+Consequences the user must understand before anchoring:
+
+- Losing the passphrase makes the encrypted chunk copies unrecoverable. The original file stays in workspace storage, the on-chain record stays valid, and the stored file can still be compared with the anchored digest, but the chunks cannot be rebuilt.
+- The passphrase is not a password the platform can reset or escrow. There is no key recovery service.
+- Records anchored before this scheme exist with plaintext chunk copies and are labelled as such in the file manager; deleting them removes only the private copies, never the Memo.
+- Server-side confidentiality therefore depends on a secret held by the user. Anyone with the workspace's storage access but not the passphrase sees ciphertext; anyone with the passphrase can read the anchored bytes.
 
 ## 3. Identity and wallet security
 
@@ -123,7 +145,7 @@ AI output can be incorrect, and malicious content in records or files can attemp
 
 ## 6. File integrity and evidence handling
 
-The file manager calculates and records SHA-256 digests, supports integrity verification, tracks file versions, and optionally anchors a digest through a wallet-signed Solana Memo transaction.
+The file manager calculates and records SHA-256 digests, supports integrity verification, tracks file versions, and optionally anchors a digest through a wallet-signed Solana Memo transaction. Full-file anchoring additionally encrypts chunked copies, records a chunk manifest, and can rebuild the original bytes to prove they still match what the chain committed to.
 
 These controls can detect byte changes relative to a digest. They do not establish:
 
@@ -163,6 +185,31 @@ PesePay is a separate fiat rail. The current repository constraint is **sandbox-
 - Reconcile provider callbacks/status with invoice records before reporting settlement.
 
 Solana and PesePay confirmations must remain behaviourally and visually distinct.
+
+### Refunds and ledger corrections
+
+PesePay exposes no refund call to this integration, so the money side of a refund
+is settled with the provider out of band and then recorded in SiteSurveyor. Both
+recording paths are database functions, not client writes:
+
+- `record_pesepay_transaction_refund()` and `reverse_workspace_ai_credits()` each
+  re-check `profiles.is_platform_admin` for the calling user inside a
+  `security definer` function, so the browser's role display is never the
+  authority. They are the two documented exceptions to the service-role-only
+  grant rule, and the administrator test is what replaces that gate.
+- Each takes a `pg_advisory_xact_lock` on the payment or entry it is correcting,
+  so two administrators cannot claw back the same value twice, and repeating the
+  same call returns the original result instead of appending a second correction.
+- Nothing is ever taken from a workspace that is not there: credit and wallet
+  reclaim is capped at the current balance, balances cannot go below zero, and a
+  storage refund ends the purchased allocation window rather than deleting files.
+- The credit ledger stays append-only. A correction is a new `reversal` row that
+  links to the entry it corrects; the payment row records who marked it refunded,
+  when, and the written reason. Both actions refuse to run without a reason of at
+  least three characters.
+- A refund only ever applies to a payment that reached `completed`. The status
+  cannot be set from a bare update: a table check requires `refunded` rows to
+  carry `refunded_at` and `refund_reason`, both of which only the function sets.
 
 ## 9. Secrets and public frontend configuration
 
@@ -211,9 +258,10 @@ Complete and record these checks before using live client data, mainnet assets, 
 - [ ] Use separate reviewed production wallets, treasury addresses, RPC endpoints, and USDC mint.
 - [ ] Confirm cluster consistency across sign-in UX, anchors, payments, Explorer links, and records.
 - [ ] Complete a wallet/key-management review, including the optional built-in wallet and recovery process.
-- [ ] Keep full-file chunked storage disabled until its encryption, manifest, chunk-recovery, reassembly, consent, and retention design has passed a dedicated review.
+- [ ] Review the full-file anchoring flow in a staging workspace before promoting it: passphrase custody, the consequences of losing it, chunk recovery, and retention.
 - [ ] Rotate sandbox or previously exposed payment credentials and enable live payments only through an approved release.
 - [ ] Test pending, failed, delayed, duplicate, and reconciled transaction states.
+- [ ] Agree the refund procedure before taking money: who settles with the provider, who records the refund in SiteSurveyor, and how the revoked credits, storage window, or wallet balance is confirmed.
 
 ### Application and operations
 
@@ -227,8 +275,8 @@ Complete and record these checks before using live client data, mainnet assets, 
 Unless separately implemented and verified in a deployment, do not describe SiteSurveyor as providing:
 
 - End-to-end encryption of all workspace data or AI prompts.
-- Automatic decentralised storage of all original survey files. The current client implements hash-only anchoring; full-file chunked storage is planned and opt-in.
-- Confidential blockchain storage merely because a payload is chunked. Sensitive full-file payloads require reviewed encryption before chunking.
+- Automatic decentralised storage of all original survey files. Full-file anchoring keeps encrypted chunk copies in the same Supabase buckets as the workspace; it does not replicate bytes to a decentralised network.
+- Confidential blockchain storage merely because a payload is chunked. Only digests reach the chain; the confidentiality of the chunk copies rests on the user's anchoring passphrase.
 - Legal certification of document authenticity, land ownership, or survey accuracy.
 - Automatic regulatory compliance.
 - Fully offline AI, payments, or blockchain verification.

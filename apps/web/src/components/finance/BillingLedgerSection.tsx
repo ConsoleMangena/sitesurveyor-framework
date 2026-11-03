@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Loader2, Search, Wallet } from "lucide-react";
+import { Download, Loader2, Search, Undo2, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,10 @@ import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { DashboardSection } from "@/components/dashboard/DashboardShell.tsx";
 import {
   listPesepayTransactions,
+  recordTransactionRefund,
   verifyOrder,
   type PesepayTransactionRow,
+  type RefundOutcome,
 } from "../../lib/repositories/pesepay.ts";
 import {
   formatMoney,
@@ -55,6 +57,8 @@ const STATUS_FILTERS = [
   { value: "completed", label: "Completed" },
   { value: "pending", label: "Pending" },
   { value: "failed", label: "Failed" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "refunded", label: "Refunded" },
 ] as const;
 
 type KindFilter = (typeof KIND_FILTERS)[number]["value"];
@@ -66,6 +70,40 @@ interface BillingLedgerSectionProps {
   onMessage: (message: PurchaseMessage | null) => void;
   /** Raised after a pending order resolves, so balances elsewhere refresh too. */
   onSettled: () => void;
+  /** Only platform administrators can record a refund settled with PesePay. */
+  isPlatformAdmin?: boolean;
+}
+
+/**
+ * Turns what the server actually took back into a sentence, because a refund
+ * rarely claws back everything: credits may already be spent and a deposit may
+ * already be paid out.
+ */
+function describeRefund(row: PesepayTransactionRow, outcome: RefundOutcome): string {
+  const parts = ["Refund recorded."];
+  if (row.kind === "ai_credit_purchase" && outcome.creditsGranted > 0) {
+    parts.push(
+      outcome.creditsReclaimed >= outcome.creditsGranted
+        ? `${outcome.creditsReclaimed.toLocaleString()} credits taken back.`
+        : `Only ${outcome.creditsReclaimed.toLocaleString()} of the ${outcome.creditsGranted.toLocaleString()} credits granted were still in the balance to take back.`,
+    );
+  }
+  if (row.kind === "storage_purchase" && outcome.storageMbRevoked > 0) {
+    parts.push(
+      `${outcome.storageMbRevoked.toLocaleString()} MB of purchased storage stopped counting. Stored files are untouched.`,
+    );
+  }
+  if (row.kind === "deposit") {
+    parts.push(
+      Number(outcome.balanceReclaimed) >= Number(row.amount)
+        ? `${formatMoney(Number(row.amount), row.currency_code)} removed from the PesePay balance.`
+        : `Only ${formatMoney(Number(outcome.balanceReclaimed), row.currency_code)} was left in the PesePay balance to take back.`,
+    );
+  }
+  if (row.kind === "invoice_payment") {
+    parts.push("The invoice was already delivered, so nothing else changed.");
+  }
+  return parts.join(" ");
 }
 
 function downloadCsv(rows: PesepayTransactionRow[]) {
@@ -86,6 +124,8 @@ function downloadCsv(rows: PesepayTransactionRow[]) {
     "payment_fee",
     "infrastructure_cost",
     "reference",
+    "refunded_at",
+    "refund_reason",
   ];
   const escape = (value: unknown) => {
     const str = String(value ?? "");
@@ -109,6 +149,8 @@ function downloadCsv(rows: PesepayTransactionRow[]) {
       row.estimated_payment_fee,
       row.estimated_infrastructure_cost,
       row.pesepay_reference,
+      row.refunded_at,
+      row.refund_reason,
     ]
       .map(escape)
       .join(","),
@@ -131,6 +173,7 @@ export default function BillingLedgerSection({
   refreshKey,
   onMessage,
   onSettled,
+  isPlatformAdmin = false,
 }: BillingLedgerSectionProps) {
   const [rows, setRows] = useState<PesepayTransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,6 +182,9 @@ export default function BillingLedgerSection({
   const [status, setStatus] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [refundFor, setRefundFor] = useState<string | null>(null);
+  const [refundReason, setRefundReason] = useState("");
+  const [refunding, setRefunding] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -161,12 +207,7 @@ export default function BillingLedgerSection({
     const query = search.trim().toLowerCase();
     return rows.filter((row) => {
       if (kind !== "all" && row.kind !== kind) return false;
-      if (status !== "all") {
-        if (status === "failed" && row.status !== "failed" && row.status !== "cancelled") {
-          return false;
-        }
-        if (status !== "failed" && row.status !== status) return false;
-      }
+      if (status !== "all" && row.status !== status) return false;
       if (query) {
         const haystack = `${row.description} ${row.pesepay_reference ?? ""} ${row.package_id ?? ""}`;
         if (!haystack.toLowerCase().includes(query)) return false;
@@ -183,6 +224,9 @@ export default function BillingLedgerSection({
         .reduce((sum, row) => sum + Number(row.amount), 0),
       deposited: completed
         .filter((row) => row.kind === "deposit")
+        .reduce((sum, row) => sum + Number(row.amount), 0),
+      refunded: filtered
+        .filter((row) => row.status === "refunded")
         .reduce((sum, row) => sum + Number(row.amount), 0),
       pending: filtered.filter((row) => row.status === "pending").length,
     };
@@ -220,6 +264,27 @@ export default function BillingLedgerSection({
       });
     } finally {
       setCheckingId(null);
+    }
+  };
+
+  const recordRefund = async (row: PesepayTransactionRow) => {
+    const reason = refundReason.trim();
+    if (reason.length < 3) return;
+    setRefunding(true);
+    try {
+      const outcome = await recordTransactionRefund(row.id, reason);
+      onMessage({ tone: "success", text: describeRefund(row, outcome) });
+      setRefundFor(null);
+      setRefundReason("");
+      await load();
+      onSettled();
+    } catch (err: unknown) {
+      onMessage({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Unable to record this refund.",
+      });
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -291,6 +356,14 @@ export default function BillingLedgerSection({
                 {formatMoney(totals.deposited)}
               </span>
             </span>
+            {totals.refunded > 0 ? (
+              <span>
+                Refunded:{" "}
+                <span className="font-mono tabular-nums text-foreground">
+                  {formatMoney(totals.refunded)}
+                </span>
+              </span>
+            ) : null}
             <span>
               Awaiting confirmation:{" "}
               <span className="font-mono tabular-nums text-foreground">{totals.pending}</span>
@@ -356,8 +429,13 @@ export default function BillingLedgerSection({
                           </time>
                         </TableCell>
                         <TableCell className="text-sm">{pesepayKindLabel(row.kind)}</TableCell>
-                        <TableCell className="hidden md:table-cell max-w-[260px] truncate text-sm text-muted-foreground">
-                          {row.description}
+                        <TableCell className="hidden md:table-cell max-w-[260px] text-sm text-muted-foreground">
+                          <span className="block truncate">{row.description}</span>
+                          {row.status === "refunded" && row.refund_reason ? (
+                            <span className="block truncate text-xs">
+                              Refund: {row.refund_reason}
+                            </span>
+                          ) : null}
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm tabular-nums">
                           {row.kind === "deposit" ? "+ " : ""}
@@ -398,6 +476,54 @@ export default function BillingLedgerSection({
                               ) : null}
                               Check
                             </Button>
+                          ) : isPlatformAdmin && row.status === "completed" ? (
+                            refundFor === row.id ? (
+                              <div className="flex flex-col items-end gap-1">
+                                <Input
+                                  value={refundReason}
+                                  onChange={(event) => setRefundReason(event.target.value)}
+                                  placeholder="Provider refund reference"
+                                  className="h-8 w-44 text-xs"
+                                  aria-label="Reason for this refund"
+                                />
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7"
+                                    disabled={refunding || refundReason.trim().length < 3}
+                                    onClick={() => void recordRefund(row)}
+                                  >
+                                    {refunding ? <Loader2 className="animate-spin" /> : null}
+                                    Record refund
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7"
+                                    onClick={() => {
+                                      setRefundFor(null);
+                                      setRefundReason("");
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => {
+                                  setRefundFor(row.id);
+                                  setRefundReason("");
+                                }}
+                              >
+                                <Undo2 size={13} />
+                                Refund
+                              </Button>
+                            )
                           ) : null}
                         </TableCell>
                       </TableRow>
@@ -410,7 +536,10 @@ export default function BillingLedgerSection({
           <p className="text-xs text-muted-foreground">
             Statuses come from PesePay&rsquo;s encrypted check-payment response, never from
             the browser. Allocation happens in the same database transaction that marks the
-            payment completed, so a payment is never counted twice.
+            payment completed, so a payment is never counted twice. PesePay exposes no refund
+            call to this integration, so the money is settled with the provider first and then
+            recorded here; recording it takes back the credits, storage window or wallet
+            balance the payment granted, capped at what the workspace still holds.
           </p>
         </CardContent>
       </Card>

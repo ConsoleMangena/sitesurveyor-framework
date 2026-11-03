@@ -6,6 +6,8 @@ import {
   listBillingPackages,
   payInvoiceWithBalance,
   payPackageWithBalance,
+  recordTransactionRefund,
+  reverseAiCreditEntry,
   verifyWalletDeposit,
 } from "./pesepay.ts";
 import { supabase } from "../supabase/client.ts";
@@ -191,5 +193,66 @@ describe("PesePay wallet repository", () => {
     await expect(
       initiatePackageCheckout({ workspaceId: "workspace-1", packageId: "credits-500" }),
     ).rejects.toThrow("PesePay did not return a package checkout URL.");
+  });
+});
+
+describe("administrator corrections", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("records a settled refund and reports what the server took back", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: [
+        {
+          status: "refunded",
+          credits_granted: "500",
+          credits_reclaimed: "120",
+          storage_mb_revoked: 0,
+          balance_reclaimed: 0,
+        },
+      ],
+      error: null,
+    } as never);
+
+    await expect(
+      recordTransactionRefund("tx-1", "Duplicate charge, upheld by provider"),
+    ).resolves.toEqual({
+      creditsGranted: 500,
+      creditsReclaimed: 120,
+      storageMbRevoked: 0,
+      balanceReclaimed: 0,
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith("record_pesepay_transaction_refund", {
+      p_transaction_id: "tx-1",
+      p_reason: "Duplicate charge, upheld by provider",
+    });
+  });
+
+  it("surfaces the database refusal when a payment cannot be refunded", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: null,
+      error: { message: "Only a completed payment can be refunded" } as never,
+    } as never);
+
+    await expect(recordTransactionRefund("tx-1", "Customer asked")).rejects.toThrow(
+      "Only a completed payment can be refunded",
+    );
+  });
+
+  it("returns the balance the reversal left behind", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: [{ transaction_id: "ledger-2", remaining_balance: 80, credits_reversed: 20 }],
+      error: null,
+    } as never);
+
+    await expect(
+      reverseAiCreditEntry("workspace-1", "ledger-1", "Charged twice for one chat"),
+    ).resolves.toBe(80);
+    expect(supabase.rpc).toHaveBeenCalledWith("reverse_workspace_ai_credits", {
+      p_workspace_id: "workspace-1",
+      p_transaction_id: "ledger-1",
+      p_reason: "Charged twice for one chat",
+    });
   });
 });

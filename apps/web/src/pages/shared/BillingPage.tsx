@@ -1389,6 +1389,7 @@ export default function BillingPage({
           walletBalance={pesepayBalanceValue}
           refreshKey={purchaseRefresh}
           onMessage={setPurchaseMessage}
+          isPlatformAdmin={isPlatformAdmin}
         />
       ) : null}
 
@@ -1648,6 +1649,7 @@ export default function BillingPage({
           refreshKey={purchaseRefresh}
           onMessage={setPurchaseMessage}
           onSettled={reloadAfterPurchase}
+          isPlatformAdmin={isPlatformAdmin}
         />
 
       {/* ── Payment history ──────────────────────────────── */}

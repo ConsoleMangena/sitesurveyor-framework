@@ -2,10 +2,13 @@
  * Hybrid full-file anchoring (ssv2).
  *
  * The bytes never go on-chain. They are split into fixed-size chunks, each chunk
- * is hashed and stored privately, and one Memo transaction commits the file
- * digest plus the digest of the chunk manifest. Re-downloading the chunks and
- * rebuilding them against that manifest proves the file is still the one the
- * chain committed to.
+ * is encrypted, hashed and stored privately, and one Memo transaction commits the
+ * file digest plus the digest of the chunk manifest. Re-downloading the chunks,
+ * decrypting them and rebuilding against that manifest proves the file is still
+ * the one the chain committed to.
+ *
+ * Chunk digests describe the *plaintext* bytes, so the on-chain proof is about the
+ * original file; encryption only protects the private copies in storage.
  */
 
 import type { AttachmentRow } from "../../../lib/repositories/attachments.ts";
@@ -26,6 +29,13 @@ import { supabase } from "../../../lib/supabase/client.ts";
 import { SOLANA_CLUSTER } from "../lib/config.ts";
 import { isUserRejection } from "../lib/provider.ts";
 import { getConnection } from "../payments/phantomPay.ts";
+import {
+  createAnchorKey,
+  decryptChunk,
+  encryptChunk,
+  unlockAnchorKey,
+  type WrappedAnchorKey,
+} from "./chunkCrypto.ts";
 import {
   AnchorCancelledError,
   assertAnchorFeeAffordable,
@@ -79,6 +89,13 @@ export interface RunFullFileAnchorInput {
   /** The exact bytes described by the attachment. */
   source: Blob;
   signer: AnchorSigner;
+  /**
+   * Protects the stored chunk copies. A fresh AES-256 key encrypts every chunk
+   * before upload and is itself stored only wrapped under this passphrase, so
+   * storage never holds readable file bytes. Losing it costs chunk recovery,
+   * not the file itself — the original stays in the workspace.
+   */
+  anchoringPassphrase: string;
   chunkSize?: number;
   onProgress?: (progress: FullFileAnchorProgress) => void;
   options?: AnchorTransactionOptions;
@@ -111,11 +128,11 @@ export async function downloadAttachmentBlob(attachment: AnchorableFile): Promis
 async function uploadChunk(
   bucketName: string,
   storagePath: string,
-  chunk: Blob,
+  body: Blob,
 ): Promise<void> {
   const { error } = await supabase.storage
     .from(bucketName)
-    .upload(storagePath, await chunk.arrayBuffer(), {
+    .upload(storagePath, body, {
       upsert: true,
       contentType: "application/octet-stream",
     });
@@ -132,11 +149,18 @@ export async function runFullFileAnchor(
 ): Promise<FullFileAnchorOutcome> {
   const wallet = input.signer.publicKey;
   if (!wallet) throw new Error("Connect a Solana wallet before anchoring a file.");
+  if (!input.anchoringPassphrase) {
+    throw new Error("Choose an anchoring passphrase so the stored chunks are encrypted.");
+  }
 
   const connection = input.options?.connection ?? getConnection();
   const bucketName = input.attachment.bucket_name;
   const fileName = fileNameOf(input.attachment, input.source);
   const fileSizeBytes = input.source.size;
+
+  // Derived before the operation row exists: a browser without WebCrypto, or a
+  // passphrase too short to accept, must not leave a doomed record behind.
+  const anchorKey = await createAnchorKey(input.anchoringPassphrase);
 
   const operation = await createAnchorOperation({
     workspaceId: input.attachment.workspace_id,
@@ -169,6 +193,7 @@ export async function runFullFileAnchor(
       manifest_hash: prepared.manifestHash,
       manifest: prepared.manifest as unknown as Json,
       memo: prepared.memo,
+      encryption: anchorKey.wrapped as unknown as Json,
     });
     report({ status: "uploading", uploadedChunks: 0, chunkCount: prepared.chunks.length });
 
@@ -176,7 +201,7 @@ export async function runFullFileAnchor(
       const chunk = prepared.chunks[index];
       const manifestEntry = prepared.manifest.chunks[index];
       const storagePath = `${prefix}/chunk-${String(index).padStart(6, "0")}`;
-      await uploadChunk(bucketName, storagePath, chunk);
+      await uploadChunk(bucketName, storagePath, await encryptChunk(anchorKey.key, chunk));
       await recordAnchorChunk({
         operationId: operation.id,
         workspaceId: input.attachment.workspace_id,
@@ -191,11 +216,15 @@ export async function runFullFileAnchor(
     }
 
     const manifestPath = `${prefix}/manifest.json`;
+    const encryptedManifest = await encryptChunk(
+      anchorKey.key,
+      new Blob([prepared.manifestJson], { type: "application/json" }),
+    );
     const { error: manifestError } = await supabase.storage
       .from(bucketName)
-      .upload(manifestPath, prepared.manifestJson, {
+      .upload(manifestPath, encryptedManifest, {
         upsert: true,
-        contentType: "application/json",
+        contentType: "application/octet-stream",
       });
     if (manifestError) throw new Error(`Manifest upload failed: ${manifestError.message}`);
 
@@ -297,20 +326,27 @@ export interface FullFileVerification {
   ok: boolean;
   chunkCount: number;
   fileHash: string | null;
+  /** False for records anchored before chunk encryption existed. */
+  encrypted: boolean;
   errors: string[];
 }
 
 /**
  * Rebuild the file from its stored chunks and check every digest against the
- * manifest the chain committed to.
+ * manifest the chain committed to. Encrypted records need the anchoring
+ * passphrase; it is checked against the wrapped key before anything downloads,
+ * so a wrong passphrase reads as a key problem rather than corruption.
  */
 export async function verifyFullFileAnchor(
   operation: AnchorOperationRow,
+  anchoringPassphrase?: string,
 ): Promise<{ verified: FullFileVerification; blob: Blob | null }> {
   if (operation.mode !== "full_file" || !operation.manifest) {
     throw new Error("This anchor has no stored manifest to verify against.");
   }
   const manifest = operation.manifest as unknown as FullFileManifest;
+  const wrapped = operation.encryption as WrappedAnchorKey | null;
+  const key = wrapped ? await unlockAnchorKey(anchoringPassphrase ?? "", wrapped) : null;
   const chunks: Blob[] = [];
   const errors: string[] = [];
 
@@ -323,7 +359,8 @@ export async function verifyFullFileAnchor(
         errors.push(`Chunk ${entry.index} could not be downloaded.`);
         continue;
       }
-      chunks.push(await response.blob());
+      const stored = await response.blob();
+      chunks.push(key ? await decryptChunk(key, stored) : stored);
     } catch (err) {
       errors.push(`Chunk ${entry.index}: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -336,7 +373,13 @@ export async function verifyFullFileAnchor(
       verified_at: new Date().toISOString(),
     });
     return {
-      verified: { ok: true, chunkCount: manifest.chunks.length, fileHash: manifest.fileHash, errors },
+      verified: {
+        ok: true,
+        chunkCount: manifest.chunks.length,
+        fileHash: manifest.fileHash,
+        encrypted: Boolean(key),
+        errors,
+      },
       blob,
     };
   } catch (err) {
@@ -351,6 +394,7 @@ export async function verifyFullFileAnchor(
         ok: false,
         chunkCount: manifest.chunks.length,
         fileHash: operation.file_hash,
+        encrypted: Boolean(key),
         errors: [...errors, message],
       },
       blob: null,
