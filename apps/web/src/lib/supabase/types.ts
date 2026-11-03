@@ -486,6 +486,9 @@ export type Database = {
       }
       attachments: {
         Row: {
+          anchor_fee_lamports: number | null
+          anchor_mode: string | null
+          anchor_operation_id: string | null
           anchored_at: string | null
           bucket_name: string
           chain_network: string | null
@@ -510,6 +513,9 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          anchor_fee_lamports?: number | null
+          anchor_mode?: string | null
+          anchor_operation_id?: string | null
           anchored_at?: string | null
           bucket_name: string
           chain_network?: string | null
@@ -534,6 +540,9 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          anchor_fee_lamports?: number | null
+          anchor_mode?: string | null
+          anchor_operation_id?: string | null
           anchored_at?: string | null
           bucket_name?: string
           chain_network?: string | null
@@ -573,6 +582,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      billing_operation_rates: {
+        Row: {
+          operation: string
+          credits: number
+          estimated_cost: number
+          active: boolean
+          updated_at: string
+        }
+        Insert: {
+          operation: string
+          credits: number
+          estimated_cost?: number
+          active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          operation?: string
+          credits?: number
+          estimated_cost?: number
+          active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      billing_packages: {
+        Row: {
+          id: string
+          kind: string
+          label: string
+          description: string
+          credits: number | null
+          storage_mb: number | null
+          duration_days: number | null
+          amount: number
+          currency_code: string
+          estimated_infrastructure_cost: number
+          estimated_payment_fee: number
+          active: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          kind: string
+          label: string
+          description: string
+          credits?: number | null
+          storage_mb?: number | null
+          duration_days?: number | null
+          amount: number
+          currency_code?: string
+          estimated_infrastructure_cost?: number
+          estimated_payment_fee?: number
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          label?: string
+          description?: string
+          credits?: number | null
+          storage_mb?: number | null
+          duration_days?: number | null
+          amount?: number
+          currency_code?: string
+          estimated_infrastructure_cost?: number
+          estimated_payment_fee?: number
+          active?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       chat_messages: {
         Row: {
@@ -740,6 +827,138 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      file_anchor_chunks: {
+        Row: {
+          id: string
+          operation_id: string
+          workspace_id: string
+          chunk_index: number
+          bucket_name: string
+          storage_path: string
+          size_bytes: number
+          content_hash: string
+          uploaded_at: string
+        }
+        Insert: {
+          id?: string
+          operation_id: string
+          workspace_id: string
+          chunk_index: number
+          bucket_name?: string
+          storage_path: string
+          size_bytes: number
+          content_hash: string
+          uploaded_at?: string
+        }
+        Update: {
+          id?: string
+          operation_id?: string
+          workspace_id?: string
+          chunk_index?: number
+          bucket_name?: string
+          storage_path?: string
+          size_bytes?: number
+          content_hash?: string
+          uploaded_at?: string
+        }
+        Relationships: []
+      }
+      file_anchor_operations: {
+        Row: {
+          id: string
+          workspace_id: string
+          attachment_id: string
+          created_by: string | null
+          mode: string
+          bucket_name: string
+          network: string
+          wallet_address: string | null
+          status: string
+          file_name: string
+          file_size_bytes: number
+          mime_type: string | null
+          chunk_size: number | null
+          chunk_count: number | null
+          uploaded_chunks: number
+          file_hash: string | null
+          manifest_hash: string | null
+          manifest: Json | null
+          manifest_storage_path: string | null
+          memo: string | null
+          tx_signature: string | null
+          tx_slot: number | null
+          fee_lamports: number | null
+          error_message: string | null
+          verification_status: string
+          verified_at: string | null
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          attachment_id: string
+          created_by?: string | null
+          mode: string
+          bucket_name?: string
+          network: string
+          wallet_address?: string | null
+          status?: string
+          file_name: string
+          file_size_bytes?: number
+          mime_type?: string | null
+          chunk_size?: number | null
+          chunk_count?: number | null
+          uploaded_chunks?: number
+          file_hash?: string | null
+          manifest_hash?: string | null
+          manifest?: Json | null
+          manifest_storage_path?: string | null
+          memo?: string | null
+          tx_signature?: string | null
+          tx_slot?: number | null
+          fee_lamports?: number | null
+          error_message?: string | null
+          verification_status?: string
+          verified_at?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          attachment_id?: string
+          created_by?: string | null
+          mode?: string
+          bucket_name?: string
+          network?: string
+          wallet_address?: string | null
+          status?: string
+          file_name?: string
+          file_size_bytes?: number
+          mime_type?: string | null
+          chunk_size?: number | null
+          chunk_count?: number | null
+          uploaded_chunks?: number
+          file_hash?: string | null
+          manifest_hash?: string | null
+          manifest?: Json | null
+          manifest_storage_path?: string | null
+          memo?: string | null
+          tx_signature?: string | null
+          tx_slot?: number | null
+          fee_lamports?: number | null
+          error_message?: string | null
+          verification_status?: string
+          verified_at?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Relationships: []
       }
       folders: {
         Row: {
@@ -2742,6 +2961,63 @@ export type Database = {
           },
         ]
       }
+      workspace_ai_credit_accounts: {
+        Row: {
+          workspace_id: string
+          balance: number
+          updated_at: string
+        }
+        Insert: {
+          workspace_id: string
+          balance?: number
+          updated_at?: string
+        }
+        Update: {
+          workspace_id?: string
+          balance?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      workspace_ai_credit_transactions: {
+        Row: {
+          id: string
+          workspace_id: string
+          actor_user_id: string | null
+          kind: string
+          credits_delta: number
+          balance_after: number
+          operation_id: string
+          description: string
+          related_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          actor_user_id?: string | null
+          kind: string
+          credits_delta: number
+          balance_after: number
+          operation_id: string
+          description: string
+          related_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          actor_user_id?: string | null
+          kind?: string
+          credits_delta?: number
+          balance_after?: number
+          operation_id?: string
+          description?: string
+          related_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       workspace_invitations: {
         Row: {
           accepted_at: string | null
@@ -2844,13 +3120,20 @@ export type Database = {
           amount: number
           completed_at: string | null
           created_at: string
+          credit_amount: number | null
           currency_code: string
           description: string
+          duration_days: number | null
+          estimated_infrastructure_cost: number
+          estimated_payment_fee: number
           id: string
           kind: string
+          package_id: string | null
           pesepay_reference: string | null
+          provider_status: string | null
           related_id: string | null
           status: string
+          storage_mb: number | null
           user_id: string
           wallet_id: string
           workspace_id: string
@@ -2859,13 +3142,20 @@ export type Database = {
           amount: number
           completed_at?: string | null
           created_at?: string
+          credit_amount?: number | null
           currency_code?: string
           description: string
+          duration_days?: number | null
+          estimated_infrastructure_cost?: number
+          estimated_payment_fee?: number
           id?: string
           kind: string
+          package_id?: string | null
           pesepay_reference?: string | null
+          provider_status?: string | null
           related_id?: string | null
           status?: string
+          storage_mb?: number | null
           user_id: string
           wallet_id: string
           workspace_id: string
@@ -2874,13 +3164,20 @@ export type Database = {
           amount?: number
           completed_at?: string | null
           created_at?: string
+          credit_amount?: number | null
           currency_code?: string
           description?: string
+          duration_days?: number | null
+          estimated_infrastructure_cost?: number
+          estimated_payment_fee?: number
           id?: string
           kind?: string
+          package_id?: string | null
           pesepay_reference?: string | null
+          provider_status?: string | null
           related_id?: string | null
           status?: string
+          storage_mb?: number | null
           user_id?: string
           wallet_id?: string
           workspace_id?: string
@@ -2968,11 +3265,14 @@ export type Database = {
           amount: number
           created_at: string
           currency_code: string
+          expires_at: string | null
           id: string
+          included_in_base_quota: boolean
           paid_at: string
           payment_method: string
           plan_id: string
           purchased_by: string | null
+          starts_at: string
           storage_mb: number
           workspace_id: string
         }
@@ -2980,11 +3280,14 @@ export type Database = {
           amount: number
           created_at?: string
           currency_code: string
+          expires_at?: string | null
           id?: string
+          included_in_base_quota?: boolean
           paid_at?: string
           payment_method?: string
           plan_id: string
           purchased_by?: string | null
+          starts_at?: string
           storage_mb: number
           workspace_id: string
         }
@@ -2992,11 +3295,14 @@ export type Database = {
           amount?: number
           created_at?: string
           currency_code?: string
+          expires_at?: string | null
           id?: string
+          included_in_base_quota?: boolean
           paid_at?: string
           payment_method?: string
           plan_id?: string
           purchased_by?: string | null
+          starts_at?: string
           storage_mb?: number
           workspace_id?: string
         }
@@ -3723,12 +4029,62 @@ export type Database = {
       get_workspace_storage_usage: {
         Args: { p_workspace_id: string }
         Returns: {
+          base_limit_mb: number
+          expiring_storage_mb: number
           file_count: number
           limit_mb: number
+          next_storage_expiration: string | null
+          over_quota: boolean
           percent: number
+          purchased_storage_mb: number
+          upload_allowed: boolean
           used_bytes: number
           used_mb: number
+        }
+      }
+      get_workspace_billing_overview: {
+        Args: { p_workspace_id: string }
+        Returns: Json
+      }
+      get_platform_financial_overview: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      pay_workspace_package_with_balance: {
+        Args: {
+          p_workspace_id: string
+          p_user_id: string
+          p_package_id: string
+          p_request_id: string
+        }
+        Returns: { purchase_id: string; remaining_balance: number }[]
+      }
+      settle_workspace_package_purchase: {
+        Args: { p_reference: string; p_amount: number; p_currency_code: string }
+        Returns: string
+      }
+      spend_workspace_ai_credits: {
+        Args: {
+          p_workspace_id: string
+          p_user_id: string
+          p_operation_id: string
+          p_operation: string
+          p_description: string
+        }
+        Returns: {
+          transaction_id: string
+          remaining_balance: number
+          credits_charged: number
         }[]
+      }
+      refund_workspace_ai_credits: {
+        Args: {
+          p_workspace_id: string
+          p_user_id: string
+          p_operation_id: string
+          p_reason: string
+        }
+        Returns: { transaction_id: string; remaining_balance: number }[]
       }
       has_workspace_role: {
         Args: {

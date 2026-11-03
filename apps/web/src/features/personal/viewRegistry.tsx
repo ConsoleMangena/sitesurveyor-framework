@@ -124,7 +124,7 @@ export function renderPersonalView(
       return <ContactsPage workspaceId={user.workspaceId} />;
 
     case "settings":
-      return <WorkspaceSettingsPage workspaceId={user.workspaceId} isPlatformAdmin={user.isPlatformAdmin} />;
+      return <WorkspaceSettingsPage workspaceId={user.workspaceId} isPlatformAdmin={user.isPlatformAdmin} onNavigate={onNavigate} />;
 
     case "jobs":
       return (

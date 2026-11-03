@@ -147,6 +147,107 @@ async function rest<T>(
   return { ok: res.ok, status: res.status, json };
 }
 
+// ── AI credit accounting (mirrors the ai-chat Edge Function) ──────────────
+// The fallback route must bill too, otherwise falling back here becomes a way
+// to use AI without spending credits. Idempotent on (workspace, turn id).
+const AI_CREDITS_OPERATION = "ai.chat";
+
+// A retried request (same turn id, same text) must not spend twice, while a
+// re-used turn id carrying a new question must still be billed — so the ledger
+// key binds the turn id to the message it was issued for.
+async function turnOperationId(turnId: string, message: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(message));
+  const hex = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 16);
+  return `${turnId}:${hex}`;
+}
+
+interface RpcResult {
+  ok: boolean;
+  status: number;
+  message: string;
+}
+
+async function rpc(
+  fn: string,
+  args: Record<string, unknown>,
+): Promise<RpcResult> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(args),
+  });
+  const text = await res.text();
+  let parsed: unknown = null;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = null;
+  }
+  const payload = parsed as { message?: unknown } | null;
+  return {
+    ok: res.ok,
+    status: res.status,
+    message: typeof payload?.message === "string" ? payload.message : "",
+  };
+}
+
+type Charge =
+  | { ok: true }
+  | { ok: false; status: number; error: string };
+
+async function chargeAiTurn(
+  workspaceId: string,
+  userId: string,
+  operationId: string,
+  message: string,
+): Promise<Charge> {
+  const res = await rpc(
+    "spend_workspace_ai_credits",
+    {
+      p_workspace_id: workspaceId,
+      p_user_id: userId,
+      p_operation_id: operationId,
+      p_operation: AI_CREDITS_OPERATION,
+      p_description: message.slice(0, 120),
+    },
+  );
+  if (res.ok) return { ok: true };
+  if (res.message.includes("INSUFFICIENT_AI_CREDITS")) {
+    return {
+      ok: false,
+      status: 402,
+      error: "Not enough AI credits for this reply. Top up in Billing, then try again.",
+    };
+  }
+  // Fail closed: never run a paid model turn we could not bill.
+  console.error(`[host] credit charge failed: ${res.status} ${res.message}`);
+  return { ok: false, status: 503, error: "Credit accounting is unavailable. Please retry in a moment." };
+}
+
+async function refundAiTurn(
+  workspaceId: string,
+  userId: string,
+  operationId: string,
+  reason: string,
+): Promise<void> {
+  const res = await rpc("refund_workspace_ai_credits", {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+    p_operation_id: operationId,
+    p_reason: reason.slice(0, 120),
+  });
+  if (!res.ok) {
+    console.error(`[host] credit refund failed for ${operationId}: ${res.status} ${res.message}`);
+  }
+}
+
 interface ConversationRow {
   id: string;
   user_id: string;
@@ -168,6 +269,7 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
     message?: string;
     project_id?: string;
     model?: string;
+    turn_id?: string;
   };
   try {
     const raw = await new Promise<string>((resolve) => {
@@ -232,6 +334,22 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
     return wsId;
   })();
 
+  // Bill the turn before anything is persisted, so a rejected request leaves
+  // no orphan user message behind.
+  const workspaceId = await workspacePromise;
+  const rawTurnId =
+    typeof payload.turn_id === "string" ? payload.turn_id.trim() : "";
+  const turnId = /^[A-Za-z0-9_-]{8,160}$/.test(rawTurnId)
+    ? rawTurnId
+    : globalThis.crypto.randomUUID();
+  const operationId = await turnOperationId(turnId, message);
+  // A turn with no workspace has no ledger to debit, so it stays unbilled.
+  const billableWorkspaceId = workspaceId;
+  if (billableWorkspaceId) {
+    const charge = await chargeAiTurn(billableWorkspaceId, userId, operationId, message);
+    if (!charge.ok) return json(res, charge.status, { error: charge.error });
+  }
+
   // Persist the user turn first (same contract as the Edge Function).
   await rest("POST", "ai_messages", {
     conversation_id: conversation.id,
@@ -257,9 +375,6 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
     .slice(0, -1)
     .filter((row) => row.role === "user" || row.role === "assistant")
     .map((row) => ({ role: row.role, content: row.content }));
-
-  // By now the workspace lookup (started above) has long since resolved.
-  const workspaceId = await workspacePromise;
 
   res.writeHead(200, {
     "Content-Type": "application/x-ndjson; charset=utf-8",
@@ -327,8 +442,18 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
       await rest("PATCH", `ai_conversations?id=eq.${conversation.id}`, {
         updated_at: new Date().toISOString(),
       });
+    } else if (billableWorkspaceId) {
+      await refundAiTurn(
+        billableWorkspaceId,
+        userId,
+        operationId,
+        "The agent returned no reply.",
+      );
     }
   } catch (err) {
+    if (billableWorkspaceId) {
+      await refundAiTurn(billableWorkspaceId, userId, operationId, (err as Error).message);
+    }
     send({ type: "error", message: (err as Error).message });
   } finally {
     res.end();

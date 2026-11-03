@@ -15,10 +15,31 @@ import {
   markAttachmentAnchorPending,
   saveAttachmentAnchor,
 } from "../../../lib/repositories/attachments.ts";
+import {
+  createAnchorOperation,
+  linkAttachmentAnchor,
+  updateAnchorOperation,
+} from "../../../lib/repositories/fileAnchors.ts";
+import { getWalletBalanceLamports } from "../lib/solanaRpc.ts";
 
 vi.mock("../../../lib/repositories/attachments.ts", () => ({
   markAttachmentAnchorPending: vi.fn(),
   saveAttachmentAnchor: vi.fn(),
+}));
+
+vi.mock("../../../lib/repositories/fileAnchors.ts", () => ({
+  anchorStoragePrefix: vi.fn(() => "workspace/anchors/operation"),
+  createAnchorOperation: vi
+    .fn()
+    .mockResolvedValue({ id: "anchor-op-1", status: "preparing" }),
+  updateAnchorOperation: vi.fn().mockResolvedValue({ id: "anchor-op-1" }),
+  linkAttachmentAnchor: vi.fn().mockResolvedValue(undefined),
+  listAnchorOperations: vi.fn().mockResolvedValue([]),
+}));
+
+// The wallet balance check is an RPC round-trip; anchoring tests only need it to pass.
+vi.mock("../lib/solanaRpc.ts", () => ({
+  getWalletBalanceLamports: vi.fn().mockResolvedValue(1_000_000_000),
 }));
 
 const signer = Keypair.generate().publicKey;
@@ -27,6 +48,10 @@ const attachment = {
   id: "3f2a1b6c-0000-4000-8000-000000000001",
   workspace_id: "3f2a1b6c-0000-4000-8000-000000000002",
   content_hash: "AB12F0",
+  bucket_name: "workspace-files",
+  storage_path: "3f2a1b6c-0000-4000-8000-000000000002/sites/site-1/roof-photo.jpg",
+  size_bytes: 20480,
+  mime_type: "image/jpeg",
 };
 
 function fakeConnection(overrides: Record<string, unknown> = {}): Connection {
@@ -39,6 +64,9 @@ function fakeConnection(overrides: Record<string, unknown> = {}): Connection {
       context: {},
       value: [{ err: null, confirmationStatus: "confirmed" }],
     }),
+    getTransaction: vi
+      .fn()
+      .mockResolvedValue({ slot: 341_000_123, meta: { fee: 5000 } }),
     ...overrides,
   } as unknown as Connection;
 }
@@ -179,6 +207,19 @@ describe("anchorAttachment", () => {
     expect(outcome.memo).toBe(`ssv1:${attachment.id}:sha256:ab12f0`);
     expect(outcome.signature).toBe("sig-anchor-1");
     expect(outcome.network).toBe("devnet");
+    expect(outcome.operationId).toBe("anchor-op-1");
+    expect(outcome.feeLamports).toBe(5000);
+    expect(createAnchorOperation).toHaveBeenCalledWith({
+      workspaceId: attachment.workspace_id,
+      attachmentId: attachment.id,
+      mode: "hash",
+      bucketName: "workspace-files",
+      network: "devnet",
+      fileName: "roof-photo.jpg",
+      fileSizeBytes: 20480,
+      mimeType: "image/jpeg",
+      fileHash: "AB12F0",
+    });
     expect(markAttachmentAnchorPending).toHaveBeenCalledWith(attachment, {
       signature: "sig-anchor-1",
       network: "devnet",
@@ -189,6 +230,50 @@ describe("anchorAttachment", () => {
       status: "anchored",
       anchoredAt: expect.any(String),
     });
+    expect(linkAttachmentAnchor).toHaveBeenCalledWith(
+      attachment.id,
+      attachment.workspace_id,
+      { mode: "hash", operationId: "anchor-op-1", feeLamports: 5000 },
+    );
+  });
+
+  it("walks the anchor record through each stage of the attempt", async () => {
+    await anchorAttachment(attachment, walletAdapter, {
+      connection: fakeConnection(),
+      intervalMs: 5,
+    });
+
+    const stages = vi
+      .mocked(updateAnchorOperation)
+      .mock.calls.map(([, patch]) => patch.status);
+    expect(stages).toEqual([
+      "submitting",
+      "submitted",
+      "confirming",
+      "anchored",
+    ]);
+    expect(vi.mocked(updateAnchorOperation).mock.calls[0][1]).toMatchObject({
+      wallet_address: signer.toBase58(),
+      fee_lamports: 5000,
+      memo: `ssv1:${attachment.id}:sha256:ab12f0`,
+    });
+    expect(vi.mocked(updateAnchorOperation).mock.calls[3][1]).toMatchObject({
+      tx_slot: 341_000_123,
+      error_message: null,
+    });
+  });
+
+  it("refuses to sign when the wallet cannot pay the network fee", async () => {
+    vi.mocked(getWalletBalanceLamports).mockResolvedValueOnce(100);
+
+    await expect(
+      anchorAttachment(attachment, walletAdapter, { connection: fakeConnection() }),
+    ).rejects.toThrow(/Not enough SOL/);
+    expect(walletAdapter.sendTransaction).not.toHaveBeenCalled();
+    expect(updateAnchorOperation).toHaveBeenLastCalledWith(
+      "anchor-op-1",
+      expect.objectContaining({ status: "failed" }),
+    );
   });
 
   it("leaves the attachment untouched when the wallet rejects signing", async () => {
@@ -201,6 +286,10 @@ describe("anchorAttachment", () => {
     ).rejects.toThrow("Anchor cancelled in wallet.");
     expect(markAttachmentAnchorPending).not.toHaveBeenCalled();
     expect(saveAttachmentAnchor).not.toHaveBeenCalled();
+    expect(updateAnchorOperation).toHaveBeenLastCalledWith(
+      "anchor-op-1",
+      expect.objectContaining({ status: "cancelled" }),
+    );
   });
 
   it("marks the attachment failed once the transaction lands with an error", async () => {

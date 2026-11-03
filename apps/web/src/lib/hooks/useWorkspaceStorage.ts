@@ -1,89 +1,90 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "../supabase/client.ts";
 
-interface WorkspaceStorage {
+import { getWorkspaceStorageUsage } from "../repositories/attachments.ts";
+
+/**
+ * Quota state for one workspace, straight from `get_workspace_storage_usage` so
+ * the browser and the database trigger agree on what "over quota" means.
+ */
+export interface WorkspaceStorage {
   usedBytes: number;
   fileCount: number;
   limitMb: number;
   usedMb: number;
   percent: number;
+  baseLimitMb: number;
+  purchasedStorageMb: number;
+  expiringStorageMb: number;
+  nextStorageExpiration: string | null;
+  overQuota: boolean;
+  uploadAllowed: boolean;
   loading: boolean;
   error: string | null;
 }
 
-export function useWorkspaceStorage(workspaceId: string | null): WorkspaceStorage & { reload: () => void } {
-  const [revision, setRevision] = useState(0);
-  const [storage, setStorage] = useState<WorkspaceStorage>(() => ({
+const DEFAULT_LIMIT_MB = 500;
+
+function emptyStorage(workspaceId: string | null): WorkspaceStorage {
+  return {
     usedBytes: 0,
     fileCount: 0,
-    limitMb: 500,
+    limitMb: DEFAULT_LIMIT_MB,
     usedMb: 0,
     percent: 0,
+    baseLimitMb: DEFAULT_LIMIT_MB,
+    purchasedStorageMb: 0,
+    expiringStorageMb: 0,
+    nextStorageExpiration: null,
+    overQuota: false,
+    uploadAllowed: true,
     loading: workspaceId !== null,
     error: null,
-  }));
+  };
+}
+
+export function useWorkspaceStorage(
+  workspaceId: string | null,
+): WorkspaceStorage & { reload: () => void } {
+  const [revision, setRevision] = useState(0);
+  const [storage, setStorage] = useState(() => emptyStorage(workspaceId));
   const reload = useCallback(() => setRevision((value) => value + 1), []);
 
   useEffect(() => {
     if (!workspaceId) return;
 
-    const wid: string = workspaceId;
     let cancelled = false;
 
-    async function fetchStorage() {
-      try {
-        const { data, error } = await supabase.rpc("get_workspace_storage_usage", {
-          p_workspace_id: wid,
-        });
-
+    getWorkspaceStorageUsage(workspaceId)
+      .then((usage) => {
         if (cancelled) return;
-
-        if (error) {
-          setStorage({
-            usedBytes: 0,
-            fileCount: 0,
-            limitMb: 500,
-            usedMb: 0,
-            percent: 0,
-            loading: false,
-            error: error.message,
-          });
+        if (!usage) {
+          setStorage({ ...emptyStorage(workspaceId), loading: false });
           return;
         }
-
-        const result = data as unknown as {
-          used_bytes: number;
-          file_count: number;
-          limit_mb: number;
-          used_mb: number;
-          percent: number;
-        };
-
         setStorage({
-          usedBytes: result.used_bytes,
-          fileCount: result.file_count,
-          limitMb: result.limit_mb,
-          usedMb: result.used_mb,
-          percent: result.percent,
+          usedBytes: usage.used_bytes,
+          fileCount: usage.file_count,
+          limitMb: usage.limit_mb,
+          usedMb: usage.used_mb,
+          percent: usage.percent,
+          baseLimitMb: usage.base_limit_mb,
+          purchasedStorageMb: usage.purchased_storage_mb,
+          expiringStorageMb: usage.expiring_storage_mb,
+          nextStorageExpiration: usage.next_storage_expiration,
+          overQuota: usage.over_quota,
+          uploadAllowed: usage.upload_allowed,
           loading: false,
           error: null,
         });
-      } catch (err) {
-        if (!cancelled) {
-          setStorage({
-            usedBytes: 0,
-            fileCount: 0,
-            limitMb: 500,
-            usedMb: 0,
-            percent: 0,
-            loading: false,
-            error: err instanceof Error ? err.message : "Failed to fetch storage",
-          });
-        }
-      }
-    }
-
-    fetchStorage();
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setStorage({
+          ...emptyStorage(workspaceId),
+          loading: false,
+          error: err instanceof Error ? err.message : "Failed to fetch storage",
+        });
+      });
 
     return () => {
       cancelled = true;

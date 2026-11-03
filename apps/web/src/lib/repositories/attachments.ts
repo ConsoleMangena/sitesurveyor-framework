@@ -750,6 +750,12 @@ export interface StorageUsage {
   limit_mb: number;
   used_mb: number;
   percent: number;
+  base_limit_mb: number;
+  purchased_storage_mb: number;
+  expiring_storage_mb: number;
+  next_storage_expiration: string | null;
+  over_quota: boolean;
+  upload_allowed: boolean;
 }
 
 export async function getWorkspaceStorageUsage(
@@ -763,6 +769,5 @@ export async function getWorkspaceStorageUsage(
   });
 
   if (error) throw error;
-  const row = data?.[0] as StorageUsage | undefined;
-  return row ?? null;
+  return (data as unknown as StorageUsage | null) ?? null;
 }

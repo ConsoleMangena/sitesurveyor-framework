@@ -40,25 +40,21 @@ import {
 import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
 import { useDatabaseStats } from "../../lib/hooks/useDatabaseStats.ts";
 import { useWorkspaceStorage } from "../../lib/hooks/useWorkspaceStorage.ts";
-import { canManageFinance } from "../../lib/permissions.ts";
-import { getMyWorkspaceMembership } from "../../lib/repositories/workspaces.ts";
 import {
   getPesepayWallet,
   initiateWalletDeposit,
   listPesepayTransactions,
   listStoragePurchases,
-  payStorageWithBalance,
-  STORAGE_PLANS,
   verifyWalletDeposit,
   type PesepayTransactionRow,
   type PesepayWalletRow,
-  type StoragePlanId,
   type StoragePurchaseRow,
 } from "../../lib/repositories/pesepay.ts";
 
 interface WorkspaceSettingsProps {
   workspaceId: string;
   isPlatformAdmin?: boolean;
+  onNavigate?: (view: string) => void;
 }
 
 type CheckoutMessage = {
@@ -71,6 +67,15 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
+
+function formatPurchaseAmount(purchase: {
+  amount: number;
+  currency_code: string;
+}): string {
+  return purchase.currency_code === "USD"
+    ? usdFormatter.format(Number(purchase.amount))
+    : `${purchase.currency_code} ${Number(purchase.amount).toFixed(2)}`;
+}
 
 function noticeTone(tone: "success" | "pending" | "error") {
   if (tone === "success") return "success" as const;
@@ -107,6 +112,7 @@ function StatNote({ children }: { children: ReactNode }) {
 export default function WorkspaceSettingsPage({
   workspaceId,
   isPlatformAdmin = false,
+  onNavigate,
 }: WorkspaceSettingsProps) {
   const [searchParams] = useSearchParams();
   const { totalSizeGB, tablesSizeGB, loading, error } = useDatabaseStats();
@@ -115,15 +121,16 @@ export default function WorkspaceSettingsPage({
     limitMb,
     percent,
     fileCount,
+    purchasedStorageMb,
+    expiringStorageMb,
+    nextStorageExpiration,
+    overQuota,
     loading: storageLoading,
     error: storageError,
-    reload: reloadStorage,
   } = useWorkspaceStorage(workspaceId);
-  const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
-  const [checkoutMessage, setCheckoutMessage] = useState<CheckoutMessage>(null);
-  const [canPurchase, setCanPurchase] = useState<boolean | null>(null);
   const [purchases, setPurchases] = useState<StoragePurchaseRow[]>([]);
   const [purchasesLoaded, setPurchasesLoaded] = useState(false);
+  const [purchasesLoadedAt, setPurchasesLoadedAt] = useState(0);
   const [purchasesError, setPurchasesError] = useState<string | null>(null);
   const [wallet, setWallet] = useState<PesepayWalletRow | null>(null);
   const [walletTransactions, setWalletTransactions] = useState<PesepayTransactionRow[]>([]);
@@ -144,7 +151,9 @@ export default function WorkspaceSettingsPage({
   const loadPurchases = useCallback(async () => {
     if (isPlatformAdmin) return;
     try {
-      setPurchases(await listStoragePurchases(workspaceId));
+      const rows = await listStoragePurchases(workspaceId);
+      setPurchases(rows);
+      setPurchasesLoadedAt(Date.now());
       setPurchasesError(null);
     } catch (loadError) {
       setPurchasesError(loadError instanceof Error ? loadError.message : "Unable to load storage purchases.");
@@ -177,21 +186,6 @@ export default function WorkspaceSettingsPage({
   useEffect(() => {
     void loadWallet();
   }, [loadWallet]);
-
-  useEffect(() => {
-    if (isPlatformAdmin) return;
-    let cancelled = false;
-    getMyWorkspaceMembership(workspaceId)
-      .then((member) => {
-        if (!cancelled) setCanPurchase(canManageFinance(member?.role));
-      })
-      .catch(() => {
-        if (!cancelled) setCanPurchase(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId, isPlatformAdmin]);
 
   const checkDeposit = useCallback(async (depositId: string) => {
     setActiveDepositId(depositId);
@@ -260,30 +254,6 @@ export default function WorkspaceSettingsPage({
         text: depositError instanceof Error ? depositError.message : "Unable to open PesePay checkout. Try again.",
       });
       setWalletBusy(null);
-    }
-  };
-
-  const purchaseStorage = async (storagePlanId: StoragePlanId) => {
-    setCheckoutBusy(storagePlanId);
-    setCheckoutMessage(null);
-    try {
-      const result = await payStorageWithBalance({ storagePlanId, workspaceId });
-      setWallet((current) => current ? { ...current, balance: result.balance } : current);
-      setCheckoutMessage({
-        tone: "success",
-        text: "Payment completed. Your workspace storage has been increased.",
-      });
-      reloadStorage();
-      await Promise.all([loadWallet(), loadPurchases()]);
-    } catch (checkoutError) {
-      setCheckoutMessage({
-        tone: "error",
-        text: checkoutError instanceof Error
-          ? checkoutError.message
-          : "Unable to pay for storage from your PesePay balance. Try again.",
-      });
-    } finally {
-      setCheckoutBusy(null);
     }
   };
 
@@ -364,6 +334,16 @@ export default function WorkspaceSettingsPage({
     );
   }
 
+  const expiredPurchaseIds = new Set(
+    purchases
+      .filter(
+        (purchase) =>
+          purchase.expires_at !== null &&
+          new Date(purchase.expires_at).getTime() <= purchasesLoadedAt,
+      )
+      .map((purchase) => purchase.id),
+  );
+
   return (
     <DashboardShell className="w-full max-w-full">
       <DashboardHeader
@@ -380,7 +360,7 @@ export default function WorkspaceSettingsPage({
             variant="outline"
             size="sm"
             className="gap-2"
-            onClick={() => document.getElementById("storage-plans")?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() => onNavigate?.("billing")}
           >
             <HardDrive size={16} />
             Add storage
@@ -600,20 +580,39 @@ export default function WorkspaceSettingsPage({
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {(limitMb / 1024 - usedMb / 1024).toFixed(2)} GB remaining ·{" "}
+                    {Math.max(limitMb / 1024 - usedMb / 1024, 0).toFixed(2)} GB remaining ·{" "}
                     {fileCount} files
                   </p>
                 </div>
 
-                {isNearLimit && (
-                  <div className="flex items-start gap-3 rounded-none border border-amber-500/20 bg-amber-500/10 p-4">
-                    <HardDrive size={16} className="mt-0.5 shrink-0 text-amber-500" />
+                {(isNearLimit || overQuota) && (
+                  <div
+                    className={
+                      overQuota
+                        ? "flex items-start gap-3 rounded-none border border-destructive/20 bg-destructive/10 p-4"
+                        : "flex items-start gap-3 rounded-none border border-amber-500/20 bg-amber-500/10 p-4"
+                    }
+                  >
+                    <HardDrive
+                      size={16}
+                      className={
+                        overQuota
+                          ? "mt-0.5 shrink-0 text-destructive"
+                          : "mt-0.5 shrink-0 text-amber-500"
+                      }
+                    />
                     <div className="min-w-0">
                       <p className="text-sm font-medium">
-                        {isAtLimit ? "Storage limit reached" : "Storage almost full"}
+                        {overQuota
+                          ? "Over quota"
+                          : isAtLimit
+                            ? "Storage limit reached"
+                            : "Storage almost full"}
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Purchase an add-on to make more space available for projects and files.
+                        {overQuota
+                          ? "New uploads are blocked, but every stored file stays available. Buy more storage or free space to resume uploading."
+                          : "Buy a storage package to make more space available for projects and files."}
                       </p>
                     </div>
                   </div>
@@ -621,70 +620,51 @@ export default function WorkspaceSettingsPage({
               </>
             )}
 
-            <div id="storage-plans" className="scroll-mt-24 border-t border-border/70 pt-5">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Add storage</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  One-time add-ons are permanently added to this workspace after payment confirmation.
-                </p>
+            <div className="scroll-mt-24 border-t border-border/70 pt-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    How this quota is built
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Base quota {limitMb - purchasedStorageMb > 0 ? `${(limitMb - purchasedStorageMb).toFixed(0)} MB` : "0 MB"}
+                    {" · "}{purchasedStorageMb.toFixed(0)} MB of purchased add-ons
+                    {expiringStorageMb > 0
+                      ? ` · ${expiringStorageMb.toFixed(0)} MB expires ${
+                          nextStorageExpiration ? dateFormatter.format(new Date(nextStorageExpiration)) : "soon"
+                        }`
+                      : ""}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-2"
+                  onClick={() => onNavigate?.("billing")}
+                >
+                  <CreditCard size={14} />
+                  Buy storage
+                </Button>
               </div>
 
-              {checkoutMessage && (
-                <ErrorNotice
-                  className="mt-3"
-                  layout="banner"
-                  tone={noticeTone(checkoutMessage.tone)}
-                  title={checkoutMessage.tone === "error" ? "Storage payment" : checkoutMessage.tone === "success" ? "Payment confirmed" : "Payment status"}
-                >
-                  {checkoutMessage.text}
-                </ErrorNotice>
+              {overQuota && (
+                <div className="mt-3 flex items-start gap-3 rounded-none border border-destructive/20 bg-destructive/10 p-4">
+                  <HardDrive size={16} className="mt-0.5 shrink-0 text-destructive" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Over quota</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Existing files stay available. New uploads pause until the quota grows
+                      again, either by buying storage or by freeing space.
+                    </p>
+                  </div>
+                </div>
               )}
 
-              <div className="mt-3 divide-y divide-border/70 border-y border-border/70">
-                {STORAGE_PLANS.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10">
-                        <HardDrive size={16} className="text-primary" />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">{plan.label} storage add-on</p>
-                        <p className="text-xs text-muted-foreground">
-                          {usdFormatter.format(plan.amount)} · one-time payment
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-2"
-                      disabled={checkoutBusy !== null || canPurchase !== true}
-                      onClick={() => void purchaseStorage(plan.id)}
-                    >
-                      {checkoutBusy === plan.id ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <CreditCard size={14} />
-                      )}
-                      {checkoutBusy === plan.id ? "Paying…" : `Buy ${plan.label}`}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              {canPurchase === null ? (
-                <p className="mt-3 text-xs text-muted-foreground">Checking purchase permissions…</p>
-              ) : !canPurchase ? (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Only workspace owners, admins, and finance managers can purchase storage.
-                </p>
-              ) : null}
               <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
                 <ShieldCheck size={14} className="mt-0.5 shrink-0 text-primary" />
-                Paid from your PesePay balance. Storage increases only after the server confirms the payment.
+                Storage packages are timed and priced from the billing catalog. Purchases are
+                activated by the server only after the payment is verified, and losing quota never
+                deletes files that are already stored.
               </p>
             </div>
           </CardContent>
@@ -718,7 +698,7 @@ export default function WorkspaceSettingsPage({
                     No storage purchases yet
                   </EmptyTitle>
                   <EmptyDescription>
-                    Add-ons paid from the PesePay balance will appear here.
+                    Storage packages bought from Billing appear here with their validity dates.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -731,36 +711,53 @@ export default function WorkspaceSettingsPage({
                       <TableHead>Date</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Method</TableHead>
+                      <TableHead>Valid until</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchases.map((purchase) => (
-                      <TableRow key={purchase.id}>
-                        <TableCell data-label="Add-on">
-                          {purchase.storage_mb / 1024} GB
-                        </TableCell>
-                        <TableCell data-label="Date">
-                          <time dateTime={purchase.paid_at}>
-                            {dateFormatter.format(new Date(purchase.paid_at))}
-                          </time>
-                        </TableCell>
-                        <TableCell
-                          data-label="Amount"
-                          className="font-mono tabular-nums"
-                        >
-                          {usdFormatter.format(Number(purchase.amount))}
-                        </TableCell>
-                        <TableCell data-label="Method">
-                          {purchase.payment_method === "balance"
-                            ? "PesePay balance"
-                            : purchase.payment_method}
-                        </TableCell>
-                        <TableCell data-label="Status">
-                          <Badge variant="success">Paid</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {purchases.map((purchase) => {
+                      const expired = expiredPurchaseIds.has(purchase.id);
+                      return (
+                        <TableRow key={purchase.id}>
+                          <TableCell data-label="Add-on">
+                            {purchase.storage_mb / 1024} GB
+                          </TableCell>
+                          <TableCell data-label="Date">
+                            <time dateTime={purchase.paid_at}>
+                              {dateFormatter.format(new Date(purchase.paid_at))}
+                            </time>
+                          </TableCell>
+                          <TableCell
+                            data-label="Amount"
+                            className="font-mono tabular-nums"
+                          >
+                            {formatPurchaseAmount(purchase)}
+                          </TableCell>
+                          <TableCell data-label="Method">
+                            {purchase.payment_method === "balance"
+                              ? "PesePay balance"
+                              : purchase.payment_method === "pesepay"
+                                ? "PesePay checkout"
+                                : purchase.payment_method}
+                          </TableCell>
+                          <TableCell data-label="Valid until">
+                            {purchase.expires_at ? (
+                              <time dateTime={purchase.expires_at}>
+                                {dateFormatter.format(new Date(purchase.expires_at))}
+                              </time>
+                            ) : (
+                              "No expiry"
+                            )}
+                          </TableCell>
+                          <TableCell data-label="Status">
+                            <Badge variant={expired ? "secondary" : "success"}>
+                              {expired ? "Expired" : "Active"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </ResponsiveTable>

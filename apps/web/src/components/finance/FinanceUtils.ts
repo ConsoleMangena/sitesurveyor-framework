@@ -61,3 +61,52 @@ export function invoiceStatusVariant(status: string) {
       return "secondary" as const;
   }
 }
+
+const PESAPAY_KIND_LABELS: Record<string, string> = {
+  deposit: "Deposit",
+  ai_credit_purchase: "AI credits",
+  storage_purchase: "Storage",
+  invoice_payment: "Invoice payment",
+};
+
+export function pesepayKindLabel(kind: string): string {
+  return PESAPAY_KIND_LABELS[kind] ?? kind;
+}
+
+export function pesepayStatusLabel(status: string): string {
+  switch (status) {
+    case "completed":
+      return "Completed";
+    case "pending":
+      return "Pending";
+    case "failed":
+      return "Failed";
+    case "cancelled":
+      return "Cancelled";
+    case "refunded":
+      return "Refunded";
+    default:
+      return status;
+  }
+}
+
+export function pesepayStatusVariant(status: string) {
+  switch (status) {
+    case "completed":
+      return "success" as const;
+    case "pending":
+      return "warning" as const;
+    case "failed":
+    case "cancelled":
+      return "destructive" as const;
+    default:
+      return "secondary" as const;
+  }
+}
+
+/** Amounts are USD for PesePay checkouts; local-currency rows print with their code. */
+export function formatMoney(amount: number, currencyCode = "USD"): string {
+  return currencyCode === "USD"
+    ? formatCurrency(amount)
+    : `${currencyCode} ${amount.toFixed(2)}`;
+}

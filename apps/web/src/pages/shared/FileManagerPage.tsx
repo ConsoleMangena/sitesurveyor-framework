@@ -20,6 +20,10 @@ import {
   Pencil,
   History,
   Anchor,
+  HardDrive,
+  Info,
+  FolderPlus,
+  FolderUp,
 } from "lucide-react";
 
 import {
@@ -36,16 +40,25 @@ import {
   createAttachmentVersion,
   listAttachmentVersions,
   listFolders,
+  createFolder,
   listTags,
   createTag,
   getAttachmentTags,
   setAttachmentTags,
   listActivityLog,
+  getWorkspaceStorageUsage,
   type FolderRow,
   type TagRow,
   type ActivityLogEntry,
   type AttachmentVersionRow,
+  type StorageUsage,
 } from "../../lib/repositories/attachments.ts";
+import {
+  getLatestAnchorStates,
+  listAnchorOperations,
+  type AnchorMode,
+  type AnchorOperationRow,
+} from "../../lib/repositories/fileAnchors.ts";
 import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
 import {
   anchorAttachment,
@@ -53,6 +66,13 @@ import {
   estimateAnchorFeeLamports,
   type AnchorSigner,
 } from "../../features/phantom/anchor/fileAnchor.ts";
+import {
+  downloadAttachmentBlob,
+  runFullFileAnchor,
+  verifyFullFileAnchor,
+  type FullFileAnchorProgress,
+} from "../../features/phantom/anchor/fullFileAnchorRunner.ts";
+import { DEFAULT_FULL_FILE_CHUNK_SIZE } from "../../features/phantom/anchor/fullFileAnchor.ts";
 import {
   SOLANA_CLUSTER,
   SOLANA_CLUSTER_LABEL,
@@ -66,7 +86,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -153,6 +172,24 @@ const asCluster = (network: string | null): SolanaCluster =>
 const formatLamports = (lamports: number): string =>
   `${lamports.toLocaleString()} lamports`;
 
+const chunkPlanFor = (sizeBytes: number | null): number =>
+  Math.max(1, Math.ceil((sizeBytes ?? 0) / DEFAULT_FULL_FILE_CHUNK_SIZE));
+
+const ANCHOR_STATUS_LABELS: Record<string, string> = {
+  preparing: "Preparing",
+  uploading: "Storing chunks",
+  ready: "Ready to sign",
+  submitting: "Waiting for wallet",
+  submitted: "Submitted to Solana",
+  confirming: "Confirming on Solana",
+  anchored: "Anchored",
+  failed: "Failed",
+  cancelled: "Cancelled in wallet",
+};
+
+const anchorStatusLabel = (status: string): string =>
+  ANCHOR_STATUS_LABELS[status] ?? status;
+
 const formatAnchorError = (err: unknown): string => {
   const message = err instanceof Error ? err.message : String(err);
   if (/network mismatch|wrong network/i.test(message)) {
@@ -163,6 +200,9 @@ const formatAnchorError = (err: unknown): string => {
 
 export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const [files, setFiles] = useState<AttachmentRow[]>([]);
+  const [anchorStates, setAnchorStates] = useState<Map<string, AnchorOperationRow>>(
+    () => new Map(),
+  );
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [tags, setTags] = useState<TagRow[]>([]);
   const [fileTagMap, setFileTagMap] = useState<Record<string, TagRow[]>>({});
@@ -201,8 +241,14 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [showNewTagInput, setShowNewTagInput] = useState(false);
+  const [activeFolderId, setActiveFolderId] = useState<string>("__all__");
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderParentId, setNewFolderParentId] = useState<string>("__root__");
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const noticeTimeoutRef = useRef<number | undefined>(undefined);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const versionUploadInputRef = useRef<HTMLInputElement | null>(null);
   const versionTargetRef = useRef<AttachmentRow | null>(null);
   const deleteFileRef = useRef<AttachmentRow | null>(null);
@@ -216,6 +262,14 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const [anchorFile, setAnchorFile] = useState<AttachmentRow | null>(null);
   const [anchorFee, setAnchorFee] = useState<string | null>(null);
   const [anchoring, setAnchoring] = useState(false);
+  const [anchorMode, setAnchorMode] = useState<AnchorMode>("hash");
+  const [anchorProgress, setAnchorProgress] = useState<FullFileAnchorProgress | null>(null);
+  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
+  const [detailsFile, setDetailsFile] = useState<AttachmentRow | null>(null);
+  const [anchorRecords, setAnchorRecords] = useState<AnchorOperationRow[]>([]);
+  const [anchorRecordsLoading, setAnchorRecordsLoading] = useState(false);
+  const [verifyingOperationId, setVerifyingOperationId] = useState<string | null>(null);
+  const [verificationNote, setVerificationNote] = useState<string | null>(null);
 
   const anchorSigner = useMemo<AnchorSigner | null>(() => {
     if (!walletPublicKey || !walletSendTransaction) return null;
@@ -228,18 +282,26 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
   const fetchFiles = useCallback(async () => {
     try {
       setError(null);
-      const [fileData, folderData, tagData, logData] = await Promise.all([
+      const [fileData, folderData, tagData, logData, usage] = await Promise.all([
         listAttachments(workspaceId, {
           includeDeleted: viewMode === "trash",
         }),
         listFolders(workspaceId),
         listTags(workspaceId),
         listActivityLog(workspaceId, { limit: 50 }),
+        getWorkspaceStorageUsage(workspaceId).catch(() => null),
       ]);
       setFiles(fileData);
       setFolders(folderData);
       setTags(tagData);
       setActivityLog(logData);
+      setStorageUsage(usage);
+      setAnchorStates(
+        await getLatestAnchorStates(
+          workspaceId,
+          fileData.map((file) => file.id),
+        ).catch(() => new Map<string, AnchorOperationRow>()),
+      );
 
       const tagMap: Record<string, TagRow[]> = {};
       await Promise.all(
@@ -261,13 +323,19 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     new Set(files.map((f) => getFileType(f.storage_path, f.mime_type))),
   );
   const hasActiveFilters =
-    search.trim() !== "" || activeType !== "ALL" || activeTagId !== "all";
+    search.trim() !== "" ||
+    activeType !== "ALL" ||
+    activeTagId !== "all" ||
+    activeFolderId !== "__all__";
 
   let filtered = files;
   if (viewMode === "trash") {
     filtered = filtered.filter((f) => f.deleted_at != null);
   } else {
     filtered = filtered.filter((f) => f.deleted_at == null);
+  }
+  if (activeFolderId !== "__all__") {
+    filtered = filtered.filter((f) => f.folder_id === activeFolderId);
   }
   if (activeType !== "ALL") {
     filtered = filtered.filter((f) => getFileType(f.storage_path, f.mime_type) === activeType);
@@ -298,6 +366,19 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     ? Math.round((completedUploads / uploadQueue.length) * 100)
     : 0;
 
+  // The same quota the database trigger enforces, read straight from it.
+  const uploadBlocked = storageUsage ? !storageUsage.upload_allowed : false;
+
+  const fullFileAnchoredIds = useMemo(
+    () =>
+      new Set(
+        [...anchorStates.values()]
+          .filter((record) => record.mode === "full_file" && record.status === "anchored")
+          .map((record) => record.attachment_id),
+      ),
+    [anchorStates],
+  );
+
   const toggleSelect = (id: string) => {
     const next = new Set(selectedFiles);
     if (next.has(id)) next.delete(id);
@@ -319,6 +400,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     setSearch("");
     setActiveType("ALL");
     setActiveTagId("all");
+    setActiveFolderId("__all__");
   };
 
   const handleMoveToFolder = async (attachmentId: string, targetFolderId: string | null) => {
@@ -391,6 +473,35 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     uploadInputRef.current?.click();
   };
 
+  const openFolderPicker = () => {
+    folderInputRef.current?.click();
+  };
+
+  // Uploads land in the folder currently open, or at the workspace root.
+  const currentFolderId = activeFolderId === "__all__" ? null : activeFolderId;
+
+  const markUpload = (index: number, status: "done" | "error") => {
+    setUploadQueue((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], status };
+      return next;
+    });
+  };
+
+  const finishUpload = async (successCount: number, failureCount: number) => {
+    if (failureCount > 0) {
+      setError(`${failureCount} upload${failureCount === 1 ? "" : "s"} failed. Please retry those files.`);
+    }
+    if (successCount > 0) {
+      showNotice(`${successCount} file${successCount === 1 ? "" : "s"} uploaded.`);
+      await fetchFiles();
+    }
+    setUploading(false);
+    setUploadQueue([]);
+    if (uploadInputRef.current) uploadInputRef.current.value = "";
+    if (folderInputRef.current) folderInputRef.current.value = "";
+  };
+
   const handleUploadFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
     const uploadFiles = Array.from(fileList);
@@ -402,42 +513,90 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     const results = await Promise.allSettled(
       uploadFiles.map(async (file, index) => {
         try {
-          const result = await uploadWorkspaceAttachment(workspaceId, file);
-          setUploadQueue((prev) => {
-            const next = [...prev];
-            next[index] = { ...next[index], status: "done" };
-            return next;
+          const result = await uploadWorkspaceAttachment(workspaceId, file, {
+            folderId: currentFolderId,
           });
+          markUpload(index, "done");
           return result;
         } catch (err) {
-          setUploadQueue((prev) => {
-            const next = [...prev];
-            next[index] = { ...next[index], status: "error" };
-            return next;
-          });
+          markUpload(index, "error");
           throw err;
         }
       }),
     );
 
-    const uploaded = results
-      .filter((r): r is PromiseFulfilledResult<AttachmentRow> => r.status === "fulfilled")
-      .map((r) => r.value);
-    const successCount = uploaded.length;
-    const failureCount = results.length - successCount;
+    const successCount = results.filter((r) => r.status === "fulfilled").length;
+    await finishUpload(successCount, results.length - successCount);
+  };
 
-    if (failureCount > 0) {
-      setError(`${failureCount} upload${failureCount === 1 ? "" : "s"} failed. Please retry those files.`);
+  /**
+   * Recreate the picked directory tree as workspace folders, then upload every
+   * file into the folder it came from. One entry per folder level, so a 3-deep
+   * tree costs 3 inserts rather than one per file.
+   */
+  const handleUploadFolder = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const entries = Array.from(fileList).map((file) => ({
+      file,
+      segments: file.webkitRelativePath
+        ? file.webkitRelativePath.split("/").slice(0, -1)
+        : [],
+    }));
+
+    setUploading(true);
+    setError(null);
+    setUploadQueue(entries.map(({ file }) => ({ name: file.name, status: "pending" })));
+
+    const createdFolders = new Map<string, string>();
+    const ensureFolder = async (segments: string[]): Promise<string | null> => {
+      if (segments.length === 0) return currentFolderId;
+      const path = segments.join("/");
+      const known = createdFolders.get(path);
+      if (known) return known;
+      const parentId = await ensureFolder(segments.slice(0, -1));
+      const folder = await createFolder(workspaceId, segments[segments.length - 1], parentId);
+      createdFolders.set(path, folder.id);
+      return folder.id;
+    };
+
+    let successCount = 0;
+    let failureCount = 0;
+    // Sequential: a parent folder has to exist before its children are created.
+    for (const [index, entry] of entries.entries()) {
+      try {
+        const folderId = await ensureFolder(entry.segments);
+        await uploadWorkspaceAttachment(workspaceId, entry.file, { folderId });
+        markUpload(index, "done");
+        successCount += 1;
+      } catch {
+        markUpload(index, "error");
+        failureCount += 1;
+      }
     }
 
-    if (successCount > 0) {
-      showNotice(`${successCount} file${successCount === 1 ? "" : "s"} uploaded.`);
+    await finishUpload(successCount, failureCount);
+  };
+
+  const handleCreateFolder = async () => {
+    const name = newFolderName.trim();
+    if (!name) return;
+    setCreatingFolder(true);
+    setError(null);
+    try {
+      await createFolder(
+        workspaceId,
+        name,
+        newFolderParentId === "__root__" ? null : newFolderParentId,
+      );
+      setNewFolderName("");
+      setNewFolderOpen(false);
       await fetchFiles();
+      showNotice(`Folder "${name}" created.`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create folder.");
+    } finally {
+      setCreatingFolder(false);
     }
-
-    setUploading(false);
-    setUploadQueue([]);
-    if (uploadInputRef.current) uploadInputRef.current.value = "";
   };
 
   const handleVerifyIntegrity = async (file: AttachmentRow) => {
@@ -454,14 +613,17 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     }
   };
 
-  const openAnchorDialog = (file: AttachmentRow) => {
+  const openAnchorDialog = (file: AttachmentRow, mode: AnchorMode = "hash") => {
     setAnchorFile(file);
+    setAnchorMode(mode);
+    setAnchorProgress(null);
     setAnchorFee(anchorSigner && file.content_hash ? "…" : null);
   };
 
   const closeAnchorDialog = () => {
     setAnchorFile(null);
     setAnchorFee(null);
+    setAnchorProgress(null);
   };
 
   // openAnchorDialog seeds the "…" placeholder; this resolves the RPC estimate.
@@ -489,19 +651,72 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
     setBusyFileId(file.id);
     setError(null);
     try {
-      const { signature } = await anchorAttachment(file, anchorSigner);
+      const outcome =
+        anchorMode === "hash"
+          ? await anchorAttachment(file, anchorSigner)
+          : await runFullFileAnchor({
+              attachment: file,
+              source: await downloadAttachmentBlob(file),
+              signer: anchorSigner,
+              onProgress: setAnchorProgress,
+            });
       closeAnchorDialog();
       await fetchFiles();
       showNotice(
-        `Hash anchored on ${SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}: ${shortSig(signature)}`,
+        `${anchorMode === "hash" ? "Hash" : "Full file"} anchored on ${
+          SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]
+        }: ${shortSig(outcome.signature)}`,
       );
     } catch (err) {
-      // The row records how far the attempt got, so always reload it.
+      // The anchor record shows how far the attempt got, so always reload it.
       await fetchFiles();
       setError(formatAnchorError(err));
     } finally {
       setAnchoring(false);
       setBusyFileId(null);
+    }
+  };
+
+  const openFileDetails = async (file: AttachmentRow) => {
+    setDetailsFile(file);
+    setAnchorRecords([]);
+    setVerificationNote(null);
+    setAnchorRecordsLoading(true);
+    try {
+      setAnchorRecords(await listAnchorOperations(workspaceId, { attachmentId: file.id }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load anchor records.");
+    } finally {
+      setAnchorRecordsLoading(false);
+    }
+  };
+
+  const handleVerifyAnchorRecord = async (record: AnchorOperationRow) => {
+    setVerifyingOperationId(record.id);
+    setVerificationNote(null);
+    try {
+      if (record.mode === "full_file") {
+        const { verified } = await verifyFullFileAnchor(record);
+        setVerificationNote(
+          verified.ok
+            ? `Rebuilt from ${verified.chunkCount} chunks — digest matches the chain commit.`
+            : `Reassembly did not match the anchored digest: ${verified.errors.join(" ")}`,
+        );
+      } else {
+        const file = files.find((candidate) => candidate.id === record.attachment_id);
+        if (!file) throw new Error("The anchored file is no longer in this workspace.");
+        const { ok } = await verifyAttachmentIntegrity(file);
+        setVerificationNote(
+          ok
+            ? "Stored file re-hashes to the digest written on chain."
+            : "Mismatch: the stored file no longer matches the anchored digest.",
+        );
+      }
+      if (detailsFile) await openFileDetails(detailsFile);
+    } catch (err) {
+      setVerificationNote(err instanceof Error ? err.message : "Verification failed.");
+    } finally {
+      setVerifyingOperationId(null);
     }
   };
 
@@ -776,28 +991,78 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
         badge={<Badge variant="secondary">Secure storage</Badge>}
         title="File Manager"
         subtitle="Secure storage for plans and survey data."
-        meta={`${files.length} ${files.length === 1 ? "file" : "files"}`}
+        meta={`${files.filter((f) => f.deleted_at == null).length} ${
+          files.filter((f) => f.deleted_at == null).length === 1 ? "file" : "files"
+        }${storageUsage ? ` · ${storageUsage.used_mb.toFixed(0)} of ${storageUsage.limit_mb.toFixed(0)} MB` : ""}`}
         actions={
-          <Button
-            onClick={openFilePicker}
-            disabled={uploading || viewMode === "trash"}
-            className="gap-2 w-full sm:w-auto"
-          >
-            <Upload size={16} />
-            {uploading
-              ? "Uploading..."
-              : viewMode === "trash"
-                ? "Upload disabled in trash"
-                : "Upload Files"}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setNewFolderParentId(currentFolderId ?? "__root__");
+                setNewFolderOpen(true);
+              }}
+              disabled={viewMode === "trash"}
+              className="gap-2 w-full sm:w-auto"
+            >
+              <FolderPlus size={16} />
+              New folder
+            </Button>
+            <Button
+              variant="outline"
+              onClick={openFolderPicker}
+              disabled={uploading || viewMode === "trash" || uploadBlocked}
+              className="gap-2 w-full sm:w-auto"
+            >
+              <FolderUp size={16} />
+              Upload folder
+            </Button>
+            <Button
+              onClick={openFilePicker}
+              disabled={uploading || viewMode === "trash" || uploadBlocked}
+              className="gap-2 w-full sm:w-auto"
+            >
+              <Upload size={16} />
+              {uploading
+                ? "Uploading..."
+                : viewMode === "trash"
+                  ? "Upload disabled in trash"
+                  : uploadBlocked
+                    ? "Quota reached"
+                    : "Upload Files"}
+            </Button>
+          </>
         }
       />
+
+      {storageUsage?.expiring_storage_mb ? (
+        <div className="rounded-none border border-border/70 bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
+          {storageUsage.expiring_storage_mb.toFixed(0)} MB of purchased storage ends{" "}
+          {storageUsage.next_storage_expiration
+            ? formatDateLabel(storageUsage.next_storage_expiration)
+            : "soon"}
+          . Files already stored are never deleted when a package expires.
+        </div>
+      ) : null}
 
       {error ? (
         <ErrorNotice tone="danger">
           {error}
         </ErrorNotice>
       ) : null}
+
+      {uploadBlocked && (
+        <div className="flex items-start gap-3 rounded-none border border-destructive/20 bg-destructive/10 p-4">
+          <HardDrive size={16} className="mt-0.5 shrink-0 text-destructive" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Storage quota reached</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              New uploads are paused. Existing files stay available for preview, download and
+              sharing until the workspace buys more storage.
+            </p>
+          </div>
+        </div>
+      )}
 
       {notice && (
         <div className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -810,7 +1075,19 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
         type="file"
         className="hidden"
         multiple
+        aria-label="Select files to upload"
         onChange={(e) => void handleUploadFiles(e.target.files)}
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        className="hidden"
+        multiple
+        aria-label="Select a folder to upload"
+        // Non-standard but supported in Chrome, Edge, Firefox and Safari: lets the
+        // picker return a whole directory with each file's relative path.
+        {...{ webkitdirectory: "", directory: "" }}
+        onChange={(e) => void handleUploadFolder(e.target.files)}
       />
       <input
         ref={versionUploadInputRef}
@@ -891,26 +1168,47 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Button size="sm" variant={activeType === "ALL" ? "default" : "outline"} onClick={() => setActiveType("ALL")}>All types</Button>
-              {fileTypes.map((type) => (
-                <Button key={type} size="sm" variant={activeType === type ? "default" : "outline"} onClick={() => setActiveType(type)}>{type}</Button>
-              ))}
-              <Separator orientation="vertical" className="h-5 hidden sm:block" />
-              <Button size="sm" variant={activeTagId === "all" ? "default" : "outline"} onClick={() => setActiveTagId("all")}>All tags</Button>
-              {tags.map((tag) => (
-                <Button
-                  key={tag.id}
-                  size="sm"
-                  variant={activeTagId === tag.id ? "default" : "outline"}
-                  onClick={() => setActiveTagId(tag.id)}
-                  title={tag.name}
-                >
-                  {tag.name}
-                </Button>
-              ))}
+              <Select value={activeFolderId} onValueChange={setActiveFolderId}>
+                <SelectTrigger className="w-full sm:w-44 h-9" aria-label="Filter by folder">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All folders</SelectItem>
+                  {folders.map((folder) => (
+                    <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={activeType} onValueChange={setActiveType}>
+                <SelectTrigger className="w-full sm:w-36 h-9" aria-label="Filter by file type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All types</SelectItem>
+                  {fileTypes.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={activeTagId} onValueChange={(value) => setActiveTagId(value)}>
+                <SelectTrigger className="w-full sm:w-36 h-9" aria-label="Filter by tag">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All tags</SelectItem>
+                  {tags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {hasActiveFilters && (
                 <Button size="sm" variant="ghost" onClick={clearFilters}>Clear</Button>
               )}
+              {currentFolderId && viewMode !== "trash" ? (
+                <span className="text-xs text-muted-foreground">
+                  New uploads go to {folders.find((folder) => folder.id === currentFolderId)?.name}
+                </span>
+              ) : null}
               <span className="text-xs text-muted-foreground ml-auto">{filtered.length} result{filtered.length === 1 ? "" : "s"}</span>
             </div>
 
@@ -981,6 +1279,16 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                           >
                             {name}
                           </div>
+                          {file.folder_id && activeFolderId === "__all__" && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveFolderId(file.folder_id!)}
+                              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                              <Folder size={11} />
+                              {folders.find((folder) => folder.id === file.folder_id)?.name ?? "Folder"}
+                            </button>
+                          )}
                           {fileTags.length > 0 && (
                             <div className="text-xs text-muted-foreground">
                               <span>{fileTags.map((t) => t.name).join(", ")}</span>
@@ -1053,12 +1361,25 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                                     <ShieldCheck /> Verify integrity
                                   </DropdownMenuItem>
                                 )}
+                                {file.content_hash && (
+                                  <DropdownMenuItem onClick={() => void openFileDetails(file)}>
+                                    <Info /> File details
+                                  </DropdownMenuItem>
+                                )}
                                 {file.content_hash && file.chain_status !== "anchored" && (
                                   <DropdownMenuItem
-                                    onClick={() => openAnchorDialog(file)}
+                                    onClick={() => openAnchorDialog(file, "hash")}
                                     disabled={busyFileId === file.id || file.chain_status === "pending"}
                                   >
                                     <Anchor /> Anchor hash on Solana
+                                  </DropdownMenuItem>
+                                )}
+                                {file.content_hash && !fullFileAnchoredIds.has(file.id) && (
+                                  <DropdownMenuItem
+                                    onClick={() => openAnchorDialog(file, "full_file")}
+                                    disabled={busyFileId === file.id || file.chain_status === "pending"}
+                                  >
+                                    <Anchor /> Anchor full file on Solana
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
@@ -1179,6 +1500,65 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           </div>
         )}
       </div>
+
+      {/* New Folder Dialog */}
+      <DialogTemplate
+        open={newFolderOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNewFolderOpen(false);
+            setNewFolderName("");
+          }
+        }}
+        title="New folder"
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              disabled={creatingFolder}
+              onClick={() => {
+                setNewFolderOpen(false);
+                setNewFolderName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleCreateFolder()}
+              disabled={creatingFolder || newFolderName.trim() === ""}
+            >
+              {creatingFolder ? <Loader2 className="animate-spin" /> : <FolderPlus />}
+              Create folder
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Input
+            autoFocus
+            placeholder="e.g. Site photos"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleCreateFolder();
+            }}
+          />
+          <Select value={newFolderParentId} onValueChange={setNewFolderParentId}>
+            <SelectTrigger aria-label="Parent folder"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__root__">Workspace root</SelectItem>
+              {folders.map((folder) => (
+                <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Folders organise files inside this workspace. Uploading a folder from your device
+            recreates its structure here.
+          </p>
+        </div>
+      </DialogTemplate>
 
       {/* Move Dialog */}
       <DialogTemplate
@@ -1373,7 +1753,9 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           if (!open && !anchoring) closeAnchorDialog();
         }}
         kicker="Proof of existence"
-        title="Anchor file hash on Solana"
+        title={
+          anchorMode === "full_file" ? "Anchor full file on Solana" : "Anchor file hash on Solana"
+        }
         size="sm"
         footer={
           <>
@@ -1399,15 +1781,37 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
       >
         {anchorFile && (
           <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={anchorMode === "hash" ? "default" : "outline"}
+                disabled={anchoring}
+                onClick={() => setAnchorMode("hash")}
+              >
+                Hash only
+              </Button>
+              <Button
+                size="sm"
+                variant={anchorMode === "full_file" ? "default" : "outline"}
+                disabled={anchoring}
+                onClick={() => setAnchorMode("full_file")}
+              >
+                Full file
+              </Button>
+            </div>
+
             <p className="text-sm text-muted-foreground">
-              Writes this file&rsquo;s SHA-256 hash to a Solana transaction signed by your wallet.
-              The file itself stays in workspace storage.
+              {anchorMode === "hash"
+                ? "Writes this file’s SHA-256 hash to a Solana transaction signed by your wallet. The file itself stays in workspace storage."
+                : "Splits the file into chunks, hashes every chunk, and writes the file digest plus the chunk-manifest digest on chain. The bytes stay in private workspace storage, and the anchor can be rebuilt and verified later."}
             </p>
+
             <dl className="flex flex-col divide-y divide-border">
               <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0">
                 <dt className="text-xs text-muted-foreground">File</dt>
                 <dd className="min-w-0 truncate text-xs font-medium text-foreground">
                   {getFileName(anchorFile.storage_path)}
+                  {anchorFile.size_bytes !== null ? ` · ${formatSize(anchorFile.size_bytes)}` : ""}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-4 py-2">
@@ -1422,16 +1826,57 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                   sha256 · {shortSig(anchorFile.content_hash ?? "")}
                 </dd>
               </div>
+              {anchorMode === "full_file" && (
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="text-xs text-muted-foreground">Chunk plan</dt>
+                  <dd className="font-mono text-xs">
+                    {chunkPlanFor(anchorFile.size_bytes)} chunks ×{" "}
+                    {formatSize(DEFAULT_FULL_FILE_CHUNK_SIZE)}
+                  </dd>
+                </div>
+              )}
               <div className="flex items-baseline justify-between gap-4 py-2">
                 <dt className="text-xs text-muted-foreground">Network fee</dt>
                 <dd className="font-mono text-xs font-semibold">{anchorFee ?? "—"}</dd>
               </div>
             </dl>
+
+            {anchorMode === "full_file" && (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                One transaction either way: only the digests go on chain. The chunk copies count
+                toward workspace storage, so anchoring a large file needs free space.
+              </p>
+            )}
+
+            {anchoring && anchorProgress && (
+              <div className="space-y-1 rounded-none border bg-muted/50 p-3 text-xs">
+                <p className="font-medium">{anchorStatusLabel(anchorProgress.status)}</p>
+                {anchorProgress.chunkCount > 0 && (
+                  <div className="h-1.5 overflow-hidden rounded-none bg-muted">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{
+                        width: `${Math.round(
+                          (anchorProgress.uploadedChunks / anchorProgress.chunkCount) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                )}
+                {anchorProgress.chunkCount > 0 && (
+                  <p className="text-muted-foreground">
+                    {anchorProgress.uploadedChunks} of {anchorProgress.chunkCount} chunks stored
+                  </p>
+                )}
+              </div>
+            )}
+
             {anchorSigner ? (
               <p className="flex items-start gap-2 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
-                Signed by {wallet.wallet?.adapter.name ?? "your wallet"} ({wallet.shortAddress}).
-                A confirmed anchor is permanent on {SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}.
+                Signed by {wallet.wallet?.adapter.name ?? "your wallet"} ({wallet.shortAddress}) on{" "}
+                {SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}. The network fee is paid from that wallet,
+                never from your AI credits or SiteSurveyor balance.
               </p>
             ) : (
               <p className="flex items-start gap-2 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
@@ -1441,6 +1886,182 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                   : "Connect a Solana wallet to sign the anchor transaction."}
               </p>
             )}
+          </div>
+        )}
+      </DialogTemplate>
+
+      {/* File details dialog */}
+      <DialogTemplate
+        open={detailsFile !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailsFile(null);
+            setVerificationNote(null);
+          }
+        }}
+        title="File details"
+        size="md"
+        contentClassName="p-0"
+      >
+        {detailsFile && (
+          <div className="space-y-4 p-4">
+            <dl className="flex flex-col divide-y divide-border text-sm">
+              <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0">
+                <dt className="text-xs text-muted-foreground">Name</dt>
+                <dd className="min-w-0 truncate font-medium">
+                  {getFileName(detailsFile.storage_path)}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Type</dt>
+                <dd>{getFileType(detailsFile.storage_path, detailsFile.mime_type)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Size</dt>
+                <dd className="font-mono text-xs">{formatSize(detailsFile.size_bytes)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Workspace storage</dt>
+                <dd className="font-mono text-xs">
+                  {storageUsage
+                    ? `${storageUsage.used_mb.toFixed(1)} of ${storageUsage.limit_mb.toFixed(0)} MB (${storageUsage.percent}%)`
+                    : "—"}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Integrity hash</dt>
+                <dd className="max-w-40 truncate font-mono text-xs" title={detailsFile.content_hash ?? undefined}>
+                  {detailsFile.content_hash ? shortSig(detailsFile.content_hash) : "not hashed yet"}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Folder</dt>
+                <dd className="truncate text-xs">
+                  {folders.find((folder) => folder.id === detailsFile.folder_id)?.name ?? "Workspace root"}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2">
+                <dt className="text-xs text-muted-foreground">Uploaded</dt>
+                <dd className="text-xs">{formatDateLabel(detailsFile.created_at)}</dd>
+              </div>
+            </dl>
+
+            <div className="border-t border-border pt-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium">Blockchain anchors</h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => openAnchorDialog(detailsFile, "hash")}
+                  disabled={detailsFile.chain_status === "pending"}
+                >
+                  <Anchor size={14} />
+                  Anchor
+                </Button>
+              </div>
+
+              {anchorRecordsLoading ? (
+                <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                  <Loader2 size={16} className="animate-spin" />
+                  Loading anchor records…
+                </div>
+              ) : anchorRecords.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  This file has no anchor attempts yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {anchorRecords.map((record) => (
+                    <li key={record.id} className="space-y-1 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">
+                            {record.mode === "full_file" ? "Full file" : "Hash only"} ·{" "}
+                            {anchorStatusLabel(record.status)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateLabel(record.created_at)} · Solana{" "}
+                            {SOLANA_CLUSTER_LABEL[asCluster(record.network)]}
+                            {record.wallet_address ? ` · ${shortSig(record.wallet_address)}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {record.chunk_count
+                              ? `${record.uploaded_chunks}/${record.chunk_count} chunks · `
+                              : ""}
+                            {record.fee_lamports !== null
+                              ? `${formatLamports(record.fee_lamports)} · `
+                              : ""}
+                            {record.tx_slot !== null ? `slot ${record.tx_slot}` : "no slot yet"}
+                          </p>
+                          {record.error_message && (
+                            <p className="text-xs text-destructive">{record.error_message}</p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          {record.tx_signature && (
+                            <a
+                              href={explorerTxUrl(record.tx_signature, asCluster(record.network))}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs underline underline-offset-2"
+                            >
+                              {shortSig(record.tx_signature)}
+                            </a>
+                          )}
+                          {record.status === "anchored" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              disabled={verifyingOperationId === record.id}
+                              onClick={() => void handleVerifyAnchorRecord(record)}
+                            >
+                              {verifyingOperationId === record.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <ShieldCheck size={14} />
+                              )}
+                              Verify
+                            </Button>
+                          )}
+                          {(record.status === "failed" || record.status === "cancelled") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => {
+                                const mode: AnchorMode =
+                                  record.mode === "full_file" ? "full_file" : "hash";
+                                setDetailsFile(null);
+                                openAnchorDialog(detailsFile, mode);
+                              }}
+                            >
+                              <RotateCcw size={14} />
+                              Retry
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Verification:{" "}
+                        {record.verification_status === "verified"
+                          ? "chunks rebuild to the anchored digest"
+                          : record.verification_status === "mismatch"
+                            ? "rebuild did not match"
+                            : record.mode === "full_file"
+                              ? "not checked yet"
+                              : "file re-hash only"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {verificationNote && (
+                <p className="mt-2 text-xs text-muted-foreground">{verificationNote}</p>
+              )}
+            </div>
           </div>
         )}
       </DialogTemplate>

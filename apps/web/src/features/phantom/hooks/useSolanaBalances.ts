@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
-import { SOLANA_CLUSTER, SOLANA_USDC_MINT } from "../lib/config.ts";
+import { SOLANA_USDC_MINT } from "../lib/config.ts";
+import { solanaRpc } from "../lib/solanaRpc.ts";
 import { getAssociatedTokenAddress } from "../payments/phantomPay.ts";
 
 export interface SolanaBalances {
@@ -13,25 +14,6 @@ export interface SolanaBalances {
 }
 
 const POLL_MS = 30_000;
-const EDGE_FUNCTION_URL =
-  (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "") +
-  "/functions/v1/solana-data";
-
-/** Call the solana-data Edge Function for a single RPC method. */
-async function rpcProxy<T>(method: string, params: unknown[]): Promise<T> {
-  if (!EDGE_FUNCTION_URL) throw new Error("solana-data Edge Function URL not configured");
-  const res = await fetch(EDGE_FUNCTION_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "rpc", method, params, cluster: SOLANA_CLUSTER }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? `RPC proxy failed (${res.status})`);
-  }
-  const { result } = await res.json();
-  return result as T;
-}
 
 /** Fetch SOL + USDC balances via the RPC proxy (CORS-safe). */
 async function fetchBalancesViaProxy(address: string): Promise<{ sol: number | null; usdc: number | null }> {
@@ -40,8 +22,8 @@ async function fetchBalancesViaProxy(address: string): Promise<{ sol: number | n
   const ata = getAssociatedTokenAddress(mint, owner);
 
   const [balanceResult, tokenAccount] = await Promise.all([
-    rpcProxy<{ value: number; context: unknown }>("getBalance", [address, { commitment: "confirmed" }]),
-    rpcProxy<{ value: { amount: string; decimals: number; uiAmount: number | null } } | null>(
+    solanaRpc<{ value: number; context: unknown }>("getBalance", [address, { commitment: "confirmed" }]),
+    solanaRpc<{ value: { amount: string; decimals: number; uiAmount: number | null } } | null>(
       "getTokenAccountBalance",
       [ata.toBase58(), { commitment: "confirmed" }],
     ).catch(() => null),

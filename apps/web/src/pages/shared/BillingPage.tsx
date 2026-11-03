@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Banknote,
   Check,
@@ -49,8 +50,20 @@ import {
   getPesepayWallet,
   initiatePesepayCheckout,
   payInvoiceWithBalance,
+  verifyOrder,
+  verifyWalletDeposit,
   type PesepayWalletRow,
 } from "../../lib/repositories/pesepay.ts";
+import BillingOverviewSection from "../../components/finance/BillingOverviewSection.tsx";
+import AiCreditsSection from "../../components/finance/AiCreditsSection.tsx";
+import StorageSection from "../../components/finance/StorageSection.tsx";
+import BillingLedgerSection from "../../components/finance/BillingLedgerSection.tsx";
+import FinancialInsightsSection from "../../components/finance/FinancialInsightsSection.tsx";
+import type { PurchaseMessage } from "../../components/finance/PackageCatalog.tsx";
+import {
+  BILLING_SECTIONS,
+  type BillingSectionId,
+} from "../../components/finance/billingSections.ts";
 import type { PaymentWithInvoice } from "../../lib/repositories/payments.ts";
 import {
   deletePaymentMethod,
@@ -122,6 +135,11 @@ function clusterLabelFor(expiry: string | null): string {
   return `Solana ${expiry.charAt(0).toUpperCase()}${expiry.slice(1)}`;
 }
 
+function purchaseTone(tone: PurchaseMessage["tone"]) {
+  if (tone === "success") return "success" as const;
+  return tone === "error" ? ("danger" as const) : ("info" as const);
+}
+
 export default function BillingPage({
   workspaceId,
   isPlatformAdmin = false,
@@ -171,6 +189,86 @@ export default function BillingPage({
   const [historySort, setHistorySort] = useState<
     "date-desc" | "date-asc" | "amount-desc"
   >("date-desc");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [purchaseMessage, setPurchaseMessage] = useState<PurchaseMessage | null>(null);
+  const [purchaseRefresh, setPurchaseRefresh] = useState(0);
+
+  const visibleSections = BILLING_SECTIONS.filter(
+    (item) => !item.adminOnly || isPlatformAdmin,
+  );
+  const sectionParam = searchParams.get("section");
+  const activeSection: BillingSectionId =
+    visibleSections.find((item) => item.id === sectionParam)?.id ?? "overview";
+
+  const goSection = (next: BillingSectionId) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("section", next);
+    setSearchParams(params, { replace: true });
+  };
+
+  const activeSectionMeta =
+    visibleSections.find((item) => item.id === activeSection) ?? BILLING_SECTIONS[0];
+
+  // PesePay sends package checkouts back to ?pesepay=package-return&purchase=<id>.
+  // The Edge Function asks the provider and allocates in one atomic step.
+  const returnedPurchaseId =
+    searchParams.get("pesepay") === "package-return"
+      ? searchParams.get("purchase")
+      : null;
+
+  useEffect(() => {
+    if (!returnedPurchaseId) return;
+    const params = new URLSearchParams(searchParams);
+    params.delete("pesepay");
+    params.delete("purchase");
+    setSearchParams(params, { replace: true });
+
+    let cancelled = false;
+    setPurchaseMessage({
+      tone: "pending",
+      text: "Confirming your purchase with PesePay…",
+    });
+    void verifyOrder({ workspaceId, orderId: returnedPurchaseId })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.status === "completed") {
+          setPurchaseMessage({
+            tone: "success",
+            text:
+              result.kind === "storage"
+                ? "Payment confirmed. The storage you bought is active on this workspace."
+                : result.kind === "ai_credits"
+                  ? "Payment confirmed. Your AI credits are ready to use."
+                  : "Payment confirmed by PesePay.",
+          });
+        } else if (result.status === "pending") {
+          setPurchaseMessage({
+            tone: "pending",
+            text: "PesePay has not confirmed this payment yet. If you completed it, check the transactions tab again in a moment.",
+          });
+        } else {
+          setPurchaseMessage({
+            tone: "error",
+            text: `PesePay reported this payment as ${result.status}. Nothing was added to the workspace.`,
+          });
+        }
+        setPurchaseRefresh((count) => count + 1);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setPurchaseMessage({
+          tone: "error",
+          text:
+            err instanceof Error
+              ? err.message
+              : "Unable to confirm this purchase with PesePay. Check the transactions tab.",
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // searchParams is read, not depended on: the effect must run once per return.
+  }, [returnedPurchaseId, setSearchParams, searchParams, workspaceId]);
 
   const clusterLabel = SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER];
 
@@ -275,14 +373,28 @@ export default function BillingPage({
     window.setTimeout(() => setNotice(null), 2300);
   }, []);
 
+  /** A purchase settled locally (balance payment): refresh every money view. */
+  const reloadAfterPurchase = useCallback(() => {
+    setPurchaseRefresh((count) => count + 1);
+    void fetchPesepayBalance();
+  }, [fetchPesepayBalance]);
+
   const scrollToWalletMethods = () => {
-    const target = document.getElementById("wallet-methods");
-    if (!target) return;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
-      block: "center",
-    });
+    const scroll = () => {
+      const target = document.getElementById("wallet-methods");
+      if (!target) return;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    };
+    if (activeSection !== "methods") {
+      goSection("methods");
+      window.setTimeout(scroll, 120);
+      return;
+    }
+    scroll();
   };
 
   const openPaymentComposer = () => {
@@ -572,6 +684,21 @@ export default function BillingPage({
   );
 
   const canManageBilling = canManageFinance(membership?.role) || isPlatformAdmin;
+
+  const paymentRails = (
+    <PaymentRails
+      address={cryptoAddress}
+      walletName={cryptoWalletName}
+      connected={cryptoConnected}
+      solana={solanaBalances}
+      pesepayBalance={pesepayBalance}
+      pesepayLoading={pesepayBalanceLoading}
+      pesepayError={pesepayBalanceError}
+      onManageWallets={scrollToWalletMethods}
+      onOpenBalance={openPesepaySettings}
+      onRetryPesepay={() => void fetchPesepayBalance()}
+    />
+  );
 
   const query = historySearch.trim().toLowerCase();
   const filteredHistory = history
@@ -1168,16 +1295,16 @@ export default function BillingPage({
       {/* ── Page header ──────────────────────────────────── */}
       <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Treasury</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
           <p className="text-sm text-muted-foreground">
-            Pay with a Solana wallet or your PesePay balance. One ledger for both.
+            AI credits, workspace storage and invoice payments, with the ledger behind all of them.
           </p>
           <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-0.5 font-medium text-foreground">
               <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
-              Treasury
+              {activeSectionMeta.label}
             </span>
-            <span>Crypto wallets · PesePay balance</span>
+            <span>{activeSectionMeta.description}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1204,6 +1331,36 @@ export default function BillingPage({
         </div>
       </div>
 
+      {/* ── Sections ─────────────────────────────────────── */}
+      <nav className="flex flex-wrap items-center gap-2" aria-label="Billing sections">
+        {visibleSections.map((item) => (
+          <Button
+            key={item.id}
+            size="sm"
+            variant={activeSection === item.id ? "default" : "outline"}
+            aria-current={activeSection === item.id ? "true" : undefined}
+            onClick={() => goSection(item.id)}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </nav>
+
+      {purchaseMessage ? (
+        <ErrorNotice
+          layout="banner"
+          tone={purchaseTone(purchaseMessage.tone)}
+          role="status"
+          action={
+            <Button variant="outline" size="sm" onClick={() => setPurchaseMessage(null)}>
+              Dismiss
+            </Button>
+          }
+        >
+          {purchaseMessage.text}
+        </ErrorNotice>
+      ) : null}
+
       {notice && (
         <div
           role="status"
@@ -1214,28 +1371,58 @@ export default function BillingPage({
         </div>
       )}
 
-      <PaymentRails
-        address={cryptoAddress}
-        walletName={cryptoWalletName}
-        connected={cryptoConnected}
-        solana={solanaBalances}
-        pesepayBalance={pesepayBalance}
-        pesepayLoading={pesepayBalanceLoading}
-        pesepayError={pesepayBalanceError}
-        onManageWallets={scrollToWalletMethods}
-        onOpenBalance={openPesepaySettings}
-        onRetryPesepay={() => void fetchPesepayBalance()}
-      />
+      {activeSection === "overview" ? (
+        <>
+          <BillingOverviewSection
+            workspaceId={workspaceId}
+            refreshKey={purchaseRefresh}
+            onSection={goSection}
+          />
 
-      <MetricsTiles
-        collected={history.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)}
-        outstanding={invoices.reduce(
-          (sum, invoice) => sum + (invoice.status === "paid" ? 0 : Number(invoice.total || 0)),
-          0,
-        )}
-        invoiceCount={invoices.length}
-      />
+          {paymentRails}
+        </>
+      ) : null}
 
+      {activeSection === "credits" ? (
+        <AiCreditsSection
+          workspaceId={workspaceId}
+          walletBalance={pesepayBalanceValue}
+          refreshKey={purchaseRefresh}
+          onMessage={setPurchaseMessage}
+        />
+      ) : null}
+
+      {activeSection === "storage" ? (
+        <StorageSection
+          workspaceId={workspaceId}
+          walletBalance={pesepayBalanceValue}
+          refreshKey={purchaseRefresh}
+          onMessage={setPurchaseMessage}
+        />
+      ) : null}
+
+      {activeSection === "insights" ? (
+        <FinancialInsightsSection
+          workspaceId={workspaceId}
+          isPlatformAdmin={isPlatformAdmin}
+          refreshKey={purchaseRefresh}
+        />
+      ) : null}
+
+      {activeSection === "overview" ? (
+        <MetricsTiles
+          collected={history.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)}
+          outstanding={invoices.reduce(
+            (sum, invoice) => sum + (invoice.status === "paid" ? 0 : Number(invoice.total || 0)),
+            0,
+          )}
+          invoiceCount={invoices.length}
+        />
+      ) : null}
+
+      {activeSection === "methods" ? (
+        <>
+        {paymentRails}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.62fr)_minmax(300px,1fr)] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           <WalletMethodsCard
@@ -1451,15 +1638,26 @@ export default function BillingPage({
           </Card>
         </aside>
       </div>
+        </>
+      ) : null}
+
+      {activeSection === "transactions" ? (
+        <>
+        <BillingLedgerSection
+          workspaceId={workspaceId}
+          refreshKey={purchaseRefresh}
+          onMessage={setPurchaseMessage}
+          onSettled={reloadAfterPurchase}
+        />
 
       {/* ── Payment history ──────────────────────────────── */}
       <Card className="gap-0 border-border">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Ledger
+              Treasury
             </p>
-            <h2 className="mt-1 text-base font-semibold">Payment history</h2>
+            <h2 className="mt-1 text-base font-semibold">Invoice payment history</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               {filteredHistory.length} of {history.length}{" "}
               {history.length === 1 ? "entry" : "entries"}
@@ -1520,6 +1718,8 @@ export default function BillingPage({
           />
         </CardContent>
       </Card>
+        </>
+      ) : null}
     </div>
   );
 }

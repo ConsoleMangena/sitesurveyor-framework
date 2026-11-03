@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.ts";
+import { generateLocalId } from "../localDb/utils.ts";
 
 const SUPABASE_URL =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
@@ -102,6 +103,8 @@ export async function streamAiReply(
   const body = JSON.stringify({
     conversation_id: conversationId,
     message,
+    // Lets the server bill this turn idempotently across both runtimes.
+    turn_id: generateLocalId(),
     ...(projectId ? { project_id: projectId } : {}),
     ...(model ? { model } : {}),
   });
@@ -118,8 +121,9 @@ export async function streamAiReply(
       const payload = (await attempt.json().catch(() => null)) as
         | { error?: string }
         | null;
-      // Auth/validation failures are terminal regardless of runtime.
-      if ([400, 401, 403].includes(attempt.status)) {
+      // Auth, validation and credit rejections are terminal regardless of
+      // runtime — retrying the fallback would only re-attempt a refused charge.
+      if ([400, 401, 402, 403].includes(attempt.status)) {
         handlers.onError(payload?.error ?? `Request rejected (${attempt.status}).`);
         return;
       }

@@ -1,47 +1,51 @@
 import { supabase } from "../supabase/client.ts";
 import type { Tables } from "../supabase/types.ts";
+import type { StorageUsage } from "./attachments.ts";
 
-export const STORAGE_PLANS = [
-  { id: "10gb", label: "10 GB", storageMb: 10 * 1024, amount: 5, currencyCode: "USD" },
-  { id: "50gb", label: "50 GB", storageMb: 50 * 1024, amount: 15, currencyCode: "USD" },
-  { id: "100gb", label: "100 GB", storageMb: 100 * 1024, amount: 30, currencyCode: "USD" },
-] as const;
-
-export type StoragePlanId = (typeof STORAGE_PLANS)[number]["id"];
+export type BillingPackageKind = "ai_credits" | "storage";
 export type StoragePurchaseRow = Tables<"workspace_storage_purchases">;
 export type PesepayWalletRow = Tables<"workspace_pesepay_wallets">;
 export type PesepayTransactionRow = Tables<"workspace_pesepay_transactions">;
+export type BillingPackageRow = Tables<"billing_packages">;
+export type AiCreditTransactionRow = Tables<"workspace_ai_credit_transactions">;
 
-export async function initiatePesepayCheckout(input: {
-  invoiceId: string;
-  workspaceId: string;
-}): Promise<{ redirectUrl: string; referenceNumber: string }> {
-  const { data, error } = await supabase.functions.invoke("pesepay", {
-    body: input,
-  });
-  if (error) throw error;
-  const result = data as { redirectUrl?: string; referenceNumber?: string; error?: string };
-  if (!result.redirectUrl || !result.referenceNumber) {
-    throw new Error(result.error || "Pesepay did not return a checkout URL.");
-  }
+export type BillingPackage = {
+  id: string;
+  kind: BillingPackageKind;
+  label: string;
+  description: string;
+  credits: number | null;
+  storageMb: number | null;
+  durationDays: number | null;
+  amount: number;
+  currencyCode: string;
+  estimatedInfrastructureCost: number;
+  estimatedPaymentFee: number;
+};
+
+export type OrderVerification = {
+  status: "pending" | "completed" | "failed" | "cancelled";
+  kind?: string;
+  transactionStatus?: string | null;
+};
+
+function toBillingPackage(row: BillingPackageRow): BillingPackage {
   return {
-    redirectUrl: result.redirectUrl,
-    referenceNumber: result.referenceNumber,
+    id: row.id,
+    kind: row.kind as BillingPackageKind,
+    label: row.label,
+    description: row.description,
+    credits: row.credits === null ? null : Number(row.credits),
+    storageMb: row.storage_mb === null ? null : Number(row.storage_mb),
+    durationDays: row.duration_days === null ? null : Number(row.duration_days),
+    amount: Number(row.amount),
+    currencyCode: row.currency_code,
+    estimatedInfrastructureCost: Number(row.estimated_infrastructure_cost),
+    estimatedPaymentFee: Number(row.estimated_payment_fee),
   };
 }
 
-export async function listStoragePurchases(workspaceId: string): Promise<StoragePurchaseRow[]> {
-  const { data, error } = await supabase
-    .from("workspace_storage_purchases")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false })
-    .limit(6);
-  if (error) throw error;
-  return data ?? [];
-}
-
-async function invokeWalletFunction<T>(body: Record<string, unknown>): Promise<T> {
+async function invokePesepay<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("pesepay", { body });
   if (!error) return data as T;
 
@@ -58,6 +62,125 @@ async function invokeWalletFunction<T>(body: Record<string, unknown>): Promise<T
   throw error;
 }
 
+export async function listBillingPackages(
+  kind?: BillingPackageKind,
+): Promise<BillingPackage[]> {
+  let query = supabase
+    .from("billing_packages")
+    .select("*")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+  if (kind) query = query.eq("kind", kind);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(toBillingPackage);
+}
+
+export async function initiatePesepayCheckout(input: {
+  invoiceId: string;
+  workspaceId: string;
+}): Promise<{ redirectUrl: string; referenceNumber: string; orderId: string }> {
+  const result = await invokePesepay<{
+    redirectUrl?: string;
+    referenceNumber?: string;
+    orderId?: string;
+    error?: string;
+  }>({ ...input, action: "pay-invoice" });
+  if (!result.redirectUrl || !result.referenceNumber) {
+    throw new Error(result.error || "Pesepay did not return a checkout URL.");
+  }
+  return {
+    redirectUrl: result.redirectUrl,
+    referenceNumber: result.referenceNumber,
+    orderId: result.orderId ?? "",
+  };
+}
+
+export async function initiatePackageCheckout(input: {
+  workspaceId: string;
+  packageId: string;
+}): Promise<{
+  redirectUrl: string;
+  referenceNumber: string;
+  purchaseId: string;
+  packageKind?: BillingPackageKind;
+}> {
+  const result = await invokePesepay<{
+    redirectUrl?: string;
+    referenceNumber?: string;
+    purchaseId?: string;
+    packageKind?: BillingPackageKind;
+    error?: string;
+  }>({ ...input, action: "checkout-package" });
+  if (!result.redirectUrl || !result.referenceNumber || !result.purchaseId) {
+    throw new Error(result.error || "PesePay did not return a package checkout URL.");
+  }
+  return {
+    redirectUrl: result.redirectUrl,
+    referenceNumber: result.referenceNumber,
+    purchaseId: result.purchaseId,
+    packageKind: result.packageKind,
+  };
+}
+
+export async function verifyOrder(input: {
+  workspaceId: string;
+  orderId: string;
+}): Promise<OrderVerification> {
+  const result = await invokePesepay<OrderVerification & { error?: string }>({
+    ...input,
+    action: "verify-order",
+  });
+  if (!result.status) throw new Error(result.error || "Unable to verify this PesePay payment.");
+  return result;
+}
+
+export async function payPackageWithBalance(input: {
+  workspaceId: string;
+  packageId: string;
+}): Promise<{ status: "paid"; purchaseId: string; balance: number }> {
+  const result = await invokePesepay<{
+    status?: "paid";
+    purchaseId?: string;
+    balance?: number;
+    error?: string;
+  }>({ ...input, action: "pay-package-balance", requestId: crypto.randomUUID() });
+  if (result.status !== "paid" || !result.purchaseId || typeof result.balance !== "number") {
+    throw new Error(result.error || "Unable to pay for this package from the PesePay balance.");
+  }
+  return { status: result.status, purchaseId: result.purchaseId, balance: result.balance };
+}
+
+export async function payInvoiceWithBalance(input: {
+  workspaceId: string;
+  invoiceId: string;
+}): Promise<{ status: "paid"; paymentId: string; balance: number }> {
+  const result = await invokePesepay<{
+    status?: "paid";
+    paymentId?: string;
+    balance?: number;
+    error?: string;
+  }>({ ...input, action: "pay-invoice-balance", requestId: crypto.randomUUID() });
+  if (result.status !== "paid" || !result.paymentId || typeof result.balance !== "number") {
+    throw new Error(result.error || "Unable to pay the invoice from the PesePay balance.");
+  }
+  return { status: result.status, paymentId: result.paymentId, balance: result.balance };
+}
+
+export async function listStoragePurchases(
+  workspaceId: string,
+  limit = 6,
+): Promise<StoragePurchaseRow[]> {
+  const { data, error } = await supabase
+    .from("workspace_storage_purchases")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getPesepayWallet(workspaceId: string): Promise<PesepayWalletRow | null> {
   const { data, error } = await supabase
     .from("workspace_pesepay_wallets")
@@ -68,22 +191,92 @@ export async function getPesepayWallet(workspaceId: string): Promise<PesepayWall
   return data;
 }
 
-export async function listPesepayTransactions(workspaceId: string): Promise<PesepayTransactionRow[]> {
+export async function listPesepayTransactions(
+  workspaceId: string,
+  limit = 25,
+): Promise<PesepayTransactionRow[]> {
   const { data, error } = await supabase
     .from("workspace_pesepay_transactions")
     .select("*")
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
-    .limit(12);
+    .limit(limit);
   if (error) throw error;
   return data ?? [];
+}
+
+export async function listAiCreditTransactions(
+  workspaceId: string,
+  limit = 25,
+): Promise<AiCreditTransactionRow[]> {
+  const { data, error } = await supabase
+    .from("workspace_ai_credit_transactions")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getAiCreditBalance(workspaceId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("workspace_ai_credit_accounts")
+    .select("balance")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? Number(data.balance) : 0;
+}
+
+export type WorkspaceBillingOverview = {
+  ai_credit_balance: number;
+  ai_credits_used: number;
+  wallet_balance: number;
+  total_spent: number;
+  total_spent_zwl: number;
+  currency_code: string;
+  successful_purchases: number;
+  pending_payments: number;
+  failed_payments: number;
+  storage: StorageUsage | null;
+};
+
+export type PlatformFinancialOverview = {
+  gross_revenue: number;
+  refunds: number;
+  payment_fees: number;
+  infrastructure_costs: number;
+  estimated_profit: number;
+  transaction_volume: number;
+  successful_orders: number;
+  ai_credits_sold: number;
+  storage_mb_sold: number;
+  currency_code: string;
+  cost_basis: string;
+};
+
+export async function getWorkspaceBillingOverview(
+  workspaceId: string,
+): Promise<WorkspaceBillingOverview | null> {
+  const { data, error } = await supabase.rpc("get_workspace_billing_overview", {
+    p_workspace_id: workspaceId,
+  });
+  if (error) throw error;
+  return (data as unknown as WorkspaceBillingOverview | null) ?? null;
+}
+
+export async function getPlatformFinancialOverview(): Promise<PlatformFinancialOverview | null> {
+  const { data, error } = await supabase.rpc("get_platform_financial_overview");
+  if (error) throw error;
+  return (data as unknown as PlatformFinancialOverview | null) ?? null;
 }
 
 export async function initiateWalletDeposit(input: {
   workspaceId: string;
   amount: number;
 }): Promise<{ redirectUrl: string; referenceNumber: string; depositId: string }> {
-  const result = await invokeWalletFunction<{
+  const result = await invokePesepay<{
     redirectUrl?: string;
     referenceNumber?: string;
     depositId?: string;
@@ -103,43 +296,9 @@ export async function verifyWalletDeposit(input: {
   workspaceId: string;
   depositId: string;
 }): Promise<{ status: "pending" | "completed" | "failed"; transactionStatus?: string | null }> {
-  const result = await invokeWalletFunction<{
-    status?: "pending" | "completed" | "failed";
-    transactionStatus?: string | null;
-    error?: string;
-  }>({ ...input, action: "verify-deposit" });
-  if (!result.status) throw new Error(result.error || "Unable to verify the wallet deposit.");
-  return { status: result.status, transactionStatus: result.transactionStatus };
-}
-
-export async function payStorageWithBalance(input: {
-  workspaceId: string;
-  storagePlanId: StoragePlanId;
-}): Promise<{ status: "paid"; purchaseId: string; balance: number }> {
-  const result = await invokeWalletFunction<{
-    status?: "paid";
-    purchaseId?: string;
-    balance?: number;
-    error?: string;
-  }>({ ...input, action: "pay-storage-balance", requestId: crypto.randomUUID() });
-  if (result.status !== "paid" || !result.purchaseId || typeof result.balance !== "number") {
-    throw new Error(result.error || "Unable to pay for storage from the PesePay balance.");
-  }
-  return { status: result.status, purchaseId: result.purchaseId, balance: result.balance };
-}
-
-export async function payInvoiceWithBalance(input: {
-  workspaceId: string;
-  invoiceId: string;
-}): Promise<{ status: "paid"; paymentId: string; balance: number }> {
-  const result = await invokeWalletFunction<{
-    status?: "paid";
-    paymentId?: string;
-    balance?: number;
-    error?: string;
-  }>({ ...input, action: "pay-invoice-balance", requestId: crypto.randomUUID() });
-  if (result.status !== "paid" || !result.paymentId || typeof result.balance !== "number") {
-    throw new Error(result.error || "Unable to pay the invoice from the PesePay balance.");
-  }
-  return { status: result.status, paymentId: result.paymentId, balance: result.balance };
+  const verified = await verifyOrder({ workspaceId: input.workspaceId, orderId: input.depositId });
+  return {
+    status: verified.status === "cancelled" ? "failed" : verified.status,
+    transactionStatus: verified.transactionStatus ?? null,
+  };
 }

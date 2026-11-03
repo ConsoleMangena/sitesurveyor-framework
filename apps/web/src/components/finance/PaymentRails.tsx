@@ -318,13 +318,6 @@ export default function PaymentRails({
                 <Plus className="h-4 w-4" />
                 Add funds
               </Button>
-              <button
-                type="button"
-                onClick={onOpenBalance}
-                className="text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              >
-                Transactions
-              </button>
             </ActionButtonRow>
 
             {pesepayError ? (
