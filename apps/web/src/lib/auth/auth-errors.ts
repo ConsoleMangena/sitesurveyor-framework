@@ -119,6 +119,11 @@ const OAUTH_CALLBACK_ERROR_MESSAGES: Array<{ contains: string; message: string }
       "GitHub signed you in, but it wouldn't hand your profile back to SiteSurveyor, so the sign-in couldn't finish. Try again — if it keeps happening, the GitHub sign-in app isn't allowed to read email addresses.",
   },
   {
+    contains: "database error saving new user",
+    message:
+      "SiteSurveyor couldn't create an account from that GitHub identity. The email address GitHub returned is already attached to another account — sign in with that one and connect GitHub from Account security.",
+  },
+  {
     contains: "unable to exchange external code",
     message:
       "GitHub rejected that sign-in attempt before it could finish. Go back and start sign-in again.",

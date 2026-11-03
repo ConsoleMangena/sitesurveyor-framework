@@ -73,6 +73,12 @@ describe("formatAuthUserFacingError", () => {
       ).toContain("allowed redirect list");
     });
 
+    it("explains a rejected account insert", () => {
+      const out = formatAuthUserFacingError("Database error saving new user");
+      expect(out).toContain("already attached to another account");
+      expect(out).not.toContain("Database error");
+    });
+
     it("leaves an unrecognised provider message intact", () => {
       expect(
         formatAuthUserFacingError("Some future GoTrue wording", "Fallback."),
