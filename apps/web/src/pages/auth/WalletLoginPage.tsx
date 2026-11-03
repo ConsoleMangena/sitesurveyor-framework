@@ -72,6 +72,7 @@ import {
   Wallet,
 } from "lucide-react";
 import ErrorNotice from "../../components/errors/ErrorNotice.tsx";
+import AuthShell from "../../components/auth/AuthShell";
 import { CUSTOM_WALLET_NAME } from "../../features/phantom/lib/customWalletAdapter.ts";
 
 type WalletChoiceStatus =
@@ -766,8 +767,25 @@ export default function WalletLoginPage() {
   };
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-10">
-      <div className="w-full max-w-md space-y-6">
+    <AuthShell
+      showBrand={false}
+      footer={
+        <div className="flex flex-col items-center gap-3">
+          <Link
+            to="/market"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+          >
+            <Globe2 className="size-4" aria-hidden="true" />
+            Go to public market
+          </Link>
+          <p className="text-xs text-muted-foreground">
+            By continuing you agree to SiteSurveyor&apos;s terms and privacy
+            policy.
+          </p>
+        </div>
+      }
+    >
+      <div className="space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <img src="/logo.svg" alt="" className="size-9" />
           <div className="space-y-1">
@@ -1154,20 +1172,6 @@ export default function WalletLoginPage() {
             </CardContent>
           </Card>
         </Tabs>
-
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Link
-            to="/market"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
-          >
-            <Globe2 className="size-4" aria-hidden="true" />
-            Go to public market
-          </Link>
-          <p className="text-xs text-muted-foreground">
-            By continuing you agree to SiteSurveyor&apos;s terms and privacy
-            policy.
-          </p>
-        </div>
       </div>
 
       <DialogTemplate
@@ -1276,6 +1280,6 @@ export default function WalletLoginPage() {
           ) : null}
         </div>
       </DialogTemplate>
-    </div>
+    </AuthShell>
   );
 }

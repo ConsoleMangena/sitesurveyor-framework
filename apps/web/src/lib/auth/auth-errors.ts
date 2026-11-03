@@ -60,11 +60,61 @@ function authErrorCode(error: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * User-facing sentences for the stable error codes the `web3-auth` Edge
+ * Function returns. Keyed by code so a server message change never leaves
+ * the UI showing a raw token.
+ */
+const WEB3_AUTH_CODE_MESSAGES: Record<string, string> = {
+  NOT_AUTHENTICATED:
+    "Your session has expired. Sign in again to manage your sign-in methods.",
+  RATE_LIMITED:
+    "Too many attempts. Wait a moment before trying again.",
+  CHALLENGE_INVALID:
+    "That sign-in challenge was already used or expired. Please try again.",
+  OWNERSHIP_PROOF_REQUIRED:
+    "Sign the message with that wallet again to prove you still control it before removing it.",
+  LAST_SIGN_IN_METHOD:
+    "That is the only way you can sign in right now. Add another sign-in method first.",
+  WALLET_ALREADY_LINKED:
+    "That wallet already belongs to a different SiteSurveyor account.",
+  WALLET_NOT_LINKED: "That wallet is not linked to your account.",
+  EMAIL_NOT_ON_ACCOUNT:
+    "Add and confirm that email address on your account first.",
+  EMAIL_NOT_CONFIRMED:
+    "Confirm that email address first — open the verification link we sent you.",
+  INVALID_MESSAGE:
+    "That signed message could not be read. Please try signing again.",
+  INVALID_ADDRESS: "That wallet address is not valid.",
+  INVALID_EMAIL: "That email address is not valid.",
+  ORIGIN_MISMATCH:
+    "This request came from a different origin than the signed message. Reload the page and try again.",
+  UNSUPPORTED_CHAIN: "That blockchain is not supported.",
+  SERVER_NOT_CONFIGURED:
+    "Wallet authentication is not configured on this deployment. Please contact support.",
+  SERVER_ERROR:
+    "Could not complete that wallet request. Please try again.",
+  INTERNAL_ERROR: "Something went wrong validating that request.",
+  NETWORK_ERROR:
+    "Could not reach the wallet service. Check your connection and try again.",
+};
+
+/** True when `error` is a Web3AuthError-shaped object with a known code. */
+function web3AuthCode(error: unknown): string | undefined {
+  const code = authErrorCode(error);
+  if (!code) return undefined;
+  return WEB3_AUTH_CODE_MESSAGES[code] ? code : undefined;
+}
+
 /** Return the raw or a generic message for any auth error. */
 export function formatAuthUserFacingError(
   error: unknown,
   fallback = "Something went wrong. Please try again.",
 ): string {
+  // Edge-function failures carry a stable code that maps to a real sentence.
+  const mapped = web3AuthCode(error);
+  if (mapped) return WEB3_AUTH_CODE_MESSAGES[mapped];
+
   if (
     error instanceof Error &&
     (error.name === "WalletNotSelectedError" ||

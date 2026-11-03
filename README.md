@@ -41,6 +41,7 @@ Open source makes the framework inspectable, adaptable, and available for survey
 | [Surveyor user guide](USER_GUIDE.md) | Surveyors, firm leads, operators | Daily workflows, AI, file proofs, payments, and troubleshooting |
 | [System architecture & design](DESIGN.md) | Developers, architects | Components, data flows, AI tools, Solana anchoring, and design decisions |
 | [Security model](SECURITY.md) | Administrators, developers, auditors | Data boundaries, controls, limitations, and production checklist |
+| [Authentication guide](AUTHENTICATION.md) | Developers, administrators | Email, GitHub, and wallet sign-in, account linking, and required configuration |
 | [Product brief](PRODUCT.md) | Product and design teams | Users, positioning, capabilities, principles, and constraints |
 | [Web app guide](apps/web/README.md) | Frontend developers | Setup, environment, structure, testing, PWA, and build |
 | [AI gateway guide](ai-gateway/README.md) | AI/platform developers | Edge Function, self-hosted fallback, MCP, models, and configuration |
@@ -170,11 +171,12 @@ sitesurveyor-framework/
 ├── ai-gateway/              # Optional Node host and AI fallback
 │   └── sitesurveyor-mcp/    # MCP exposure of AI data, CAD, memory, and workflow tools
 ├── supabase/
-│   ├── functions/           # AI, Solana-data, and payment Edge Functions
+│   ├── functions/           # AI, Solana-data, payments, and auth Edge Functions
 │   └── migrations/          # Database schema changes, policies, and seeds
 ├── scripts/ai-eval/         # AI evaluation and consistency checks
 ├── PRODUCT.md               # Product contract
 ├── DESIGN.md                # Architecture and design
+├── AUTHENTICATION.md        # Email, GitHub, and wallet sign-in
 ├── SECURITY.md              # Security boundaries and deployment checklist
 └── USER_GUIDE.md            # End-user workflows
 ```

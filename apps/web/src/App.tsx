@@ -10,6 +10,13 @@ import GlobalLoader from "./components/GlobalLoader";
 import OfflineStatusBanner from "./components/OfflineStatusBanner";
 import { Toaster } from "./components/ui/sonner";
 import WalletLoginPage from "./pages/auth/WalletLoginPage";
+import SignInPage from "./pages/auth/SignInPage";
+import SignUpPage from "./pages/auth/SignUpPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
+import AuthCallbackPage from "./pages/auth/AuthCallbackPage";
+import AccountSecurityPage from "./pages/auth/AccountSecurityPage";
 import { shouldResumeSolflareAuth } from "./lib/auth/solflare-mobile.ts";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
@@ -204,16 +211,42 @@ export default function App() {
       <BrowserRouter>
         <SessionExpiredBanner />
         <Routes>
+          {/* Unified sign-in: email, GitHub, or hand off to the wallet page. */}
           <Route
             path="/login"
             element={
               user ? (
                 <Navigate to="/" replace />
               ) : (
-                <WalletLoginPage />
+                <SignInPage />
               )
             }
           />
+          <Route
+            path="/signup"
+            element={
+              user ? (
+                <Navigate to="/" replace />
+              ) : (
+                <SignUpPage />
+              )
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              user ? (
+                <Navigate to="/" replace />
+              ) : (
+                <ForgotPasswordPage />
+              )
+            }
+          />
+          {/* Reached from the emailed reset link; a session may already exist. */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          {/* OAuth + email-link landing point; provisioning runs inside. */}
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route
             path="/auth/wallet"
             element={
@@ -224,6 +257,9 @@ export default function App() {
               )
             }
           />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/account/security" element={<AccountSecurityPage />} />
+          </Route>
           <Route
             path="/market"
             element={
