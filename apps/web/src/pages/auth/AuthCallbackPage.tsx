@@ -5,10 +5,15 @@ import AuthShell from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import ErrorNotice from "../../components/errors/ErrorNotice";
 import { getCurrentSession } from "../../lib/auth/session.ts";
-import { ensureAccountProvisioned } from "../../lib/auth/provisioning.ts";
+import {
+  ProvisioningError,
+  ensureAccountProvisioned,
+} from "../../lib/auth/provisioning.ts";
+import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
+import { githubEmailIsUsable } from "../../lib/auth/oauth.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 
-type Phase = "working" | "needs-details" | "failed";
+type Phase = "working" | "needs-details" | "needs-email" | "failed";
 
 /**
  * Landing point for every redirect-based flow: GitHub OAuth, email
@@ -26,6 +31,7 @@ export default function AuthCallbackPage() {
   const [params] = useSearchParams();
   const [phase, setPhase] = useState<Phase>("working");
   const [message, setMessage] = useState<string | null>(null);
+  const [emailWasPrivate, setEmailWasPrivate] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
@@ -40,7 +46,12 @@ export default function AuthCallbackPage() {
         params.get("error_code");
       if (urlError) {
         setPhase("failed");
-        setMessage(decodeURIComponent(urlError).replace(/\+/g, " "));
+        setMessage(
+          formatAuthUserFacingError(
+            decodeURIComponent(urlError).replace(/\+/g, " "),
+            "Sign-in could not be completed. Please try signing in again.",
+          ),
+        );
         return;
       }
 
@@ -50,19 +61,30 @@ export default function AuthCallbackPage() {
         if (session?.user) {
           try {
             setAuthLoading(true);
-            const outcome = await ensureAccountProvisioned(session.user);
-            if (outcome.blocker === "DETAILS_REQUIRED") {
-              setPhase("needs-details");
-              setAuthLoading(false);
-              return;
-            }
+            await ensureAccountProvisioned(session.user);
             navigate("/", { replace: true });
           } catch (err) {
+            // Sign-in itself worked; the account just still has gaps the
+            // user can fill. `ensureAccountProvisioned` throws for both of
+            // these, so branch on the blocker rather than the message.
+            if (err instanceof ProvisioningError) {
+              setAuthLoading(false);
+              if (err.blocker === "EMAIL_REQUIRED") {
+                setEmailWasPrivate(!githubEmailIsUsable(session.user));
+                setPhase("needs-email");
+                return;
+              }
+              if (err.blocker === "DETAILS_REQUIRED") {
+                setPhase("needs-details");
+                return;
+              }
+            }
             setPhase("failed");
             setMessage(
-              err instanceof Error
-                ? err.message
-                : "Your account could not be set up. Please try signing in again.",
+              formatAuthUserFacingError(
+                err,
+                "Your account could not be set up. Please try signing in again.",
+              ),
             );
             setAuthLoading(false);
           }
@@ -117,6 +139,25 @@ export default function AuthCallbackPage() {
             <div className="mt-5">
               <Button asChild>
                 <Link to="/signup">Finish setting up</Link>
+              </Button>
+            </div>
+          </>
+        ) : phase === "needs-email" ? (
+          <>
+            <span className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <ShieldAlert className="size-5" aria-hidden="true" />
+            </span>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Add an email address
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {emailWasPrivate
+                ? "That GitHub account keeps its email address private, so SiteSurveyor has nothing to build your account around. Add one and this sign-in will work from then on."
+                : "SiteSurveyor couldn't read an email address off that sign-in, and it needs one for your account. Add one and this sign-in will work from then on."}
+            </p>
+            <div className="mt-5">
+              <Button asChild>
+                <Link to="/signup">Add an email address</Link>
               </Button>
             </div>
           </>

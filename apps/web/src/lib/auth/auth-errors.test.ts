@@ -34,4 +34,49 @@ describe("formatAuthUserFacingError", () => {
     expect(out).not.toBe("{}");
     expect(out).toBe("Fallback.");
   });
+
+  describe("redirect-based provider sign-in errors", () => {
+    it("explains a GitHub profile fetch failure", () => {
+      const out = formatAuthUserFacingError(
+        "Error getting user profile from external provider",
+      );
+      expect(out).toContain("wouldn't hand your profile back");
+      expect(out).not.toContain("external provider");
+    });
+
+    it("explains a rejected authorization code", () => {
+      const out = formatAuthUserFacingError(
+        "Unable to exchange external code: abcd1234",
+      );
+      expect(out).toContain("rejected that sign-in attempt");
+      expect(out).not.toContain("abcd1234");
+    });
+
+    it("explains a disabled provider", () => {
+      expect(formatAuthUserFacingError("Provider is not enabled")).toContain(
+        "isn't enabled on this deployment",
+      );
+    });
+
+    it("explains an expired sign-in state", () => {
+      expect(
+        formatAuthUserFacingError("For security, this session has been expired."),
+      ).toContain("expired");
+      expect(formatAuthUserFacingError("OAuth state expired")).toContain(
+        "expired",
+      );
+    });
+
+    it("explains a disallowed redirect", () => {
+      expect(
+        formatAuthUserFacingError("Redirect is not allowed as an origin"),
+      ).toContain("allowed redirect list");
+    });
+
+    it("leaves an unrecognised provider message intact", () => {
+      expect(
+        formatAuthUserFacingError("Some future GoTrue wording", "Fallback."),
+      ).toContain("Some future GoTrue wording");
+    });
+  });
 });

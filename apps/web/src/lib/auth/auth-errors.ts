@@ -106,6 +106,52 @@ function web3AuthCode(error: unknown): string | undefined {
   return WEB3_AUTH_CODE_MESSAGES[code] ? code : undefined;
 }
 
+/**
+ * GoTrue's redirect-based sign-in failures arrive as the `error_description`
+ * GitHub put in the callback URL (or as GoTrue's own internal message), and
+ * none of them tell a user what to do next. Keyed on the stable substrings of
+ * those messages so the screen never shows raw provider text.
+ */
+const OAUTH_CALLBACK_ERROR_MESSAGES: Array<{ contains: string; message: string }> = [
+  {
+    contains: "error getting user profile from external provider",
+    message:
+      "GitHub signed you in, but it wouldn't hand your profile back to SiteSurveyor, so the sign-in couldn't finish. Try again — if it keeps happening, the GitHub sign-in app isn't allowed to read email addresses.",
+  },
+  {
+    contains: "unable to exchange external code",
+    message:
+      "GitHub rejected that sign-in attempt before it could finish. Go back and start sign-in again.",
+  },
+  {
+    contains: "provider is not enabled",
+    message:
+      "That sign-in method isn't enabled on this deployment. Sign in with email instead.",
+  },
+  {
+    contains: "session has been expired",
+    message:
+      "That sign-in link expired. Go back and start sign-in again.",
+  },
+  {
+    contains: "state expired",
+    message:
+      "That sign-in link expired. Go back and start sign-in again.",
+  },
+  {
+    contains: "redirect is not allowed",
+    message:
+      "This site's address isn't in the allowed redirect list, so the provider couldn't send you back. Sign in another way and report this.",
+  },
+];
+
+function oauthCallbackErrorMessage(raw: string): string | undefined {
+  const lower = raw.toLowerCase();
+  return OAUTH_CALLBACK_ERROR_MESSAGES.find(({ contains }) =>
+    lower.includes(contains),
+  )?.message;
+}
+
 /** Return the raw or a generic message for any auth error. */
 export function formatAuthUserFacingError(
   error: unknown,
@@ -135,6 +181,9 @@ export function formatAuthUserFacingError(
 
   const raw = authErrorMessage(error).trim();
   if (raw) {
+    const oauth = oauthCallbackErrorMessage(raw);
+    if (oauth) return oauth;
+
     const lower = raw.toLowerCase();
     if (
       lower.includes("wallet not selected") ||

@@ -345,13 +345,23 @@ max_frequency = "5s"
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
 #
 # GitHub OAuth — required for "Continue with GitHub".
-#   1. Create an OAuth App at https://github.com/settings/applications/new with
-#      Homepage URL  = the deployed app origin (e.g. https://sitesurveyor-web.onrender.com)
-#      Callback URL  = {origin}/auth/callback
-#   2. Put the Client ID below (or in .env as SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)
-#      and the Client Secret in .env as SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET.
+#   1. Create a classic *OAuth App* at https://github.com/settings/applications/new,
+#      NOT a GitHub App. A GitHub App exchanges the authorization code happily and
+#      then 403s on /user/emails, which GoTrue reports to the user as
+#      "Error getting user profile from external provider".
+#      Homepage URL = the deployed app origin (https://sitesurveyor.tech)
+#      Callback URL = https://{project-ref}.supabase.co/auth/callback
+#                     (GoTrue sends the same endpoint as /auth/v1/callback)
+#   2. Put the Client ID below and the Client Secret in .env as GITHUB_CLIENT_SECRET
+#      — see the warning before you run `supabase config push`.
 #   3. In the Supabase dashboard: Authentication → Providers → GitHub → enable,
-#      and add {origin}/auth/callback to Authentication → URL Configuration → Redirect URLs.
+#      and add the app origin to Authentication → URL Configuration → Redirect URLs.
+#
+# WARNING: `supabase config push` sends what this file *resolves to*. The secret
+# below is read from GITHUB_CLIENT_SECRET, which is not set on the machines in
+# this repository, so pushing blanks the working provider secret on the hosted
+# project and breaks GitHub sign-in at the code-exchange step. Set that variable
+# first, or leave the hosted provider to the dashboard.
 [auth.external.github]
 enabled = true
 client_id = "Ov23liwueIM51fG9eaV0"
@@ -359,6 +369,10 @@ client_id = "Ov23liwueIM51fG9eaV0"
 secret = "env(GITHUB_CLIENT_SECRET)"
 # Overrides the default auth callback URL derived from auth.external_url.
 redirect_uri = ""
+# GitHub can return a private address (xxx@users.noreply.github.com) or none the
+# app is allowed to see. Without this GoTrue rejects the sign-in outright
+# instead of handing back a session the app can finish setting up.
+email_optional = true
 
 [auth.external.apple]
 enabled = false
@@ -372,9 +386,6 @@ redirect_uri = ""
 url = ""
 # If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
-# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
-# GitHub can return private emails (xxx@users.noreply.github.com) or no email if user hides it.
-email_optional = true
 
 # Use Firebase Auth as a third-party provider alongside Supabase Auth.
 [auth.third_party.firebase]
