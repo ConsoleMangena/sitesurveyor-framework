@@ -17,3 +17,19 @@ if (!globalThis.crypto?.subtle) {
     configurable: true,
   });
 }
+
+// jsdom exposes no matchMedia, and media-gated effects (the plat's hover row
+// aim, Radix's responsive parts) call it on mount. Report "no fine pointer" so
+// hover-only behaviour stays inert under test.
+if (!window.matchMedia) {
+  window.matchMedia = ((media: string) => ({
+    media,
+    matches: false,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}

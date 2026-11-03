@@ -213,9 +213,14 @@ describe("WalletLoginPage (Brave Wallet Styling & Web3 Auth)", () => {
   it("shows the configured Solana cluster in the network pill", () => {
     renderPage();
 
-    expect(
-      screen.getByText(SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]),
-    ).toBeInTheDocument();
+    // The decorative plate names the cluster in its cartouche too, inside the
+    // aria-hidden aside — the pill is the one that has to answer for it.
+    const labels = screen
+      .getAllByText(SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER])
+      .filter((node) => !node.closest('[aria-hidden="true"]'));
+
+    expect(labels).toHaveLength(1);
+    expect(labels[0]).toBeInTheDocument();
   });
 
   it("displays connected address pill with truncate format and copy button", () => {

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, LogIn, Wallet } from "lucide-react";
-import AuthShell, { AuthTerms } from "../../components/auth/AuthShell";
+import AuthShell, { AuthRule, AuthTerms } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -92,13 +92,11 @@ export default function SignInPage() {
         </div>
       }
     >
-      <div className="rounded-xl border bg-card/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="auth-content">
         {error ? (
-          <div className="mb-4">
-            <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
-              {error}
-            </ErrorNotice>
-          </div>
+          <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+            {error}
+          </ErrorNotice>
         ) : null}
 
         <Form {...form}>
@@ -171,16 +169,7 @@ export default function SignInPage() {
           </form>
         </Form>
 
-        <div className="relative my-5">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
-        </div>
+        <AuthRule>Or continue with</AuthRule>
 
         <div className="grid gap-2">
           <GitHubButton disabled={submitting} />
@@ -197,7 +186,7 @@ export default function SignInPage() {
           </Button>
         </div>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           One account — email, GitHub, or wallet. Link them from account
           settings after you sign in.
         </p>

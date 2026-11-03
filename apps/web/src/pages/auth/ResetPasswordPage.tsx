@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, KeyRound, Loader2 } from "lucide-react";
-import AuthShell from "../../components/auth/AuthShell";
+import AuthShell, { AuthMark } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import {
   Form,
@@ -120,13 +120,12 @@ export default function ResetPasswordPage() {
           </Link>
         }
       >
-        <div className="rounded-xl border bg-card/80 p-6 text-center shadow-sm backdrop-blur-sm">
-          <span className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+        <div className="auth-content auth-note">
+          <AuthMark tone="success">
             <KeyRound className="size-5" aria-hidden="true" />
-          </span>
-          <p className="text-sm text-muted-foreground">
-            Taking you to your workspace…
-          </p>
+          </AuthMark>
+
+          <p className="auth-note-lead">Taking you to your workspace…</p>
         </div>
       </AuthShell>
     );
@@ -146,24 +145,19 @@ export default function ResetPasswordPage() {
         </Link>
       }
     >
-      <div className="rounded-xl border bg-card/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="auth-content">
         {linkError ? (
           <ErrorNotice tone="danger">{linkError}</ErrorNotice>
         ) : (
           <>
             {error ? (
-              <div className="mb-4">
-                <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
-                  {error}
-                </ErrorNotice>
-              </div>
+              <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+                {error}
+              </ErrorNotice>
             ) : null}
 
             {!ready ? (
-              <p
-                role="status"
-                className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
-              >
+              <p role="status" className="auth-status">
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 Verifying your reset link…
               </p>

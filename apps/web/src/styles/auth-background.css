@@ -1,10 +1,9 @@
 /* ─────────────────────────────────────────────────────────────
-   Auth screen backdrop.
+   Auth backdrop: the drafting board a plan sheet is pinned to.
 
-   AuthBackground renders six layers; this file styles them. The base layer
-   stays a solid colour so low-end devices never repaint the viewport, and
-   every animation touches only `transform` or `background-position` — no
-   `top`/`left`/`width`, so nothing triggers layout.
+   AuthBackground renders these layers, all decorative. The base is a solid
+   tint (never a repaint of the viewport), and the only animation touches
+   `transform`, so nothing here triggers layout.
    ───────────────────────────────────────────────────────────── */
 
 .auth-background {
@@ -13,162 +12,144 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background:
-    radial-gradient(
-      120% 90% at 50% -10%,
-      color-mix(in oklab, var(--primary) 14%, transparent) 0%,
-      transparent 55%
-    ),
-    var(--bg);
+  --auth-board-surface: color-mix(in oklab, var(--foreground) 7%, var(--background));
+  --auth-board-edge: color-mix(in oklab, var(--foreground) 16%, transparent);
+  --auth-board-ink: var(--foreground);
+  background: var(--auth-board-surface);
 }
 
-/* ── Layer 1: faint survey-network lines ───────────────────────────
-   Two crossing line fields, offset from each other, drifting slowly.
-   Drawn as repeating linear gradients so there is no image to load. */
-.auth-bg-network-lines {
+.dark .auth-background {
+  --auth-board-surface: color-mix(in oklab, var(--background) 55%, oklch(0.055 0.012 262));
+  --auth-board-edge: color-mix(in oklab, oklch(0.02 0.01 262) 62%, transparent);
+  --auth-board-ink: color-mix(in oklab, var(--foreground) 55%, transparent);
+}
+
+/* ── Board grid ────────────────────────────────────────────────
+   Minor and major rules, the way a drafting board is ruled. Faint enough
+   that the sheet in front of it stays the loudest thing on screen. */
+.auth-bg-grid {
   position: absolute;
-  inset: -12%;
+  inset: 0;
   opacity: 0.5;
   background-image:
     repeating-linear-gradient(
-      58deg,
-      transparent 0 46px,
-      color-mix(in oklab, var(--foreground) 7%, transparent) 46px 47px
+      90deg,
+      transparent 0 13px,
+      color-mix(in oklab, var(--auth-board-ink) 5%, transparent) 13px 14px
     ),
     repeating-linear-gradient(
-      -58deg,
-      transparent 0 92px,
-      color-mix(in oklab, var(--foreground) 5%, transparent) 92px 93px
+      0deg,
+      transparent 0 13px,
+      color-mix(in oklab, var(--auth-board-ink) 5%, transparent) 13px 14px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 69px,
+      color-mix(in oklab, var(--auth-board-ink) 9%, transparent) 69px 70px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 69px,
+      color-mix(in oklab, var(--auth-board-ink) 9%, transparent) 69px 70px
     );
-  animation: auth-bg-drift 90s linear infinite;
 }
 
-/* ── Layer 2: survey grid dots ───────────────────────────────────── */
-.auth-bg-grid-dots {
+/* ── Edge scale ────────────────────────────────────────────────
+   The tick strip a drafter measures against, running the top and left of
+   the board. */
+.auth-bg-scale {
   position: absolute;
-  inset: -8%;
-  background-image: radial-gradient(
-    circle,
-    color-mix(in oklab, var(--foreground) 22%, transparent) 1px,
-    transparent 1.5px
-  );
-  background-size: 30px 30px;
+  inset: 0;
   opacity: 0.55;
-  mask-image: radial-gradient(
-    85% 70% at 50% 40%,
-    #000 20%,
-    transparent 80%
-  );
-  -webkit-mask-image: radial-gradient(
-    85% 70% at 50% 40%,
-    #000 20%,
-    transparent 80%
-  );
-  animation: auth-bg-shift 140s linear infinite;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 23px,
+      color-mix(in oklab, var(--auth-board-ink) 24%, transparent) 23px 24px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 23px,
+      color-mix(in oklab, var(--auth-board-ink) 24%, transparent) 23px 24px
+    );
+  background-repeat: repeat-x, repeat-y;
+  background-size: 100% 9px, 9px 100%;
+  background-position: 0 0, 0 0;
 }
 
-/* ── Layer 3–5: colour blobs ───────────────────────────────────────
-   Blurred ellipses that breathe rather than travel, so they never expose
-   an edge of the base layer. */
-.auth-blob {
+/* ── Contours ──────────────────────────────────────────────────
+   Long, flat topographic curves. They drift a fraction of a percent over
+   minutes; the motion is atmosphere, never a pull on attention. */
+.auth-bg-contours {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(72px);
+  inset: -6% -3%;
+  width: 106%;
+  height: 112%;
+  color: var(--auth-board-ink);
+  animation: auth-bg-drift 150s ease-in-out infinite alternate;
   will-change: transform;
 }
 
-.auth-blob-1 {
-  width: min(52vw, 620px);
-  height: min(52vw, 620px);
-  top: -14%;
-  left: -10%;
-  background: color-mix(in oklab, var(--primary) 34%, transparent);
-  animation: auth-blob-a 26s var(--ease-standard) infinite alternate;
+.auth-bg-contours path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.1;
+  opacity: 0.085;
 }
 
-.auth-blob-2 {
-  width: min(46vw, 540px);
-  height: min(46vw, 540px);
-  bottom: -16%;
-  right: -8%;
-  background: color-mix(in oklab, var(--sem-info) 26%, transparent);
-  animation: auth-blob-b 32s var(--ease-standard) infinite alternate;
+/* ── Corner registration marks ─────────────────────────────── */
+.auth-bg-tick {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  opacity: 0.4;
 }
 
-.auth-blob-3 {
-  width: min(34vw, 400px);
-  height: min(34vw, 400px);
-  top: 42%;
-  left: 56%;
-  background: color-mix(in oklab, var(--sem-accent-purple) 20%, transparent);
-  animation: auth-blob-c 38s var(--ease-standard) infinite alternate;
+.auth-bg-tick::before,
+.auth-bg-tick::after {
+  content: "";
+  position: absolute;
+  background: var(--auth-board-ink);
 }
 
-/* ── Layer 6: vignette ─────────────────────────────────────────────
-   Keeps the centre readable so the card never fights the blobs behind it. */
+.auth-bg-tick::before {
+  inset: 7px 0 auto 0;
+  height: 1px;
+}
+
+.auth-bg-tick::after {
+  inset: 0 auto 0 7px;
+  width: 1px;
+}
+
+.auth-bg-tick--tl { top: 18px; left: 18px; }
+.auth-bg-tick--tr { top: 18px; right: 18px; }
+.auth-bg-tick--bl { bottom: 18px; left: 18px; }
+.auth-bg-tick--br { bottom: 18px; right: 18px; }
+
+/* ── Edge falloff ──────────────────────────────────────────── */
 .auth-bg-vignette {
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    70% 60% at 50% 45%,
-    transparent 40%,
-    color-mix(in oklab, var(--background) 78%, transparent) 100%
+    125% 105% at 50% 32%,
+    transparent 42%,
+    var(--auth-board-edge) 100%
   );
 }
 
-/* ── Motion ──────────────────────────────────────────────────────── */
 @keyframes auth-bg-drift {
   from {
     transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translate3d(-6%, -4%, 0);
+    transform: translate3d(-1.4%, 1.1%, 0);
   }
 }
 
-@keyframes auth-bg-shift {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 300px 300px;
-  }
-}
-
-@keyframes auth-blob-a {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(6%, 8%, 0) scale(1.12);
-  }
-}
-
-@keyframes auth-blob-b {
-  from {
-    transform: translate3d(0, 0, 0) scale(1.05);
-  }
-  to {
-    transform: translate3d(-7%, -6%, 0) scale(1);
-  }
-}
-
-@keyframes auth-blob-c {
-  from {
-    transform: translate3d(0, 0, 0) scale(0.95);
-  }
-  to {
-    transform: translate3d(-8%, 6%, 0) scale(1.15);
-  }
-}
-
-/* The whole backdrop is decorative; hide it from assistive tech in the
-   component itself, and stop it entirely when motion is unwanted. */
 @media (prefers-reduced-motion: reduce) {
   .auth-background,
-  .auth-bg-network-lines,
-  .auth-bg-grid-dots,
-  .auth-blob {
+  .auth-bg-contours {
     animation: none !important;
   }
 }

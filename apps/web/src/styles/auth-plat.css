@@ -1,0 +1,978 @@
+/**
+ * Auth surface — the anchor sheet.
+ *
+ * The board behind is a drafting board (`auth-background.css`); the sheet on
+ * it is split the way a plan is: the plat of record for one anchor run on the
+ * left, the working column (brand, heading, controls, escape hatch) on the
+ * right. Everything here is on one shared grid so the seven auth screens stay
+ * visually identical while each page owns its own content.
+ */
+
+/* ── Board and sheet ───────────────────────────────────────── */
+.auth-board {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+}
+
+.auth-sheet {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
+  max-width: 1180px;
+  min-height: 100svh;
+  background: var(--card);
+  color: var(--card-foreground);
+  overflow: hidden;
+  animation: auth-sheet-settle 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes auth-sheet-settle {
+  from {
+    opacity: 0.55;
+    transform: translate3d(0, 10px, 0);
+  }
+}
+
+/* ── The plat panel ────────────────────────────────────────── */
+.auth-plat {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 14px;
+  min-width: 0;
+  min-height: 156px;
+  padding: 12px 14px;
+  background: color-mix(in oklab, var(--muted) 62%, var(--card));
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-plat-figure {
+  position: relative;
+  flex: 0 0 46%;
+  min-width: 0;
+}
+
+.auth-plat-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--card-foreground);
+}
+
+.auth-plat-rule {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.5px;
+  opacity: 0.45;
+}
+
+.auth-plat-rule--inner {
+  stroke-width: 0.9px;
+  opacity: 0.6;
+}
+
+.auth-plat-grid-minor {
+  opacity: 0.14;
+}
+
+.auth-plat-grid-major {
+  opacity: 0.26;
+}
+
+.auth-plat-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.45px;
+  opacity: 0.6;
+}
+
+.auth-plat-mark {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.4px;
+  opacity: 0.7;
+}
+
+.auth-plat-fill {
+  fill: color-mix(in oklab, currentColor 8%, transparent);
+  stroke: currentColor;
+  stroke-width: 0.4px;
+  opacity: 0.8;
+}
+
+/* The schedule's own rules: heavier than the leaders, lighter than the neat
+   line, so the table sits inside the drawing instead of on top of it. */
+.auth-plat-frame {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.5px;
+  opacity: 0.5;
+}
+
+.auth-plat-hair {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.25px;
+  opacity: 0.3;
+}
+
+/* The tie back to the source object — drawn, not placed, so the eye follows
+   the block all the way home. */
+.auth-plat-tie {
+  stroke: currentColor;
+  stroke-width: 0.35px;
+  opacity: 0.42;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: auth-tie 0.75s cubic-bezier(0.22, 0.61, 0.36, 1) 1.45s forwards;
+}
+
+@keyframes auth-tie {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ── The anchoring sequence ────────────────────────────────── */
+/* One keyframe inks a rule, one keyframe sets the seal. The row delays come
+   from the component because the number of rows is the file's arithmetic. */
+.auth-plat-ink {
+  opacity: 0;
+  animation: auth-ink 0.5s ease-out forwards;
+}
+
+.auth-plat-ink--sheet {
+  animation-delay: 0.22s;
+}
+
+.auth-plat-ink--object {
+  animation-delay: 0.34s;
+}
+
+.auth-plat-ink--split {
+  animation-delay: 0.48s;
+}
+
+.auth-plat-ink--table {
+  animation-delay: 0.55s;
+}
+
+.auth-plat-ink--manifest {
+  animation-delay: 1.3s;
+}
+
+.auth-plat-ink--read {
+  animation-delay: 2.15s;
+}
+
+@keyframes auth-ink {
+  to {
+    opacity: 1;
+  }
+}
+
+.auth-plat-cap {
+  font-family: var(--mono-plate);
+  font-size: 3.4px;
+  letter-spacing: 0.12px;
+  fill: currentColor;
+  opacity: 0.85;
+}
+
+.auth-plat-label {
+  font-family: var(--mono-plate);
+  font-size: 3.2px;
+  fill: color-mix(in oklab, currentColor 88%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.auth-plat-label--dim {
+  fill: color-mix(in oklab, currentColor 62%, transparent);
+}
+
+.auth-plat-micro {
+  font-family: var(--mono-plate);
+  font-size: 2.6px;
+  fill: color-mix(in oklab, currentColor 66%, transparent);
+}
+
+/* The hovered row is banded in ink, not boxed in a card. AnchorPlat puts --hl
+   on the drawn table, in the sheet's own user units. */
+.auth-plat-hl {
+  fill: color-mix(in oklab, currentColor 9%, transparent);
+  opacity: 0;
+  transform: translateY(var(--hl, 0px));
+  transition:
+    transform 0.1s linear,
+    opacity 0.14s linear;
+  pointer-events: none;
+}
+
+.auth-plat-figure.is-aimed .auth-plat-hl {
+  opacity: 1;
+}
+
+/* The seal: the one authored moment on this sheet. */
+.auth-plat-seal-dot {
+  fill: var(--primary);
+  stroke: none;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: auth-seal-dot 0.34s cubic-bezier(0.16, 1, 0.3, 1) 1.9s forwards;
+}
+
+@keyframes auth-seal-dot {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.auth-plat-ring {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 0.5px;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: auth-seal-ring 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) 1.9s forwards;
+}
+
+@keyframes auth-seal-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 0.16;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+
+/* ── Title block ───────────────────────────────────────────── */
+.auth-plat-block {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+}
+
+.auth-plat-stamp {
+  align-self: flex-start;
+  max-width: 100%;
+  margin: 0;
+  padding: 3px 7px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  transform: rotate(-0.6deg);
+  font-family: var(--mono-plate);
+  font-size: 9.5px;
+  line-height: 1.3;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* The cartouche: a ruled box, one row of cells, the same 1px language as the
+   neat line. Loose small print under a stamp read as fine print; a ruled
+   block reads as the sheet's signature. */
+.auth-plat-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.auth-plat-fields div {
+  min-width: 0;
+  padding: 5px 8px 6px;
+  background: color-mix(in oklab, var(--muted) 62%, var(--card));
+}
+
+.auth-plat-fields dt {
+  font-family: var(--mono-plate);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.auth-plat-fields dd {
+  margin: 1px 0 0;
+  font-family: var(--mono-plate);
+  font-size: 11px;
+  color: var(--card-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The on-chain record itself, in the sheet's own ruled strip. It is the only
+   line of the memo a plate can carry, so the digests show their head and the
+   rule says so. */
+.auth-plat-memo {
+  display: none;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 9px 0 0;
+  padding: 5px 8px 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  background: color-mix(in oklab, var(--muted) 62%, var(--card));
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.auth-plat-memo-label {
+  flex: 0 0 auto;
+  font-family: var(--mono-plate);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.auth-plat-memo-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--mono-plate);
+  font-size: 10px;
+  color: var(--card-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Working column ────────────────────────────────────────── */
+.auth-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-side-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-escape {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.auth-escape:hover {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--muted) 70%, transparent);
+}
+
+.auth-escape:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.auth-escape-short {
+  display: inline;
+}
+
+/* One measure for the whole column: the heading rule, the form, the divider
+   and the footer band are all centred on the same axis, so the sheet reads as
+   one ruled block instead of four different widths. The measure is padding,
+   not a max-width, so nothing inside the column can drift off it. */
+.auth-side-body {
+  --auth-measure: 27rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2.4svh, 22px);
+  padding:
+    clamp(18px, 3svh, 30px)
+    max(clamp(18px, 4vw, 38px), calc((100% - var(--auth-measure)) / 2))
+    clamp(20px, 3svh, 30px);
+  /* The sheet holds its own height, so a tall form is worked through rather
+     than cut off at the bottom rule. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Reserve the gutter on every screen, scrolling or not, so the measure
+     stays one number across the seven. */
+  scrollbar-gutter: stable;
+}
+
+/* The wallet and account screens work a wider field. */
+.auth-side-body--wide {
+  --auth-measure: 34rem;
+}
+
+/* A wide screen is a short one most of the time: the working block takes the
+   height the column has left and settles in the middle of it, so the sheet
+   reads composed instead of top-piled. The two hooks mark the ends of that
+   block — the air goes above the first and below the last, so nothing inside
+   it drifts apart. Auto margins collapse to nothing once the block is taller
+   than the space, so a long form is never cut. */
+.auth-side-body--wide > .auth-content {
+  flex: 1 0 auto;
+}
+
+.auth-side-body--wide .auth-group-start {
+  margin-block-start: auto;
+}
+
+.auth-side-body--wide .auth-group-end {
+  margin-block-end: auto;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.auth-brand-mark {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+}
+
+.auth-brand-text {
+  min-width: 0;
+}
+
+.auth-wordmark {
+  margin: 0;
+  font-size: 0.975rem;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+}
+
+.auth-tagline {
+  margin: 1px 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+.auth-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: clamp(14px, 2.2svh, 20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-title {
+  margin: 0;
+  font-size: clamp(1.4rem, 1.15rem + 1.1vw, 1.8rem);
+  font-weight: 600;
+  letter-spacing: -0.024em;
+  line-height: 1.14;
+  text-wrap: balance;
+}
+
+.auth-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-side-foot {
+  display: flex;
+  /* The footer band never shrinks: at phone width the terms wrap to a third
+     line, and a shrunk band cuts it off at the sheet rule. */
+  flex: 0 0 auto;
+  justify-content: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.8125rem;
+}
+
+.auth-terms {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* ── Shared page furniture ─────────────────────────────────── */
+.auth-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono-plate);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.auth-rule::before,
+.auth-rule::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border);
+}
+
+/* The recovered-corner mark: a ruled square with an inset second rule. */
+.auth-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  background: color-mix(in oklab, var(--muted) 58%, var(--card));
+  border: 1px solid var(--border);
+  color: var(--primary);
+}
+
+.auth-mark::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid currentColor;
+  opacity: 0.22;
+}
+
+.auth-mark[data-tone="danger"] {
+  color: var(--destructive);
+}
+
+.auth-mark[data-tone="success"] {
+  color: var(--sem-success);
+}
+
+.auth-note {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* A state screen owns whatever height the column has left and settles its
+   message in the middle of it: a short note is a composed sheet, not a
+   top-piled one. */
+.auth-side-body > .auth-note {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.auth-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.auth-note-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+}
+
+.auth-note-lead {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.auth-note-fine {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.auth-value {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Account strip on the security screen: a ruled row, not a nested card. */
+.auth-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-section-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.auth-button-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.auth-status--sent {
+  color: var(--sem-success);
+}
+
+/* The wallet screen's tabbed block: the sheet's rules, not a card. */
+.auth-slab {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-slab-head {
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-slab-body {
+  min-width: 0;
+}
+
+/* Account scope: one ruled two-up field, not two cards side by side.
+   Selection is ink and rule weight — brand red stays on the primary action
+   and the occupied station. */
+.auth-choice-set {
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+}
+
+@media (min-width: 560px) {
+  .auth-choice-set {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.auth-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  background: var(--card);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.auth-choice:hover {
+  background: color-mix(in oklab, var(--muted) 55%, var(--card));
+}
+
+.auth-choice[data-selected="true"] {
+  background: color-mix(in oklab, var(--muted) 80%, var(--card));
+  box-shadow: inset 0 2px 0 var(--foreground);
+}
+
+.auth-choice-title {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.auth-choice-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--muted-foreground);
+}
+
+/* The wallet picker and the connected-wallet readout are fields, so they take
+   the field's own border — and the mark sits bare, not in a tinted box. */
+.auth-field-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: color-mix(in oklab, var(--muted) 34%, var(--card));
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  transition: background-color 0.15s ease;
+}
+
+button.auth-field-row:hover {
+  background: color-mix(in oklab, var(--muted) 58%, var(--card));
+}
+
+button.auth-field-row:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.auth-field-row-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.auth-field-row-title {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.auth-field-row-sub {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.auth-field-row[data-selected="true"] {
+  background: color-mix(in oklab, var(--muted) 78%, var(--card));
+  box-shadow: inset 2px 0 0 var(--foreground);
+}
+
+/* ── Desktop: the sheet splits, the plat stands up ─────────── */
+@media (min-width: 1024px) {
+  .auth-board {
+    padding: clamp(20px, 4svh, 44px) clamp(20px, 4vw, 56px);
+  }
+
+  .auth-sheet {
+    grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+    /* Both columns are held to the sheet's own height: without this the
+       working column drives the row taller than the sheet and overflow:hidden
+       eats the bottom of the title block. */
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+    height: clamp(560px, calc(100svh - 88px), 880px);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 6px);
+    box-shadow:
+      0 1px 1px rgb(15 23 42 / 0.05),
+      0 2px 6px rgb(15 23 42 / 0.06),
+      0 26px 54px -26px rgb(15 23 42 / 0.34);
+  }
+
+  .dark .auth-sheet {
+    box-shadow:
+      0 1px 1px rgb(0 0 0 / 0.4),
+      0 24px 52px -24px rgb(0 0 0 / 0.66);
+  }
+
+  .auth-plat {
+    flex-direction: column;
+    gap: 0;
+    min-height: 0;
+    padding: 20px 20px 16px;
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .auth-plat-figure {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .auth-plat-block {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Five units: three single cells plus the readout's two, so the cartouche
+     closes as one row with no empty bay. */
+  .auth-plat-fields {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .auth-plat-field--readout {
+    grid-column: span 2;
+  }
+
+  /* The memo needs the sheet's full width to stay one line, so it belongs to
+     the standing layout only. */
+  .auth-plat-memo {
+    display: flex;
+  }
+}
+
+/* In the band layout the plat gets a short box: the sheet lands at about 1.1×
+   its user units, so lettering set at 2.6–3.4 units is under 5px. The plate
+   drops the annotations it cannot make legible and keeps the drawing. */
+@media (max-width: 1023px) {
+  .auth-plat {
+    min-height: 196px;
+  }
+
+  .auth-plat-figure {
+    flex-basis: 56%;
+  }
+
+  .auth-plat-cap,
+  .auth-plat-micro,
+  .auth-plat-label {
+    display: none;
+  }
+
+  /* The band draws the sheet at about 1.1× its user units, so a 0.3-unit rule
+     lands under half a pixel and vanishes. The rules keep one device pixel
+     here and carry their hierarchy in ink instead. */
+  .auth-plat-rule,
+  .auth-plat-frame,
+  .auth-plat-hair,
+  .auth-plat-line,
+  .auth-plat-mark,
+  .auth-plat-fill,
+  .auth-plat-tie {
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* One device pixel at 45% ink over a muted ground is a pencil ghost, so the
+     band carries its structure with more ink than the standing sheet needs. */
+  .auth-plat-rule {
+    opacity: 0.6;
+  }
+
+  .auth-plat-rule--inner {
+    opacity: 0.75;
+  }
+
+  .auth-plat-frame {
+    opacity: 0.75;
+  }
+
+  .auth-plat-hair {
+    opacity: 0.5;
+  }
+
+  .auth-plat-tie {
+    opacity: 0.55;
+  }
+
+  /* One column, so the two cells the band keeps are never ellipsized. */
+  .auth-plat-fields {
+    grid-template-columns: 1fr;
+  }
+
+  /* Two cells that read properly instead of four that ellipsize. */
+  .auth-plat-field--version,
+  .auth-plat-field--readout {
+    display: none;
+  }
+
+  .auth-plat-stamp {
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.45;
+  }
+}
+
+/* A pointer that cannot hover has no use for the row band, and no reason to be
+   shown the digest it would report. */
+@media (hover: none) {
+  .auth-plat-hl,
+  .auth-plat-field--readout {
+    display: none;
+  }
+}
+
+@media (min-width: 480px) {
+  .auth-escape-full {
+    display: inline;
+  }
+
+  .auth-escape-short {
+    display: none;
+  }
+}
+
+@media (max-width: 479px) {
+  .auth-escape-full {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-sheet {
+    animation: none;
+  }
+
+  .auth-plat-tie {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .auth-plat-ink {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* The seal keeps its mark and loses its pulse. */
+  .auth-plat-seal-dot {
+    animation: none;
+    opacity: 1;
+  }
+
+  .auth-plat-ring {
+    animation: none;
+    opacity: 0;
+  }
+}

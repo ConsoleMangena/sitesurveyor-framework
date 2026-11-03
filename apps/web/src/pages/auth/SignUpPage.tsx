@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, UserPlus } from "lucide-react";
-import AuthShell, { AuthTerms } from "../../components/auth/AuthShell";
+import AuthShell, { AuthRule, AuthTerms } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -153,13 +153,11 @@ export default function SignUpPage() {
         </div>
       }
     >
-      <div className="rounded-xl border bg-card/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="auth-content">
         {error ? (
-          <div className="mb-4">
-            <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
-              {error}
-            </ErrorNotice>
-          </div>
+          <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+            {error}
+          </ErrorNotice>
         ) : null}
 
         <Form {...form}>
@@ -179,7 +177,7 @@ export default function SignUpPage() {
                       value={field.value}
                       onValueChange={field.onChange}
                       disabled={submitting}
-                      className="grid gap-2 sm:grid-cols-2"
+                      className="auth-choice-set"
                     >
                       <LabelCard
                         id="signup-scope-personal"
@@ -317,22 +315,13 @@ export default function SignUpPage() {
           </form>
         </Form>
 
-        <div className="relative my-5">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">
-              Or sign up with
-            </span>
-          </div>
-        </div>
+        <AuthRule>Or sign up with</AuthRule>
 
         <div className="grid gap-2">
           <GitHubButton disabled={submitting} />
         </div>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Already use a wallet?{" "}
           <Link
             to="/auth/wallet"
@@ -365,15 +354,13 @@ function LabelCard({
   return (
     <label
       htmlFor={id}
-      className={[
-        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent",
-        selected ? "border-primary bg-primary/5" : "",
-      ].join(" ")}
+      className="auth-choice"
+      data-selected={selected ? "true" : undefined}
     >
       <RadioGroupItem value={value} id={id} className="mt-0.5" />
-      <span className="space-y-0.5">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="block text-xs text-muted-foreground">{subtitle}</span>
+      <span className="min-w-0">
+        <span className="auth-choice-title">{title}</span>
+        <span className="auth-choice-sub">{subtitle}</span>
       </span>
     </label>
   );

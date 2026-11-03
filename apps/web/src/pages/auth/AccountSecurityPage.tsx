@@ -64,6 +64,7 @@ export default function AccountSecurityPage() {
 
   return (
     <AuthShell
+      wide
       title="Account security"
       description="Choose how you sign in to SiteSurveyor."
       showBrand={false}
@@ -77,8 +78,8 @@ export default function AccountSecurityPage() {
         </Link>
       }
     >
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3 rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+      <div className="auth-content">
+        <div className="auth-identity">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">
               {cachedUser?.name || user?.user_metadata?.full_name || "Your account"}
@@ -106,25 +107,24 @@ export default function AccountSecurityPage() {
         ) : null}
 
         {loading || !user ? (
-          <p
-            role="status"
-            className="flex items-center justify-center gap-2 rounded-xl border bg-card/80 py-8 text-sm text-muted-foreground shadow-sm"
-          >
+          <p role="status" className="auth-status">
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             Loading your sign-in methods…
           </p>
         ) : (
-          <div className="rounded-xl border bg-card/80 p-4 shadow-sm backdrop-blur-sm">
-            <div className="mb-3 flex items-center gap-2">
+          <div className="auth-slab">
+            <h2 className="auth-section-head">
               <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
-              <h2 className="text-sm font-semibold">How you sign in</h2>
+              How you sign in
+            </h2>
+            <div className="auth-slab-body">
+              <AccountSecurity
+                user={user}
+                onChanged={async () => {
+                  await load();
+                }}
+              />
             </div>
-            <AccountSecurity
-              user={user}
-              onChanged={async () => {
-                await load();
-              }}
-            />
           </div>
         )}
       </div>

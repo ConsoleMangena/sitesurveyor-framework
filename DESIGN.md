@@ -108,6 +108,27 @@ The product follows the shadcn-admin structure and neutral slate component langu
 
 The baseline is keyboard-operable controls, visible focus, labelled fields, field-associated errors, and layouts that remain usable at 390 px width. Mobile web is a first-class field target, not a separate native application.
 
+### Auth and account surfaces
+
+The seven auth screens plus `/account/security` are composed as one anchor sheet: a drafting plate beside a working column. `AuthShell` supplies the frame, `AnchorPlat` the plate, and `apps/web/src/styles/auth-plat.css` the vocabulary; each page keeps its own form state, validation, copy, and loading behaviour. The split of ownership is what keeps the screens visually identical, so a new auth or account surface reuses the shell rather than composing its own frame.
+
+At 1024 px and above the sheet splits 44/56 (`minmax(0, 44fr) / minmax(0, 56fr)`) with `grid-template-rows: minmax(0, 1fr)`, so both columns are held to the sheet's own height and a tall working column cannot push the title block past `overflow: hidden`. The sheet is `clamp(560px, 100svh - 88px, 880px)` tall and capped at 1180 px. Below 1024 px the sheet is a full-bleed column (`min-height: 100svh`) and the plate becomes its masthead band.
+
+One measure governs the working column: `--auth-measure`, 27 rem, raised to 34 rem on the two `wide` screens (the wallet sign-in and account security). It is turned into symmetric padding on `.auth-side-body` and never into a child max-width, so the heading rule, the form, the `OR CONTINUE WITH` rule, and the footer band share one axis. The column scrolls at every width with `scrollbar-gutter: stable`, so the measure stays one number whether or not a bar appears, and `overscroll-behavior: contain`; `.auth-side-bar` and `.auth-side-foot` are `flex: 0 0 auto`, so the footer band never shrinks and clips the terms line.
+
+Vertical distribution is set by screen type, not by centring the whole column:
+
+- A state screen's `.auth-note` takes the height the column has left and settles its message in the middle of it.
+- A wide screen settles its working block with `margin-block` auto on the `.auth-group-start` and `.auth-group-end` hooks, so the badge, tab strip, and panel stay one group with the air split above and below. Auto margins collapse to zero once the block is taller than the space, so a long form is never cut.
+
+The working column is the card: `--card` is painted on the sheet, so nothing inside it is nested. What were cards are ruled rows instead — `.auth-choice-set` for account scope, `.auth-field-row` for the wallet picker and connected-wallet readouts, `.auth-slab` for a tabbed block, `.auth-identity` for the account strip — with `AuthMark` (a ruled square with an inset second rule, in `primary`/`danger`/`success` tones), `AuthRule` (a ruled annotation kept as readable text rather than `role="separator"`), and `AuthTerms` shared from the shell. Selection is ink: `data-selected` gives a muted wash plus a 2 px inset ink bar. Brand red stays on the primary action and the one sealed block on the plate.
+
+Plate lettering — the schedule, the cartouche, the specimen stamp, the ruled dividers — uses `--mono-plate`, IBM Plex Mono over the system mono stack, loaded from the same Google Fonts request as Inter and Manrope. The app-wide `--mono` is unchanged, so wallet addresses and ledger code keep the existing stack.
+
+The plate is a plat of record for one full-file anchor run, drawn in the sheet's own grammar: source object, the split into `chunk-0000NN`, a ruled schedule of each chunk's SHA-256 and byte size, `manifest.json`, and one benchmarked block tied back to the file it verifies. Its arithmetic and format come from the product — chunk size and count from `DEFAULT_FULL_FILE_CHUNK_SIZE` over the file size, the memo string from `buildFullFileAnchorMemo`, the cluster cell from `SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]` so the plate cannot contradict the wallet badge — while the digests, slot, signature and file name are a specimen, which the stamp states as `Specimen run — records invented, mechanics real`. The plate stays decorative (`aria-hidden`) and is never a readout of a real file.
+
+Hovering the schedule bands the row under the pointer and writes that chunk's digest head into the cartouche's `SHA-256` cell. It is gated on `(hover: hover) and (pointer: fine)`, and `@media (hover: none)` hides the band and that cell together, so there is never an aimed row with no field to report to. In the band layout the plate drops all SVG lettering, draws its rules with `vector-effect: non-scaling-stroke` at higher ink because 0.3 user units land under half a pixel there, and stacks the two cartouche cells it keeps (`Chunks`, `Cluster`) in one column so neither ellipsizes. The anchoring sequence — sheet, object, split, rows in file order, manifest, tie line, then the seal — is inert under `prefers-reduced-motion`, which shows the sealed mark directly and drops the ring. These screens are verified at 1440x900 and 390x844.
+
 ## 5. Authentication and account mapping
 
 ```mermaid
@@ -191,11 +212,22 @@ Original file bytes are uploaded to Supabase Storage, and attachment metadata is
 
 ### Anchor transaction
 
-Only the following statement is placed in the Solana Memo:
+Only one of the following statements is placed in the Solana Memo, chosen by the
+mode the surveyor picks in the file manager:
 
 ```text
-ssv1:<attachment-id>:sha256:<lowercase-content-hash>
+ssv1:<attachment-id>:sha256:<lowercase-file-hash>
+ssv2:<attachment-id>:sha256:<file-hash>:<manifest-hash>:<chunk-count>
 ```
+
+In the full-file mode the per-chunk digests never go on chain. They are packed
+into `manifest.json`, whose own digest is the `<manifest-hash>` above, and the
+manifest plus the `chunk-0000NN` objects are stored under
+`<workspace-id>/anchors/<operation-id>/`. Chunks are encrypted with AES-256-GCM
+keyed by PBKDF2-SHA256 (`ssv2e1`) from a passphrase supplied at anchoring time;
+recovery decrypts, re-splits, and compares every digest before reassembling the
+file. The confirmed transaction records `tx_signature`, `tx_slot` and
+`fee_lamports` against the operation.
 
 The transaction uses Solana Memo Program v3 and is signed and fee-paid by the connected wallet. It is a classic, non-versioned transaction for compatibility with the built-in wallet adapter.
 

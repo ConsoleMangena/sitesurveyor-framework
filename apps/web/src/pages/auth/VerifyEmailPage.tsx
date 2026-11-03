@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, MailCheck, RefreshCw } from "lucide-react";
-import AuthShell from "../../components/auth/AuthShell";
+import AuthShell, { AuthMark } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import ErrorNotice from "../../components/errors/ErrorNotice";
 import { resendVerification } from "../../lib/auth/email-auth.ts";
@@ -64,46 +64,44 @@ export default function VerifyEmailPage() {
         </Link>
       }
     >
-      <div className="rounded-xl border bg-card/80 p-6 text-center shadow-sm backdrop-blur-sm">
-        <span className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <div className="auth-content auth-note">
+        <AuthMark>
           <MailCheck className="size-5" aria-hidden="true" />
-        </span>
+        </AuthMark>
 
-        <h2 className="text-lg font-semibold tracking-tight">
-          Check your inbox
-        </h2>
+        <div className="auth-note-body">
+          <h2 className="auth-note-title">Check your inbox</h2>
 
-        {email ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            We sent a verification link to{" "}
-            <span className="font-medium text-foreground">{email}</span>.
+          {email ? (
+            <p className="auth-note-lead">
+              We sent a verification link to{" "}
+              <span className="auth-value">{email}</span>.
+            </p>
+          ) : (
+            <p className="auth-note-lead">
+              We sent a verification link to your email address.
+            </p>
+          )}
+
+          <p className="auth-note-fine">
+            The link opens SiteSurveyor and signs you straight in. It expires
+            after a short while — you can request another below.
           </p>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
-            We sent a verification link to your email address.
-          </p>
-        )}
-
-        <p className="mt-2 text-xs text-muted-foreground">
-          The link opens SiteSurveyor and signs you straight in. It expires
-          after a short while — you can request another below.
-        </p>
+        </div>
 
         {error ? (
-          <div className="mt-4 text-left">
-            <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
-              {error}
-            </ErrorNotice>
-          </div>
+          <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+            {error}
+          </ErrorNotice>
         ) : null}
 
         {sent && !error ? (
-          <p role="status" className="mt-4 text-sm text-emerald-600">
+          <p role="status" className="auth-status auth-status--sent">
             Sent! Check your inbox (and spam).
           </p>
         ) : null}
 
-        <div className="mt-5 space-y-2">
+        <div className="auth-button-row">
           <Button
             type="button"
             variant="outline"

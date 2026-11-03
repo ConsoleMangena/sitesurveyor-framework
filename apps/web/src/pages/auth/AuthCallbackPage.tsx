@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, ShieldAlert } from "lucide-react";
-import AuthShell from "../../components/auth/AuthShell";
+import AuthShell, { AuthMark } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import ErrorNotice from "../../components/errors/ErrorNotice";
 import { getCurrentSession } from "../../lib/auth/session.ts";
@@ -114,69 +114,70 @@ export default function AuthCallbackPage() {
         </Link>
       }
     >
-      <div className="rounded-xl border bg-card/80 p-6 text-center shadow-sm backdrop-blur-sm">
+      <div className="auth-content auth-note">
         {phase === "working" ? (
-          <p
-            role="status"
-            className="flex flex-col items-center gap-3 py-4 text-sm text-muted-foreground"
-          >
-            <Loader2 className="size-6 animate-spin text-primary" aria-hidden="true" />
+          <p role="status" className="auth-status">
+            <Loader2
+              className="size-5 animate-spin text-primary"
+              aria-hidden="true"
+            />
             Verifying and loading your workspace…
           </p>
         ) : phase === "needs-details" ? (
           <>
-            <span className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <AuthMark>
               <ShieldAlert className="size-5" aria-hidden="true" />
-            </span>
-            <h2 className="text-lg font-semibold tracking-tight">
-              A few details to finish
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              That sign-in didn&apos;t carry a name we can build your workspace
-              from. Create the account once with your details and this method
-              will work from then on.
-            </p>
-            <div className="mt-5">
-              <Button asChild>
-                <Link to="/signup">Finish setting up</Link>
-              </Button>
+            </AuthMark>
+
+            <div className="auth-note-body">
+              <h2 className="auth-note-title">A few details to finish</h2>
+              <p className="auth-note-lead">
+                That sign-in didn&apos;t carry a name we can build your
+                workspace from. Create the account once with your details and
+                this method will work from then on.
+              </p>
             </div>
+
+            <Button asChild>
+              <Link to="/signup">Finish setting up</Link>
+            </Button>
           </>
         ) : phase === "needs-email" ? (
           <>
-            <span className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <AuthMark>
               <ShieldAlert className="size-5" aria-hidden="true" />
-            </span>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Add an email address
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {emailWasPrivate
-                ? "That GitHub account keeps its email address private, so SiteSurveyor has nothing to build your account around. Add one and this sign-in will work from then on."
-                : "SiteSurveyor couldn't read an email address off that sign-in, and it needs one for your account. Add one and this sign-in will work from then on."}
-            </p>
-            <div className="mt-5">
-              <Button asChild>
-                <Link to="/signup">Add an email address</Link>
-              </Button>
+            </AuthMark>
+
+            <div className="auth-note-body">
+              <h2 className="auth-note-title">Add an email address</h2>
+              <p className="auth-note-lead">
+                {emailWasPrivate
+                  ? "That GitHub account keeps its email address private, so SiteSurveyor has nothing to build your account around. Add one and this sign-in will work from then on."
+                  : "SiteSurveyor couldn't read an email address off that sign-in, and it needs one for your account. Add one and this sign-in will work from then on."}
+              </p>
             </div>
+
+            <Button asChild>
+              <Link to="/signup">Add an email address</Link>
+            </Button>
           </>
         ) : (
           <>
-            <span className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <AuthMark tone="danger">
               <ShieldAlert className="size-5" aria-hidden="true" />
-            </span>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Sign-in could not be completed
-            </h2>
-            <div className="mt-3 text-left">
-              <ErrorNotice tone="danger">{message}</ErrorNotice>
+            </AuthMark>
+
+            <div className="auth-note-body">
+              <h2 className="auth-note-title">
+                Sign-in could not be completed
+              </h2>
             </div>
-            <div className="mt-4">
-              <Button asChild>
-                <Link to="/login">Back to sign in</Link>
-              </Button>
-            </div>
+
+            <ErrorNotice tone="danger">{message}</ErrorNotice>
+
+            <Button asChild>
+              <Link to="/login">Back to sign in</Link>
+            </Button>
           </>
         )}
       </div>

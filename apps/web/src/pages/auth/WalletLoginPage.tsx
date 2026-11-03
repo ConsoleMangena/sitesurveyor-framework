@@ -43,15 +43,9 @@ import {
   SOLANA_CLUSTER_LABEL,
 } from "../../features/phantom/lib/config.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
-import { cn } from "@/lib/utils";
 import { DialogTemplate } from "@/components/templates/DialogTemplate.tsx";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
@@ -768,7 +762,15 @@ export default function WalletLoginPage() {
 
   return (
     <AuthShell
-      showBrand={false}
+      wide
+      title={
+        mode === "signin"
+          ? "Welcome back to the field."
+          : completingAccount
+            ? "Finish your account"
+            : "Create your account"
+      }
+      description="Solana Web3 Authentication"
       footer={
         <div className="flex flex-col items-center gap-3">
           <Link
@@ -785,22 +787,16 @@ export default function WalletLoginPage() {
         </div>
       }
     >
-      <div className="space-y-6">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <img src="/logo.svg" alt="" className="size-9" />
-          <div className="space-y-1">
-            <h1 id="web3-auth-title" className="text-xl font-bold tracking-tight">
-              SiteSurveyor
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Solana Web3 Authentication
-            </p>
-          </div>
+      <div className="auth-content">
+        <div className="auth-group-start flex items-center gap-2">
           <Badge
             variant="outline"
             className="gap-1.5 border-border bg-muted/60 text-muted-foreground hover:bg-muted"
           >
-            <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+            <span
+              className="size-1.5 shrink-0 bg-foreground/70"
+              aria-hidden="true"
+            />
             <SolanaNetworkIcon className="size-3.5" />
             <span>Solana</span>
             <span className="font-medium text-foreground">{clusterLabel}</span>
@@ -808,11 +804,12 @@ export default function WalletLoginPage() {
         </div>
 
         <Tabs
+          className="auth-group-end"
           value={mode}
           onValueChange={(value) => selectMode(value as "signin" | "signup")}
         >
-          <Card className="gap-0 overflow-hidden py-0">
-            <CardHeader className="border-b px-6 py-4">
+          <div className="auth-slab">
+            <div className="auth-slab-head">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger
                   value="signin"
@@ -831,18 +828,13 @@ export default function WalletLoginPage() {
                   Create Account
                 </TabsTrigger>
               </TabsList>
-            </CardHeader>
+            </div>
 
-            <CardContent className="px-6 py-6">
+            <div className="auth-slab-body">
               <TabsContent value="signin" className="mt-0 space-y-5">
-                <div className="space-y-1">
-                  <h2 className="text-lg font-semibold tracking-tight">
-                    Welcome back to the field.
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Connect your Solana wallet to sign in. No passwords, no gas.
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Connect your Solana wallet to sign in. No passwords, no gas.
+                </p>
 
                 {error ? (
                   <ErrorNotice
@@ -892,28 +884,27 @@ export default function WalletLoginPage() {
                   </div>
 
                   {authConnected && publicKey ? (
-                    <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card ring-1 ring-border">
-                          {authWallet?.adapter.icon ? (
-                            <img
-                              src={authWallet.adapter.icon}
-                              alt={authWallet.adapter.name}
-                              className="size-5"
-                            />
-                          ) : (
-                            <Wallet className="size-4" aria-hidden="true" />
-                          )}
+                    <div className="auth-field-row">
+                      {authWallet?.adapter.icon ? (
+                        <img
+                          src={authWallet.adapter.icon}
+                          alt={authWallet.adapter.name}
+                          className="size-5 shrink-0"
+                        />
+                      ) : (
+                        <Wallet
+                          className="size-5 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="auth-field-row-text">
+                        <span className="auth-field-row-title flex items-center gap-1.5">
+                          <span className="size-1.5 shrink-0 rounded-full bg-success" />
+                          {authWallet?.adapter.name || "Wallet"}
                         </span>
-                        <div className="min-w-0">
-                          <span className="flex items-center gap-1.5 text-sm font-medium">
-                            <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
-                            {authWallet?.adapter.name || "Wallet"}
-                          </span>
-                          <span className="block truncate font-mono text-xs text-muted-foreground">
-                            {truncatedAddress}
-                          </span>
-                        </div>
+                        <span className="auth-field-row-sub font-mono">
+                          {truncatedAddress}
+                        </span>
                       </div>
 
                       <div className="flex shrink-0 items-center gap-1">
@@ -927,7 +918,7 @@ export default function WalletLoginPage() {
                           className="size-8"
                         >
                           {copied ? (
-                            <Check className="size-4 text-emerald-600" />
+                            <Check className="size-4 text-success" />
                           ) : (
                             <Copy className="size-4" />
                           )}
@@ -950,22 +941,25 @@ export default function WalletLoginPage() {
                       type="button"
                       onClick={() => setWalletDialogOpen(true)}
                       aria-haspopup="dialog"
-                      className="flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      className="auth-field-row"
                     >
-                      <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-foreground">
-                        {authWallet?.adapter.icon ? (
-                          <img src={authWallet.adapter.icon} alt="" className="size-5" />
-                        ) : (
-                          <Wallet className="size-4" aria-hidden="true" />
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">
+                      {authWallet?.adapter.icon ? (
+                        <img
+                          src={authWallet.adapter.icon}
+                          alt=""
+                          className="size-5 shrink-0"
+                        />
+                      ) : (
+                        <Wallet
+                          className="size-5 shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span className="auth-field-row-text">
+                        <span className="auth-field-row-title">
                           {walletFieldName}
                         </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {walletFieldSub}
-                        </span>
+                        <span className="auth-field-row-sub">{walletFieldSub}</span>
                       </span>
                       <ChevronRight
                         className="size-4 shrink-0 text-muted-foreground"
@@ -1006,35 +1000,35 @@ export default function WalletLoginPage() {
               </TabsContent>
 
               <TabsContent value="signup" className="mt-0 space-y-5">
-                <div className="space-y-1">
-                  <h2 className="text-lg font-semibold tracking-tight">
-                    {completingAccount ? "Finish your account" : "Create your account"}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {completingAccount
-                      ? "Add the missing details, then authorize the same wallet."
-                      : "Connect a wallet, then set up your personal or firm profile."}
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  {completingAccount
+                    ? "Add the missing details, then authorize the same wallet."
+                    : "Connect a wallet, then set up your personal or firm profile."}
+                </p>
 
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
-                  <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card ring-1 ring-border">
-                    {authWallet?.adapter.icon ? (
-                      <img src={authWallet.adapter.icon} alt="" className="size-5" />
-                    ) : (
-                      <Wallet className="size-4" aria-hidden="true" />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <span className="block truncate text-sm font-medium">
+                <div className="auth-field-row">
+                  {authWallet?.adapter.icon ? (
+                    <img
+                      src={authWallet.adapter.icon}
+                      alt=""
+                      className="size-5 shrink-0"
+                    />
+                  ) : (
+                    <Wallet
+                      className="size-5 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="auth-field-row-text">
+                    <span className="auth-field-row-title">
                       {authWallet?.adapter.name ?? "No wallet selected"}
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">
+                    <span className="auth-field-row-sub">
                       {authConnected
                         ? truncatedAddress
                         : "You'll be asked to connect when you continue."}
                     </span>
-                  </div>
+                  </span>
                 </div>
 
                 {signupError ? (
@@ -1054,24 +1048,24 @@ export default function WalletLoginPage() {
                       onValueChange={(value) =>
                         setAccountType(value as "personal" | "business")
                       }
-                      className="grid gap-2 sm:grid-cols-2"
+                      className="auth-choice-set"
                     >
                       <Label
                         htmlFor="wallet-scope-personal"
                         onClick={() => setAccountType("personal")}
-                        className={cn(
-                          "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent",
-                          accountType === "personal" && "border-primary bg-primary/5",
-                        )}
+                        className="auth-choice"
+                        data-selected={
+                          accountType === "personal" ? "true" : undefined
+                        }
                       >
                         <RadioGroupItem
                           value="personal"
                           id="wallet-scope-personal"
                           className="mt-0.5"
                         />
-                        <span className="space-y-0.5">
-                          <span className="block text-sm font-medium">Personal</span>
-                          <span className="block text-xs text-muted-foreground">
+                        <span className="min-w-0">
+                          <span className="auth-choice-title">Personal</span>
+                          <span className="auth-choice-sub">
                             Independent surveyor
                           </span>
                         </span>
@@ -1080,19 +1074,19 @@ export default function WalletLoginPage() {
                       <Label
                         htmlFor="wallet-scope-business"
                         onClick={() => setAccountType("business")}
-                        className={cn(
-                          "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent",
-                          accountType === "business" && "border-primary bg-primary/5",
-                        )}
+                        className="auth-choice"
+                        data-selected={
+                          accountType === "business" ? "true" : undefined
+                        }
                       >
                         <RadioGroupItem
                           value="business"
                           id="wallet-scope-business"
                           className="mt-0.5"
                         />
-                        <span className="space-y-0.5">
-                          <span className="block text-sm font-medium">Business Firm</span>
-                          <span className="block text-xs text-muted-foreground">
+                        <span className="min-w-0">
+                          <span className="auth-choice-title">Business Firm</span>
+                          <span className="auth-choice-sub">
                             Crews &amp; dispatch
                           </span>
                         </span>
@@ -1169,8 +1163,8 @@ export default function WalletLoginPage() {
                   Your profile is signed locally · Non-custodial · Gasless
                 </p>
               </TabsContent>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </Tabs>
       </div>
 
@@ -1232,22 +1226,20 @@ export default function WalletLoginPage() {
                       void handleWalletSelect(choice.adapterName);
                     }
                   }}
-                  className={`flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
-                    isSelected ? "border-primary" : ""
-                  }`}
+                  className="auth-field-row"
+                  data-selected={isSelected ? "true" : undefined}
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-foreground">
-                    {choice.icon ? (
-                      <img src={choice.icon} alt="" className="size-5" />
-                    ) : (
-                      <Wallet className="size-4" aria-hidden="true" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {choice.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
+                  {choice.icon ? (
+                    <img src={choice.icon} alt="" className="size-5 shrink-0" />
+                  ) : (
+                    <Wallet
+                      className="size-5 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="auth-field-row-text">
+                    <span className="auth-field-row-title">{choice.name}</span>
+                    <span className="auth-field-row-sub">
                       {choice.status === "mobile-app"
                         ? "Installed wallet apps (Phantom, Solflare, etc.)"
                         : walletStatusLabels[choice.status]}
@@ -1257,7 +1249,7 @@ export default function WalletLoginPage() {
                     {isInstall ? (
                       <Download className="size-4" />
                     ) : isSelected && isReady ? (
-                      <Check className="size-4 text-primary" />
+                      <Check className="size-4 text-foreground" />
                     ) : (
                       <ChevronRight className="size-4" />
                     )}

@@ -193,8 +193,8 @@ export default function AccountSecurity({
         </ErrorNotice>
       ) : null}
 
-      <div className="rounded-lg border bg-card">
-        <div className="border-b px-4 py-3">
+      <div>
+        <div className="border-b pb-3">
           <h3 className="text-sm font-semibold">Sign-in methods</h3>
           <p className="text-xs text-muted-foreground">
             Any one of these gets you in. Keep at least one — the last one
@@ -206,9 +206,9 @@ export default function AccountSecurity({
           {list.methods.map((method) => (
             <li
               key={method.id}
-              className="flex flex-wrap items-center gap-3 px-4 py-3"
+              className="flex flex-wrap items-center gap-3 py-3"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+              <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
                 <MethodIcon method={method} />
               </span>
 
@@ -257,7 +257,7 @@ export default function AccountSecurity({
                   </Button>
                 ) : (
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <ShieldCheck className="size-3.5 text-emerald-600" />
+                    <ShieldCheck className="size-3.5 text-success" />
                     Only way in
                   </span>
                 )}
@@ -266,7 +266,7 @@ export default function AccountSecurity({
           ))}
         </ul>
 
-        <div className="flex flex-wrap gap-2 border-t px-4 py-3">
+        <div className="flex flex-wrap gap-2 border-t pt-3">
           {!email ? (
             <Button
               type="button"
