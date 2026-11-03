@@ -157,6 +157,32 @@ function oauthCallbackErrorMessage(raw: string): string | undefined {
   )?.message;
 }
 
+/**
+ * Postgres and PostgREST refusals surface verbatim when provisioning cannot
+ * save the profile — the sign-in itself worked, so the message is the only
+ * thing the user gets. Nobody can act on SQL text, so the two shapes this app
+ * can legitimately hit get a sentence each.
+ */
+const DATABASE_ERROR_MESSAGES: Array<{ contains: string; message: string }> = [
+  {
+    contains: "row-level security policy",
+    message:
+      "SiteSurveyor's database wouldn't accept the account details for this sign-in, so it stopped instead of saving half an account. Try signing in again — if it happens again, report this message.",
+  },
+  {
+    contains: "profiles_email_key",
+    message:
+      "That email address already belongs to another SiteSurveyor account, so this one can't claim it. Sign in with that account and connect this sign-in method from Account security.",
+  },
+];
+
+function databaseErrorMessage(raw: string): string | undefined {
+  const lower = raw.toLowerCase();
+  return DATABASE_ERROR_MESSAGES.find(({ contains }) =>
+    lower.includes(contains),
+  )?.message;
+}
+
 /** Return the raw or a generic message for any auth error. */
 export function formatAuthUserFacingError(
   error: unknown,
@@ -188,6 +214,9 @@ export function formatAuthUserFacingError(
   if (raw) {
     const oauth = oauthCallbackErrorMessage(raw);
     if (oauth) return oauth;
+
+    const database = databaseErrorMessage(raw);
+    if (database) return database;
 
     const lower = raw.toLowerCase();
     if (

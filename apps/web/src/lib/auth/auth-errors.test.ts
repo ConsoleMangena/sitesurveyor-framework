@@ -85,4 +85,22 @@ describe("formatAuthUserFacingError", () => {
       ).toContain("Some future GoTrue wording");
     });
   });
+
+  describe("database refusals during account setup", () => {
+    it("explains a row-level security rejection", () => {
+      const out = formatAuthUserFacingError(
+        'new row violates row-level security policy for table "profiles"',
+      );
+      expect(out).toContain("wouldn't accept the account details");
+      expect(out).not.toContain("row-level security policy");
+    });
+
+    it("explains an email already owned by another account", () => {
+      const out = formatAuthUserFacingError(
+        'duplicate key value violates unique constraint "profiles_email_key"',
+      );
+      expect(out).toContain("already belongs to another SiteSurveyor account");
+      expect(out).not.toContain("duplicate key");
+    });
+  });
 });

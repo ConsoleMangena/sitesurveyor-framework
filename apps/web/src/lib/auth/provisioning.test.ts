@@ -16,7 +16,9 @@ interface QueryCall {
 interface TableRule {
   table: string;
   match: (chain: string[]) => boolean;
-  result: { data?: unknown; error?: { message: string } | null };
+  result?: { data?: unknown; error?: { message: string } | null };
+  /** Answers in order — for a write that fails once and succeeds on retry. */
+  results?: { data?: unknown; error?: { message: string } | null }[];
 }
 
 const { mockSupabase, tableState, mockGetSignInProfile, mockRepairSignInProfile } =
@@ -44,7 +46,13 @@ const { mockSupabase, tableState, mockGetSignInProfile, mockRepairSignInProfile 
       const rule = tableState.rules.find(
         (r) => r.table === table && r.match(chain),
       );
-      return rule ? rule.result : defaultResult(table, chain);
+      if (!rule) return defaultResult(table, chain);
+      if (rule.results?.length) {
+        return rule.results.length > 1
+          ? (rule.results.shift() as (typeof rule.results)[number])
+          : rule.results[0];
+      }
+      return rule.result ?? defaultResult(table, chain);
     };
 
     const makeBuilder = (table: string) => {
@@ -281,6 +289,102 @@ describe("provisionAccount", () => {
     expect(profileWrites()).toHaveLength(0);
   });
 
+  it("retries the create without an email when another account claims it", async () => {
+    tableState.rules.push({
+      table: "profiles",
+      match: (chain) => chain.includes("upsert"),
+      results: [
+        {
+          data: null,
+          error: {
+            message:
+              'duplicate key value violates unique constraint "profiles_email_key"',
+          },
+        },
+        { data: null, error: null },
+      ],
+    });
+
+    const outcome = await provisionAccount(makeUser());
+
+    expect(outcome).toEqual({ created: true });
+    const writes = profileWrites();
+    expect(writes).toHaveLength(2);
+    const retry = writes[1].args[0] as [Record<string, unknown>];
+    expect(retry[0]).not.toHaveProperty("email");
+    expect(retry[0]).toMatchObject({ id: "user-1", full_name: "Sam Surveyor" });
+  });
+
+  it("retries the repair without an email when another account claims it", async () => {
+    mockGetSignInProfile.mockResolvedValue({
+      full_name: "Sam Surveyor",
+      email: "",
+      auth_signup_account_type: "personal",
+    });
+    tableState.rules.push({
+      table: "profiles",
+      match: (chain) => chain.includes("update"),
+      results: [
+        {
+          data: null,
+          error: {
+            message:
+              'duplicate key value violates unique constraint "profiles_email_key"',
+          },
+        },
+        { data: null, error: null },
+      ],
+    });
+
+    const outcome = await provisionAccount(
+      makeUser({
+        user_metadata: {
+          full_name: "Sam Surveyor",
+          account_type: "personal",
+          contact_email: "sam@example.com",
+        },
+      } as Partial<User>),
+    );
+
+    expect(outcome).toEqual({ created: false });
+    const writes = profileWrites();
+    // The email was the only missing column, so the retry writes nothing and
+    // no empty PATCH goes to PostgREST.
+    expect(writes).toHaveLength(1);
+    expect(writes[0].args[0]).toEqual([{ email: "sam@example.com" }]);
+  });
+
+  it("keeps the other repair columns when the email is contested", async () => {
+    mockGetSignInProfile.mockResolvedValue({
+      full_name: "",
+      email: "",
+      auth_signup_account_type: "personal",
+    });
+    tableState.rules.push({
+      table: "profiles",
+      match: (chain) => chain.includes("update"),
+      results: [
+        {
+          data: null,
+          error: {
+            message:
+              'duplicate key value violates unique constraint "profiles_email_key"',
+          },
+        },
+        { data: null, error: null },
+      ],
+    });
+
+    await provisionAccount(makeUser());
+
+    const writes = profileWrites();
+    expect(writes).toHaveLength(2);
+    expect(writes[0].args[0]).toEqual([
+      { full_name: "Sam Surveyor", email: "sam@example.com" },
+    ]);
+    expect(writes[1].args[0]).toEqual([{ full_name: "Sam Surveyor" }]);
+  });
+
   it("throws PROFILE_UNREADABLE when the profile write fails", async () => {
     tableState.rules.push({
       table: "profiles",
@@ -293,6 +397,29 @@ describe("provisionAccount", () => {
       blocker: "PROFILE_UNREADABLE",
       message: "permission denied for table profiles",
     });
+  });
+
+  it("does not retry an update refused for another reason", async () => {
+    mockGetSignInProfile.mockResolvedValue({
+      full_name: "Sam Surveyor",
+      email: "",
+      auth_signup_account_type: "personal",
+    });
+    tableState.rules.push({
+      table: "profiles",
+      match: (chain) => chain.includes("update"),
+      result: {
+        error: {
+          message: 'new row violates row-level security policy for table "profiles"',
+        },
+      },
+    });
+
+    await expect(provisionAccount(makeUser())).rejects.toMatchObject({
+      name: "ProvisioningError",
+      blocker: "PROFILE_UNREADABLE",
+    });
+    expect(profileWrites()).toHaveLength(1);
   });
 
   it("creates a business workspace only when none exists yet", async () => {

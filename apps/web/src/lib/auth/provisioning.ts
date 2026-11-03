@@ -117,9 +117,19 @@ export async function provisionAccount(
       patch.company_name = companyName;
     }
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from("profiles")
       .upsert({ id: user.id, ...patch }, { onConflict: "id" });
+
+    if (isClaimedEmailError(error)) {
+      // Another account mirrors this address, so the row cannot claim it. Finish
+      // the write without it rather than failing the sign-in over a display copy.
+      const withoutEmail: Record<string, string | null> = { ...patch };
+      delete withoutEmail.email;
+      ({ error } = await supabase
+        .from("profiles")
+        .upsert({ id: user.id, ...withoutEmail }, { onConflict: "id" }));
+    }
 
     if (error) {
       throw new ProvisioningError(
@@ -148,10 +158,23 @@ export async function provisionAccount(
     }
 
     if (Object.keys(patch).length > 0) {
-      const { error } = await supabase
+      let { error } = await supabase
         .from("profiles")
         .update(patch)
         .eq("id", user.id);
+
+      if (isClaimedEmailError(error)) {
+        // Another account mirrors this address, so the profile can't claim it.
+        // The session email is enough for the app to map the account, so drop
+        // the contested copy and finish the write instead of failing sign-in.
+        const retry: typeof patch = { ...patch };
+        delete retry.email;
+        if (Object.keys(retry).length > 0) {
+          ({ error } = await supabase.from("profiles").update(retry).eq("id", user.id));
+        } else {
+          error = null;
+        }
+      }
 
       if (error) {
         throw new ProvisioningError(
@@ -271,6 +294,15 @@ async function createBusinessWorkspace(name: string): Promise<boolean> {
 function alreadyExists(message: string | undefined): boolean {
   if (!message) return false;
   return /already exists|duplicate key|unique constraint/i.test(message);
+}
+
+/**
+ * True when a profile write was refused because another account already mirrors
+ * that address (`profiles_email_key`). Nobody's sign-in should fail over a
+ * display copy of an email the session already carries.
+ */
+function isClaimedEmailError(error: { message?: string } | null): boolean {
+  return /profiles_email_key/i.test(error?.message ?? "");
 }
 
 /**
