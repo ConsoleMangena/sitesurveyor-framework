@@ -151,11 +151,23 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+#
+# NOTE: Sign-In With Ethereum/Solana rejects any signed message whose URI is
+# not HTTPS unless the URI host is exactly `localhost`, so local auth must use
+# `http://localhost:5174` (the Vite dev server), never `127.0.0.1`.
+site_url = "http://localhost:5174"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# OAuth callbacks, email confirmation links, and password recovery links all land here.
+additional_redirect_urls = [
+  "http://localhost:5174",
+  "http://localhost:5174/*",
+  "http://127.0.0.1:5174",
+  "https://localhost:5174",
+  "https://*.onrender.com/*",
+  "https://*.onrender.com",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -172,7 +184,9 @@ enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
-enable_manual_linking = false
+# Required for `supabase.auth.linkIdentity()` / `unlinkIdentity()`, which power
+# "link / unlink GitHub" on the unified account security page.
+enable_manual_linking = true
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
 minimum_password_length = 6
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
@@ -182,6 +196,15 @@ password_requirements = ""
 # Configure passkey sign-ins.
 # [auth.passkey]
 # enabled = false
+
+# Sign-In With Solana / Sign-In With Ethereum (EIP-4361).
+# Both are required: Solana powers the existing wallet login, Ethereum powers
+# the SIWE flow. Enabling them here maps to GOTRUE_EXTERNAL_WEB3_{SOLANA,ETHEREUM}_ENABLED.
+[auth.web3.solana]
+enabled = true
+
+[auth.web3.ethereum]
+enabled = true
 
 # Configure WebAuthn relying party settings (required when passkey is enabled).
 # [auth.webauthn]
@@ -218,7 +241,9 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# Email authentication requires this: signup issues a confirmation link/OTP
+# instead of a session, and the session is only created after verification.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -314,6 +339,23 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+#
+# GitHub OAuth — required for "Continue with GitHub".
+#   1. Create an OAuth App at https://github.com/settings/applications/new with
+#      Homepage URL  = the deployed app origin (e.g. https://sitesurveyor-web.onrender.com)
+#      Callback URL  = {origin}/auth/callback
+#   2. Put the Client ID below (or in .env as SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)
+#      and the Client Secret in .env as SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET.
+#   3. In the Supabase dashboard: Authentication → Providers → GitHub → enable,
+#      and add {origin}/auth/callback to Authentication → URL Configuration → Redirect URLs.
+[auth.external.github]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
+# Overrides the default auth callback URL derived from auth.external_url.
+redirect_uri = ""
+
 [auth.external.apple]
 enabled = false
 client_id = ""
@@ -394,6 +436,12 @@ verify_jwt = false
 # The public market concierge on /market: visitors browse anonymously, so the
 # JWT check is disabled and the function applies its own per-IP rate limiting
 # with read-only tools over the published market views.
+verify_jwt = false
+
+[functions.web3-auth]
+# Issues single-use SIWE/SIWS nonces and links/unlinks wallets to the signed-in
+# account. The function validates the caller's bearer token itself (link/unlink
+# actions reject anonymous callers) so it can also serve anonymous nonce requests.
 verify_jwt = false
 
 # Experimental features may be deprecated at any time

@@ -11,9 +11,15 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 
 export function adminClient(): SupabaseClient {
   const url = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  // Legacy key format exposes `SUPABASE_SERVICE_ROLE_KEY`; projects that have
+  // migrated to the new API keys only get `SUPABASE_SECRET_KEY`.
+  const serviceKey =
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    Deno.env.get("SUPABASE_SECRET_KEY");
   if (!url || !serviceKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not configured");
+    throw new Error(
+      "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY) are not configured",
+    );
   }
   return createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -33,7 +39,8 @@ export async function getCaller(req: Request): Promise<Caller | null> {
   if (!authHeader) return null;
 
   const url = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const anonKey =
+    Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
   if (!url || !anonKey) return null;
 
   const client = createClient(url, anonKey, {
