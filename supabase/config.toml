@@ -155,7 +155,9 @@ enabled = true
 # NOTE: Sign-In With Ethereum/Solana rejects any signed message whose URI is
 # not HTTPS unless the URI host is exactly `localhost`, so local auth must use
 # `http://localhost:5174` (the Vite dev server), never `127.0.0.1`.
-site_url = "http://localhost:5174"
+# Production URL is used for email links; dev still works because additional_redirect_urls
+# covers the dev origins.
+site_url = "https://sitesurveyor.tech"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
@@ -165,8 +167,10 @@ additional_redirect_urls = [
   "http://localhost:5174/*",
   "http://127.0.0.1:5174",
   "https://localhost:5174",
-  "https://*.onrender.com/*",
-  "https://*.onrender.com",
+  "https://sitesurveyor.tech",
+  "https://sitesurveyor.tech/*",
+  "https://sitesurveyor-web.onrender.com",
+  "https://sitesurveyor-web.onrender.com/*",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -349,10 +353,10 @@ max_frequency = "5s"
 #   3. In the Supabase dashboard: Authentication → Providers → GitHub → enable,
 #      and add {origin}/auth/callback to Authentication → URL Configuration → Redirect URLs.
 [auth.external.github]
-enabled = false
-client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
+enabled = true
+client_id = "Ov23liwueIM51fG9eaV0"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
-secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
+secret = "env(GITHUB_CLIENT_SECRET)"
 # Overrides the default auth callback URL derived from auth.external_url.
 redirect_uri = ""
 
@@ -394,14 +398,14 @@ enabled = false
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
-# OAuth server configuration
-[auth.oauth_server]
-# Enable OAuth server functionality
-enabled = false
-# Path for OAuth consent flow UI
-authorization_url_path = "/oauth/consent"
-# Allow dynamic client registration
-allow_dynamic_registration = false
+# OAuth server configuration - commented out to avoid push conflicts
+# [auth.oauth_server]
+# # Enable OAuth server functionality
+# enabled = false
+# # Path for OAuth consent flow UI (required when updating OAuth config)
+# authorization_url_path = "/oauth/consent"
+# # Allow dynamic client registration
+# allow_dynamic_registration = false
 
 [edge_runtime]
 enabled = true
