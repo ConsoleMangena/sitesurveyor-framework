@@ -60,6 +60,9 @@ ai-gateway/.env
 .superpowers/
 .cloud-attachments/
 
+# Impeccable design-tool state: review captures, surface briefs, mocks
+.impeccable/
+
 # Reference templates
 shadcn-admin/
 
