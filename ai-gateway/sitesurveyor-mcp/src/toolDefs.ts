@@ -15,7 +15,7 @@ export const TOOL_DEFS: ToolDef[] = [
   {
     name: "inspect_columns",
     description:
-      "Inspect all columns for a table. Returns column names, types, and whether they are primary keys.",
+      "List the column names of a table, from the Data API description rather than a sample row. Use when unsure which columns exist before filtering or writing.",
     inputSchema: {
       type: "object",
       properties: { table: STRING },
@@ -26,7 +26,7 @@ export const TOOL_DEFS: ToolDef[] = [
   {
     name: "query_site_data",
     description:
-      "Query a table for site data. Filters are applied as AND conditions. Returns the first `limit` rows. Prefer this over inspecting all data.",
+      "Query a table for site data. Filters are applied as AND conditions. Returns the first `limit` rows. Always restricted to the current workspace, so never filter on workspace_id. Prefer this over inspecting all data.",
     inputSchema: {
       type: "object",
       properties: {
@@ -156,7 +156,7 @@ export const TOOL_DEFS: ToolDef[] = [
   {
     name: "close_overdue_invoices",
     description:
-      "Set status='closed' on every invoice whose due_date is before today and status is one of 'draft'/'sent'/'overdue'. Returns the count of invoices closed. This is a bulk write used by the quarterly close workflow.",
+      "Settle every overdue invoice in the current workspace in one step (they are marked paid). Returns a summary. Bulk write — the workspace is decided by the run, not by an argument.",
     inputSchema: {
       type: "object",
       properties: {},

@@ -4,7 +4,9 @@
 // Config is read from the environment:
 //   SUPABASE_URL             Supabase REST base URL
 //   SUPABASE_SERVICE_ROLE_KEY  service-role key used for the agent's reads/writes
-//   SITESURVEYOR_WORKSPACE_ID  optional workspace stamped onto new records
+//   SITESURVEYOR_WORKSPACE_ID  the workspace every tool call is scoped to — the
+//                              key bypasses RLS, so tools refuse to touch
+//                              business data without it
 //   SITESURVEYOR_STATE_DIR     directory used to persist conversation memory
 //
 // The MCP session id maps to the OpenClaw session; memory tools are keyed on it

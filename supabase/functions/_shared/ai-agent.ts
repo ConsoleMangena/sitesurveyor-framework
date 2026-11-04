@@ -6,7 +6,9 @@
 // with the service-role key. Never imported by browser code.
 //
 // Safety contract (enforced here, mirrored in the system prompt):
-// - Reads are free against the whitelisted tables.
+// - Every read and write is pinned to the run's workspace (see scoping.ts):
+//   the service-role key bypasses RLS, so the predicate has to be in the query.
+// - Reads are free against the whitelisted tables of that workspace.
 // - Writes (insert/update/delete) are whitelisted and REQUIRE the model to
 //   have shown the change and received an affirmative user reply before it
 //   may set confirmed=true.
@@ -23,6 +25,12 @@ import {
   selectSkills,
 } from "./skills.ts";
 import { forget, formatMemoryBlock, loadMemory, remember } from "./memory.ts";
+import {
+  PUBLIC_READ_TABLES,
+  scopeRead,
+  scopeWrite,
+  workspaceParam,
+} from "./scoping.ts";
 import {
   DEFAULT_MODEL,
   isAllowedModel,
@@ -125,7 +133,10 @@ function timeoutSignal(ms: number): TimeoutHandle {
   };
 }
 
-/** Tables the agent may read. */
+/**
+ * Tables the agent may read. Each is scoped to one workspace; the three that do
+ * not carry their own `workspace_id` are declared in scoping.ts.
+ */
 const READ_TABLES = new Set([
   "workspaces",
   "workspace_members",
@@ -157,15 +168,10 @@ const READ_TABLES = new Set([
 /**
  * Tables the anonymous public-market concierge may read: the published market
  * views only (available listings, open jobs, upcoming training — never
- * workspace records). Backs the `market-chat` surface.
+ * workspace records). Backs the `market-chat` surface, and the only tables
+ * readable without a workspace — see scoping.ts.
  */
-const MARKET_READ_TABLES = new Set([
-  "public_market_listings",
-  "public_market_professionals",
-  "public_market_jobs",
-  "public_market_firms",
-  "public_market_events",
-]);
+const MARKET_READ_TABLES = PUBLIC_READ_TABLES;
 
 /** Tables the agent may mutate. */
 const WRITE_TABLES = new Set([
@@ -234,7 +240,7 @@ function readTools(tables: ReadonlySet<string>): ToolSchema[] {
       function: {
         name: "inspect_columns",
         description:
-          "List the column names of a table (from one sample row). Use when unsure which columns exist before filtering or writing.",
+          "List the column names of a table, from the Data API description rather than a sample row. Use when unsure which columns exist before filtering or writing.",
         parameters: {
           type: "object",
           properties: {
@@ -250,7 +256,7 @@ function readTools(tables: ReadonlySet<string>): ToolSchema[] {
       function: {
         name: "query_site_data",
         description:
-          "Read rows from the SiteSurveyor platform database. Always narrow broad tables with filters or a small limit.",
+          "Read rows from the SiteSurveyor platform database. Results are already limited to the caller's own workspace, so a workspace_id filter is never needed. Always narrow broad tables with filters or a small limit.",
         parameters: {
           type: "object",
           properties: {
@@ -365,17 +371,10 @@ const TOOLS: ToolSchema[] = [
     function: {
       name: "close_overdue_invoices",
       description:
-        "Composite workflow: find every overdue invoice and settle it at once (marks them paid). Returns a summary. Use instead of manually querying then patching each one.",
+        "Composite workflow: find every overdue invoice in the current workspace and settle it at once (marks them paid). Returns a summary. Use instead of manually querying then patching each one.",
       parameters: {
         type: "object",
         properties: {
-          scope: {
-            type: "object",
-            description: "Optional scope, e.g. { workspace_id: '...' } to limit which workspace's overdue invoices to close.",
-            properties: {
-              workspace_id: { type: "string" },
-            },
-          },
           target_status: {
             type: "string",
             enum: ["paid", "cancelled"],
@@ -734,10 +733,9 @@ function marketSystemPrompt(supabaseUrl: string): string {
 // REAL column names for whitelisted tables instead of guessing. Cached
 // module-level; a failed fetch simply omits the section.
 
-interface TableSchemaInfo {
+export interface TableSchemaInfo {
   columns: string[]; // column names
   required: string[];
-  hasWorkspaceId: boolean;
 }
 
 const schemaCache = new Map<string, Promise<Map<string, TableSchemaInfo>>>();
@@ -777,7 +775,6 @@ function loadTableSchemas(
         map.set(table, {
           columns,
           required: def.required ?? [],
-          hasWorkspaceId: columns.includes("workspace_id"),
         });
       }
     } catch {
@@ -877,11 +874,17 @@ function buildQueryPath(
   orderBy: string | undefined,
   orderDir: string | undefined,
   limit: number | undefined,
+  scope: { select: string; params: [string, string][] },
 ): string {
   const params = new URLSearchParams();
-  params.set("select", "*");
+  params.set("select", scope.select);
   for (const f of filters ?? []) {
     params.set(f.column, `${f.op}.${f.value}`);
+  }
+  // Applied last: `set` replaces a same-named model filter, so the tenant
+  // predicate always wins even if scopeRead ever misses one.
+  for (const [column, value] of scope.params) {
+    params.set(column, `eq.${value}`);
   }
   if (orderBy) params.set("order", `${orderBy}${orderDir ? "." + orderDir : ""}`);
   params.set("limit", String(Math.min(Math.max(limit ?? 20, 1), 100)));
@@ -903,7 +906,11 @@ function elide(text: string, capChars: number, headChars: number, tailChars: num
   );
 }
 
-async function executeTool(
+/**
+ * The seam every model tool call runs through. Exported so the scoping tests
+ * can assert the exact requests a call produces.
+ */
+export async function executeTool(
   name: string,
   rawArgs: string,
   ctx: {
@@ -934,11 +941,24 @@ async function executeTool(
 
   if (name === "inspect_columns") {
     const table = str(args.table);
-    if (!READ_TABLES.has(table)) return JSON.stringify({ error: `Table '${table}' is not readable.` });
+    if (!READ_TABLES.has(table) && !MARKET_READ_TABLES.has(table))
+      return JSON.stringify({ error: `Table '${table}' is not readable.` });
+    const info = ctx.schemas.get(table);
+    if (info) {
+      return JSON.stringify({ table, columns: info.columns, required: info.required });
+    }
+    // No OpenAPI description (the schema fetch failed): fall back to a sample
+    // row, still scoped so the sample cannot belong to another workspace.
+    const scoped = scopeRead(table, ctx.workspaceId, undefined);
+    if (!scoped.ok) return JSON.stringify({ error: scoped.error });
+    const params = new URLSearchParams();
+    params.set("select", scoped.select);
+    params.set("limit", "1");
+    for (const [column, value] of scoped.params) params.set(column, `eq.${value}`);
     const out = await supabaseFetch({
       ...ctx,
       method: "GET",
-      path: `${table}?select=*&limit=1`,
+      path: `${table}?${params.toString()}`,
     });
     if (!out.ok) return JSON.stringify({ error: `HTTP ${out.status}`, details: out.json });
     const row = Array.isArray(out.json) ? out.json[0] : null;
@@ -952,13 +972,13 @@ async function executeTool(
       return JSON.stringify({ error: `Table '${table}' is not readable.` });
     }
     const tableSchema = ctx.schemas.get(table);
-    const filters = Array.isArray(args.filters)
+    const requested = Array.isArray(args.filters)
       ? (args.filters as { column?: unknown; op?: unknown; value?: unknown }[])
           .filter((f) => typeof f.column === "string" && typeof f.op === "string" && FILTER_OPS.has(String(f.op)))
           .map((f) => ({ column: String(f.column), op: String(f.op), value: String(f.value ?? "") }))
       : undefined;
-    if (filters?.length && tableSchema) {
-      const unknown = filters.filter((f) => !tableSchema.columns.includes(f.column));
+    if (requested?.length && tableSchema) {
+      const unknown = requested.filter((f) => !tableSchema.columns.includes(f.column));
       if (unknown.length > 0) {
         return JSON.stringify({
           error: `Unknown filter column(s): ${unknown.map((f) => f.column).join(", ")}`,
@@ -966,18 +986,21 @@ async function executeTool(
         });
       }
     }
+    const scoped = scopeRead(table, ctx.workspaceId, requested);
+    if (!scoped.ok) return JSON.stringify({ error: scoped.error });
     if (name === "count_site_data") {
-      const path = buildQueryPath(table, filters, undefined, undefined, 1);
+      const path = buildQueryPath(table, scoped.filters, undefined, undefined, 1, scoped);
       const out = await supabaseFetch({ ...ctx, method: "GET", path, preferCount: true });
       if (!out.ok) return JSON.stringify({ error: `HTTP ${out.status}`, details: out.json });
       return JSON.stringify({ table, count: out.count });
     }
     const path = buildQueryPath(
       table,
-      filters,
+      scoped.filters,
       args.order_by == null ? undefined : str(args.order_by),
       str(args.order_dir) || undefined,
       typeof args.limit === "number" ? args.limit : undefined,
+      scoped,
     );
     const out = await supabaseFetch({ ...ctx, method: "GET", path });
     if (!out.ok) return JSON.stringify({ error: `HTTP ${out.status}`, details: out.json });
@@ -999,10 +1022,16 @@ async function executeTool(
       if (value != null && !uuidRe.test(str(value)))
         return JSON.stringify({ error: `A valid ${key} UUID is required.` });
     }
+    const scoped = scopeRead("project_cad_drawings", ctx.workspaceId, undefined);
+    if (!scoped.ok) return JSON.stringify({ error: scoped.error });
+    const cadParams = new URLSearchParams();
+    cadParams.set("select", "model");
+    cadParams.set("project_id", `eq.${projectId}`);
+    for (const [column, value] of scoped.params) cadParams.set(column, `eq.${value}`);
     const out = await supabaseFetch({
       ...ctx,
       method: "GET",
-      path: `project_cad_drawings?project_id=eq.${projectId}&select=model`,
+      path: `project_cad_drawings?${cadParams.toString()}`,
     });
     if (!out.ok) return JSON.stringify({ error: `HTTP ${out.status}`, details: out.json });
     const rows = Array.isArray(out.json) ? out.json : [];
@@ -1106,7 +1135,11 @@ async function executeTool(
   if (name === "close_overdue_invoices") {
     return closeOverdueInvoices(
       { supabaseFetch },
-      { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey },
+      {
+        supabaseUrl: ctx.supabaseUrl,
+        serviceKey: ctx.serviceKey,
+        workspaceId: ctx.workspaceId,
+      },
       (args as {
         scope?: { workspace_id?: string };
         target_status?: string;
@@ -1174,7 +1207,8 @@ async function executeTool(
   if (!WRITE_TABLES.has(table)) return JSON.stringify({ error: `Table '${table}' is not writable.` });
 
   // Sanitise payloads against the live schema: drop unknown columns (the
-  // model is told which were dropped) and stamp the caller's workspace.
+  // model is told which were dropped). Workspace ownership is applied below,
+  // never from the payload.
   const schema = ctx.schemas.get(table);
   const sanitise = (
     payload: Record<string, unknown> | undefined,
@@ -1190,11 +1224,13 @@ async function executeTool(
         else dropped.push(key);
       }
     }
-    if (ctx.workspaceId && (!schema || schema.hasWorkspaceId)) {
-      if (clean.workspace_id == null) clean.workspace_id = ctx.workspaceId;
-    }
     return { clean, dropped };
   };
+
+  /** Every mutation is pinned to the run's workspace, or it does not run. */
+  const owner = scopeWrite(ctx.workspaceId);
+  if (!owner.ok) return JSON.stringify({ error: owner.error });
+  const rowScope = `&${workspaceParam(owner.workspaceId)}`;
 
   if (name === "insert_site_record") {
     const { clean, dropped } = sanitise(args.record as Record<string, unknown>);
@@ -1204,6 +1240,9 @@ async function executeTool(
         valid_columns: schema ? schema.columns : undefined,
       });
     }
+    const owned = scopeWrite(ctx.workspaceId, clean.workspace_id);
+    if (!owned.ok) return JSON.stringify({ error: owned.error });
+    clean.workspace_id = owned.workspaceId;
     const out = await supabaseFetch({ ...ctx, method: "POST", path: table, body: clean });
     if (!out.ok)
       return JSON.stringify({
@@ -1219,7 +1258,7 @@ async function executeTool(
     const verify = await supabaseFetch({
       ...ctx,
       method: "GET",
-      path: `${table}?id=eq.${newId}&select=*`,
+      path: `${table}?id=eq.${newId}&select=*${rowScope}`,
     });
     const row = Array.isArray(verify.json) ? verify.json[0] : inserted;
     return JSON.stringify({ inserted: row, _verified: verify.ok && !!row });
@@ -1236,10 +1275,15 @@ async function executeTool(
         valid_columns: schema ? schema.columns : undefined,
       });
     }
+    const owned = scopeWrite(ctx.workspaceId, clean.workspace_id);
+    if (!owned.ok) return JSON.stringify({ error: owned.error });
+    // A row cannot be re-parented to another workspace, and it cannot be
+    // stamped from a patch either — the predicate below owns the row.
+    delete clean.workspace_id;
     const out = await supabaseFetch({
       ...ctx,
       method: "PATCH",
-      path: `${table}?id=eq.${id}`,
+      path: `${table}?id=eq.${id}${rowScope}`,
       body: clean,
     });
     if (!out.ok)
@@ -1250,13 +1294,20 @@ async function executeTool(
           ? `Valid columns for ${table}: ${schema.columns.join(", ")}`
           : undefined,
       });
+    const patched = Array.isArray(out.json) ? out.json : [];
+    if (patched.length === 0)
+      return JSON.stringify({
+        updated: null,
+        _verified: false,
+        error: `No ${table} row with id ${id} exists in workspace ${owner.workspaceId}.`,
+      });
     const verify = await supabaseFetch({
       ...ctx,
       method: "GET",
-      path: `${table}?id=eq.${id}&select=*`,
+      path: `${table}?id=eq.${id}&select=*${rowScope}`,
     });
     const row = Array.isArray(verify.json) ? verify.json[0] : null;
-    return JSON.stringify({ updated: row ?? out.json, _verified: verify.ok && !!row });
+    return JSON.stringify({ updated: row ?? patched[0], _verified: verify.ok && !!row });
   }
 
   if (name === "delete_site_record") {
@@ -1268,9 +1319,21 @@ async function executeTool(
         table,
         id,
       });
-    const out = await supabaseFetch({ ...ctx, method: "DELETE", path: `${table}?id=eq.${id}` });
+    const out = await supabaseFetch({
+      ...ctx,
+      method: "DELETE",
+      path: `${table}?id=eq.${id}${rowScope}`,
+    });
     if (!out.ok) return JSON.stringify({ error: `HTTP ${out.status}`, details: out.json });
-    return JSON.stringify({ deleted: true });
+    // PostgREST answers 2xx even when the predicate matched nothing, so the
+    // returned rows are the only proof the delete landed on a real record.
+    const removed = Array.isArray(out.json) ? out.json : [];
+    if (removed.length === 0)
+      return JSON.stringify({
+        deleted: false,
+        error: `No ${table} row with id ${id} exists in workspace ${owner.workspaceId}.`,
+      });
+    return JSON.stringify({ deleted: true, removed: removed[0] });
   }
 
   return JSON.stringify({ error: `Unknown tool '${name}'.` });
@@ -1632,7 +1695,7 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
       ? `\n\nCONVERSATION MEMORY — notes about earlier in this chat:\n${opts.memoryNote.trim()}\nTreat as background context, not current state. If it records a pending write awaiting the user's yes/no, that confirmation is still open. Re-verify exact numbers and coordinates with tools when precision matters.`
       : "") +
     (opts.workspaceId
-      ? `\nWhen creating or updating business records, ALWAYS set workspace_id to "${opts.workspaceId}" unless the user explicitly names another workspace.`
+      ? `\nThis run is scoped to workspace ${opts.workspaceId}, and the tools enforce it: every row they return belongs to that workspace, records you create are owned by it, and a filter or write naming another workspace is refused. Say what you can see rather than offering to reach around this boundary.`
       : "") +
     (opts.projectId
       ? `\nThe user currently has project ${opts.projectId} open in the CAD workspace.`

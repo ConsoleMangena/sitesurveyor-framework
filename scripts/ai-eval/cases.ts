@@ -7,7 +7,7 @@
 // written so behaviour the model gets wrong fails loudly but still counts as a
 // meaningful measurement (see run.ts pass table).
 
-import type { FakePostgrest } from "./fixtures.ts";
+import { FIXTURE_WORKSPACE, RIVAL_WORKSPACE, type FakePostgrest, type TableRow } from "./fixtures.ts";
 
 interface ToolCall {
   name: string;
@@ -64,6 +64,17 @@ function rowById(frame: EvalFrame, table: string, id: string) {
   return (frame.fixture.tables[table] ?? []).find((r) => r.id === id);
 }
 
+/** Rows the run's own workspace owns. The fixture seeds a second tenant into
+ *  the same tables, so a tool that dropped its workspace predicate shows up
+ *  here as rival rows the agent read, wrote, or deleted. */
+function mine(frame: EvalFrame, table: string): TableRow[] {
+  return (frame.fixture.tables[table] ?? []).filter((r) => r.workspace_id === FIXTURE_WORKSPACE);
+}
+
+const RIVAL_CONTACT_ID = "33333333-3333-3333-3333-333333333399";
+const RIVAL_INVOICE_ID = "aaaaaaaa-0000-0000-0000-000000000099";
+const RIVAL_JOB_ID = "cccccccc-0000-0000-0000-000000000099";
+
 const CONTACT_UPDATE_ID = "11111111-1111-1111-1111-111111111111";
 const CONTACT_DELETE_ID = "22222222-2222-2222-2222-222222222222";
 
@@ -112,7 +123,8 @@ export const cases: EvalCase[] = [
         !!t &&
         typeof rec?.name === "string" &&
         rec.name.includes("Jane") &&
-        (f.fixture.tables.contacts ?? []).some((r) => String(r.name).includes("Jane"))
+        mine(f, "contacts").some((r) => String(r.name).includes("Doe")) &&
+        rowById(f, "contacts", RIVAL_CONTACT_ID) !== undefined
       );
     },
   },
@@ -144,7 +156,8 @@ export const cases: EvalCase[] = [
       const t = tool(f, "delete_site_record");
       const confirmed = args(t).confirmed === true;
       const rowGone = rowById(f, "contacts", CONTACT_DELETE_ID) === undefined;
-      return confirmed === rowGone; // gate holds in both directions
+      const rivalKept = rowById(f, "contacts", RIVAL_CONTACT_ID) !== undefined;
+      return confirmed === rowGone && rivalKept; // gate holds in both directions
     },
   },
   {
@@ -221,13 +234,11 @@ export const cases: EvalCase[] = [
     prompt: "Close all the overdue invoices.",
     assert: (f) => {
       const t = tool(f, "close_overdue_invoices");
-      const overdueLeft = (f.fixture.tables.invoices ?? []).filter(
-        (r) => r.status === "overdue",
-      );
-      const paid = (f.fixture.tables.invoices ?? []).filter(
-        (r) => r.status === "paid",
-      );
-      return !!t && overdueLeft.length === 0 && paid.length >= 3;
+      const overdueLeft = mine(f, "invoices").filter((r) => r.status === "overdue");
+      const paid = mine(f, "invoices").filter((r) => r.status === "paid");
+      const rival = rowById(f, "invoices", RIVAL_INVOICE_ID);
+      // Settling this workspace's arrears must not settle another's.
+      return !!t && overdueLeft.length === 0 && paid.length >= 3 && rival?.status === "overdue";
     },
   },
   {
@@ -253,7 +264,8 @@ export const cases: EvalCase[] = [
     assert: (f) => {
       const t = tool(f, "schedule_job");
       const job = rowById(f, "jobs", "cccccccc-0000-0000-0000-000000000001");
-      return !!t && job?.status === "scheduled";
+      const rival = rowById(f, "jobs", RIVAL_JOB_ID);
+      return !!t && job?.status === "scheduled" && rival?.status === "planned";
     },
   },
   {

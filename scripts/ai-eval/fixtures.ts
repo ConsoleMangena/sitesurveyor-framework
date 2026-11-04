@@ -14,6 +14,15 @@ export type TableSeed = Record<string, TableRow[]>;
 
 export const FIXTURE_BASE = "https://fixture-eval.invalid";
 
+/** The workspace a harness run is scoped to. */
+export const FIXTURE_WORKSPACE = "ws-test";
+/** A second tenant sitting in the same fake tables. Every agent read and write
+ *  has to leave these rows alone, so a missing workspace predicate in the tool
+ *  layer shows up here as a rival row that moved or appeared. */
+export const RIVAL_WORKSPACE = "ws-rival";
+
+const rival = <T extends TableRow>(row: T): T => ({ ...row, workspace_id: RIVAL_WORKSPACE });
+
 export const seed: TableSeed = {
   contacts: [
     {
@@ -40,6 +49,14 @@ export const seed: TableSeed = {
       company: "Initech",
       workspace_id: "ws-test",
     },
+    rival({
+      id: "33333333-3333-3333-3333-333333333399",
+      name: "Rival Contact",
+      email: "rival@other.example",
+      phone: "555-0199",
+      company: "Other Surveyors",
+      workspace_id: RIVAL_WORKSPACE,
+    }),
   ],
   invoices: [
     {
@@ -75,6 +92,16 @@ export const seed: TableSeed = {
       paid_at: "2026-01-01T00:00:00Z",
       workspace_id: "ws-test",
     },
+    rival({
+      id: "aaaaaaaa-0000-0000-0000-000000000099",
+      invoice_number: "INV-9001",
+      status: "overdue",
+      total: 999,
+      subtotal: 999,
+      tax_total: 0,
+      contact_id: null,
+      paid_at: null,
+    }),
   ],
   projects: [
     {
@@ -91,6 +118,12 @@ export const seed: TableSeed = {
       active_layer: "FENCE",
       workspace_id: "ws-test",
     },
+    rival({
+      id: "bbbbbbbb-0000-0000-0000-000000000099",
+      name: "Rival Block",
+      datum: "GDA94",
+      active_layer: "FENCE",
+    }),
   ],
   jobs: [
     {
@@ -100,6 +133,12 @@ export const seed: TableSeed = {
       project_id: "bbbbbbbb-0000-0000-0000-000000000001",
       workspace_id: "ws-test",
     },
+    rival({
+      id: "cccccccc-0000-0000-0000-000000000099",
+      title: "Rival boundary resurvey",
+      status: "planned",
+      project_id: "bbbbbbbb-0000-0000-0000-000000000099",
+    }),
   ],
   quotes: [
     {
@@ -230,19 +269,27 @@ export class FakePostgrest {
     return this.tables[table];
   }
 
-  private select(table: string, params: URLSearchParams): {
-    rows: TableRow[];
-    total: number;
-  } {
+  /** The rows a request's filters select — the same predicate for reads and
+   *  mutations, so a write that lost its workspace clause cannot reach a rival. */
+  private filtered(table: string, params: URLSearchParams): TableRow[] {
     let rows = this.row(table);
-    const normalized = new URLSearchParams(params.toString());
-    for (const [col, raw] of normalized) {
+    for (const [col, raw] of params) {
       if (VIEW_PARAMS.has(col)) continue;
       const m = raw.match(/^(eq|neq|gt|gte|lt|lte|like|ilike)\.(.*)$/s);
       if (!m) continue;
       rows = rows.filter((r) => matchOp(r[col], m[1], m[2]));
     }
-    const total = rows.length;
+    return rows;
+  }
+
+  private select(table: string, params: URLSearchParams): {
+    rows: TableRow[];
+    total: number;
+  } {
+    const normalized = new URLSearchParams(params.toString());
+    const filtered = this.filtered(table, normalized);
+    const total = filtered.length;
+    let rows = filtered;
     const order = normalized.get("order");
     if (order) {
       const [col, dir] = order.split(".");
@@ -301,22 +348,17 @@ export class FakePostgrest {
 
     if (method === "PATCH") {
       const patch = JSON.parse(String(init.body)) as TableRow;
-      const id = params.get("id")?.replace(/^eq\./, "");
-      const updated: TableRow[] = [];
-      for (const row of this.row(table)) {
-        if (id == null || row.id === id) {
-          Object.assign(row, patch);
-          updated.push(row);
-        }
-      }
+      const updated = this.filtered(table, params);
+      for (const row of updated) Object.assign(row, patch);
       return this.json(200, updated);
     }
 
     if (method === "DELETE") {
-      const id = params.get("id")?.replace(/^eq\./, "");
-      const before = this.row(table).length;
-      this.tables[table] = this.row(table).filter((r) => id == null || r.id !== id);
-      return new Response(null, { status: 204 });
+      const removed = this.filtered(table, params);
+      this.tables[table] = this.row(table).filter((r) => !removed.includes(r));
+      // The tools ask for `Prefer: return=representation`, so PostgREST answers
+      // with what it removed — an empty array is how a missed predicate lands.
+      return this.json(200, removed);
     }
 
     return this.json(404, { error: `Unhandled ${method} /rest/v1/${table}` });

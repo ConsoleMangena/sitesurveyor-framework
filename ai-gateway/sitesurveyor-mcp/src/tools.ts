@@ -13,6 +13,12 @@ import {
 } from "./constants.js";
 import { SchemaCache } from "./schema.js";
 import {
+  scopeRead,
+  scopeWrite,
+  workspaceParam,
+  type ScopedRead,
+} from "./scoping.js";
+import {
   closeOverdueInvoices,
   createQuoteFromLineItems,
   scheduleJob,
@@ -22,6 +28,7 @@ import { remember as memRemember, forget as memForget } from "./memory.js";
 export interface ToolContext {
   supabaseUrl: string;
   serviceKey: string;
+  /** The workspace this run is scoped to. Every read and write is pinned to it. */
   workspaceId?: string;
   stateDir: string;
   sessionId: string;
@@ -44,11 +51,17 @@ function buildQueryPath(
   orderBy: string | undefined,
   orderDir: string | undefined,
   limit: number | undefined,
+  scope: Extract<ScopedRead, { ok: true }>,
 ): string {
   const params = new URLSearchParams();
-  params.set("select", "*");
+  params.set("select", scope.select);
   for (const f of filters ?? []) {
     params.set(f.column, `${f.op}.${f.value}`);
+  }
+  // Applied last: `set` replaces a same-named model filter, so the tenant
+  // predicate always wins even if scopeRead ever misses one.
+  for (const [column, value] of scope.params) {
+    params.set(column, `eq.${value}`);
   }
   if (orderBy) params.set("order", `${orderBy}${orderDir ? "." + orderDir : ""}`);
   params.set("limit", String(Math.min(Math.max(limit ?? 20, 1), 100)));
@@ -66,14 +79,18 @@ async function fetchCadModel(
   projectId: string,
   drawingId?: string,
 ): Promise<{ ok: true; row: CadLookup } | { ok: false; error: string }> {
-  const path = drawingId
-    ? `project_cad_drawings?project_id=eq.${projectId}&id=eq.${drawingId}&select=model`
-    : `project_cad_drawings?project_id=eq.${projectId}&select=model`;
+  const scoped = scopeRead("project_cad_drawings", ctx.workspaceId, []);
+  if (!scoped.ok) return { ok: false, error: json({ error: scoped.error }) };
+  const params = new URLSearchParams();
+  params.set("select", "model");
+  params.set("project_id", `eq.${projectId}`);
+  if (drawingId) params.set("id", `eq.${drawingId}`);
+  for (const [column, value] of scoped.params) params.set(column, `eq.${value}`);
   const out = await supabaseFetch({
     supabaseUrl: ctx.supabaseUrl,
     serviceKey: ctx.serviceKey,
     method: "GET",
-    path,
+    path: `project_cad_drawings?${params.toString()}`,
   });
   if (!out.ok)
     return { ok: false, error: json({ error: `HTTP ${out.status}`, details: out.json }) };
@@ -95,7 +112,7 @@ async function handleCad(
   const projectId = String(args.project_id ?? "");
   if (!uuidRe.test(projectId))
     return json({ error: "A valid project_id UUID is required." });
-  for (const key of ["layer_id", "entity_id"]) {
+  for (const key of ["layer_id", "entity_id", "drawing_id"]) {
     const value = args[key];
     if (value != null && !uuidRe.test(String(value)))
       return json({ error: `A valid ${key} UUID is required.` });
@@ -204,7 +221,7 @@ async function handleWrite(
   const schema = await schemas.get(table);
   const confirmed = args.confirmed === true;
 
-  const sanitise = (
+  const columnsOnly = (
     payload: Record<string, unknown> | undefined,
   ): { clean: Record<string, unknown>; dropped: string[] } => {
     const input = { ...(payload ?? {}) };
@@ -218,20 +235,25 @@ async function handleWrite(
         else dropped.push(key);
       }
     }
-    if (ctx.workspaceId && (!schema || schema.hasWorkspaceId)) {
-      if (clean.workspace_id == null) clean.workspace_id = ctx.workspaceId;
-    }
     return { clean, dropped };
   };
 
+  /** Every mutation is pinned to the run's workspace, or it does not run. */
+  const owner = scopeWrite(ctx.workspaceId);
+  if (!owner.ok) return json({ error: owner.error });
+  const rowScope = `&${workspaceParam(owner.workspaceId)}`;
+
   if (name === "insert_site_record") {
-    const { clean, dropped } = sanitise(args.record as Record<string, unknown>);
+    const { clean, dropped } = columnsOnly(args.record as Record<string, unknown>);
     if (dropped.length > 0) {
       return json({
         error: `Ignored unknown columns: ${dropped.join(", ")}`,
         valid_columns: schema ? schema.columns : undefined,
       });
     }
+    const owned = scopeWrite(ctx.workspaceId, clean.workspace_id);
+    if (!owned.ok) return json({ error: owned.error });
+    clean.workspace_id = owned.workspaceId;
     const out = await supabaseFetch({
       supabaseUrl: ctx.supabaseUrl,
       serviceKey: ctx.serviceKey,
@@ -254,7 +276,7 @@ async function handleWrite(
       supabaseUrl: ctx.supabaseUrl,
       serviceKey: ctx.serviceKey,
       method: "GET",
-      path: `${table}?id=eq.${newId}&select=*`,
+      path: `${table}?id=eq.${newId}&select=*${rowScope}`,
     });
     const row = Array.isArray(verify.json) ? verify.json[0] : inserted;
     return json({ inserted: row, _verified: verify.ok && !!row });
@@ -264,18 +286,23 @@ async function handleWrite(
   if (!uuidRe.test(id)) return json({ error: "A valid UUID id is required." });
 
   if (name === "update_site_record") {
-    const { clean, dropped } = sanitise(args.patch as Record<string, unknown>);
+    const { clean, dropped } = columnsOnly(args.patch as Record<string, unknown>);
     if (dropped.length > 0) {
       return json({
         error: `Ignored unknown columns: ${dropped.join(", ")}`,
         valid_columns: schema ? schema.columns : undefined,
       });
     }
+    const owned = scopeWrite(ctx.workspaceId, clean.workspace_id);
+    if (!owned.ok) return json({ error: owned.error });
+    // A row cannot be re-parented to another workspace, and it cannot be
+    // stamped from a patch either — the predicate below owns the row.
+    delete clean.workspace_id;
     const out = await supabaseFetch({
       supabaseUrl: ctx.supabaseUrl,
       serviceKey: ctx.serviceKey,
       method: "PATCH",
-      path: `${table}?id=eq.${id}`,
+      path: `${table}?id=eq.${id}${rowScope}`,
       body: clean,
     });
     if (!out.ok)
@@ -286,14 +313,21 @@ async function handleWrite(
           ? `Valid columns for ${table}: ${schema.columns.join(", ")}`
           : undefined,
       });
+    const patched = Array.isArray(out.json) ? out.json : [];
+    if (patched.length === 0)
+      return json({
+        updated: null,
+        _verified: false,
+        error: `No ${table} row with id ${id} exists in workspace ${owner.workspaceId}.`,
+      });
     const verify = await supabaseFetch({
       supabaseUrl: ctx.supabaseUrl,
       serviceKey: ctx.serviceKey,
       method: "GET",
-      path: `${table}?id=eq.${id}&select=*`,
+      path: `${table}?id=eq.${id}&select=*${rowScope}`,
     });
     const row = Array.isArray(verify.json) ? verify.json[0] : null;
-    return json({ updated: row ?? out.json, _verified: verify.ok && !!row });
+    return json({ updated: row ?? patched[0], _verified: verify.ok && !!row });
   }
 
   if (name === "delete_site_record") {
@@ -309,10 +343,18 @@ async function handleWrite(
       supabaseUrl: ctx.supabaseUrl,
       serviceKey: ctx.serviceKey,
       method: "DELETE",
-      path: `${table}?id=eq.${id}`,
+      path: `${table}?id=eq.${id}${rowScope}`,
     });
     if (!out.ok) return json({ error: `HTTP ${out.status}`, details: out.json });
-    return json({ deleted: true });
+    // PostgREST answers 2xx even when the predicate matched nothing, so the
+    // returned rows are the only proof the delete landed on a real record.
+    const removed = Array.isArray(out.json) ? out.json : [];
+    if (removed.length === 0)
+      return json({
+        deleted: false,
+        error: `No ${table} row with id ${id} exists in workspace ${owner.workspaceId}.`,
+      });
+    return json({ deleted: true, removed: removed[0] });
   }
 
   return json({ error: `Unknown write tool '${name}'.` });
@@ -332,22 +374,18 @@ export async function executeTool(
   if (name === "inspect_columns") {
     const table = str(args.table);
     if (!READ_TABLES.has(table)) return json({ error: `Table '${table}' is not readable.` });
-    const out = await supabaseFetch({
-      supabaseUrl: ctx.supabaseUrl,
-      serviceKey: ctx.serviceKey,
-      method: "GET",
-      path: `${table}?select=*&limit=1`,
-    });
-    if (!out.ok) return json({ error: `HTTP ${out.status}`, details: out.json });
-    const row = Array.isArray(out.json) ? out.json[0] : null;
-    return json({ table, columns: row ? Object.keys(row as Record<string, unknown>) : [] });
+    // Columns come from the Data API description, so reflecting a table never
+    // reads a sample row — which would belong to whichever tenant has one.
+    const schema = await schemas.get(table);
+    if (!schema) return json({ error: `Columns for '${table}' are not available.` });
+    return json({ table, columns: schema.columns, required: schema.required });
   }
 
   if (name === "query_site_data" || name === "count_site_data") {
     const table = str(args.table);
     if (!READ_TABLES.has(table)) return json({ error: `Table '${table}' is not readable.` });
     const tableSchema = await schemas.get(table);
-    const filters = Array.isArray(args.filters)
+    const requested = Array.isArray(args.filters)
       ? (args.filters as { column?: unknown; op?: unknown; value?: unknown }[])
           .filter(
             (f) =>
@@ -357,8 +395,8 @@ export async function executeTool(
           )
           .map((f) => ({ column: String(f.column), op: String(f.op), value: String(f.value ?? "") }))
       : undefined;
-    if (filters?.length && tableSchema) {
-      const unknown = filters.filter((f) => !tableSchema.columns.includes(f.column));
+    if (requested?.length && tableSchema) {
+      const unknown = requested.filter((f) => !tableSchema.columns.includes(f.column));
       if (unknown.length > 0) {
         return json({
           error: `Unknown filter column(s): ${unknown.map((f) => f.column).join(", ")}`,
@@ -366,8 +404,10 @@ export async function executeTool(
         });
       }
     }
+    const scoped = scopeRead(table, ctx.workspaceId, requested);
+    if (!scoped.ok) return json({ error: scoped.error });
     if (name === "count_site_data") {
-      const path = buildQueryPath(table, filters, undefined, undefined, 1);
+      const path = buildQueryPath(table, scoped.filters, undefined, undefined, 1, scoped);
       const out = await supabaseFetch({
         supabaseUrl: ctx.supabaseUrl,
         serviceKey: ctx.serviceKey,
@@ -380,10 +420,11 @@ export async function executeTool(
     }
     const path = buildQueryPath(
       table,
-      filters,
+      scoped.filters,
       args.order_by == null ? undefined : str(args.order_by),
       str(args.order_dir) || undefined,
       typeof args.limit === "number" ? args.limit : undefined,
+      scoped,
     );
     const out = await supabaseFetch({
       supabaseUrl: ctx.supabaseUrl,

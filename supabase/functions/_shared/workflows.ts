@@ -8,6 +8,8 @@
 // Each function returns a JSON string ready to be returned by executeTool, so
 // the agent can surface the result verbatim.
 
+import { scopeWrite, workspaceParam } from "./scoping.ts";
+
 export interface DbFetchOpts {
   supabaseUrl: string;
   serviceKey: string;
@@ -23,6 +25,13 @@ export interface Db {
   ): Promise<{ ok: boolean; status: number; json: unknown; count: number | null }>;
 }
 
+/** Credentials plus the workspace every step of a workflow is pinned to. */
+export interface CallOpts {
+  supabaseUrl: string;
+  serviceKey: string;
+  workspaceId?: string;
+}
+
 interface Row {
   [k: string]: unknown;
 }
@@ -35,10 +44,16 @@ const ROW_NOT_FOUND = (table: string, id?: string) =>
 const HTTP_ERR = (table: string, out: { status: number; json: unknown }) =>
   JSON.stringify({ error: `HTTP ${out.status}`, table, details: out.json });
 
+/** Each workflow resolves its workspace before the first step, so this always
+ *  carries a real id; an empty one matches no rows and fails closed. */
+function scoped(base: string, workspaceId: string | undefined): string {
+  return `${base}&${workspaceParam(workspaceId ?? "")}`;
+}
+
 /** Fetch all rows matching a simple eq filter (no meta tools needed). */
 async function readWhere(
   db: Db,
-  opts: { supabaseUrl: string; serviceKey: string },
+  opts: CallOpts,
   table: string,
   filter: [column: string, value: string],
 ): Promise<{ ok: boolean; rows?: Row[]; status: number; json: unknown }> {
@@ -46,7 +61,10 @@ async function readWhere(
   const out = await db.supabaseFetch({
     ...opts,
     method: "GET",
-    path: `${table}?select=*&${column}=eq.${encodeURIComponent(value)}&limit=100`,
+    path: scoped(
+      `${table}?select=*&${column}=eq.${encodeURIComponent(value)}&limit=100`,
+      opts.workspaceId,
+    ),
   });
   return { ok: out.ok, rows: Array.isArray(out.json) ? (out.json as Row[]) : undefined, status: out.status, json: out.json };
 }
@@ -54,7 +72,7 @@ async function readWhere(
 /** Fetch all rows matching several eq filters (AND). */
 async function readMany(
   db: Db,
-  opts: { supabaseUrl: string; serviceKey: string },
+  opts: CallOpts,
   table: string,
   filters: [column: string, value: string][],
 ): Promise<{ ok: boolean; rows?: Row[]; status: number; json: unknown }> {
@@ -64,14 +82,14 @@ async function readMany(
   const out = await db.supabaseFetch({
     ...opts,
     method: "GET",
-    path: `${table}?select=*&${qs}&limit=100`,
+    path: scoped(`${table}?select=*&${qs}&limit=100`, opts.workspaceId),
   });
   return { ok: out.ok, rows: Array.isArray(out.json) ? (out.json as Row[]) : undefined, status: out.status, json: out.json };
 }
 
 async function patchRow(
   db: Db,
-  opts: { supabaseUrl: string; serviceKey: string },
+  opts: CallOpts,
   table: string,
   id: string,
   patch: Record<string, unknown>,
@@ -79,14 +97,14 @@ async function patchRow(
   return db.supabaseFetch({
     ...opts,
     method: "PATCH",
-    path: `${table}?id=eq.${id}`,
+    path: scoped(`${table}?id=eq.${id}`, opts.workspaceId),
     body: patch,
   });
 }
 
 async function insertRow(
   db: Db,
-  opts: { supabaseUrl: string; serviceKey: string },
+  opts: CallOpts,
   table: string,
   body: Row,
 ): Promise<{ ok: boolean; status: number; json: unknown }> {
@@ -99,21 +117,25 @@ const num = (v: unknown): number => {
 };
 
 /**
- * Mark every overdue invoice as paid, returning a summary.
- * scope.workspace_id restricts which workspace is scanned; target_status
- * defaults to "paid" (settling the debt) — never deletes anything.
+ * Mark every overdue invoice in the run's workspace as paid, returning a
+ * summary. target_status defaults to "paid" (settling the debt) — never deletes
+ * anything.
  */
 export async function closeOverdueInvoices(
   db: Db,
-  opts: { supabaseUrl: string; serviceKey: string },
+  opts: CallOpts,
   args: { scope?: { workspace_id?: string }; target_status?: string },
 ): Promise<string> {
+  // The workspace comes from the run, never from the model: an unscoped close
+  // would settle every tenant's invoices at once.
+  const owner = scopeWrite(opts.workspaceId, args.scope?.workspace_id);
+  if (!owner.ok) return JSON.stringify({ error: owner.error });
+  const run: CallOpts = { ...opts, workspaceId: owner.workspaceId };
+
   const filters: [string, string][] = [["status", "overdue"]];
-  const workspaceId = args.scope?.workspace_id;
-  if (workspaceId) filters.push(["workspace_id", workspaceId]);
   const target = args.target_status === "cancelled" ? "cancelled" : "paid";
 
-  const res = await readMany(db, opts, "invoices", filters);
+  const res = await readMany(db, run, "invoices", filters);
   if (!res.ok) return HTTP_ERR("invoices", res);
   const overdue = res.rows ?? [];
 
@@ -125,13 +147,14 @@ export async function closeOverdueInvoices(
     const now = new Date().toISOString();
     const patch: Row = { status: target };
     if (target === "paid") patch.paid_at = now;
-    const up = await patchRow(db, opts, "invoices", id, patch);
+    const up = await patchRow(db, run, "invoices", id, patch);
     if (up.ok) closed.push({ id, invoice_number: inv.invoice_number ?? null });
     else skipped.push({ id, error: `HTTP ${up.status}` });
   }
 
   return JSON.stringify({
     workflow: "close_overdue_invoices",
+    workspace_id: owner.workspaceId,
     closed_count: closed.length,
     skipped_count: skipped.length,
     target_status: target,
@@ -146,7 +169,7 @@ export async function closeOverdueInvoices(
  */
 export async function createQuoteFromLineItems(
   db: Db,
-  opts: { supabaseUrl: string; serviceKey: string; workspaceId?: string },
+  opts: CallOpts,
   args: {
     project_id?: string;
     contact_id?: string;
@@ -156,8 +179,8 @@ export async function createQuoteFromLineItems(
     notes?: string;
   },
 ): Promise<string> {
-  const workspaceId = args.project_id ? undefined : opts.workspaceId;
-  void workspaceId;
+  const owner = scopeWrite(opts.workspaceId);
+  if (!owner.ok) return JSON.stringify({ error: owner.error });
   if (!Array.isArray(args.lines) || args.lines.length === 0) {
     return JSON.stringify({ error: "At least one line item is required." });
   }
@@ -175,7 +198,7 @@ export async function createQuoteFromLineItems(
   const taxTotal = Math.round(subtotal * taxRate * 100) / 100;
   const total = Math.round((subtotal + taxTotal) * 100) / 100;
 
-  const wsId = opts.workspaceId ?? "";
+  const wsId = owner.workspaceId;
   const quote: Row = {
     quote_number: `Q-${Date.now().toString(36).toUpperCase()}`,
     status: "draft",
@@ -228,12 +251,12 @@ export async function createQuoteFromLineItems(
 }
 
 /**
- * Schedule a job: verify it exists and is schedulable, then create a
- * job_assignment and set the job status to "scheduled".
+ * Schedule a job: verify it exists in this workspace and is schedulable, then
+ * create a job_assignment and set the job status to "scheduled".
  */
 export async function scheduleJob(
   db: Db,
-  opts: { supabaseUrl: string; serviceKey: string; workspaceId?: string },
+  opts: CallOpts,
   args: {
     job_id: string;
     assignment_date?: string;
@@ -241,11 +264,16 @@ export async function scheduleJob(
     status?: "draft" | "confirmed" | "in_progress" | "completed" | "cancelled";
   },
 ): Promise<string> {
+  const owner = scopeWrite(opts.workspaceId);
+  if (!owner.ok) return JSON.stringify({ error: owner.error });
+  const run: CallOpts = { ...opts, workspaceId: owner.workspaceId };
+
   const id = String(args.job_id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) {
     return JSON.stringify({ error: "A valid job_id UUID is required." });
   }
-  const jobRes = await readWhere(db, opts, "jobs", ["id", id]);
+  // Scoped lookup: a job id from another workspace simply is not found.
+  const jobRes = await readWhere(db, run, "jobs", ["id", id]);
   if (!jobRes.ok) return HTTP_ERR("jobs", jobRes);
   const job = (jobRes.rows ?? [])[0];
   if (!job) return ROW_NOT_FOUND("jobs", id);
@@ -264,13 +292,13 @@ export async function scheduleJob(
     assignment_date: date,
     notes: args.notes ?? null,
     status: args.status ?? "draft",
-    workspace_id: opts.workspaceId ?? job.workspace_id ?? "",
+    workspace_id: owner.workspaceId,
   };
-  const ins = await insertRow(db, opts, "job_assignments", assign);
+  const ins = await insertRow(db, run, "job_assignments", assign);
   if (!ins.ok) return HTTP_ERR("job_assignments", ins);
   const assignmentRow = Array.isArray(ins.json) ? (ins.json as Row[])[0] : null;
 
-  const updJob = await patchRow(db, opts, "jobs", id, { status: "scheduled", scheduled_start: date });
+  const updJob = await patchRow(db, run, "jobs", id, { status: "scheduled", scheduled_start: date });
   if (!updJob.ok) {
     return JSON.stringify({
       error: `Assignment created but could not update job status: HTTP ${updJob.status}`,

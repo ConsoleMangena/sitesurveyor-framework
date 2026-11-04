@@ -9,6 +9,7 @@
 import {
   FakePostgrest,
   FIXTURE_BASE,
+  FIXTURE_WORKSPACE,
   seed,
 } from "./fixtures.ts";
 import { runAgent, type AgentEvent } from "../../supabase/functions/_shared/ai-agent.ts";
@@ -148,6 +149,9 @@ async function drive(
       nvidiaApiKey: "test-key",
       supabaseUrl: FIXTURE_BASE,
       serviceKey: "test",
+      // A real run resolves the workspace from the signed-in user, and the
+      // tools refuse tenant data without it; script the same shape here.
+      workspaceId: FIXTURE_WORKSPACE,
       conversationId: "conv-test",
       maxToolRounds: opts.maxToolRounds,
     });

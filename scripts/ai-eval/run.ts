@@ -13,6 +13,7 @@
 import {
   FakePostgrest,
   FIXTURE_BASE,
+  FIXTURE_WORKSPACE,
   seed,
 } from "./fixtures.ts";
 import { cases, type EvalFrame, type RunLog } from "./cases.ts";
@@ -99,6 +100,9 @@ async function main(): Promise<void> {
         serviceKey: "test",
         model,
         userId: "user-test",
+        // A real run resolves this from the signed-in user; the tools refuse
+        // tenant data without it, so the harness has to carry it too.
+        workspaceId: FIXTURE_WORKSPACE,
         conversationId: "conv-test",
         context: c.context ?? "dashboard",
         signal: controller.signal,

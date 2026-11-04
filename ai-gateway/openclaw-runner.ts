@@ -59,7 +59,10 @@ export function buildOpenclawEnv(bindings: {
   if (bindings.SUPABASE_URL) superset.SITESURVEYOR_SUPABASE_URL = bindings.SUPABASE_URL;
   if (bindings.SUPABASE_SERVICE_ROLE_KEY)
     superset.SITESURVEYOR_SUPABASE_SERVICE_ROLE_KEY = bindings.SUPABASE_SERVICE_ROLE_KEY;
+  // Set, or clear: the MCP tools scope every read and write to this value, so a
+  // turn without a workspace must not inherit one from the ambient process.
   if (bindings.WORKSPACE_ID) superset.SITESURVEYOR_WORKSPACE_ID = bindings.WORKSPACE_ID;
+  else delete superset.SITESURVEYOR_WORKSPACE_ID;
   if (bindings.NVIDIA_API_KEY) superset.NVIDIA_API_KEY = bindings.NVIDIA_API_KEY;
   return superset;
 }

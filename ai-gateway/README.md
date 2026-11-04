@@ -165,7 +165,7 @@ npm --prefix ai-gateway/sitesurveyor-mcp test
 npm --prefix ai-gateway/sitesurveyor-mcp start
 ```
 
-The standalone server expects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Optional values include `SITESURVEYOR_WORKSPACE_ID` and `SITESURVEYOR_STATE_DIR`. Its MCP memory files can contain sensitive project preferences; protect the state directory and include it in retention/deletion planning.
+The standalone server expects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. `SITESURVEYOR_WORKSPACE_ID` is required for any business-data tool: the service-role key bypasses row-level security, so every read, write, and workflow is pinned to that workspace and a call without it is refused (only the published market views stay readable). `SITESURVEYOR_STATE_DIR` is optional. Its MCP memory files can contain sensitive project preferences; protect the state directory and include it in retention/deletion planning.
 
 ## AI consistency checks
 

@@ -5,73 +5,118 @@ interface Row {
 }
 
 const tables: Record<string, Row[]> = {};
+const seen: string[] = [];
 
 vi.mock("../src/supabase.js", () => ({
-  supabaseFetch: vi.fn(async ({ method, path, body }: {
+  supabaseFetch: vi.fn(async ({
+    method,
+    path,
+    body,
+  }: {
     method: string;
     path: string;
     body?: unknown;
   }): Promise<{ ok: boolean; status: number; json: unknown; count: number | null }> => {
+    seen.push(`${method} ${path}`);
     const [table, qs = ""] = path.split("?");
     const params = new URLSearchParams(qs);
+
+    // Every eq. filter in the request is honoured, so a mutation that lost the
+    // workspace predicate shows up as an untouched rival row instead of
+    // passing silently.
+    const matching = (): Row[] =>
+      (tables[table] ?? []).filter((row) => {
+        for (const key of params.keys()) {
+          const value = params.get(key);
+          if (!value || !value.startsWith("eq.")) continue;
+          if (String(row[key]) !== value.slice(3)) return false;
+        }
+        return true;
+      });
+
     if (method === "GET") {
-      let rows = tables[table] ?? [];
-      for (const key of params.keys()) {
-        const value = params.get(key);
-        if (!value || !/^eq\./.test(value)) continue;
-        const expected = value.replace(/^eq\./, "");
-        rows = rows.filter((r) => String(r[key]) === expected);
-      }
+      const rows = matching();
       return { ok: true, status: 200, json: JSON.parse(JSON.stringify(rows)), count: rows.length };
     }
     if (method === "POST") {
-      const row = { ...(body as Row), id: (tables[table]?.length ?? 0) + 1 };
-      tables[table] = tables[table] ?? [];
-      tables[table].push(row);
+      const list = tables[table] ?? [];
+      const row = { ...(body as Row), id: `${table}-${list.length + 1}` };
+      list.push(row);
+      tables[table] = list;
       return { ok: true, status: 201, json: [JSON.parse(JSON.stringify(row))], count: 1 };
     }
     if (method === "PATCH") {
-      const id = params.get("id")?.replace(/^eq\./, "") ?? "";
-      const idx = (tables[table] ?? []).findIndex((r) => String(r.id) === id);
-      if (idx < 0) return { ok: false, status: 404, json: { message: "not found" }, count: 0 };
-      tables[table][idx] = { ...tables[table][idx], ...(body as Row) };
-      return { ok: true, status: 200, json: [tables[table][idx]], count: 1 };
+      const hits = matching();
+      if (hits.length === 0) {
+        return { ok: false, status: 404, json: { message: "no row matched" }, count: 0 };
+      }
+      for (const row of hits) Object.assign(row, body as Row);
+      return { ok: true, status: 200, json: JSON.parse(JSON.stringify(hits)), count: hits.length };
     }
     return { ok: true, status: 200, json: [], count: 0 };
   }),
 }));
 
 const OPTS = { supabaseUrl: "http://test", serviceKey: "svc", workspaceId: "ws-1" };
+const NO_WS = { supabaseUrl: "http://test", serviceKey: "svc" };
 
-async function rowCount(table: string): Promise<number> {
+function rowCount(table: string): number {
   return (tables[table] ?? []).length;
 }
 
-async function getRow(table: string, id: string): Promise<Row | undefined> {
+function getRow(table: string, id: string): Row | undefined {
   return (tables[table] ?? []).find((r) => String(r.id) === id);
 }
 
 beforeEach(() => {
   for (const key of Object.keys(tables)) delete tables[key];
+  seen.length = 0;
 });
 
 describe("closeOverdueInvoices", () => {
-  it("closes overdue invoices to paid and stamps paid_at", async () => {
+  it("closes only its own workspace's overdue invoices", async () => {
     const { closeOverdueInvoices } = await import("../src/workflows.js");
     tables.invoices = [
-      { id: "a", status: "overdue", invoice_number: "INV-1" },
-      { id: "b", status: "overdue", invoice_number: "INV-2" },
-      { id: "c", status: "draft", invoice_number: "INV-3" },
+      { id: "a", status: "overdue", invoice_number: "INV-1", workspace_id: "ws-1" },
+      { id: "b", status: "overdue", invoice_number: "INV-2", workspace_id: "ws-1" },
+      { id: "c", status: "draft", invoice_number: "INV-3", workspace_id: "ws-1" },
+      { id: "d", status: "overdue", invoice_number: "INV-4", workspace_id: "ws-2" },
     ];
     const result = JSON.parse(await closeOverdueInvoices(OPTS, {})) as {
       closed_count: number;
       target_status: string;
+      workspace_id: string;
     };
     expect(result.closed_count).toBe(2);
     expect(result.target_status).toBe("paid");
-    expect((await getRow("invoices", "a"))!.status).toBe("paid");
-    expect((await getRow("invoices", "a"))!.paid_at).toBeTruthy();
-    expect((await getRow("invoices", "c"))!.status).toBe("draft");
+    expect(result.workspace_id).toBe("ws-1");
+    expect(getRow("invoices", "a")!.status).toBe("paid");
+    expect(getRow("invoices", "a")!.paid_at).toBeTruthy();
+    expect(getRow("invoices", "c")!.status).toBe("draft");
+    expect(getRow("invoices", "d")!.status).toBe("overdue");
+    expect(getRow("invoices", "d")!.paid_at).toBeUndefined();
+  });
+
+  it("refuses a workspace named by the caller", async () => {
+    const { closeOverdueInvoices } = await import("../src/workflows.js");
+    tables.invoices = [
+      { id: "d", status: "overdue", invoice_number: "INV-4", workspace_id: "ws-2" },
+    ];
+    const result = await closeOverdueInvoices(OPTS, { scope: { workspace_id: "ws-2" } });
+    expect(JSON.parse(result).error).toMatch(/outside this run/);
+    expect(seen).toHaveLength(0);
+    expect(getRow("invoices", "d")!.status).toBe("overdue");
+  });
+
+  it("refuses to run without a workspace", async () => {
+    const { closeOverdueInvoices } = await import("../src/workflows.js");
+    tables.invoices = [
+      { id: "a", status: "overdue", invoice_number: "INV-1", workspace_id: "ws-1" },
+    ];
+    const result = await closeOverdueInvoices(NO_WS, {});
+    expect(JSON.parse(result).error).toMatch(/no workspace/);
+    expect(seen).toHaveLength(0);
+    expect(getRow("invoices", "a")!.status).toBe("overdue");
   });
 });
 
@@ -96,9 +141,18 @@ describe("createQuoteFromLineItems", () => {
     expect(result.tax_total).toBe(0);
     expect(result.total).toBe(250);
     expect(result.line_count).toBe(2);
-    expect(await rowCount("quotes")).toBe(1);
-    expect(await rowCount("quote_items")).toBe(2);
+    expect(rowCount("quotes")).toBe(1);
+    expect(rowCount("quote_items")).toBe(2);
     expect(result.quote_id).toBeTruthy();
+  });
+
+  it("owns every row it creates by the run's workspace", async () => {
+    const { createQuoteFromLineItems } = await import("../src/workflows.js");
+    await createQuoteFromLineItems(OPTS, {
+      lines: [{ description: "Control survey", qty: 1, rate: 500 }],
+    });
+    expect(getRow("quotes", "quotes-1")!.workspace_id).toBe("ws-1");
+    expect(getRow("quote_items", "quote_items-1")!.workspace_id).toBe("ws-1");
   });
 
   it("errors with no line items", async () => {
@@ -106,25 +160,57 @@ describe("createQuoteFromLineItems", () => {
     const result = await createQuoteFromLineItems(OPTS, { lines: [] });
     expect(JSON.parse(result).error).toBeTruthy();
   });
+
+  it("refuses to quote into a workspace-less run", async () => {
+    const { createQuoteFromLineItems } = await import("../src/workflows.js");
+    const result = await createQuoteFromLineItems(NO_WS, {
+      lines: [{ description: "Boundary survey", qty: 1, rate: 100 }],
+    });
+    expect(JSON.parse(result).error).toMatch(/no workspace/);
+    expect(seen).toHaveLength(0);
+    expect(rowCount("quotes")).toBe(0);
+  });
 });
 
 describe("scheduleJob", () => {
+  const OWN_JOB = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  const RIVAL_JOB = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
   it("schedules a schedulable job and updates status", async () => {
     const { scheduleJob } = await import("../src/workflows.js");
-    tables.jobs = [{ id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", status: "confirmed", title: "GPS" }];
+    tables.jobs = [{ id: OWN_JOB, status: "confirmed", title: "GPS", workspace_id: "ws-1" }];
     const result = JSON.parse(
-      await scheduleJob(OPTS, { job_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", assignment_date: "2026-09-10" }),
+      await scheduleJob(OPTS, { job_id: OWN_JOB, assignment_date: "2026-09-10" }),
     ) as { status: string; assignment_id: string };
     expect(result.status).toBe("scheduled");
     expect(result.assignment_id).toBeTruthy();
-    expect((await getRow("jobs", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))!.status).toBe("scheduled");
-    expect(await rowCount("job_assignments")).toBe(1);
+    expect(getRow("jobs", OWN_JOB)!.status).toBe("scheduled");
+    expect(rowCount("job_assignments")).toBe(1);
+  });
+
+  it("does not find another workspace's job", async () => {
+    const { scheduleJob } = await import("../src/workflows.js");
+    tables.jobs = [
+      { id: OWN_JOB, status: "confirmed", title: "GPS", workspace_id: "ws-1" },
+      { id: RIVAL_JOB, status: "confirmed", title: "Rival pegging", workspace_id: "ws-2" },
+    ];
+    const result = await scheduleJob(OPTS, { job_id: RIVAL_JOB });
+    expect(JSON.parse(result).error).toMatch(/No jobs record found/);
+    expect(getRow("jobs", RIVAL_JOB)!.status).toBe("confirmed");
+    expect(rowCount("job_assignments")).toBe(0);
+  });
+
+  it("stamps the assignment with the run's workspace", async () => {
+    const { scheduleJob } = await import("../src/workflows.js");
+    tables.jobs = [{ id: OWN_JOB, status: "draft", title: "Staking", workspace_id: "ws-1" }];
+    await scheduleJob(OPTS, { job_id: OWN_JOB });
+    expect(getRow("job_assignments", "job_assignments-1")!.workspace_id).toBe("ws-1");
   });
 
   it("rejects a completed job", async () => {
     const { scheduleJob } = await import("../src/workflows.js");
-    tables.jobs = [{ id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", status: "completed", title: "Done" }];
-    const result = await scheduleJob(OPTS, { job_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" });
+    tables.jobs = [{ id: OWN_JOB, status: "completed", title: "Done", workspace_id: "ws-1" }];
+    const result = await scheduleJob(OPTS, { job_id: OWN_JOB });
     expect(JSON.parse(result).error).toMatch(/cannot be scheduled/);
   });
 
@@ -132,5 +218,14 @@ describe("scheduleJob", () => {
     const { scheduleJob } = await import("../src/workflows.js");
     const result = await scheduleJob(OPTS, { job_id: "not-a-uuid" });
     expect(JSON.parse(result).error).toMatch(/valid job_id/);
+  });
+
+  it("refuses to schedule without a workspace", async () => {
+    const { scheduleJob } = await import("../src/workflows.js");
+    tables.jobs = [{ id: OWN_JOB, status: "confirmed", title: "GPS", workspace_id: "ws-1" }];
+    const result = await scheduleJob(NO_WS, { job_id: OWN_JOB });
+    expect(JSON.parse(result).error).toMatch(/no workspace/);
+    expect(seen).toHaveLength(0);
+    expect(getRow("jobs", OWN_JOB)!.status).toBe("confirmed");
   });
 });
