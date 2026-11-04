@@ -20,6 +20,8 @@ export type Database = {
           created_at: string
           id: string
           session_key: string
+          summary: string
+          summary_through: string | null
           title: string
           updated_at: string
           user_id: string
@@ -29,6 +31,8 @@ export type Database = {
           created_at?: string
           id?: string
           session_key: string
+          summary?: string
+          summary_through?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -38,11 +42,42 @@ export type Database = {
           created_at?: string
           id?: string
           session_key?: string
+          summary?: string
+          summary_through?: string | null
           title?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      ai_memory: {
+        Row: {
+          conversation_id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          conversation_id: string
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          conversation_id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_memory_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_messages: {
         Row: {
@@ -173,35 +208,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      ai_memory: {
-        Row: {
-          conversation_id: string
-          key: string
-          updated_at: string
-          value: Json
-        }
-        Insert: {
-          conversation_id: string
-          key: string
-          updated_at?: string
-          value: Json
-        }
-        Update: {
-          conversation_id?: string
-          key?: string
-          updated_at?: string
-          value?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_memory_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "ai_conversations"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       asset_calibrations: {
         Row: {
@@ -568,6 +574,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "attachments_anchor_operation_id_fkey"
+            columns: ["anchor_operation_id"]
+            isOneToOne: false
+            referencedRelation: "file_anchor_operations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "attachments_folder_id_fkey"
             columns: ["folder_id"]
             isOneToOne: false
@@ -583,80 +596,116 @@ export type Database = {
           },
         ]
       }
+      auth_nonces: {
+        Row: {
+          address: string | null
+          chain: string | null
+          client_hash: string | null
+          consumed_at: string | null
+          expires_at: string
+          issued_at: string
+          nonce: string
+          purpose: string
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          chain?: string | null
+          client_hash?: string | null
+          consumed_at?: string | null
+          expires_at: string
+          issued_at?: string
+          nonce: string
+          purpose: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          chain?: string | null
+          client_hash?: string | null
+          consumed_at?: string | null
+          expires_at?: string
+          issued_at?: string
+          nonce?: string
+          purpose?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       billing_operation_rates: {
         Row: {
-          operation: string
+          active: boolean
           credits: number
           estimated_cost: number
-          active: boolean
+          operation: string
           updated_at: string
         }
         Insert: {
-          operation: string
+          active?: boolean
           credits: number
           estimated_cost?: number
-          active?: boolean
+          operation: string
           updated_at?: string
         }
         Update: {
-          operation?: string
+          active?: boolean
           credits?: number
           estimated_cost?: number
-          active?: boolean
+          operation?: string
           updated_at?: string
         }
         Relationships: []
       }
       billing_packages: {
         Row: {
+          active: boolean
+          amount: number
+          created_at: string
+          credits: number | null
+          currency_code: string
+          description: string
+          duration_days: number | null
+          estimated_infrastructure_cost: number
+          estimated_payment_fee: number
           id: string
           kind: string
           label: string
-          description: string
-          credits: number | null
-          storage_mb: number | null
-          duration_days: number | null
-          amount: number
-          currency_code: string
-          estimated_infrastructure_cost: number
-          estimated_payment_fee: number
-          active: boolean
           sort_order: number
-          created_at: string
+          storage_mb: number | null
           updated_at: string
         }
         Insert: {
+          active?: boolean
+          amount: number
+          created_at?: string
+          credits?: number | null
+          currency_code?: string
+          description: string
+          duration_days?: number | null
+          estimated_infrastructure_cost?: number
+          estimated_payment_fee?: number
           id: string
           kind: string
           label: string
-          description: string
-          credits?: number | null
-          storage_mb?: number | null
-          duration_days?: number | null
-          amount: number
-          currency_code?: string
-          estimated_infrastructure_cost?: number
-          estimated_payment_fee?: number
-          active?: boolean
           sort_order?: number
-          created_at?: string
+          storage_mb?: number | null
           updated_at?: string
         }
         Update: {
+          active?: boolean
+          amount?: number
+          created_at?: string
+          credits?: number | null
+          currency_code?: string
+          description?: string
+          duration_days?: number | null
+          estimated_infrastructure_cost?: number
+          estimated_payment_fee?: number
           id?: string
           kind?: string
           label?: string
-          description?: string
-          credits?: number | null
-          storage_mb?: number | null
-          duration_days?: number | null
-          amount?: number
-          currency_code?: string
-          estimated_infrastructure_cost?: number
-          estimated_payment_fee?: number
-          active?: boolean
           sort_order?: number
-          created_at?: string
+          storage_mb?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -765,6 +814,72 @@ export type Database = {
           },
         ]
       }
+      custom_solana_wallets: {
+        Row: {
+          ciphertext: string
+          created_at: string
+          iv: string
+          salt: string
+          updated_at: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          ciphertext: string
+          created_at?: string
+          iv: string
+          salt: string
+          updated_at?: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          ciphertext?: string
+          created_at?: string
+          iv?: string
+          salt?: string
+          updated_at?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      embedded_solana_wallets: {
+        Row: {
+          created_at: string
+          encrypted_key: string
+          encrypted_mnemonic: string | null
+          iv: string
+          mnemonic_iv: string | null
+          salt: string
+          updated_at: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_key: string
+          encrypted_mnemonic?: string | null
+          iv: string
+          mnemonic_iv?: string | null
+          salt: string
+          updated_at?: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_key?: string
+          encrypted_mnemonic?: string | null
+          iv?: string
+          mnemonic_iv?: string | null
+          salt?: string
+          updated_at?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       expense_entries: {
         Row: {
           _deleted: boolean
@@ -830,138 +945,168 @@ export type Database = {
       }
       file_anchor_chunks: {
         Row: {
+          bucket_name: string
+          chunk_index: number
+          content_hash: string
           id: string
           operation_id: string
-          workspace_id: string
-          chunk_index: number
-          bucket_name: string
-          storage_path: string
           size_bytes: number
-          content_hash: string
+          storage_path: string
           uploaded_at: string
+          workspace_id: string
         }
         Insert: {
+          bucket_name: string
+          chunk_index: number
+          content_hash: string
           id?: string
           operation_id: string
-          workspace_id: string
-          chunk_index: number
-          bucket_name?: string
-          storage_path: string
           size_bytes: number
-          content_hash: string
+          storage_path: string
           uploaded_at?: string
+          workspace_id: string
         }
         Update: {
+          bucket_name?: string
+          chunk_index?: number
+          content_hash?: string
           id?: string
           operation_id?: string
-          workspace_id?: string
-          chunk_index?: number
-          bucket_name?: string
-          storage_path?: string
           size_bytes?: number
-          content_hash?: string
+          storage_path?: string
           uploaded_at?: string
+          workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "file_anchor_chunks_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "file_anchor_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_anchor_chunks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       file_anchor_operations: {
         Row: {
-          id: string
-          workspace_id: string
           attachment_id: string
-          created_by: string | null
-          mode: string
           bucket_name: string
-          network: string
-          wallet_address: string | null
-          status: string
-          file_name: string
-          file_size_bytes: number
-          mime_type: string | null
-          chunk_size: number | null
           chunk_count: number | null
-          uploaded_chunks: number
-          file_hash: string | null
-          manifest_hash: string | null
-          manifest: Json | null
-          manifest_storage_path: string | null
-          memo: string | null
-          tx_signature: string | null
-          tx_slot: number | null
-          fee_lamports: number | null
+          chunk_size: number | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
           encryption: Json | null
           error_message: string | null
+          fee_lamports: number | null
+          file_hash: string | null
+          file_name: string
+          file_size_bytes: number
+          id: string
+          manifest: Json | null
+          manifest_hash: string | null
+          manifest_storage_path: string | null
+          memo: string | null
+          mime_type: string | null
+          mode: string
+          network: string
+          status: string
+          tx_signature: string | null
+          tx_slot: number | null
+          updated_at: string
+          uploaded_chunks: number
           verification_status: string
           verified_at: string | null
-          created_at: string
-          updated_at: string
-          completed_at: string | null
+          wallet_address: string | null
+          workspace_id: string
         }
         Insert: {
-          id?: string
-          workspace_id: string
           attachment_id: string
-          created_by?: string | null
-          mode: string
           bucket_name?: string
-          network: string
-          wallet_address?: string | null
-          status?: string
+          chunk_count?: number | null
+          chunk_size?: number | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          encryption?: Json | null
+          error_message?: string | null
+          fee_lamports?: number | null
+          file_hash?: string | null
           file_name: string
           file_size_bytes?: number
-          mime_type?: string | null
-          chunk_size?: number | null
-          chunk_count?: number | null
-          uploaded_chunks?: number
-          file_hash?: string | null
-          manifest_hash?: string | null
+          id?: string
           manifest?: Json | null
+          manifest_hash?: string | null
           manifest_storage_path?: string | null
           memo?: string | null
+          mime_type?: string | null
+          mode: string
+          network: string
+          status?: string
           tx_signature?: string | null
           tx_slot?: number | null
-          fee_lamports?: number | null
-          encryption?: Json | null
-          error_message?: string | null
+          updated_at?: string
+          uploaded_chunks?: number
           verification_status?: string
           verified_at?: string | null
-          created_at?: string
-          updated_at?: string
-          completed_at?: string | null
+          wallet_address?: string | null
+          workspace_id: string
         }
         Update: {
-          id?: string
-          workspace_id?: string
           attachment_id?: string
-          created_by?: string | null
-          mode?: string
           bucket_name?: string
-          network?: string
-          wallet_address?: string | null
-          status?: string
-          file_name?: string
-          file_size_bytes?: number
-          mime_type?: string | null
-          chunk_size?: number | null
           chunk_count?: number | null
-          uploaded_chunks?: number
-          file_hash?: string | null
-          manifest_hash?: string | null
-          manifest?: Json | null
-          manifest_storage_path?: string | null
-          memo?: string | null
-          tx_signature?: string | null
-          tx_slot?: number | null
-          fee_lamports?: number | null
+          chunk_size?: number | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
           encryption?: Json | null
           error_message?: string | null
+          fee_lamports?: number | null
+          file_hash?: string | null
+          file_name?: string
+          file_size_bytes?: number
+          id?: string
+          manifest?: Json | null
+          manifest_hash?: string | null
+          manifest_storage_path?: string | null
+          memo?: string | null
+          mime_type?: string | null
+          mode?: string
+          network?: string
+          status?: string
+          tx_signature?: string | null
+          tx_slot?: number | null
+          updated_at?: string
+          uploaded_chunks?: number
           verification_status?: string
           verified_at?: string | null
-          created_at?: string
-          updated_at?: string
-          completed_at?: string | null
+          wallet_address?: string | null
+          workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "file_anchor_operations_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_anchor_operations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       folders: {
         Row: {
@@ -1476,6 +1621,42 @@ export type Database = {
           },
         ]
       }
+      linked_wallets: {
+        Row: {
+          address: string
+          chain: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+          linked_at: string
+          provider_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          chain: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          linked_at?: string
+          provider_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          chain?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          linked_at?: string
+          provider_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_events: {
         Row: {
           agenda: string[]
@@ -1509,39 +1690,65 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          agenda?: string[]
+          capacity?: number | null
           certification_body?: string | null
+          city?: string | null
+          country?: string | null
+          cpd_points?: number | null
           created_at?: string
           currency?: string
           description?: string | null
           ends_at?: string | null
           id?: string
+          instructor?: string | null
+          is_remote?: boolean
           kind?: string
           latitude?: number | null
           location: string
           longitude?: number | null
+          photo_path?: string | null
           price?: number
           provider: string
+          registration_deadline?: string | null
+          registration_url?: string | null
           seats_left?: number | null
           starts_at: string
+          timezone?: string
           title: string
+          updated_at?: string
+          venue_address?: string | null
           workspace_id: string
         }
         Update: {
+          agenda?: string[]
+          capacity?: number | null
           certification_body?: string | null
+          city?: string | null
+          country?: string | null
+          cpd_points?: number | null
           created_at?: string
           currency?: string
           description?: string | null
           ends_at?: string | null
           id?: string
+          instructor?: string | null
+          is_remote?: boolean
           kind?: string
           latitude?: number | null
           location?: string
           longitude?: number | null
+          photo_path?: string | null
           price?: number
           provider?: string
+          registration_deadline?: string | null
+          registration_url?: string | null
           seats_left?: number | null
           starts_at?: string
+          timezone?: string
           title?: string
+          updated_at?: string
+          venue_address?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -1553,6 +1760,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      market_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          market_id: string
+          market_kind: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          market_id: string
+          market_kind: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          market_id?: string
+          market_kind?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       market_firms: {
         Row: {
@@ -1581,32 +1812,50 @@ export type Database = {
         }
         Insert: {
           about?: string | null
+          accreditations?: string[]
+          city?: string | null
+          contact_email?: string | null
+          country?: string | null
           created_at?: string
           founded_year?: number | null
           id?: string
           is_global?: boolean
+          is_remote?: boolean
           latitude?: number | null
           location: string
+          logo_path?: string | null
           longitude?: number | null
           name: string
+          service_areas?: string[]
           services?: string[]
           staff_count?: number | null
+          updated_at?: string
           verified?: boolean
+          website?: string | null
           workspace_id: string
         }
         Update: {
           about?: string | null
+          accreditations?: string[]
+          city?: string | null
+          contact_email?: string | null
+          country?: string | null
           created_at?: string
           founded_year?: number | null
           id?: string
           is_global?: boolean
+          is_remote?: boolean
           latitude?: number | null
           location?: string
+          logo_path?: string | null
           longitude?: number | null
           name?: string
+          service_areas?: string[]
           services?: string[]
           staff_count?: number | null
+          updated_at?: string
           verified?: boolean
+          website?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -1668,7 +1917,113 @@ export type Database = {
           seats?: number | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "market_inquiries_requester_workspace_id_fkey"
+            columns: ["requester_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_job_posts: {
+        Row: {
+          apply_url: string | null
+          benefits: string[]
+          city: string | null
+          closes_at: string | null
+          company: string | null
+          country: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          discipline: string
+          employment_type: string
+          id: string
+          is_global: boolean
+          is_remote: boolean
+          latitude: number | null
+          location: string
+          longitude: number | null
+          photo_path: string | null
+          rate: number | null
+          rate_per: string | null
+          requirements: string[] | null
+          seniority: string | null
+          starts_on: string | null
+          status: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          apply_url?: string | null
+          benefits?: string[]
+          city?: string | null
+          closes_at?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          discipline: string
+          employment_type?: string
+          id?: string
+          is_global?: boolean
+          is_remote?: boolean
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          photo_path?: string | null
+          rate?: number | null
+          rate_per?: string | null
+          requirements?: string[] | null
+          seniority?: string | null
+          starts_on?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          apply_url?: string | null
+          benefits?: string[]
+          city?: string | null
+          closes_at?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          discipline?: string
+          employment_type?: string
+          id?: string
+          is_global?: boolean
+          is_remote?: boolean
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          photo_path?: string | null
+          rate?: number | null
+          rate_per?: string | null
+          requirements?: string[] | null
+          seniority?: string | null
+          starts_on?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_job_posts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_reviews: {
         Row: {
@@ -1703,81 +2058,35 @@ export type Database = {
         }
         Relationships: []
       }
-      market_job_posts: {
+      market_saved_searches: {
         Row: {
-          apply_url: string | null
-          benefits: string[]
-          city: string | null
-          closes_at: string | null
-          company: string | null
-          country: string | null
           created_at: string
-          currency: string
-          description: string | null
-          discipline: string
-          employment_type: string
           id: string
-          is_global: boolean
-          is_remote: boolean
-          latitude: number | null
-          location: string
-          longitude: number | null
-          photo_path: string | null
-          rate: number | null
-          rate_per: string | null
-          requirements: string[] | null
-          seniority: string | null
-          starts_on: string | null
-          status: string
-          title: string
-          updated_at: string
-          workspace_id: string
+          listing_category: string
+          query: string
+          scope: string
+          sort: string
+          user_id: string
         }
         Insert: {
           created_at?: string
-          currency?: string
-          description?: string | null
-          discipline: string
-          employment_type?: string
           id?: string
-          is_global?: boolean
-          latitude?: number | null
-          location: string
-          longitude?: number | null
-          rate?: number | null
-          rate_per?: string | null
-          requirements?: string[] | null
-          title: string
-          updated_at?: string
-          workspace_id: string
+          listing_category?: string
+          query?: string
+          scope?: string
+          sort?: string
+          user_id?: string
         }
         Update: {
           created_at?: string
-          currency?: string
-          description?: string | null
-          discipline?: string
-          employment_type?: string
           id?: string
-          is_global?: boolean
-          latitude?: number | null
-          location?: string
-          longitude?: number | null
-          rate?: number | null
-          rate_per?: string | null
-          requirements?: string[] | null
-          title?: string
-          updated_at?: string
-          workspace_id?: string
+          listing_category?: string
+          query?: string
+          scope?: string
+          sort?: string
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "market_job_posts_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       marketplace_listings: {
         Row: {
@@ -1818,46 +2127,74 @@ export type Database = {
         }
         Insert: {
           asset_id?: string | null
+          available_from?: string | null
+          available_to?: string | null
           category?: string
+          city?: string | null
           condition: string
+          country?: string | null
           created_at?: string
           currency: string
+          delivery?: string | null
           description?: string | null
+          expires_at?: string | null
           id?: string
           is_global?: boolean
+          is_remote?: boolean
+          is_verified?: boolean
           latitude?: number | null
           listing_type?: string | null
           location: string
           longitude?: number | null
+          manufacture_year?: number | null
           name: string
+          negotiable?: boolean
           price: number
+          quantity?: number
           seller: string
           seller_wallet_address?: string | null
+          serial_number?: string | null
           specs?: string[] | null
+          status?: string
           type: string
           updated_at?: string
+          warranty_months?: number | null
           workspace_id: string
         }
         Update: {
           asset_id?: string | null
+          available_from?: string | null
+          available_to?: string | null
           category?: string
+          city?: string | null
           condition?: string
+          country?: string | null
           created_at?: string
           currency?: string
+          delivery?: string | null
           description?: string | null
+          expires_at?: string | null
           id?: string
           is_global?: boolean
+          is_remote?: boolean
+          is_verified?: boolean
           latitude?: number | null
           listing_type?: string | null
           location?: string
           longitude?: number | null
+          manufacture_year?: number | null
           name?: string
+          negotiable?: boolean
           price?: number
+          quantity?: number
           seller?: string
           seller_wallet_address?: string | null
+          serial_number?: string | null
           specs?: string[] | null
+          status?: string
           type?: string
           updated_at?: string
+          warranty_months?: number | null
           workspace_id?: string
         }
         Relationships: [
@@ -2014,18 +2351,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      market_saved_searches: {
-        Row: { id: string; user_id: string; query: string; scope: string; sort: string; listing_category: string; created_at: string }
-        Insert: { id?: string; user_id?: string; query?: string; scope?: string; sort?: string; listing_category?: string; created_at?: string }
-        Update: { id?: string; user_id?: string; query?: string; scope?: string; sort?: string; listing_category?: string; created_at?: string }
-        Relationships: []
-      }
-      market_favorites: {
-        Row: { id: string; user_id: string; market_kind: string; market_id: string; created_at: string }
-        Insert: { id?: string; user_id?: string; market_kind: string; market_id: string; created_at?: string }
-        Update: { id?: string; user_id?: string; market_kind?: string; market_id?: string; created_at?: string }
-        Relationships: []
       }
       notifications: {
         Row: {
@@ -2350,13 +2675,19 @@ export type Database = {
           banner_path?: string | null
           bio?: string | null
           certifications?: string[] | null
+          city?: string | null
+          country?: string | null
           created_at?: string
+          credential_expires_on?: string | null
+          credential_issuer?: string | null
           currency: string
           discipline: string
           experience: string
           id?: string
           is_global?: boolean
+          is_remote?: boolean
           is_verified?: boolean
+          languages?: string[]
           latitude?: number | null
           location: string
           longitude?: number | null
@@ -2367,6 +2698,7 @@ export type Database = {
           reviews?: number | null
           skills?: string[] | null
           title: string
+          travel_radius_km?: number | null
           updated_at?: string
           workspace_id: string
         }
@@ -2376,13 +2708,19 @@ export type Database = {
           banner_path?: string | null
           bio?: string | null
           certifications?: string[] | null
+          city?: string | null
+          country?: string | null
           created_at?: string
+          credential_expires_on?: string | null
+          credential_issuer?: string | null
           currency?: string
           discipline?: string
           experience?: string
           id?: string
           is_global?: boolean
+          is_remote?: boolean
           is_verified?: boolean
+          languages?: string[]
           latitude?: number | null
           location?: string
           longitude?: number | null
@@ -2393,6 +2731,7 @@ export type Database = {
           reviews?: number | null
           skills?: string[] | null
           title?: string
+          travel_radius_km?: number | null
           updated_at?: string
           workspace_id?: string
         }
@@ -2526,6 +2865,48 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_cad_drawings: {
+        Row: {
+          created_at: string
+          model: Json
+          project_id: string
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          model?: Json
+          project_id: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          model?: Json
+          project_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_cad_drawings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cad_drawings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -2869,6 +3250,24 @@ export type Database = {
           },
         ]
       }
+      solana_market_cache: {
+        Row: {
+          id: number
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string | null
@@ -2964,62 +3363,880 @@ export type Database = {
           },
         ]
       }
-      workspace_ai_credit_accounts: {
+      transport_booking_events: {
         Row: {
+          actor_id: string | null
+          actor_kind: string
+          at: string
+          booking_id: string
+          from_status: string | null
+          id: string
+          note: string | null
+          to_status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_kind: string
+          at?: string
+          booking_id: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          to_status: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_kind?: string
+          at?: string
+          booking_id?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_booking_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "transport_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_bookings: {
+        Row: {
+          cancel_reason: string | null
+          capacity_released_at: string | null
+          collected_at: string | null
+          contents: string
+          created_at: string
+          currency: string
+          delivered_at: string | null
+          departure_id: string
+          dropoff_city_id: string
+          fee: number
+          fee_status: string
+          fulfilment: string
+          id: string
+          listing_id: string | null
+          mode: string
+          order_id: string | null
+          payment_provider: string | null
+          payment_reference: string | null
+          pickup_city_id: string
+          proof_path: string | null
+          recipient_name: string
+          recipient_phone: string | null
+          slots: number
+          status: string
+          tracking_code: string
+          updated_at: string
+          weight_kg: number
           workspace_id: string
-          balance: number
+        }
+        Insert: {
+          cancel_reason?: string | null
+          capacity_released_at?: string | null
+          collected_at?: string | null
+          contents: string
+          created_at?: string
+          currency?: string
+          delivered_at?: string | null
+          departure_id: string
+          dropoff_city_id: string
+          fee?: number
+          fee_status?: string
+          fulfilment?: string
+          id?: string
+          listing_id?: string | null
+          mode?: string
+          order_id?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          pickup_city_id: string
+          proof_path?: string | null
+          recipient_name: string
+          recipient_phone?: string | null
+          slots?: number
+          status?: string
+          tracking_code: string
+          updated_at?: string
+          weight_kg?: number
+          workspace_id: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          capacity_released_at?: string | null
+          collected_at?: string | null
+          contents?: string
+          created_at?: string
+          currency?: string
+          delivered_at?: string | null
+          departure_id?: string
+          dropoff_city_id?: string
+          fee?: number
+          fee_status?: string
+          fulfilment?: string
+          id?: string
+          listing_id?: string | null
+          mode?: string
+          order_id?: string | null
+          payment_provider?: string | null
+          payment_reference?: string | null
+          pickup_city_id?: string
+          proof_path?: string | null
+          recipient_name?: string
+          recipient_phone?: string | null
+          slots?: number
+          status?: string
+          tracking_code?: string
+          updated_at?: string
+          weight_kg?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_bookings_departure_fkey"
+            columns: ["departure_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_runs"
+            referencedColumns: ["departure_id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_departure_fkey"
+            columns: ["departure_id"]
+            isOneToOne: false
+            referencedRelation: "transport_departures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_dropoff_city_id_fkey"
+            columns: ["dropoff_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["destination_city_id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_dropoff_city_id_fkey"
+            columns: ["dropoff_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["origin_city_id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_dropoff_city_id_fkey"
+            columns: ["dropoff_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_stops"
+            referencedColumns: ["city_id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_dropoff_city_id_fkey"
+            columns: ["dropoff_city_id"]
+            isOneToOne: false
+            referencedRelation: "transport_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "public_market_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_pickup_city_id_fkey"
+            columns: ["pickup_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["destination_city_id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_pickup_city_id_fkey"
+            columns: ["pickup_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["origin_city_id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_pickup_city_id_fkey"
+            columns: ["pickup_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_stops"
+            referencedColumns: ["city_id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_pickup_city_id_fkey"
+            columns: ["pickup_city_id"]
+            isOneToOne: false
+            referencedRelation: "transport_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_bookings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_checkpoints: {
+        Row: {
+          city_id: string
+          departure_id: string
+          id: string
+          latitude: number
+          longitude: number
+          note: string | null
+          reported_at: string
+          reported_by: string
+          sequence: number
+        }
+        Insert: {
+          city_id: string
+          departure_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          note?: string | null
+          reported_at?: string
+          reported_by: string
+          sequence: number
+        }
+        Update: {
+          city_id?: string
+          departure_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          note?: string | null
+          reported_at?: string
+          reported_by?: string
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_checkpoints_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["destination_city_id"]
+          },
+          {
+            foreignKeyName: "transport_checkpoints_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["origin_city_id"]
+          },
+          {
+            foreignKeyName: "transport_checkpoints_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_stops"
+            referencedColumns: ["city_id"]
+          },
+          {
+            foreignKeyName: "transport_checkpoints_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "transport_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_checkpoints_departure_id_fkey"
+            columns: ["departure_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_runs"
+            referencedColumns: ["departure_id"]
+          },
+          {
+            foreignKeyName: "transport_checkpoints_departure_id_fkey"
+            columns: ["departure_id"]
+            isOneToOne: false
+            referencedRelation: "transport_departures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_cities: {
+        Row: {
+          active: boolean
+          country: string
+          created_at: string
+          hub_address: string | null
+          hub_hours: string | null
+          id: string
+          is_sample: boolean
+          latitude: number
+          longitude: number
+          name: string
+          timezone: string
           updated_at: string
         }
         Insert: {
-          workspace_id: string
-          balance?: number
+          active?: boolean
+          country?: string
+          created_at?: string
+          hub_address?: string | null
+          hub_hours?: string | null
+          id?: string
+          is_sample?: boolean
+          latitude: number
+          longitude: number
+          name: string
+          timezone?: string
           updated_at?: string
         }
         Update: {
-          workspace_id?: string
-          balance?: number
+          active?: boolean
+          country?: string
+          created_at?: string
+          hub_address?: string | null
+          hub_hours?: string | null
+          id?: string
+          is_sample?: boolean
+          latitude?: number
+          longitude?: number
+          name?: string
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
       }
-      workspace_ai_credit_transactions: {
+      transport_departures: {
         Row: {
-          id: string
-          workspace_id: string
-          actor_user_id: string | null
-          kind: string
-          credits_delta: number
-          balance_after: number
-          operation_id: string
-          description: string
-          related_id: string | null
+          arrived_at: string | null
+          backstop_at: string
+          booked_kg: number
+          booked_slots: number
+          booking_cutoff_at: string
+          cancel_reason: string | null
+          capacity_kg: number
+          capacity_slots: number
           created_at: string
+          departed_at: string | null
+          id: string
+          is_sample: boolean
+          planned_departure_at: string
+          private_booking_id: string | null
+          route_id: string
+          status: string
+          target_load_ratio: number
+          updated_at: string
+          vehicle_class_id: string | null
+          vehicle_id: string | null
         }
         Insert: {
-          id?: string
-          workspace_id: string
-          actor_user_id?: string | null
-          kind: string
-          credits_delta: number
-          balance_after: number
-          operation_id: string
-          description: string
-          related_id?: string | null
+          arrived_at?: string | null
+          backstop_at: string
+          booked_kg?: number
+          booked_slots?: number
+          booking_cutoff_at: string
+          cancel_reason?: string | null
+          capacity_kg: number
+          capacity_slots: number
           created_at?: string
+          departed_at?: string | null
+          id?: string
+          is_sample?: boolean
+          planned_departure_at: string
+          private_booking_id?: string | null
+          route_id: string
+          status?: string
+          target_load_ratio?: number
+          updated_at?: string
+          vehicle_class_id?: string | null
+          vehicle_id?: string | null
         }
         Update: {
-          id?: string
-          workspace_id?: string
-          actor_user_id?: string | null
-          kind?: string
-          credits_delta?: number
-          balance_after?: number
-          operation_id?: string
-          description?: string
-          related_id?: string | null
+          arrived_at?: string | null
+          backstop_at?: string
+          booked_kg?: number
+          booked_slots?: number
+          booking_cutoff_at?: string
+          cancel_reason?: string | null
+          capacity_kg?: number
+          capacity_slots?: number
           created_at?: string
+          departed_at?: string | null
+          id?: string
+          is_sample?: boolean
+          planned_departure_at?: string
+          private_booking_id?: string | null
+          route_id?: string
+          status?: string
+          target_load_ratio?: number
+          updated_at?: string
+          vehicle_class_id?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_departures_private_booking_id_fkey"
+            columns: ["private_booking_id"]
+            isOneToOne: false
+            referencedRelation: "transport_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_departures_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["route_id"]
+          },
+          {
+            foreignKeyName: "transport_departures_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "transport_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_departures_vehicle_class_id_fkey"
+            columns: ["vehicle_class_id"]
+            isOneToOne: false
+            referencedRelation: "transport_vehicle_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_departures_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_fleet"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_departures_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "transport_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_route_stops: {
+        Row: {
+          city_id: string
+          created_at: string
+          dwell_minutes: number
+          id: string
+          route_id: string
+          sequence: number
+          stop_offset_km: number | null
+        }
+        Insert: {
+          city_id: string
+          created_at?: string
+          dwell_minutes?: number
+          id?: string
+          route_id: string
+          sequence: number
+          stop_offset_km?: number | null
+        }
+        Update: {
+          city_id?: string
+          created_at?: string
+          dwell_minutes?: number
+          id?: string
+          route_id?: string
+          sequence?: number
+          stop_offset_km?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_route_stops_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["destination_city_id"]
+          },
+          {
+            foreignKeyName: "transport_route_stops_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["origin_city_id"]
+          },
+          {
+            foreignKeyName: "transport_route_stops_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_stops"
+            referencedColumns: ["city_id"]
+          },
+          {
+            foreignKeyName: "transport_route_stops_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "transport_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_route_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["route_id"]
+          },
+          {
+            foreignKeyName: "transport_route_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "transport_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_routes: {
+        Row: {
+          code: string
+          created_at: string
+          currency: string
+          destination_city_id: string
+          direct_distance_km: number | null
+          fare_final_mile: number
+          fare_per_kg: number
+          fare_per_slot: number
+          id: string
+          is_sample: boolean
+          name: string
+          origin_city_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          currency?: string
+          destination_city_id: string
+          direct_distance_km?: number | null
+          fare_final_mile?: number
+          fare_per_kg?: number
+          fare_per_slot?: number
+          id?: string
+          is_sample?: boolean
+          name: string
+          origin_city_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          currency?: string
+          destination_city_id?: string
+          direct_distance_km?: number | null
+          fare_final_mile?: number
+          fare_per_kg?: number
+          fare_per_slot?: number
+          id?: string
+          is_sample?: boolean
+          name?: string
+          origin_city_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_routes_destination_city_id_fkey"
+            columns: ["destination_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["destination_city_id"]
+          },
+          {
+            foreignKeyName: "transport_routes_destination_city_id_fkey"
+            columns: ["destination_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["origin_city_id"]
+          },
+          {
+            foreignKeyName: "transport_routes_destination_city_id_fkey"
+            columns: ["destination_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_stops"
+            referencedColumns: ["city_id"]
+          },
+          {
+            foreignKeyName: "transport_routes_destination_city_id_fkey"
+            columns: ["destination_city_id"]
+            isOneToOne: false
+            referencedRelation: "transport_cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_routes_origin_city_id_fkey"
+            columns: ["origin_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["destination_city_id"]
+          },
+          {
+            foreignKeyName: "transport_routes_origin_city_id_fkey"
+            columns: ["origin_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["origin_city_id"]
+          },
+          {
+            foreignKeyName: "transport_routes_origin_city_id_fkey"
+            columns: ["origin_city_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_stops"
+            referencedColumns: ["city_id"]
+          },
+          {
+            foreignKeyName: "transport_routes_origin_city_id_fkey"
+            columns: ["origin_city_id"]
+            isOneToOne: false
+            referencedRelation: "transport_cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_vehicle_classes: {
+        Row: {
+          active: boolean
+          capacity_kg: number
+          capacity_slots: number
+          created_at: string
+          default_backstop_days: number
+          id: string
+          label: string
+          min_load_ratio: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          capacity_kg: number
+          capacity_slots: number
+          created_at?: string
+          default_backstop_days?: number
+          id?: string
+          label: string
+          min_load_ratio?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          capacity_kg?: number
+          capacity_slots?: number
+          created_at?: string
+          default_backstop_days?: number
+          id?: string
+          label?: string
+          min_load_ratio?: number
+          updated_at?: string
         }
         Relationships: []
+      }
+      transport_vehicles: {
+        Row: {
+          active: boolean
+          class_id: string
+          created_at: string
+          description: string | null
+          id: string
+          insurance_reference: string | null
+          is_sample: boolean
+          plate: string
+          updated_at: string
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          class_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          insurance_reference?: string | null
+          is_sample?: boolean
+          plate: string
+          updated_at?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          class_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          insurance_reference?: string | null
+          is_sample?: boolean
+          plate?: string
+          updated_at?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_vehicles_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "transport_vehicle_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_vehicles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_ai_credit_accounts: {
+        Row: {
+          balance: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          balance?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          balance?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_ai_credit_accounts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_ai_credit_transactions: {
+        Row: {
+          actor_user_id: string | null
+          balance_after: number
+          created_at: string
+          credits_delta: number
+          description: string
+          id: string
+          kind: string
+          operation_id: string
+          related_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          balance_after: number
+          created_at?: string
+          credits_delta: number
+          description: string
+          id?: string
+          kind: string
+          operation_id: string
+          related_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          balance_after?: number
+          created_at?: string
+          credits_delta?: number
+          description?: string
+          id?: string
+          kind?: string
+          operation_id?: string
+          related_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_ai_credit_transactions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_ai_providers: {
+        Row: {
+          api_key: string | null
+          api_key_secret_id: string | null
+          base_url: string
+          created_at: string
+          default_model: string | null
+          enabled: boolean
+          id: string
+          label: string
+          sort_order: number
+          tag: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          api_key?: string | null
+          api_key_secret_id?: string | null
+          base_url: string
+          created_at?: string
+          default_model?: string | null
+          enabled?: boolean
+          id?: string
+          label: string
+          sort_order?: number
+          tag: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          api_key?: string | null
+          api_key_secret_id?: string | null
+          base_url?: string
+          created_at?: string
+          default_model?: string | null
+          enabled?: boolean
+          id?: string
+          label?: string
+          sort_order?: number
+          tag?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_ai_providers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspace_invitations: {
         Row: {
@@ -3194,7 +4411,29 @@ export type Database = {
           wallet_id?: string
           workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspace_pesepay_transaction_wallet_id_workspace_id_user__fkey"
+            columns: ["wallet_id", "workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_pesepay_wallets"
+            referencedColumns: ["id", "workspace_id", "user_id"]
+          },
+          {
+            foreignKeyName: "workspace_pesepay_transactions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "billing_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_pesepay_transactions_refunded_by_fkey"
+            columns: ["refunded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspace_pesepay_wallets: {
         Row: {
@@ -3320,6 +4559,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "workspace_storage_purchases_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "billing_packages"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workspace_storage_purchases_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
@@ -3379,59 +4625,6 @@ export type Database = {
         }
         Relationships: []
       }
-      workspace_ai_providers: {
-        Row: {
-          api_key: string | null
-          api_key_secret_id: string | null
-          base_url: string
-          created_at: string
-          default_model: string | null
-          enabled: boolean
-          id: string
-          label: string
-          sort_order: number
-          tag: string
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          api_key?: string | null
-          api_key_secret_id?: string | null
-          base_url: string
-          created_at?: string
-          default_model?: string | null
-          enabled?: boolean
-          id?: string
-          label: string
-          sort_order?: number
-          tag: string
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          api_key?: string | null
-          api_key_secret_id?: string | null
-          base_url?: string
-          created_at?: string
-          default_model?: string | null
-          enabled?: boolean
-          id?: string
-          label?: string
-          sort_order?: number
-          tag?: string
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workspace_ai_providers_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       public_market_events: {
@@ -3466,68 +4659,6 @@ export type Database = {
           updated_at: string | null
           venue_address: string | null
         }
-        Insert: {
-          agenda?: string[] | null
-          capacity?: number | null
-          certification_body?: string | null
-          city?: string | null
-          country?: string | null
-          cpd_points?: number | null
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          ends_at?: string | null
-          id?: string | null
-          instructor?: string | null
-          is_remote?: boolean | null
-          kind?: string | null
-          latitude?: number | null
-          location?: string | null
-          longitude?: number | null
-          photo_path?: string | null
-          price?: number | null
-          provider?: string | null
-          registration_deadline?: string | null
-          registration_url?: string | null
-          saves?: number | null
-          seats_left?: number | null
-          starts_at?: string | null
-          timezone?: string | null
-          title?: string | null
-          updated_at?: string | null
-          venue_address?: string | null
-        }
-        Update: {
-          agenda?: string[] | null
-          capacity?: number | null
-          certification_body?: string | null
-          city?: string | null
-          country?: string | null
-          cpd_points?: number | null
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          ends_at?: string | null
-          id?: string | null
-          instructor?: string | null
-          is_remote?: boolean | null
-          kind?: string | null
-          latitude?: number | null
-          location?: string | null
-          longitude?: number | null
-          photo_path?: string | null
-          price?: number | null
-          provider?: string | null
-          registration_deadline?: string | null
-          registration_url?: string | null
-          saves?: number | null
-          seats_left?: number | null
-          starts_at?: string | null
-          timezone?: string | null
-          title?: string | null
-          updated_at?: string | null
-          venue_address?: string | null
-        }
         Relationships: []
       }
       public_market_firms: {
@@ -3555,56 +4686,6 @@ export type Database = {
           updated_at: string | null
           verified: boolean | null
           website: string | null
-        }
-        Insert: {
-          about?: string | null
-          accreditations?: string[] | null
-          city?: string | null
-          contact_email?: string | null
-          country?: string | null
-          created_at?: string | null
-          founded_year?: number | null
-          id?: string | null
-          is_remote?: boolean | null
-          latitude?: number | null
-          location?: string | null
-          logo_path?: string | null
-          longitude?: number | null
-          name?: string | null
-          rating?: number | null
-          reviews?: number | null
-          saves?: number | null
-          service_areas?: string[] | null
-          services?: string[] | null
-          staff_count?: number | null
-          updated_at?: string | null
-          verified?: boolean | null
-          website?: string | null
-        }
-        Update: {
-          about?: string | null
-          accreditations?: string[] | null
-          city?: string | null
-          contact_email?: string | null
-          country?: string | null
-          created_at?: string | null
-          founded_year?: number | null
-          id?: string | null
-          is_remote?: boolean | null
-          latitude?: number | null
-          location?: string | null
-          logo_path?: string | null
-          longitude?: number | null
-          name?: string | null
-          rating?: number | null
-          reviews?: number | null
-          saves?: number | null
-          service_areas?: string[] | null
-          services?: string[] | null
-          staff_count?: number | null
-          updated_at?: string | null
-          verified?: boolean | null
-          website?: string | null
         }
         Relationships: []
       }
@@ -3636,62 +4717,6 @@ export type Database = {
           status: string | null
           title: string | null
           updated_at: string | null
-        }
-        Insert: {
-          apply_url?: string | null
-          benefits?: string[] | null
-          city?: string | null
-          closes_at?: string | null
-          company?: string | null
-          country?: string | null
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          discipline?: string | null
-          employment_type?: string | null
-          id?: string | null
-          is_remote?: boolean | null
-          latitude?: number | null
-          location?: string | null
-          longitude?: number | null
-          photo_path?: string | null
-          rate?: number | null
-          rate_per?: string | null
-          requirements?: string[] | null
-          saves?: number | null
-          seniority?: string | null
-          starts_on?: string | null
-          status?: string | null
-          title?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          apply_url?: string | null
-          benefits?: string[] | null
-          city?: string | null
-          closes_at?: string | null
-          company?: string | null
-          country?: string | null
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          discipline?: string | null
-          employment_type?: string | null
-          id?: string | null
-          is_remote?: boolean | null
-          latitude?: number | null
-          location?: string | null
-          longitude?: number | null
-          photo_path?: string | null
-          rate?: number | null
-          rate_per?: string | null
-          requirements?: string[] | null
-          saves?: number | null
-          seniority?: string | null
-          starts_on?: string | null
-          status?: string | null
-          title?: string | null
-          updated_at?: string | null
         }
         Relationships: []
       }
@@ -3729,74 +4754,6 @@ export type Database = {
           type: string | null
           updated_at: string | null
           warranty_months: number | null
-        }
-        Insert: {
-          available_from?: string | null
-          available_to?: string | null
-          category?: string | null
-          city?: string | null
-          condition?: string | null
-          country?: string | null
-          created_at?: string | null
-          currency?: string | null
-          delivery?: string | null
-          description?: string | null
-          expires_at?: string | null
-          id?: string | null
-          is_remote?: boolean | null
-          is_verified?: boolean | null
-          latitude?: number | null
-          listing_type?: string | null
-          location?: string | null
-          longitude?: number | null
-          manufacture_year?: number | null
-          name?: string | null
-          negotiable?: boolean | null
-          photos?: string[] | null
-          price?: number | null
-          quantity?: number | null
-          saves?: number | null
-          seller?: string | null
-          serial_number?: string | null
-          specs?: string[] | null
-          status?: string | null
-          type?: string | null
-          updated_at?: string | null
-          warranty_months?: number | null
-        }
-        Update: {
-          available_from?: string | null
-          available_to?: string | null
-          category?: string | null
-          city?: string | null
-          condition?: string | null
-          country?: string | null
-          created_at?: string | null
-          currency?: string | null
-          delivery?: string | null
-          description?: string | null
-          expires_at?: string | null
-          id?: string | null
-          is_remote?: boolean | null
-          is_verified?: boolean | null
-          latitude?: number | null
-          listing_type?: string | null
-          location?: string | null
-          longitude?: number | null
-          manufacture_year?: number | null
-          name?: string | null
-          negotiable?: boolean | null
-          photos?: string[] | null
-          price?: number | null
-          quantity?: number | null
-          saves?: number | null
-          seller?: string | null
-          serial_number?: string | null
-          specs?: string[] | null
-          status?: string | null
-          type?: string | null
-          updated_at?: string | null
-          warranty_months?: number | null
         }
         Relationships: []
       }
@@ -3881,70 +4838,6 @@ export type Database = {
           travel_radius_km: number | null
           updated_at: string | null
         }
-        Insert: {
-          availability?: string | null
-          avatar_path?: string | null
-          banner_path?: string | null
-          bio?: string | null
-          certifications?: string[] | null
-          city?: string | null
-          country?: string | null
-          created_at?: string | null
-          credential_expires_on?: string | null
-          credential_issuer?: string | null
-          currency?: string | null
-          discipline?: string | null
-          experience?: string | null
-          id?: string | null
-          is_remote?: boolean | null
-          is_verified?: boolean | null
-          languages?: string[] | null
-          latitude?: number | null
-          location?: string | null
-          longitude?: number | null
-          name?: string | null
-          rate?: number | null
-          rate_per?: string | null
-          rating?: number | null
-          reviews?: number | null
-          saves?: number | null
-          skills?: string[] | null
-          title?: string | null
-          travel_radius_km?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          availability?: string | null
-          avatar_path?: string | null
-          banner_path?: string | null
-          bio?: string | null
-          certifications?: string[] | null
-          city?: string | null
-          country?: string | null
-          created_at?: string | null
-          credential_expires_on?: string | null
-          credential_issuer?: string | null
-          currency?: string | null
-          discipline?: string | null
-          experience?: string | null
-          id?: string | null
-          is_remote?: boolean | null
-          is_verified?: boolean | null
-          languages?: string[] | null
-          latitude?: number | null
-          location?: string | null
-          longitude?: number | null
-          name?: string | null
-          rate?: number | null
-          rate_per?: string | null
-          rating?: number | null
-          reviews?: number | null
-          saves?: number | null
-          skills?: string[] | null
-          title?: string | null
-          travel_radius_km?: number | null
-          updated_at?: string | null
-        }
         Relationships: []
       }
       public_market_reviews: {
@@ -3973,6 +4866,154 @@ export type Database = {
           rating?: number | null
         }
         Relationships: []
+      }
+      public_transport_checkpoints: {
+        Row: {
+          city: string | null
+          country: string | null
+          departure_id: string | null
+          latitude: number | null
+          longitude: number | null
+          note: string | null
+          reported_at: string | null
+          sequence: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_checkpoints_departure_id_fkey"
+            columns: ["departure_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_runs"
+            referencedColumns: ["departure_id"]
+          },
+          {
+            foreignKeyName: "transport_checkpoints_departure_id_fkey"
+            columns: ["departure_id"]
+            isOneToOne: false
+            referencedRelation: "transport_departures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_transport_corridors: {
+        Row: {
+          code: string | null
+          currency: string | null
+          destination_city: string | null
+          destination_city_id: string | null
+          destination_country: string | null
+          destination_latitude: number | null
+          destination_longitude: number | null
+          direct_distance_km: number | null
+          fare_final_mile: number | null
+          fare_per_kg: number | null
+          fare_per_slot: number | null
+          is_sample: boolean | null
+          live_runs: number | null
+          name: string | null
+          next_roll_at: string | null
+          open_runs: number | null
+          origin_city: string | null
+          origin_city_id: string | null
+          origin_country: string | null
+          origin_latitude: number | null
+          origin_longitude: number | null
+          route_id: string | null
+          route_status: string | null
+        }
+        Relationships: []
+      }
+      public_transport_fleet: {
+        Row: {
+          capacity_kg: number | null
+          capacity_slots: number | null
+          class_label: string | null
+          description: string | null
+          id: string | null
+          plate: string | null
+          target_percent: number | null
+          verified_at: string | null
+        }
+        Relationships: []
+      }
+      public_transport_runs: {
+        Row: {
+          arrived_at: string | null
+          backstop_at: string | null
+          booked_kg: number | null
+          booked_slots: number | null
+          booking_cutoff_at: string | null
+          capacity_kg: number | null
+          capacity_slots: number | null
+          currency: string | null
+          departed_at: string | null
+          departure_id: string | null
+          destination_city: string | null
+          fare_final_mile: number | null
+          fare_per_kg: number | null
+          fare_per_slot: number | null
+          governing_dimension: string | null
+          is_private_charter: boolean | null
+          is_sample: boolean | null
+          last_reported_at: string | null
+          last_reported_city: string | null
+          load_percent: number | null
+          origin_city: string | null
+          planned_departure_at: string | null
+          route_code: string | null
+          route_id: string | null
+          route_name: string | null
+          status: string | null
+          target_percent: number | null
+          vehicle_class: string | null
+          vehicle_verification: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_departures_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["route_id"]
+          },
+          {
+            foreignKeyName: "transport_departures_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "transport_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_transport_stops: {
+        Row: {
+          city: string | null
+          city_id: string | null
+          country: string | null
+          dwell_minutes: number | null
+          has_hub: boolean | null
+          latitude: number | null
+          longitude: number | null
+          route_id: string | null
+          sequence: number | null
+          stop_offset_km: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_route_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_transport_corridors"
+            referencedColumns: ["route_id"]
+          },
+          {
+            foreignKeyName: "transport_route_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "transport_routes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -4038,90 +5079,20 @@ export type Database = {
         Args: { workspace_name: string; workspace_slug?: string }
         Returns: string
       }
-      get_workspace_storage_usage: {
-        Args: { p_workspace_id: string }
-        Returns: {
-          base_limit_mb: number
-          expiring_storage_mb: number
-          file_count: number
-          limit_mb: number
-          next_storage_expiration: string | null
-          over_quota: boolean
-          percent: number
-          purchased_storage_mb: number
-          upload_allowed: boolean
-          used_bytes: number
-          used_mb: number
-        }
+      fulfil_workspace_package_purchase: {
+        Args: { p_transaction_id: string }
+        Returns: string
       }
+      get_database_size: { Args: never; Returns: number }
+      get_platform_financial_overview: { Args: never; Returns: Json }
+      get_tables_size: { Args: never; Returns: number }
       get_workspace_billing_overview: {
         Args: { p_workspace_id: string }
         Returns: Json
       }
-      get_platform_financial_overview: {
-        Args: Record<PropertyKey, never>
+      get_workspace_storage_usage: {
+        Args: { p_workspace_id: string }
         Returns: Json
-      }
-      pay_workspace_package_with_balance: {
-        Args: {
-          p_workspace_id: string
-          p_user_id: string
-          p_package_id: string
-          p_request_id: string
-        }
-        Returns: { purchase_id: string; remaining_balance: number }[]
-      }
-      settle_workspace_package_purchase: {
-        Args: { p_reference: string; p_amount: number; p_currency_code: string }
-        Returns: string
-      }
-      spend_workspace_ai_credits: {
-        Args: {
-          p_workspace_id: string
-          p_user_id: string
-          p_operation_id: string
-          p_operation: string
-          p_description: string
-        }
-        Returns: {
-          transaction_id: string
-          remaining_balance: number
-          credits_charged: number
-        }[]
-      }
-      refund_workspace_ai_credits: {
-        Args: {
-          p_workspace_id: string
-          p_user_id: string
-          p_operation_id: string
-          p_reason: string
-        }
-        Returns: { transaction_id: string; remaining_balance: number }[]
-      }
-      reverse_workspace_ai_credits: {
-        Args: {
-          p_workspace_id: string
-          p_transaction_id: string
-          p_reason: string
-        }
-        Returns: {
-          transaction_id: string
-          remaining_balance: number
-          credits_reversed: number
-        }[]
-      }
-      record_pesepay_transaction_refund: {
-        Args: {
-          p_transaction_id: string
-          p_reason: string
-        }
-        Returns: {
-          status: string
-          credits_granted: number
-          credits_reclaimed: number
-          storage_mb_revoked: number
-          balance_reclaimed: number
-        }[]
       }
       has_workspace_role: {
         Args: {
@@ -4138,6 +5109,19 @@ export type Database = {
       is_workspace_member: {
         Args: { target_workspace_id: string }
         Returns: boolean
+      }
+      link_email_identity: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: undefined
+      }
+      link_web3_identity: {
+        Args: {
+          p_address: string
+          p_chain: string
+          p_identity_data?: Json
+          p_user_id: string
+        }
+        Returns: undefined
       }
       list_workspace_activity_log: {
         Args: { p_limit?: number; p_offset?: number; p_workspace_id: string }
@@ -4162,6 +5146,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      market_item_workspace: {
+        Args: { p_item_id: string; p_kind: string }
+        Returns: string
+      }
       path_first_segment_uuid: { Args: { path: string }; Returns: string }
       pay_workspace_invoice_with_balance: {
         Args: {
@@ -4170,7 +5158,22 @@ export type Database = {
           p_user_id: string
           p_workspace_id: string
         }
-        Returns: { payment_id: string; remaining_balance: number }[]
+        Returns: {
+          payment_id: string
+          remaining_balance: number
+        }[]
+      }
+      pay_workspace_package_with_balance: {
+        Args: {
+          p_package_id: string
+          p_request_id: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          purchase_id: string
+          remaining_balance: number
+        }[]
       }
       pay_workspace_storage_with_balance: {
         Args: {
@@ -4179,7 +5182,58 @@ export type Database = {
           p_user_id: string
           p_workspace_id: string
         }
-        Returns: { purchase_id: string; remaining_balance: number }[]
+        Returns: {
+          purchase_id: string
+          remaining_balance: number
+        }[]
+      }
+      project_cad_metrics: {
+        Args: { p_project_id: string }
+        Returns: {
+          linework: number
+          points: number
+          qa_flags: number
+          surfaces: number
+        }[]
+      }
+      prune_auth_nonces: { Args: never; Returns: undefined }
+      record_pesepay_transaction_refund: {
+        Args: { p_reason: string; p_transaction_id: string }
+        Returns: {
+          balance_reclaimed: number
+          credits_granted: number
+          credits_reclaimed: number
+          status: string
+          storage_mb_revoked: number
+        }[]
+      }
+      refund_workspace_ai_credits: {
+        Args: {
+          p_operation_id: string
+          p_reason: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          remaining_balance: number
+          transaction_id: string
+        }[]
+      }
+      remaining_signin_methods: {
+        Args: { p_exclude_provider_id?: string; p_user_id: string }
+        Returns: number
+      }
+      reverse_workspace_ai_credits: {
+        Args: {
+          p_reason: string
+          p_transaction_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          credits_reversed: number
+          remaining_balance: number
+          transaction_id: string
+        }[]
       }
       set_default_payment_method: {
         Args: { p_method_id: string; p_workspace_id: string }
@@ -4189,12 +5243,12 @@ export type Database = {
         Args: { target_workspace_id: string }
         Returns: boolean
       }
+      settle_workspace_package_purchase: {
+        Args: { p_amount: number; p_currency_code: string; p_reference: string }
+        Returns: string
+      }
       settle_workspace_pesepay_deposit: {
         Args: { p_amount: number; p_currency_code: string; p_reference: string }
-        Returns: undefined
-      }
-      update_marketplace_wallet: {
-        Args: { p_workspace_id: string; p_address: string }
         Returns: undefined
       }
       shares_workspace_with_profile: {
@@ -4202,6 +5256,172 @@ export type Database = {
         Returns: boolean
       }
       slugify: { Args: { value: string }; Returns: string }
+      spend_workspace_ai_credits: {
+        Args: {
+          p_description: string
+          p_operation: string
+          p_operation_id: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          credits_charged: number
+          remaining_balance: number
+          transaction_id: string
+        }[]
+      }
+      transport_advance_booking: {
+        Args: { p_booking_id: string; p_note?: string; p_to_status: string }
+        Returns: undefined
+      }
+      transport_advance_departure: {
+        Args: { p_departure_id: string; p_to_status: string }
+        Returns: undefined
+      }
+      transport_apply_quorum: {
+        Args: { p_departure_id: string }
+        Returns: undefined
+      }
+      transport_approve_load: {
+        Args: { p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
+      transport_cancel_booking: {
+        Args: { p_booking_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      transport_cancel_departure: {
+        Args: { p_departure_id: string; p_reason: string }
+        Returns: number
+      }
+      transport_confirm_fee: {
+        Args: { p_booking_id: string; p_provider: string; p_reference: string }
+        Returns: undefined
+      }
+      transport_create_booking: {
+        Args: {
+          p_contents: string
+          p_departure_id: string
+          p_dropoff_city_id: string
+          p_fulfilment?: string
+          p_listing_id?: string
+          p_mode: string
+          p_order_id?: string
+          p_pickup_city_id: string
+          p_recipient_name: string
+          p_recipient_phone?: string
+          p_slots: number
+          p_weight_kg: number
+          p_workspace_id: string
+        }
+        Returns: {
+          cancel_reason: string | null
+          capacity_released_at: string | null
+          collected_at: string | null
+          contents: string
+          created_at: string
+          currency: string
+          delivered_at: string | null
+          departure_id: string
+          dropoff_city_id: string
+          fee: number
+          fee_status: string
+          fulfilment: string
+          id: string
+          listing_id: string | null
+          mode: string
+          order_id: string | null
+          payment_provider: string | null
+          payment_reference: string | null
+          pickup_city_id: string
+          proof_path: string | null
+          recipient_name: string
+          recipient_phone: string | null
+          slots: number
+          status: string
+          tracking_code: string
+          updated_at: string
+          weight_kg: number
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transport_bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      transport_direct_distance_km: {
+        Args: {
+          p_lat_a: number
+          p_lat_b: number
+          p_lng_a: number
+          p_lng_b: number
+        }
+        Returns: number
+      }
+      transport_evaluate_departures: { Args: never; Returns: number }
+      transport_governing_dimension: {
+        Args: {
+          p_departure: Database["public"]["Tables"]["transport_departures"]["Row"]
+        }
+        Returns: string
+      }
+      transport_load_ratio: {
+        Args: {
+          p_departure: Database["public"]["Tables"]["transport_departures"]["Row"]
+        }
+        Returns: number
+      }
+      transport_new_tracking_code: { Args: never; Returns: string }
+      transport_offers_for_city: {
+        Args: { p_destination_city_id: string }
+        Returns: {
+          booking_cutoff_at: string
+          currency: string
+          departure_id: string
+          destination_city: string
+          fare_per_kg: number
+          fare_per_slot: number
+          free_kg: number
+          free_slots: number
+          is_sample: boolean
+          load_percent: number
+          origin_city: string
+          origin_city_id: string
+          planned_departure_at: string
+          route_code: string
+          route_id: string
+          route_name: string
+          status: string
+          target_percent: number
+        }[]
+      }
+      transport_record_checkpoint: {
+        Args: { p_city_id: string; p_departure_id: string; p_note?: string }
+        Returns: undefined
+      }
+      transport_release_capacity: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      transport_stop_sequence: {
+        Args: { p_city_id: string; p_route_id: string }
+        Returns: number
+      }
+      unlink_email_signin: { Args: { p_user_id: string }; Returns: undefined }
+      unlink_web3_identity: {
+        Args: { p_address: string; p_chain: string; p_user_id: string }
+        Returns: undefined
+      }
+      update_marketplace_wallet: {
+        Args: { p_address: string; p_workspace_id: string }
+        Returns: undefined
+      }
+      workspace_storage_limit_bytes: {
+        Args: { p_workspace_id: string }
+        Returns: number
+      }
     }
     Enums: {
       asset_kind: "instrument" | "vehicle" | "equipment" | "other"
@@ -4258,12 +5478,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4287,11 +5507,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4312,11 +5532,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4337,11 +5557,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4354,11 +5574,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

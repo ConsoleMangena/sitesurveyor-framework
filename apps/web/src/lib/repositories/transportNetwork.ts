@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.ts";
+import type { Database } from "../supabase/types.ts";
 
 /**
  * Reads the public transport surface. Every row here comes from an owner-owned
@@ -11,6 +12,14 @@ import { supabase } from "../supabase/client.ts";
 
 const FETCH_TIMEOUT_MS = 6_000;
 
+/**
+ * The view row types below are written by hand rather than read off the
+ * generated `Database`, because Postgres cannot prove a view column NOT NULL and
+ * marks every one of them nullable. Each column that can genuinely be absent
+ * says so here; the rest are guaranteed by the base column the view selects.
+ * Relation names, RPC arguments and RPC results *are* checked against the
+ * generated types, at the call sites.
+ */
 export type TransportCorridor = {
   route_id: string;
   code: string;
@@ -100,61 +109,9 @@ export type TransportNetwork = {
   checkpoints: TransportCheckpoint[];
 };
 
-export type TransportOffer = {
-  departure_id: string;
-  route_id: string;
-  route_code: string;
-  route_name: string;
-  origin_city_id: string;
-  origin_city: string;
-  destination_city: string;
-  fare_per_slot: number;
-  fare_per_kg: number;
-  currency: string;
-  free_slots: number;
-  free_kg: number;
-  load_percent: number;
-  target_percent: number;
-  status: string;
-  planned_departure_at: string;
-  booking_cutoff_at: string;
-  is_sample: boolean;
-};
-
-/**
- * The transport views and RPCs are read through a narrow local client rather
- * than the generated `Database` type: the migration that creates them is not
- * applied to the linked project yet, so regenerating types would describe
- * tables the database does not have. The shapes in this file are therefore the
- * single description of what the views return, and they match the columns the
- * view definitions select. Once the migration lands and types are regenerated,
- * this façade can go and `supabase` can be used directly.
- */
-type TransportView =
-  | "public_transport_corridors"
-  | "public_transport_runs"
-  | "public_transport_stops"
-  | "public_transport_checkpoints"
-  | "public_transport_fleet";
-
-type TransportRpcName = "transport_offers_for_city" | "transport_create_booking";
-
-type TransportClient = {
-  from: (relation: TransportView) => {
-    select: (columns: string) => TransportClientQuery;
-  };
-  rpc: (
-    fn: TransportRpcName,
-    args: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: unknown }>;
-};
-
-type TransportClientQuery = PromiseLike<{ data: unknown[] | null; error: unknown }> & {
-  in: (column: string, values: readonly string[]) => TransportClientQuery;
-  order: (column: string, options?: { ascending?: boolean }) => TransportClientQuery;
-};
-
-const db = supabase as unknown as TransportClient;
+/** What the offer RPC answers, column for column, taken from the database itself. */
+export type TransportOffer =
+  Database["public"]["Functions"]["transport_offers_for_city"]["Returns"][number];
 
 function withTimeout<T>(
   query: PromiseLike<{ data: unknown[] | null; error: unknown }>,
@@ -182,11 +139,11 @@ function withTimeout<T>(
 export async function fetchTransportNetwork(): Promise<TransportNetwork> {
   const [corridors, runs, stops, checkpoints] = await Promise.all([
     withTimeout<TransportCorridor>(
-      db.from("public_transport_corridors").select("*").order("code"),
+      supabase.from("public_transport_corridors").select("*").order("code"),
       "corridors",
     ),
     withTimeout<TransportRun>(
-      db
+      supabase
         .from("public_transport_runs")
         .select("*")
         .in("status", [
@@ -201,11 +158,11 @@ export async function fetchTransportNetwork(): Promise<TransportNetwork> {
       "runs",
     ),
     withTimeout<TransportStop>(
-      db.from("public_transport_stops").select("*").order("sequence"),
+      supabase.from("public_transport_stops").select("*").order("sequence"),
       "stops",
     ),
     withTimeout<TransportCheckpoint>(
-      db.from("public_transport_checkpoints").select("*").order("sequence"),
+      supabase.from("public_transport_checkpoints").select("*").order("sequence"),
       "checkpoints",
     ),
   ]);
@@ -215,11 +172,11 @@ export async function fetchTransportNetwork(): Promise<TransportNetwork> {
 
 /** Runs that could still take a load to one destination, bookable right now. */
 export async function fetchOffersForCity(destinationCityId: string): Promise<TransportOffer[]> {
-  const { data, error } = await db.rpc("transport_offers_for_city", {
+  const { data, error } = await supabase.rpc("transport_offers_for_city", {
     p_destination_city_id: destinationCityId,
   });
   if (error) throw error;
-  return (data ?? []) as TransportOffer[];
+  return data ?? [];
 }
 
 /** The city id behind a place name, taken through the view a customer can read. */
@@ -245,17 +202,9 @@ export function willRoll(status: string): boolean {
   return status === "quorum_met" || status === "rolling" || status === "in_transit";
 }
 
-export type TransportBooking = {
-  id: string;
-  tracking_code: string;
-  departure_id: string;
-  slots: number;
-  weight_kg: number;
-  fee: number;
-  currency: string;
-  fee_status: string;
-  status: string;
-};
+/** The booking as the database returned it, column for column. */
+export type TransportBooking =
+  Database["public"]["Functions"]["transport_create_booking"]["Returns"];
 
 export type NewBooking = {
   workspaceId: string;
@@ -277,7 +226,7 @@ export type NewBooking = {
  * money — the run cannot roll until a person confirms it.
  */
 export async function createTransportBooking(input: NewBooking): Promise<TransportBooking> {
-  const { data, error } = await db.rpc("transport_create_booking", {
+  const { data, error } = await supabase.rpc("transport_create_booking", {
     p_workspace_id: input.workspaceId,
     p_departure_id: input.departureId,
     p_mode: input.mode,
@@ -287,11 +236,12 @@ export async function createTransportBooking(input: NewBooking): Promise<Transpo
     p_pickup_city_id: input.pickupCityId,
     p_dropoff_city_id: input.dropoffCityId,
     p_recipient_name: input.recipientName,
-    p_recipient_phone: input.recipientPhone?.trim() ? input.recipientPhone.trim() : null,
+    // Left out rather than sent as null: the parameter defaults to SQL NULL, and
+    // the generated signature types an absent string, not a null one.
+    p_recipient_phone: input.recipientPhone?.trim() || undefined,
     p_fulfilment: input.fulfilment,
   });
   if (error) throw error;
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row) throw new Error("The booking was not returned");
-  return row as TransportBooking;
+  if (!data) throw new Error("The booking was not returned");
+  return data;
 }
