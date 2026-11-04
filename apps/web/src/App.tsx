@@ -30,6 +30,7 @@ import {
   onAuthStateChange,
 } from "./lib/auth/session.ts";
 import { isOnline } from "./lib/supabase/client.ts";
+import { installBodyPointerEventsGuard } from "./lib/ui/body-pointer-events.ts";
 
 import {
   saveCachedUser,
@@ -165,6 +166,12 @@ export default function App() {
       setLoading(false);
     }
   }, [setUser, setLoading, setError]);
+
+  useEffect(() => {
+    // A modal that closes can leave <body> with pointer events disabled, which
+    // freezes the whole UI until the page is reloaded.
+    return installBodyPointerEventsGuard();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;

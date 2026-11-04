@@ -169,6 +169,8 @@ export default function AssistantPage() {
   const [streaming, setStreaming] = useState(false);
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const stepsRef = useRef<AgentStep[]>([]);
+  /** Guards the composer while a turn is in flight. */
+  const sendingRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -235,7 +237,7 @@ export default function AssistantPage() {
     [scrollToBottom],
   );
 
-  const createConversation = useCallback(async () => {
+  const createConversation = useCallback(async (): Promise<AiConversation | null> => {
     try {
       const conversation = await createAiConversation(
         `ssai-${
@@ -247,9 +249,11 @@ export default function AssistantPage() {
       );
       await loadConversations();
       await selectConversation(conversation);
+      return conversation;
     } catch (err) {
       console.error("Failed to create conversation", err);
       setError("Failed to create the chat in your account.");
+      return null;
     }
   }, [loadConversations, selectConversation]);
 
@@ -312,81 +316,99 @@ export default function AssistantPage() {
 
   const send = useCallback(async (override?: string) => {
     const text = (override ?? draft).trim();
-    const conversationId = activeIdRef.current;
-    if (!text || streaming || !conversationId) return;
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
 
-    const conversation = conversations.find((c) => c.id === conversationId);
-    setDraft("");
-    setStreaming(true);
-    stepsRef.current = [];
-    setSteps([]);
-    setError(null);
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId("u"), role: "user", text, created_at: new Date().toISOString() },
-    ]);
-    scrollToBottom();
-
-    const bumpToTop = () =>
-      setConversations((prev) =>
-        [...prev]
-          .map((c) =>
-            c.id === conversationId
-              ? { ...c, updated_at: new Date().toISOString() }
-              : c,
-          )
-          .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
-      );
-
-    await streamAiReply(conversationId, text, {
-      model: selectedModel !== DEFAULT_MODEL_ID ? selectedModel : undefined,
-      onDelta: (delta) => {
-        setMessages((prev) => {
-          const existing = prev.find((m) => m.id === "live");
-          if (!existing)
-            return [
-              ...prev,
-              { id: "live", role: "assistant", text: delta, streaming: true, created_at: new Date().toISOString() },
-            ];
-          return prev.map((m) =>
-            m.id === "live" ? { ...m, text: m.text + delta } : m,
-          );
-        });
-        scrollToBottom();
-      },
-      onFinal: (finalText) => {
-        const ran = stepsRef.current;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === "live"
-              ? { ...m, id: nextId("a"), text: finalText, streaming: false, steps: ran }
-              : m,
-          ),
-        );
-        setStreaming(false);
-        setSteps([]);
-        bumpToTop();
-        // Server auto-titles an untouched chat after its first message.
-        if (conversation?.title === "New chat") {
-          void renameConversation(conversation, text.slice(0, 60), true);
+    try {
+      // A chat that lost its conversation — a failed boot, a deleted thread —
+      // still has to answer.
+      let conversationId = activeIdRef.current;
+      if (!conversationId) {
+        const created = await createConversation();
+        conversationId = created?.id ?? null;
+        if (!conversationId) {
+          setError("Could not start a chat in your account. Try again.");
+          return;
         }
-        scrollToBottom();
-      },
-      onError: (message) => {
-        setMessages((prev) => prev.filter((m) => m.id !== "live"));
-        stepsRef.current = [];
-        setSteps([]);
-        setError(message);
-        setStreaming(false);
-      },
-      onActivity: (raw) => {
-        if (raw) recordStep(raw);
-      },
-    });
+      }
+
+      const conversation = conversations.find((c) => c.id === conversationId);
+      setDraft("");
+      setStreaming(true);
+      stepsRef.current = [];
+      setSteps([]);
+      setError(null);
+      setMessages((prev) => [
+        ...prev,
+        { id: nextId("u"), role: "user", text, created_at: new Date().toISOString() },
+      ]);
+      scrollToBottom();
+
+      const bumpToTop = () =>
+        setConversations((prev) =>
+          [...prev]
+            .map((c) =>
+              c.id === conversationId
+                ? { ...c, updated_at: new Date().toISOString() }
+                : c,
+            )
+            .sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+        );
+
+      await streamAiReply(conversationId, text, {
+        model: selectedModel !== DEFAULT_MODEL_ID ? selectedModel : undefined,
+        onDelta: (delta) => {
+          setMessages((prev) => {
+            const existing = prev.find((m) => m.id === "live");
+            if (!existing)
+              return [
+                ...prev,
+                { id: "live", role: "assistant", text: delta, streaming: true, created_at: new Date().toISOString() },
+              ];
+            return prev.map((m) =>
+              m.id === "live" ? { ...m, text: m.text + delta } : m,
+            );
+          });
+          scrollToBottom();
+        },
+        onFinal: (finalText) => {
+          const ran = stepsRef.current;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === "live"
+                ? { ...m, id: nextId("a"), text: finalText, streaming: false, steps: ran }
+                : m,
+            ),
+          );
+          setStreaming(false);
+          setSteps([]);
+          bumpToTop();
+          // Server auto-titles an untouched chat after its first message.
+          if (conversation?.title === "New chat") {
+            void renameConversation(conversation, text.slice(0, 60), true);
+          }
+          scrollToBottom();
+        },
+        onError: (message) => {
+          setMessages((prev) => prev.filter((m) => m.id !== "live"));
+          stepsRef.current = [];
+          setSteps([]);
+          setError(message);
+          setStreaming(false);
+        },
+        onActivity: (raw) => {
+          if (raw) recordStep(raw);
+        },
+      });
+    } finally {
+      // The composer never stays locked on a turn that ended.
+      sendingRef.current = false;
+      setStreaming(false);
+    }
   }, [
     draft,
-    streaming,
     conversations,
+    createConversation,
     renameConversation,
     scrollToBottom,
     recordStep,

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { streamAiReply } from "./aiChatApi.ts";
+import { streamAiReply, AI_STREAM_IDLE_TIMEOUT_MS } from "./aiChatApi.ts";
 import { supabase } from "../supabase/client.ts";
 
 vi.mock("../supabase/client.ts", () => ({
@@ -87,5 +87,53 @@ describe("streamAiReply credit contract", () => {
     expect(sink.onDelta).toHaveBeenCalledWith("Hello");
     expect(sink.onFinal).toHaveBeenCalledWith("Hello there");
     expect(sink.onError).not.toHaveBeenCalled();
+  });
+
+  it("gives up on a stream that stops mid-answer", async () => {
+    vi.useFakeTimers();
+    try {
+      // A body that delivers one line and then never resolves a read.
+      const stalledBody = {
+        getReader: () => {
+          let sent = false;
+          return {
+            read: () => {
+              if (!sent) {
+                sent = true;
+                return Promise.resolve({
+                  done: false,
+                  value: new TextEncoder().encode(
+                    '{"type":"delta","text":"Hello"}\n',
+                  ),
+                });
+              }
+              return new Promise(() => {});
+            },
+            cancel: () => Promise.resolve(),
+            releaseLock: () => {},
+          };
+        },
+      };
+      const fetchMock = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: stalledBody,
+        json: () => Promise.resolve(null),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const sink = handlers();
+
+      const pending = streamAiReply("conv-1", "Hi", sink);
+      await vi.advanceTimersByTimeAsync(AI_STREAM_IDLE_TIMEOUT_MS + 1000);
+      await pending;
+
+      expect(sink.onDelta).toHaveBeenCalledWith("Hello");
+      expect(sink.onFinal).not.toHaveBeenCalled();
+      expect(sink.onError).toHaveBeenCalledWith(
+        expect.stringContaining("stopped responding"),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -24,27 +24,71 @@ export function parseAiStreamLine(line: string): AiStreamEvent | null {
   }
 }
 
+/** A stalled runtime must not hold the composer open forever. */
+export const AI_STREAM_IDLE_TIMEOUT_MS = 60_000;
+/** Hard ceiling for one turn, however chatty the agent is. */
+export const AI_STREAM_MAX_DURATION_MS = 10 * 60_000;
+/** How long a runtime may take to answer the request at all. */
+export const AI_STREAM_CONNECT_TIMEOUT_MS = 60_000;
+
+const AI_STREAM_TIMEOUT_MESSAGE =
+  "The assistant stopped responding. Try again.";
+
+/** Raised when a stream stalls or runs past its ceiling. */
+export class AiStreamTimeoutError extends Error {}
+
 /**
  * Read an NDJSON response body line by line, handing each complete line to
  * `onLine`. Shared by the authenticated chat and the public market chat so
  * both runtimes' framing is decoded the same way.
+ *
+ * `idleTimeoutMs` aborts the stream when the runtime stops sending, so a
+ * half-open connection cannot leave the caller waiting forever.
  */
 export async function readNdjsonLines(
   body: ReadableStream<Uint8Array>,
   onLine: (line: string) => void,
+  options: {
+    controller?: AbortController;
+    idleTimeoutMs?: number;
+  } = {},
 ): Promise<void> {
+  const { controller, idleTimeoutMs = 0 } = options;
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let idx: number;
-    while ((idx = buffer.indexOf("\n")) >= 0) {
-      const line = buffer.slice(0, idx);
-      buffer = buffer.slice(idx + 1);
-      onLine(line);
+    const read = reader.read();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const { done, value } =
+        idleTimeoutMs > 0
+          ? await Promise.race([
+              read,
+              new Promise<never>((_, reject) => {
+                timer = setTimeout(() => {
+                  controller?.abort();
+                  reject(new AiStreamTimeoutError(AI_STREAM_TIMEOUT_MESSAGE));
+                }, idleTimeoutMs);
+              }),
+            ])
+          : await read;
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 1);
+        onLine(line);
+      }
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    if (controller?.signal.aborted) {
+      const reason = controller.signal.reason;
+      throw reason instanceof Error
+        ? reason
+        : new AiStreamTimeoutError(AI_STREAM_TIMEOUT_MESSAGE);
     }
   }
   if (buffer.trim()) onLine(buffer);
@@ -110,12 +154,24 @@ export async function streamAiReply(
   });
 
   let res: Response | null = null;
+  let controller: AbortController | null = null;
   let lastError = "The AI service is unavailable.";
   for (const url of endpoints) {
+    const attemptController = new AbortController();
+    const connectTimer = setTimeout(
+      () => attemptController.abort(),
+      AI_STREAM_CONNECT_TIMEOUT_MS,
+    );
     try {
-      const attempt = await fetch(url, { method: "POST", headers, body });
+      const attempt = await fetch(url, {
+        method: "POST",
+        headers,
+        body,
+        signal: attemptController.signal,
+      });
       if (attempt.ok && attempt.body) {
         res = attempt;
+        controller = attemptController;
         break;
       }
       const payload = (await attempt.json().catch(() => null)) as
@@ -130,10 +186,12 @@ export async function streamAiReply(
       lastError = payload?.error ?? `AI runtime returned ${attempt.status}.`;
     } catch (err) {
       lastError = (err as Error).message;
+    } finally {
+      clearTimeout(connectTimer);
     }
   }
 
-  if (!res?.body) {
+  if (!res?.body || !controller) {
     handlers.onError(lastError);
     return;
   }
@@ -152,10 +210,28 @@ export async function streamAiReply(
     else if (event.type === "status") handlers.onActivity?.(event.phase ?? null);
   };
 
+  const maxTimer = setTimeout(
+    () =>
+      controller?.abort(
+        new AiStreamTimeoutError("The assistant took too long to answer."),
+      ),
+    AI_STREAM_MAX_DURATION_MS,
+  );
+
   try {
-    await readNdjsonLines(reader, consumeLine);
+    await readNdjsonLines(reader, consumeLine, {
+      controller,
+      idleTimeoutMs: AI_STREAM_IDLE_TIMEOUT_MS,
+    });
   } catch (err) {
-    streamError = streamError ?? `Stream failed: ${(err as Error).message}`;
+    if (!streamError) {
+      streamError =
+        err instanceof AiStreamTimeoutError
+          ? err.message
+          : `Stream failed: ${(err as Error)?.message ?? "unknown error"}`;
+    }
+  } finally {
+    clearTimeout(maxTimer);
   }
 
   if (streamError) handlers.onError(streamError);
