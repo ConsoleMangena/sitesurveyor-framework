@@ -86,16 +86,21 @@ describe("buildAnchorMemo", () => {
 });
 
 describe("encodeMemoData", () => {
-  it("prefixes the UTF-8 byte length as a little-endian u32", () => {
-    const data = encodeMemoData("ssv1");
-    expect(data.readUInt32LE(0)).toBe(4);
-    expect(data.subarray(4).toString("utf8")).toBe("ssv1");
+  it("is the raw UTF-8 message, with no length prefix", () => {
+    expect(encodeMemoData("ssv1")).toHaveLength(4);
+    expect(encodeMemoData("ssv1").toString("utf8")).toBe("ssv1");
+    // Bytes, not characters.
+    expect(encodeMemoData("é")).toHaveLength(2);
   });
 
-  it("counts bytes, not characters", () => {
-    const data = encodeMemoData("é");
-    expect(data.readUInt32LE(0)).toBe(2);
-    expect(data.subarray(4).toString("utf8")).toBe("é");
+  it("stays decodable as UTF-8 at full-file memo lengths", () => {
+    // 180 bytes: a u32LE prefix here starts with 0xB4, a lone continuation byte
+    // that Memo v3 rejects, so the wallet can never send the anchor.
+    const memo = `ssv2:${"0".repeat(36)}:sha256:${"a".repeat(64)}:${"b".repeat(64)}:1`;
+    const data = encodeMemoData(memo);
+    expect(memo).toHaveLength(180);
+    expect(data).toHaveLength(180);
+    expect(new TextDecoder("utf-8", { fatal: true }).decode(data)).toBe(memo);
   });
 });
 
@@ -104,6 +109,7 @@ describe("buildAnchorInstruction", () => {
     const instruction = buildAnchorInstruction("ssv1:file-1:sha256:ab");
     expect(instruction.programId.toBase58()).toBe(MEMO_PROGRAM_ID.toBase58());
     expect(instruction.keys).toHaveLength(0);
+    expect(instruction.data.toString("utf8")).toBe("ssv1:file-1:sha256:ab");
   });
 });
 

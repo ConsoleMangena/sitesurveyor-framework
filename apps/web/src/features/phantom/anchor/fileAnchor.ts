@@ -65,13 +65,14 @@ export function buildAnchorMemo(attachmentId: string, contentHash: string): stri
   return `ssv1:${attachmentId}:sha256:${contentHash.trim().toLowerCase()}`;
 }
 
-/** Memo v3 data is a little-endian u32 length prefix followed by the UTF-8 text. */
+/**
+ * Memo v3 instruction data is the raw UTF-8 message. The transaction wire format
+ * already length-prefixes instruction data, and a length byte above 0x7F is not
+ * valid UTF-8 on its own — so any memo of 128 bytes or more that carries an extra
+ * prefix is rejected by the program, and the wallet reports it as a send failure.
+ */
 export function encodeMemoData(memo: string): Buffer {
-  const text = Buffer.from(memo, "utf8");
-  const data = Buffer.alloc(4 + text.length);
-  data.writeUInt32LE(text.length, 0);
-  text.copy(data, 4);
-  return data;
+  return Buffer.from(memo, "utf8");
 }
 
 export function buildAnchorInstruction(memo: string): TransactionInstruction {
