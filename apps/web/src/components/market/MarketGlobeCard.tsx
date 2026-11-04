@@ -50,7 +50,7 @@ export default function MarketGlobeCard({ onNavigate }: { onNavigate?: (view: st
     selectedId?.kind === "event" ? findIn(data?.events ?? []) : null;
 
   return (
-    <section aria-label="Open surveying market" className="overflow-hidden rounded-none border border-border/60 bg-card shadow-sm">
+    <section aria-label="Open surveying market" className="flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <img

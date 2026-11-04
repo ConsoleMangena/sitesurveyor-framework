@@ -340,29 +340,25 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
           {
             label: "Total Personnel",
             value: totalPersonnel.toString(),
-            subtext: "workspace members",
-            accentColor: "#8b5cf6",
+            tone: "purple",
             icon: <Users size={18} />,
           },
           {
             label: "Active",
             value: activeCount.toString(),
-            subtext: "active members",
-            accentColor: "#22c55e",
+            tone: "success",
             icon: <UserCheck size={18} />,
           },
           {
             label: "Invited",
             value: invitedCount.toString(),
-            subtext: "pending invites",
-            accentColor: "#3b82f6",
+            tone: "info",
             icon: <MailOpen size={18} />,
           },
           {
             label: "With Promo Code",
             value: promoCodeCount.toString(),
-            subtext: "referred members",
-            accentColor: "#f59e0b",
+            tone: "warning",
             icon: <Tag size={18} />,
           },
         ]}

@@ -1,16 +1,14 @@
 import * as React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+
+import { KpiCard, KpiCardSkeleton, KpiGrid, type KpiTone } from "./KpiCard.tsx";
 
 export interface MetricStripMetric {
   label: string;
   value: string;
+  /** Only facts the label and value cannot carry. Never a restatement. */
   subtext?: string;
-  accentColor: string;
-  /** Optional custom icon node. If omitted, falls back to a simple dot. */
+  tone?: KpiTone;
   icon?: React.ReactNode;
-  /** Optional handler for clickable metrics. Adds button semantics and hover cursor. */
   onClick?: () => void;
 }
 
@@ -20,109 +18,24 @@ interface MetricStripProps {
   className?: string;
 }
 
-function defaultIcon(accentColor: string) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ color: accentColor }}
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" />
-      <path d="M12 8h.01" />
-    </svg>
-  );
-}
-
-function MetricSkeleton() {
-  return (
-    <Card className="h-full border-border/60">
-      <CardContent className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3">
-        <Skeleton className="h-7 w-7 rounded-md" />
-        <div className="flex flex-col gap-1.5 min-w-0">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-4 w-12" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function MetricStrip({ metrics, loading = false, className }: MetricStripProps) {
-  if (loading) {
-    return (
-      <div className={cn("grid grid-cols-2 gap-1.5 sm:grid-cols-2 lg:grid-cols-4", className)}>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <MetricSkeleton key={i} />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div
-      data-testid="metric-strip"
-      className={cn("grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4", className)}
-    >
-      {metrics.map((metric, index) => {
-        const clickable = !!metric.onClick;
-        return (
-          <Card
-            key={metric.label + index}
-            className={cn(
-              "h-full border-border/60 bg-card transition-all duration-200 group relative overflow-hidden",
-              clickable && "cursor-pointer hover:border-border",
-            )}
-            onClick={metric.onClick}
-            role={clickable ? "button" : undefined}
-            tabIndex={clickable ? 0 : undefined}
-            onKeyDown={
-              clickable
-                ? (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      metric.onClick?.();
-                    }
-                  }
-                : undefined
-            }
-          >
-            <CardContent
-              data-testid="metric-strip-item-content"
-              className="flex flex-col items-start gap-1.5 p-2 sm:flex-row sm:items-center sm:gap-3 sm:p-3"
-            >
-              <div
-                className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-muted sm:size-7"
-                style={{ color: metric.accentColor }}
-              >
-                {metric.icon ? (
-                  <span className="flex items-center justify-center size-4">{metric.icon}</span>
-                ) : (
-                  defaultIcon(metric.accentColor)
-                )}
-              </div>
-              <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                <p className="truncate text-xs text-muted-foreground">{metric.label}</p>
-                <p
-                  className="truncate text-sm font-semibold leading-none tracking-tight tabular-nums text-foreground"
-                  title={metric.value}
-                >
-                  {metric.value}
-                </p>
-                {metric.subtext && (
-                  <p className="truncate text-xs text-muted-foreground">{metric.subtext}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+    <KpiGrid data-testid="metric-strip" loading={loading} className={className}>
+      {loading
+        ? Array.from({ length: 4 }).map((_, index) => (
+            <KpiCardSkeleton key={index} />
+          ))
+        : metrics.map((metric, index) => (
+            <KpiCard
+              key={metric.label + index}
+              title={metric.label}
+              value={metric.value}
+              subtext={metric.subtext}
+              tone={metric.tone ?? "neutral"}
+              icon={metric.icon}
+              onClick={metric.onClick}
+            />
+          ))}
+    </KpiGrid>
   );
 }

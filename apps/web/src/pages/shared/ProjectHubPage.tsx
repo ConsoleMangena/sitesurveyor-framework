@@ -56,7 +56,7 @@ import {
 import { generateLocalId } from '@/lib/localDb/utils'
 import { DashboardShell, DashboardHeader } from '@/components/dashboard/DashboardShell.tsx'
 import { DashboardCard } from '@/components/dashboard/DashboardCard.tsx'
-import { KpiCard } from '@/components/dashboard/KpiCard.tsx'
+import { KpiCard, KpiGrid } from '@/components/dashboard/KpiCard.tsx'
 import { DialogTemplate } from '@/components/templates/DialogTemplate.tsx'
 import { PageForm } from '@/components/templates/PageForm.tsx'
 
@@ -678,21 +678,18 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
     {
       label: 'Team Members',
       value: `${activeProject.members.length}`,
-      sub: 'Personnel currently assigned',
       tone: 'purple' as const,
-      icon: <Settings className="h-4 w-4" />,
+      icon: <User className="h-4 w-4" />,
     },
     {
       label: 'Deployed Assets',
       value: `${deployedAssets.length}`,
-      sub: 'Assets assigned to this project',
       tone: 'info' as const,
       icon: <Layers className="h-4 w-4" />,
     },
     {
       label: 'Activities',
       value: `${activities.length}`,
-      sub: 'Notes, actions and system events',
       tone: 'success' as const,
       icon: <Activity className="h-4 w-4" />,
     },
@@ -1175,38 +1172,36 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
             }
           />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
+          <KpiGrid>
             <KpiCard
               title="All"
               value={String(counts.All)}
-              subtext="Active projects"
               icon={<Layers className="size-4" />}
             />
             <KpiCard
               title="Active"
               value={String(counts.Active)}
-              subtext="In progress"
+              tone="primary"
               icon={<Activity className="size-4" />}
             />
             <KpiCard
               title="Completed"
               value={String(counts.Completed)}
-              subtext="Finished"
+              tone="success"
               icon={<CheckCircle2 className="size-4" />}
             />
             <KpiCard
               title="Mine"
               value={String(counts.Mine)}
-              subtext="Assigned to you"
+              tone="purple"
               icon={<User className="size-4" />}
             />
             <KpiCard
               title="Archived"
               value={String(counts.Archived)}
-              subtext="Inactive"
               icon={<Archive className="size-4" />}
             />
-          </div>
+          </KpiGrid>
 
           <DashboardCard
             title="Projects"

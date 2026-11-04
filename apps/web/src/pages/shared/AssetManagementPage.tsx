@@ -37,7 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
-import { KpiCard } from "@/components/dashboard/KpiCard.tsx";
+import { KpiCard, KpiGrid } from "@/components/dashboard/KpiCard.tsx";
 import { AssetStatusChart } from "@/components/dashboard/AssetStatusChart.tsx";
 import { CalibrationDuePanel } from "@/components/dashboard/CalibrationDuePanel.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
@@ -1248,44 +1248,43 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
         </ErrorNotice>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <KpiGrid>
         <KpiCard
           title="Instruments"
           value={instruments.length.toString()}
-          subtext="registered"
           icon={<ClipboardList className="size-4" />}
         />
         <KpiCard
           title="Fleet Value"
           value={`$${totalValue.toLocaleString()}`}
-          subtext="book value"
+          tone="primary"
           icon={<DollarSign className="size-4" />}
         />
         <KpiCard
           title="Utilisation"
           value={`${instruments.length ? Math.round((deployed / instruments.length) * 100) : 0}%`}
-          subtext="deployed"
+          tone="info"
           icon={<Gauge className="size-4" />}
         />
         <KpiCard
           title="Deployed"
           value={deployed.toString()}
-          subtext="in the field"
+          tone="success"
           icon={<MapPinned className="size-4" />}
         />
         <KpiCard
           title="Available"
           value={available.toString()}
-          subtext="ready"
           icon={<CheckCircle2 className="size-4" />}
         />
         <KpiCard
           title="Calibrations Due"
           value={calibDue.toString()}
           subtext="within 30 days"
+          tone="warning"
           icon={<AlertTriangle className="size-4" />}
         />
-      </div>
+      </KpiGrid>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <div className="xl:col-span-9">

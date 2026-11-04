@@ -6,17 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import { DashboardCard } from '../../../components/dashboard/DashboardCard.tsx';
-import { KpiCard } from '../../../components/dashboard/KpiCard.tsx';
+import { KpiCard, KpiGrid, type KpiTone } from '../../../components/dashboard/KpiCard.tsx';
+import { PanelMeta } from '../../../components/dashboard/DashboardShell.tsx';
 
 import type { ProjectActivity } from '../../../lib/repositories/projects.ts';
 import type { ProjectTool } from '../tools/toolRegistry.ts';
 import type { AssetRow } from '../../../lib/repositories/assets.ts';
 
-/** Mirrors the tone vocabulary of the shared KpiCard tile. */
-type KpiTone = "neutral" | "primary" | "success" | "info" | "warning" | "purple";
-
 interface ProjectDashboardProps {
-  kpiData: Array<{ label: string; value: string; sub: string; icon?: React.ReactNode; tone: KpiTone }>;
+  kpiData: Array<{
+    label: string;
+    value: string;
+    /** Only facts the label and value cannot carry. */
+    sub?: string;
+    icon?: React.ReactNode;
+    tone?: KpiTone;
+  }>;
   activities: ProjectActivity[];
   timelineSummary: { notes: number; actions: number; system: number };
   recentActivities: ProjectActivity[];
@@ -71,7 +76,7 @@ export function ProjectDashboard({
 }: ProjectDashboardProps) {
   return (
     <div className="flex flex-col gap-5 min-w-0">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <KpiGrid>
         {kpiData.map((kpi) => (
           <KpiCard
             key={kpi.label}
@@ -82,18 +87,18 @@ export function ProjectDashboard({
             tone={kpi.tone}
           />
         ))}
-      </div>
+      </KpiGrid>
 
-      <DashboardCard title="Quick Actions">
+      <DashboardCard title="Quick actions">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <Button onClick={() => handleQuickAction('New Field Session')}>
-            <span>New Field Session</span>
+            <span>New field session</span>
             <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
               {activities.find(a => a.content.includes('Field Session')) ? 'Running' : 'Start'}
             </Badge>
           </Button>
           <Button variant="outline" onClick={() => handleQuickAction('Run Transformation')}>
-            <span>Run Transformation</span>
+            <span>Run transformation</span>
             <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
               {activities.filter(a => a.content.includes('Transformation')).length} runs
             </Badge>
@@ -101,13 +106,13 @@ export function ProjectDashboard({
           <Button variant="outline" onClick={() => handleQuickAction('Validate QA')}>
             <span>Validate QA</span>
             <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
-              {Math.max(0, 12 - activities.filter(a => a.content.includes('Validate')).length)} left
+              {activities.filter(a => a.content.includes('Validate')).length} logged
             </Badge>
           </Button>
           <Button variant="outline" onClick={() => handleQuickAction('Prepare Deliverable')}>
-            <span>Prepare Deliverable</span>
+            <span>Prepare deliverable</span>
             <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0">
-              v1.{activities.filter(a => a.content.includes('Deliverable')).length}
+              {activities.filter(a => a.content.includes('Deliverable')).length} prepared
             </Badge>
           </Button>
         </div>
@@ -115,8 +120,8 @@ export function ProjectDashboard({
 
       {pinnedTools.length > 0 && (
         <DashboardCard
-          title="Pinned Tools"
-          titleAction={<Badge variant="default">Quick access</Badge>}
+          title="Pinned tools"
+          titleAction={<PanelMeta>{pinnedTools.length}</PanelMeta>}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {pinnedTools.map(tool => {

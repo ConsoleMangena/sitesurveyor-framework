@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { DashboardHeader, DashboardShell } from "../../components/dashboard/DashboardShell.tsx";
 import { DashboardCard } from "../../components/dashboard/DashboardCard.tsx";
-import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
+import { KpiCard, KpiGrid } from "../../components/dashboard/KpiCard.tsx";
 import {
   createMarketplaceListing,
   deleteMarketplaceListing,
@@ -877,32 +877,31 @@ export default function MarketplacePage({
         <PageLoader />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiGrid>
             <KpiCard
               title="Total Listings"
               value={String(totalListings)}
-              subtext="Instruments & services"
               icon={<Package className="size-4" />}
             />
             <KpiCard
               title="For Sale"
               value={String(saleListings)}
-              subtext="Available to purchase"
+              tone="success"
               icon={<ShoppingCart className="size-4" />}
             />
             <KpiCard
               title="For Hire"
               value={String(hireListings)}
-              subtext="Rent per day"
+              tone="info"
               icon={<Clock className="size-4" />}
             />
             <KpiCard
               title="In Use"
               value={String(inUseListings)}
-              subtext="Currently deployed"
+              tone="warning"
               icon={<Activity className="size-4" />}
             />
-          </div>
+          </KpiGrid>
 
           <Tabs
             value={activeTab}

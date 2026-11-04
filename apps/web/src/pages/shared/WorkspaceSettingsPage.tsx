@@ -37,7 +37,7 @@ import {
   DashboardSection,
   DashboardShell,
 } from "../../components/dashboard/DashboardShell.tsx";
-import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
+import { KpiCard, KpiGrid } from "../../components/dashboard/KpiCard.tsx";
 import { useDatabaseStats } from "../../lib/hooks/useDatabaseStats.ts";
 import { useWorkspaceStorage } from "../../lib/hooks/useWorkspaceStorage.ts";
 import {
@@ -273,37 +273,33 @@ export default function WorkspaceSettingsPage({
         />
 
         <DashboardSection title="System database">
-          <Card>
-            <CardContent className="space-y-4">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 size={24} className="animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-muted-foreground">
-                    Loading database stats...
-                  </span>
-                </div>
-              ) : error ? (
-                <StatNote>{error}</StatNote>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <KpiCard
-                    title="Total database size"
-                    value={`${totalSizeGB.toFixed(2)} GB`}
-                    subtext="All schemas and storage objects"
-                    icon={<Database className="h-4 w-4" />}
-                    tone="primary"
-                  />
-                  <KpiCard
-                    title="Tables size"
-                    value={`${tablesSizeGB.toFixed(2)} GB`}
-                    subtext="Relational table data"
-                    icon={<Server className="h-4 w-4" />}
-                    tone="info"
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={24} className="animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
+                Loading database stats...
+              </span>
+            </div>
+          ) : error ? (
+            <StatNote>{error}</StatNote>
+          ) : (
+            <KpiGrid>
+              <KpiCard
+                title="Total database size"
+                value={`${totalSizeGB.toFixed(2)} GB`}
+                subtext="all schemas and storage objects"
+                icon={<Database className="h-4 w-4" />}
+                tone="primary"
+              />
+              <KpiCard
+                title="Tables size"
+                value={`${tablesSizeGB.toFixed(2)} GB`}
+                subtext="relational table data"
+                icon={<Server className="h-4 w-4" />}
+                tone="info"
+              />
+            </KpiGrid>
+          )}
         </DashboardSection>
 
         <DashboardSection title="Notifications">

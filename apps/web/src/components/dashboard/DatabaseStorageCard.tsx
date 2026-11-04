@@ -14,16 +14,9 @@ interface DatabaseStorageCardProps {
   onNavigate?: (view: string) => void;
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 function getProgressColor(percent: number): string {
-  if (percent >= 90) return "bg-red-500";
-  if (percent >= 70) return "bg-amber-500";
+  if (percent >= 90) return "bg-destructive";
+  if (percent >= 70) return "bg-warning";
   return "bg-primary";
 }
 
@@ -54,15 +47,15 @@ export function DatabaseStorageCard({
     };
   }, [workspaceId]);
 
-  const usedMb = usage?.used_mb ?? 0;
-  const limitMb = usage?.limit_mb ?? 500;
+  // Gates the upgrade CTA only; the meter itself renders real figures or none.
   const percent = usage?.percent ?? 0;
-  const fileCount = usage?.file_count ?? 0;
 
   return (
     <DashboardCard
-      title="Database Storage"
-      icon={<Database size={16} />}
+      title="Database storage"
+      icon={<Database />}
+      className="h-full"
+      contentClassName="flex flex-col justify-center gap-3"
       footer={
         percent >= 80 ? (
           <Button
@@ -71,61 +64,61 @@ export function DatabaseStorageCard({
             onClick={() => onNavigate?.("billing")}
           >
             <Crown size={14} />
-            Upgrade Storage
+            Upgrade storage
           </Button>
         ) : undefined
       }
     >
       {loading ? (
-        <div className="flex flex-col gap-3">
-          <div className="h-3 w-full animate-pulse rounded-full bg-muted" />
-          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-        </div>
+        <>
+          <div className="h-1.5 w-full animate-pulse rounded-full bg-muted" />
+          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+        </>
+      ) : !usage ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          Storage usage could not be loaded.
+        </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          <div className="relative h-3 w-full overflow-hidden rounded-none bg-muted">
+        <>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
               className={cn(
-                "h-full rounded-none transition-all duration-500",
+                "h-full rounded-full transition-all duration-500",
                 getProgressColor(percent),
               )}
               style={{ width: `${Math.min(percent, 100)}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HardDrive size={14} className="text-muted-foreground" />
-              <span className="text-sm font-medium tabular-nums text-foreground">
-                {usedMb} MB
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2">
+              <HardDrive size={14} className="shrink-0 text-muted-foreground" />
+              <span className="truncate text-sm font-medium tabular-nums text-foreground">
+                {usage.used_mb} MB
               </span>
-              <span className="text-xs text-muted-foreground">
-                of {limitMb} MB
+              <span className="text-xs tabular-nums text-muted-foreground">
+                of {usage.limit_mb} MB
               </span>
-            </div>
-            <span className="text-xs tabular-nums text-muted-foreground">
+            </span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
               {percent}%
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {fileCount} file{fileCount === 1 ? "" : "s"} stored
-            </span>
-            <span>{formatBytes(usage?.used_bytes ?? 0)} used</span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {usage.file_count} file{usage.file_count === 1 ? "" : "s"} stored
+          </p>
 
-          {percent >= 90 && (
-            <p className="text-xs text-red-500">
+          {percent >= 90 ? (
+            <p className="text-xs text-destructive">
               Storage almost full. Upgrade your plan to add more space.
             </p>
-          )}
-          {percent >= 70 && percent < 90 && (
-            <p className="text-xs text-amber-500">
+          ) : percent >= 70 ? (
+            <p className="text-xs text-warning">
               Storage usage is getting high. Consider upgrading soon.
             </p>
-          )}
-        </div>
+          ) : null}
+        </>
       )}
     </DashboardCard>
   );

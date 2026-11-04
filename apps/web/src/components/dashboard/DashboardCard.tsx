@@ -18,6 +18,8 @@ interface DashboardCardProps {
   contentClassName?: string;
 }
 
+/** The panel half of the dashboard tile system: KpiCard is the compact stat,
+ *  this is everything else. Same 10px radius, same heading scale, same 16px gutters. */
 export function DashboardCard({
   title,
   icon,
@@ -27,18 +29,23 @@ export function DashboardCard({
   className,
   contentClassName,
 }: DashboardCardProps) {
+  const hasHeader = Boolean(title || titleAction || icon);
+
   return (
-    <Card className={cn("flex flex-col", className)}>
-      {(title || titleAction || icon) && (
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between pb-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+    <Card className={cn("min-w-0 gap-0 p-4 sm:p-5", className)}>
+      {hasHeader && (
+        <CardHeader className="flex items-center justify-between gap-3 px-0 pb-0">
+          <div className="flex min-w-0 items-center gap-2">
             {icon && (
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-muted/70 text-muted-foreground">
+              <span
+                aria-hidden
+                className="flex size-3.5 shrink-0 items-center text-muted-foreground [&>svg]:size-3.5"
+              >
                 {icon}
               </span>
             )}
             {title && (
-              <CardTitle className="text-base font-semibold leading-tight">
+              <CardTitle className="truncate text-sm font-semibold tracking-tight">
                 {title}
               </CardTitle>
             )}
@@ -46,10 +53,10 @@ export function DashboardCard({
           {titleAction && <div className="shrink-0">{titleAction}</div>}
         </CardHeader>
       )}
-      <CardContent className={cn("flex-1", contentClassName)}>
+      <CardContent className={cn(hasHeader ? "mt-3" : "", "flex-1 px-0", contentClassName)}>
         {children}
       </CardContent>
-      {footer && <CardFooter className="pt-0 gap-2">{footer}</CardFooter>}
+      {footer && <CardFooter className="mt-3 gap-2 px-0">{footer}</CardFooter>}
     </Card>
   );
 }

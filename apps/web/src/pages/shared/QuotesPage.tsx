@@ -670,9 +670,8 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
 
   const quoteStats = useMemo(() => {
     const draftCount = quotes.filter((q) => q.status === "Draft").length;
-    const acceptedTotal = quotes
-      .filter((q) => q.status === "Accepted")
-      .reduce((sum, q) => sum + calculateTotal(q.items), 0);
+    const accepted = quotes.filter((q) => q.status === "Accepted");
+    const acceptedTotal = accepted.reduce((sum, q) => sum + calculateTotal(q.items), 0);
     const average = quotes.length
       ? quotes.reduce((sum, q) => sum + calculateTotal(q.items), 0) / quotes.length
       : 0;
@@ -680,6 +679,7 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
       total: quotes.length,
       draft: draftCount,
       acceptedTotal,
+      acceptedCount: accepted.length,
       average,
     };
   }, [quotes]);
@@ -1189,29 +1189,28 @@ export default function QuotesPage({ workspaceId }: { workspaceId: string }) {
           {
             label: "Total Quotes",
             value: quoteStats.total.toString(),
-            subtext: "all estimates",
-            accentColor: "#8b5cf6",
+            tone: "purple",
             icon: <FileText size={18} />,
           },
           {
             label: "Drafts",
             value: quoteStats.draft.toString(),
-            subtext: "not yet sent",
-            accentColor: "#f59e0b",
+            tone: "warning",
             icon: <FileText size={18} />,
           },
           {
             label: "Accepted Value",
             value: formatCurrency(quoteStats.acceptedTotal),
-            subtext: "won business",
-            accentColor: "#22c55e",
+            subtext: `${quoteStats.acceptedCount} ${
+              quoteStats.acceptedCount === 1 ? "quote" : "quotes"
+            }`,
+            tone: "success",
             icon: <FileText size={18} />,
           },
           {
             label: "Average Quote",
             value: formatCurrency(quoteStats.average),
-            subtext: "per estimate",
-            accentColor: "#3b82f6",
+            tone: "info",
             icon: <FileText size={18} />,
           },
         ]}

@@ -1,71 +1,88 @@
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 export type OverviewDataPoint = {
   name: string;
   total: number;
 };
 
-const defaultData: OverviewDataPoint[] = [
-  { name: "Jan", total: 1800 },
-  { name: "Feb", total: 2400 },
-  { name: "Mar", total: 2100 },
-  { name: "Apr", total: 3200 },
-  { name: "May", total: 2800 },
-  { name: "Jun", total: 3900 },
-  { name: "Jul", total: 4200 },
-  { name: "Aug", total: 3800 },
-  { name: "Sep", total: 4600 },
-  { name: "Oct", total: 5100 },
-  { name: "Nov", total: 4800 },
-  { name: "Dec", total: 5400 },
-];
+const chartConfig = {
+  total: { label: "Billed", color: "var(--chart-1)" },
+} satisfies ChartConfig;
+
+function compactCurrency(value: number): string {
+  if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(1)}k`;
+  return `$${value}`;
+}
 
 interface OverviewProps {
   data?: OverviewDataPoint[];
   height?: number;
   valueFormatter?: (value: number) => string;
+  emptyLabel?: string;
 }
 
 export function Overview({
-  data = defaultData,
-  height = 350,
-  valueFormatter = (val) => `$${val}`,
+  data = [],
+  height = 250,
+  valueFormatter = (val) => `$${val.toLocaleString()}`,
+  emptyLabel = "Nothing billed yet.",
 }: OverviewProps) {
+  const hasActivity = data.some((point) => point.total > 0);
+
+  if (!hasActivity) {
+    return (
+      <div
+        className="flex items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground"
+        style={{ height }}
+      >
+        {emptyLabel}
+      </div>
+    );
+  }
+
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data}>
-        <XAxis
-          dataKey="name"
-          stroke="#888888"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-        />
+    <ChartContainer config={chartConfig} className="w-full" style={{ height }}>
+      <BarChart data={data} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
         <YAxis
-          stroke="#888888"
-          fontSize={12}
+          width={52}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => valueFormatter(value as number)}
+          tickFormatter={(value) => compactCurrency(Number(value))}
         />
-        <Tooltip
-          formatter={(value: any) => [valueFormatter(Number(value)), "Total"]}
-          contentStyle={{
-            backgroundColor: "var(--card)",
-            borderColor: "var(--border)",
-            borderRadius: "0.5rem",
-            color: "var(--foreground)",
-            fontSize: "12px",
-          }}
+        <ChartTooltip
+          cursor={{ fill: "var(--color-muted)" }}
+          content={
+            <ChartTooltipContent
+              indicator="line"
+              formatter={(value) => [
+                valueFormatter(Number(value)),
+                chartConfig.total.label,
+              ]}
+            />
+          }
         />
         <Bar
           dataKey="total"
-          fill="currentColor"
+          name={chartConfig.total.label}
+          fill="var(--color-total)"
           radius={[4, 4, 0, 0]}
-          className="fill-primary"
         />
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
-

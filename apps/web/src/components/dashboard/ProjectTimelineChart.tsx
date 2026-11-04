@@ -5,6 +5,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { PanelMeta } from "@/components/dashboard/DashboardShell";
 
 interface ProjectTimelineChartProps {
   projects: { created_at: string }[];
@@ -50,34 +51,27 @@ export function ProjectTimelineChart({ projects, days = 30 }: ProjectTimelineCha
     <DashboardCard
       title="Project pipeline"
       icon={<TrendingUp size={16} />}
-      titleAction={
-        <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          Last {days} days
-        </span>
-      }
+      titleAction={<PanelMeta>Last {days} days</PanelMeta>}
     >
       <div className="flex items-end justify-between gap-4 pb-4">
         <div>
-          <p className="text-2xl font-bold leading-none tracking-tight tabular-nums text-foreground sm:text-[28px]">
+          <p className="text-xl font-bold leading-none tracking-tight tabular-nums text-foreground">
             {total}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             projects created in this window
           </p>
         </div>
-        <p className="text-right text-xs text-muted-foreground">
+        <p className="text-right text-xs text-muted-foreground tabular-nums">
           {(total / days).toFixed(1)}
-          <span className="block text-[10px] uppercase tracking-[0.1em]">per day</span>
+          <span className="block text-[11px]">per day</span>
         </p>
       </div>
 
       {total === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center text-sm text-muted-foreground">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
-            <TrendingUp size={16} />
-          </span>
-          <span>No projects created in the last {days} days.</span>
-        </div>
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          No projects created in the last {days} days.
+        </p>
       ) : (
         <ChartContainer config={chartConfig} className="h-[190px] w-full sm:h-60">
           <AreaChart data={data} margin={{ bottom: 0, left: 0, right: 0, top: 8 }}>

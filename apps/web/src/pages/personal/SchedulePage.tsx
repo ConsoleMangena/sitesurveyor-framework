@@ -46,9 +46,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
 import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
-import { KpiCard } from "@/components/dashboard/KpiCard.tsx";
+import { KpiCard, KpiGrid } from "@/components/dashboard/KpiCard.tsx";
 import { TodaysSchedule } from "@/components/dashboard/TodaysSchedule.tsx";
 import { cn } from "@/lib/utils";
+import { EVENT_TYPE_LABELS as TYPE_LABELS } from "@/lib/jobEventTypes.ts";
 
 import {
   listJobEvents,
@@ -57,14 +58,6 @@ import {
   deleteJobEvent,
 } from "../../lib/repositories/jobEvents.ts";
 import type { JobEventRow } from "../../lib/repositories/jobEvents.ts";
-
-const TYPE_LABELS: Record<string, string> = {
-  boundary: "Boundary Survey",
-  topo: "Topographic",
-  construction: "Construction",
-  pegging: "Stand Pegging",
-  other: "Other",
-};
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTH_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -645,7 +638,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
         </ErrorNotice>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <KpiGrid>
         <KpiCard
           title="Total events"
           value={scheduleStats.total.toString()}
@@ -655,13 +648,14 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
         <KpiCard
           title="This week"
           value={scheduleStats.thisWeek.toString()}
-          subtext="scheduled"
+          tone="primary"
           icon={<CalendarDays className="size-4" />}
         />
         <KpiCard
           title="Upcoming"
           value={scheduleStats.upcoming.toString()}
           subtext="from today"
+          tone="info"
           icon={<Clock className="size-4" />}
         />
         <KpiCard
@@ -670,7 +664,7 @@ export default function SchedulePage({ workspaceId }: SchedulePageProps) {
           subtext="matching filters"
           icon={<Search className="size-4" />}
         />
-      </div>
+      </KpiGrid>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex items-center gap-1 rounded-none border">

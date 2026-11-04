@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DashboardHeader, DashboardShell } from "@/components/dashboard/DashboardShell.tsx";
-import { KpiCard } from "@/components/dashboard/KpiCard";
+import { KpiCard, KpiGrid } from "@/components/dashboard/KpiCard";
 import { cn } from "@/lib/utils";
 
 import {
@@ -484,32 +484,32 @@ export default function DispatchPage({ workspaceId }: DispatchPageProps) {
         </ErrorNotice>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <KpiGrid>
         <KpiCard
           title="Week Assignments"
           value={String(dispatchStats.total)}
-          subtext="Scheduled this week"
           icon={<ClipboardList className="size-4" />}
         />
         <KpiCard
           title="With Crew"
           value={String(dispatchStats.withCrew)}
-          subtext="Crew assigned"
+          tone="info"
           icon={<Users className="size-4" />}
         />
         <KpiCard
           title="With Assets"
           value={String(dispatchStats.withAssets)}
-          subtext="Equipment or vehicles"
+          tone="success"
           icon={<Package className="size-4" />}
         />
         <KpiCard
           title="Conflicts"
           value={String(dispatchStats.conflicts)}
-          subtext="Double-booked resources"
+          subtext="double-booked resources"
+          tone="danger"
           icon={<AlertTriangle className="size-4" />}
         />
-      </div>
+      </KpiGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
         <div className="rounded-none border bg-card shadow-sm overflow-x-auto">

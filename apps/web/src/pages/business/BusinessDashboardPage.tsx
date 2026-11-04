@@ -1,32 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
+import { format, parseISO } from "date-fns";
 import {
   AlertTriangle,
   Briefcase,
   CalendarDays,
   DollarSign,
   FileCheck,
-  FileText,
-  FolderOpen,
-  FolderPlus,
   Gauge,
   Plus,
-  Receipt,
   Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  DashboardHeader,
+  DashboardShell,
+  PanelMeta,
+} from "@/components/dashboard/DashboardShell";
+import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { KpiCard, KpiGrid } from "@/components/dashboard/KpiCard";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { Overview, type OverviewDataPoint } from "@/components/dashboard/Overview";
 import { RecentSales, type RecentSaleItem } from "@/components/dashboard/RecentSales";
-import { Analytics } from "@/components/dashboard/Analytics";
 import { ProjectStatusChart } from "@/components/dashboard/ProjectStatusChart";
 import { ProjectTimelineChart } from "@/components/dashboard/ProjectTimelineChart";
 import { RecentProjectsTable } from "@/components/dashboard/RecentProjectsTable";
@@ -72,6 +67,7 @@ export default function BusinessDashboardPage({
   const [jobEvents, setJobEvents] = useState<JobEventRow[]>([]);
   const [memberCount, setMemberCount] = useState(0);
   const [assetsAvailableCount, setAssetsAvailableCount] = useState(0);
+  const [assetsTotalCount, setAssetsTotalCount] = useState(0);
   const [quotesPendingCount, setQuotesPendingCount] = useState(0);
   const [calibrationsDueCount, setCalibrationsDueCount] = useState(0);
 
@@ -95,6 +91,7 @@ export default function BusinessDashboardPage({
         setAssetsAvailableCount(
           assets.filter((asset) => asset.status === "available").length,
         );
+        setAssetsTotalCount(assets.length);
         setQuotesPendingCount(
           quotes.filter((quote) => quote.status === "draft" || quote.status === "sent")
             .length,
@@ -120,9 +117,6 @@ export default function BusinessDashboardPage({
   const pendingInvoicesTotal = pendingInvoices.reduce(
     (sum, inv) => sum + Number(inv.total || 0),
     0,
-  );
-  const todaysEvents = jobEvents.filter(
-    (event) => event.event_date === new Date().toISOString().slice(0, 10),
   );
 
   const currentDate = new Date().toLocaleDateString("en-US", {
@@ -155,18 +149,20 @@ export default function BusinessDashboardPage({
     }));
   }, [invoices]);
 
-  const recentSalesItems = useMemo<RecentSaleItem[] | undefined>(() => {
+  const recentInvoices = useMemo<RecentSaleItem[] | undefined>(() => {
     if (invoices.length === 0) return undefined;
-    return invoices.slice(0, 5).map((inv) => {
-      const name = inv.organization_name || inv.project_name || "Client";
-      const email = inv.invoice_number
-        ? `invoice-${inv.invoice_number}@sitesurveyor.local`
-        : "billing@sitesurveyor.local";
+    return invoices.slice(0, 6).map((inv) => {
+      const name = inv.organization_name || inv.project_name || "Unassigned";
       return {
         id: inv.id,
         name: String(name),
-        email: String(email),
-        amount: `+$${Number(inv.total || 0).toLocaleString(undefined, {
+        meta: [
+          inv.invoice_number ? `#${inv.invoice_number}` : null,
+          inv.created_at ? format(parseISO(inv.created_at), "d MMM") : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        amount: `$${Number(inv.total || 0).toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}`,
@@ -175,197 +171,108 @@ export default function BusinessDashboardPage({
   }, [invoices]);
 
   return (
-    <div className="space-y-4">
-      {/* Top Heading */}
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {getGreeting()}, {getFirstName(userName)}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {currentDate} • Company operations, field dispatches & equipment
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => onNavigate?.("dispatch")}
-          >
-            <CalendarDays className="h-4 w-4" />
-            Open dispatch
-          </Button>
-          <Button
-            className="gap-2"
-            onClick={() => {
-              requestQuoteCreate();
-              onNavigate?.("quotes");
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            New quote
-          </Button>
-        </div>
-      </div>
+    <DashboardShell className="w-full max-w-full">
+      <DashboardHeader
+        title={`${getGreeting()}, ${getFirstName(userName)}`}
+        description="Company operations, field dispatches & equipment."
+        subtitle={currentDate}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => onNavigate?.("dispatch")}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Open dispatch
+            </Button>
+            <Button
+              className="gap-2"
+              onClick={() => {
+                requestQuoteCreate();
+                onNavigate?.("quotes");
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              New quote
+            </Button>
+          </>
+        }
+      />
 
       {loading ? (
-        <DashboardSkeleton kpis={4} rail={4} />
+        <DashboardSkeleton kpis={6} />
       ) : (
-        <Tabs orientation="vertical" defaultValue="overview" className="space-y-4">
-          <div className="w-full overflow-x-auto pb-2">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="reports" onClick={() => onNavigate?.("projects")}>
-                Reports
-              </TabsTrigger>
-              <TabsTrigger
-                value="notifications"
-                onClick={() => onNavigate?.("notifications")}
-              >
-                Notifications
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <div className="flex flex-col gap-4 sm:gap-5">
+            <KpiGrid>
+              <KpiCard
+                title="Active projects"
+                value={activeProjectsCount}
+                subtext={`${projects.length} total`}
+                icon={<Briefcase />}
+                tone="primary"
+                onClick={() => onNavigate?.("projects")}
+              />
+              <KpiCard
+                title="Outstanding billing"
+                value={`$${pendingInvoicesTotal.toLocaleString()}`}
+                subtext={`${pendingInvoices.length} open`}
+                icon={<DollarSign />}
+                tone="warning"
+                onClick={() => onNavigate?.("invoices")}
+              />
+              <KpiCard
+                title="Quotes pending"
+                value={quotesPendingCount}
+                subtext="awaiting client decision"
+                icon={<FileCheck />}
+                tone="info"
+                onClick={() => onNavigate?.("quotes")}
+              />
+              <KpiCard
+                title="Active staff"
+                value={memberCount}
+                icon={<Users />}
+                onClick={() => onNavigate?.("team")}
+              />
+              <KpiCard
+                title="Ready assets"
+                value={assetsAvailableCount}
+                subtext={`of ${assetsTotalCount} assets`}
+                icon={<Gauge />}
+                tone="success"
+                onClick={() => onNavigate?.("assets")}
+              />
+              <KpiCard
+                title="Calibrations due"
+                value={calibrationsDueCount}
+                subtext="next 7 days"
+                icon={<AlertTriangle />}
+                tone={calibrationsDueCount > 0 ? "warning" : "neutral"}
+                onClick={() => onNavigate?.("assets")}
+              />
+            </KpiGrid>
 
-          <TabsContent value="overview" className="space-y-4">
-            {/* Primary 4 Metric Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{activeProjectsCount}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {projects.length} total projects
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Dispatches Today</CardTitle>
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{todaysEvents.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {todaysEvents.filter((item) => item.start_time).length} time-slotted
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Outstanding Billing
-                  </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ${pendingInvoicesTotal.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {pendingInvoices.length} invoices awaiting payment
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Quotes Pipeline</CardTitle>
-                  <FileCheck className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">+{quotesPendingCount}</div>
-                  <p className="text-xs text-muted-foreground">awaiting approval</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Supporting 4 Metric Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Staff</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{memberCount}</div>
-                  <p className="text-xs text-muted-foreground">active crew members</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ready Assets</CardTitle>
-                  <Gauge className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{assetsAvailableCount}</div>
-                  <p className="text-xs text-muted-foreground">ready in inventory</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Calibrations Due</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{calibrationsDueCount}</div>
-                  <p className="text-xs text-muted-foreground">due within 7 days</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Invoices</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{pendingInvoices.length}</div>
-                  <p className="text-xs text-muted-foreground">draft or sent</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* 7-column Overview + Recent Sales */}
+            {/* Billing: the monthly trend and the invoices behind it */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <Card className="col-span-1 lg:col-span-4">
-                <CardHeader>
-                  <CardTitle>Overview</CardTitle>
-                  <CardDescription>
-                    Monthly revenue & business billing activity
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="ps-2">
-                  <Overview data={overviewData} />
-                </CardContent>
-              </Card>
+              <DashboardCard
+                title="Monthly billings"
+                titleAction={<PanelMeta>{new Date().getFullYear()}</PanelMeta>}
+                className="col-span-1 lg:col-span-4"
+              >
+                <Overview data={overviewData} height={250} />
+              </DashboardCard>
 
-              <Card className="col-span-1 lg:col-span-3">
-                <CardHeader>
-                  <CardTitle>Recent Sales</CardTitle>
-                  <CardDescription>
-                    {pendingInvoices.length > 0
-                      ? `${pendingInvoices.length} invoices awaiting payment.`
-                      : "Recent client billing & work orders."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RecentSales items={recentSalesItems} />
-                </CardContent>
-              </Card>
+              <DashboardCard
+                title="Recent invoices"
+                titleAction={<PanelMeta>{invoices.length} issued</PanelMeta>}
+                className="col-span-1 lg:col-span-3"
+              >
+                <RecentSales items={recentInvoices} />
+              </DashboardCard>
             </div>
 
-            {/* Market Globe Card */}
-            <MarketGlobeCard onNavigate={onNavigate} />
-
-            {/* Pipeline Row */}
+            {/* Pipeline */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
               <div className="col-span-1 lg:col-span-4">
                 <ProjectTimelineChart projects={projects} />
@@ -375,79 +282,38 @@ export default function BusinessDashboardPage({
               </div>
             </div>
 
-            {/* Today's Dispatches & Recent Projects Row */}
+            {/* Day of operations */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <div className="col-span-1 lg:col-span-3">
-                <TodaysSchedule events={jobEvents} maxItems={5} />
-              </div>
               <div className="col-span-1 lg:col-span-4">
-                <RecentProjectsTable projects={projects} />
+                <TodaysSchedule
+                  events={jobEvents}
+                  maxItems={4}
+                  footer={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => onNavigate?.("schedule")}
+                    >
+                      Open schedule
+                    </Button>
+                  }
+                />
               </div>
-            </div>
-
-            {/* Workspace & Shortcuts Row */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
               <div className="col-span-1 lg:col-span-3">
                 <DatabaseStorageCard
                   workspaceId={workspaceId}
                   onNavigate={onNavigate}
                 />
               </div>
-              <div className="col-span-1 lg:col-span-4">
-                <Card className="h-full">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      Quick Shortcuts
-                    </CardTitle>
-                    <CardDescription>Frequent operational workflows</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <Button
-                        variant="outline"
-                        className="h-auto justify-start gap-2.5 py-3"
-                        onClick={() => onNavigate?.("projects")}
-                      >
-                        <FolderPlus className="h-4 w-4 text-muted-foreground" />
-                        <span>New project</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-auto justify-start gap-2.5 py-3"
-                        onClick={() => onNavigate?.("dispatch")}
-                      >
-                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                        <span>Dispatch a crew</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-auto justify-start gap-2.5 py-3"
-                        onClick={() => onNavigate?.("invoices")}
-                      >
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                        <span>Create an invoice</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-auto justify-start gap-2.5 py-3"
-                        onClick={() => onNavigate?.("file-manager")}
-                      >
-                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                        <span>Open file manager</span>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-4">
-            <Analytics />
-          </TabsContent>
-        </Tabs>
+            <RecentProjectsTable projects={projects} />
+
+            <MarketGlobeCard onNavigate={onNavigate} />
+        </div>
       )}
-    </div>
+    </DashboardShell>
   );
 }

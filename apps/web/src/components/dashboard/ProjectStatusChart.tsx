@@ -4,17 +4,20 @@ import { Pie, PieChart } from "recharts";
 
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { PanelMeta } from "@/components/dashboard/DashboardShell";
 
 interface ProjectStatusChartProps {
   projects: { status: string }[];
 }
 
+/** Keys are the real project_status enum values (draft, active, completed,
+ *  on_hold, archived) — anything else falls back to muted. */
 const statusColors: Record<string, string> = {
   active: "var(--chart-1)",
   completed: "var(--chart-2)",
   on_hold: "var(--chart-3)",
   draft: "var(--chart-4)",
-  cancelled: "var(--chart-5)",
+  archived: "var(--chart-5)",
 };
 
 const statusLabels: Record<string, string> = {
@@ -22,7 +25,7 @@ const statusLabels: Record<string, string> = {
   completed: "Completed",
   on_hold: "On hold",
   draft: "Draft",
-  cancelled: "Cancelled",
+  archived: "Archived",
 };
 
 const chartConfig = {
@@ -30,8 +33,14 @@ const chartConfig = {
   completed: { label: "Completed", color: statusColors.completed },
   on_hold: { label: "On hold", color: statusColors.on_hold },
   draft: { label: "Draft", color: statusColors.draft },
-  cancelled: { label: "Cancelled", color: statusColors.cancelled },
+  archived: { label: "Archived", color: statusColors.archived },
 } satisfies ChartConfig;
+
+function statusLabel(status: string): string {
+  if (statusLabels[status]) return statusLabels[status];
+  const pretty = status.replace(/_/g, " ").toLowerCase();
+  return pretty.charAt(0).toUpperCase() + pretty.slice(1);
+}
 
 export function ProjectStatusChart({ projects }: ProjectStatusChartProps) {
   const data = React.useMemo(() => {
@@ -53,21 +62,14 @@ export function ProjectStatusChart({ projects }: ProjectStatusChartProps) {
     <DashboardCard
       title="Projects by status"
       icon={<PieChartIcon size={16} />}
-      titleAction={
-        <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          {total} total
-        </span>
-      }
+      titleAction={<PanelMeta>{total} total</PanelMeta>}
       className="h-full"
       contentClassName="flex flex-col justify-center"
     >
       {total === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center text-sm text-muted-foreground">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
-            <PieChartIcon size={16} />
-          </span>
-          <span>No projects to chart yet.</span>
-        </div>
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          No projects to chart yet.
+        </p>
       ) : (
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-5">
           <div className="w-full max-w-[210px] shrink-0">
@@ -110,9 +112,7 @@ export function ProjectStatusChart({ projects }: ProjectStatusChartProps) {
                       className="size-2 shrink-0 rounded-full"
                       style={{ backgroundColor: entry.fill }}
                     />
-                    <span className="truncate">
-                      {statusLabels[entry.status] ?? entry.status}
-                    </span>
+                    <span className="truncate">{statusLabel(entry.status)}</span>
                   </span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
                     {entry.count} · {Math.round((entry.count / total) * 100)}%

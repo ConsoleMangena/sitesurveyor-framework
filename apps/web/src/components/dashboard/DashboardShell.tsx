@@ -51,8 +51,8 @@ export function DashboardHeader({
         className,
       )}
     >
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <h1 className="text-2xl font-bold tracking-tight text-balance">
+      <div className="flex min-w-0 flex-col gap-1">
+        <h1 className="text-xl font-bold tracking-tight text-balance sm:text-2xl">
           {title}
         </h1>
         {lede ? (
@@ -75,35 +75,13 @@ export function DashboardHeader({
   );
 }
 
-interface DashboardGridProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-/** Bento grid: one column on phones, 12 columns from md up so tiles can span. */
-export function DashboardGrid({ children, className }: DashboardGridProps) {
+/** Scope or count for a panel header, sits in DashboardCard's titleAction slot.
+ *  One chip everywhere so a row of panels reads as one system. */
+export function PanelMeta({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className={cn(
-        "grid grid-cols-1 items-start gap-4 sm:gap-5 md:grid-cols-12",
-        className,
-      )}
-    >
+    <span className="shrink-0 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
       {children}
-    </div>
-  );
-}
-
-interface DashboardColumnProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function DashboardColumn({ children, className }: DashboardColumnProps) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-4 sm:gap-5", className)}>
-      {children}
-    </div>
+    </span>
   );
 }
 
@@ -133,44 +111,5 @@ export function DashboardSection({
       )}
       {children}
     </section>
-  );
-}
-
-interface DashboardListItemProps {
-  title: React.ReactNode;
-  subtitle?: React.ReactNode;
-  badge?: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-}
-
-export function DashboardListItem({
-  title,
-  subtitle,
-  badge,
-  onClick,
-  className,
-}: DashboardListItemProps) {
-  return (
-    <>
-      <button
-        type="button"
-        onClick={onClick}
-        className={cn(
-          "flex w-full items-center justify-between gap-4 rounded-md px-1 py-3 text-left transition-colors",
-          onClick && "cursor-pointer hover:bg-muted/60",
-          className,
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{title}</p>
-          {subtitle && (
-            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-          )}
-        </div>
-        {badge && <div className="shrink-0">{badge}</div>}
-      </button>
-      <Separator />
-    </>
   );
 }

@@ -758,12 +758,17 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
     outstanding: invoices
       .filter((i) => i.status === "Sent" || i.status === "Overdue")
       .reduce((s, i) => s + calcTotal(i.items), 0),
+    outstandingCount: invoices.filter(
+      (i) => i.status === "Sent" || i.status === "Overdue",
+    ).length,
     overdue: invoices
       .filter((i) => i.status === "Overdue")
       .reduce((s, i) => s + calcTotal(i.items), 0),
+    overdueCount: invoices.filter((i) => i.status === "Overdue").length,
     collected: invoices
       .filter((i) => i.status === "Paid")
       .reduce((s, i) => s + calcTotal(i.items), 0),
+    collectedCount: invoices.filter((i) => i.status === "Paid").length,
   };
 
   // Sync local state to the active invoice.
@@ -1409,22 +1414,28 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
           {
             label: "Outstanding",
             value: formatCurrency(totals.outstanding),
-            subtext: "unpaid invoices",
-            accentColor: "#f59e0b",
+            subtext: `${totals.outstandingCount} ${
+              totals.outstandingCount === 1 ? "invoice" : "invoices"
+            }`,
+            tone: "warning",
             icon: <FileText size={18} />,
           },
           {
             label: "Overdue",
             value: formatCurrency(totals.overdue),
-            subtext: "past due",
-            accentColor: "#ef4444",
+            subtext: `${totals.overdueCount} ${
+              totals.overdueCount === 1 ? "invoice" : "invoices"
+            }`,
+            tone: "danger",
             icon: <CalendarDays size={18} />,
           },
           {
             label: "Collected",
             value: formatCurrency(totals.collected),
-            subtext: "paid invoices",
-            accentColor: "#22c55e",
+            subtext: `${totals.collectedCount} ${
+              totals.collectedCount === 1 ? "invoice" : "invoices"
+            }`,
+            tone: "success",
             icon: <Check size={18} />,
           },
         ]}

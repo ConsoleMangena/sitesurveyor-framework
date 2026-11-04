@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { cn } from "@/lib/utils";
 import type { ProjectWithOrg } from "@/lib/repositories/projects";
 
 type StatusFilter = "All" | "Active" | "Completed";
@@ -43,18 +44,32 @@ interface RecentProjectsTableProps {
   projects: ProjectWithOrg[];
 }
 
+/** Keys are the real project_status enum values. Colour carries attention, not
+ *  completion: green is work in flight, amber is blocked, grey is settled. */
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  active: { label: "Active", className: "border-success/40 text-success" },
+  completed: { label: "Completed", className: "border-border/70 text-muted-foreground" },
+  on_hold: { label: "On hold", className: "border-warning/40 text-warning" },
+  draft: { label: "Draft", className: "border-border/70 text-muted-foreground" },
+  archived: { label: "Archived", className: "border-border/70 text-muted-foreground" },
+};
+
 function ProjectStatusBadge({ status }: { status: string }) {
-  if (status === "completed") {
-    return <Badge variant="default">Completed</Badge>;
-  }
-  if (status === "active") {
-    return (
-      <Badge variant="outline" className="border-green-700/25 text-green-700">
-        Active
-      </Badge>
-    );
-  }
-  return <Badge variant="secondary">{status}</Badge>;
+  const known = STATUS_BADGE[status];
+  const pretty = status.replace(/_/g, " ");
+  const label = known?.label ?? (pretty.charAt(0).toUpperCase() + pretty.slice(1));
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "font-medium",
+        known?.className ?? "border-border/70 text-muted-foreground",
+      )}
+    >
+      {label}
+    </Badge>
+  );
 }
 
 /** Column labels for the phone record view, keyed by column id. */
@@ -202,36 +217,28 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
   return (
     <DashboardCard
       title="Recent projects"
-      icon={<FolderKanban size={16} />}
-      titleAction={
-        <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} shown
-        </span>
-      }
-      contentClassName="px-0"
+      icon={<FolderKanban />}
       footer={footer}
       className="h-full"
     >
       <div className="flex flex-col gap-4">
-        <div className="px-4 sm:px-6">
-          <ToggleGroup
-            type="single"
-            value={filter}
-            onValueChange={(value) => {
-              if (!value) return;
-              setFilter(value as StatusFilter);
-              table.setPageIndex(0);
-            }}
-            size="sm"
-            variant="outline"
-          >
-            {filters.map((f) => (
-              <ToggleGroupItem key={f} value={f}>
-                {f}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(value) => {
+            if (!value) return;
+            setFilter(value as StatusFilter);
+            table.setPageIndex(0);
+          }}
+          size="sm"
+          variant="outline"
+        >
+          {filters.map((f) => (
+            <ToggleGroupItem key={f} value={f}>
+              {f}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
 
         <div className="w-full overflow-x-auto">
           <Table className="min-w-[520px]">
@@ -242,7 +249,7 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className="first:pl-6 last:pr-6"
+                      className="first:pl-0 last:pr-0"
                     >
                       {header.isPlaceholder
                         ? null
@@ -260,7 +267,7 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
                       <TableCell
                         key={cell.id}
                         data-label={COLUMN_LABELS[cell.column.id]}
-                        className="align-middle first:pl-6 last:pr-6"
+                        className="align-middle first:pl-0 last:pr-0"
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
