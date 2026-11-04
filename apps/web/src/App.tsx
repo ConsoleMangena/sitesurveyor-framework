@@ -20,6 +20,7 @@ import AccountSecurityPage from "./pages/auth/AccountSecurityPage";
 import { shouldResumeSolflareAuth } from "./lib/auth/solflare-mobile.ts";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
+const PublicTransportPage = lazy(() => import("./pages/public/PublicTransportPage"));
 import {
   getCurrentAppUserWithDiagnostics,
   type AppUserLoadDiagnostics,
@@ -272,6 +273,14 @@ export default function App() {
             element={
               <Suspense fallback={<div className="min-h-screen bg-background" />}>
                 <PublicMarketPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/transport"
+            element={
+              <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                <PublicTransportPage />
               </Suspense>
             }
           />

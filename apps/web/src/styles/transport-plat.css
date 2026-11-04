@@ -1,0 +1,848 @@
+/**
+ * Transport surface — the consolidation table.
+ *
+ * The page is a freight manifest, so it borrows the sheet grammar the auth
+ * plates already established: hairline rules instead of card shadows, IBM Plex
+ * Mono for anything that reads as a measurement or a plate, and brand red kept
+ * for the one thing it means here — this run will roll. Everything structural
+ * stays the template's slate neutral.
+ */
+
+.tp-load,
+.tp-spine,
+.tp-ship,
+.tp-run,
+.tp-map {
+  /* Small lettering on this surface is a label, not body copy, so it sits
+     darker than --muted-foreground and still clears 4.5:1 on both themes. */
+  --tp-label: color-mix(in oklab, var(--muted-foreground) 45%, var(--foreground));
+  --tp-rule: color-mix(in oklab, var(--border) 60%, var(--foreground) 40%);
+}
+
+/* ── Load meter: two dimensions, one scale ─────────────────── */
+.tp-load {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.tp-load__row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.tp-load__axis {
+  font-family: var(--mono-plate);
+  font-size: 9.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--tp-label);
+}
+
+.tp-load__figure {
+  font-family: var(--mono-plate);
+  font-size: 11px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--tp-label);
+}
+
+.tp-load__figure.is-governing {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* The slot row drawn as its actual load beds below 24 of them, so a bakkie and
+   a tipper are not the same picture. Gaps are the rule, not a border. */
+.tp-cells {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  height: 13px;
+  padding-block: 1px;
+}
+
+.tp-cell {
+  flex: 1 1 0;
+  min-width: 3px;
+  border: 1px solid var(--tp-rule);
+  opacity: 0.55;
+}
+
+.tp-cell.is-booked {
+  background: color-mix(in oklab, var(--foreground) 72%, var(--card));
+  border-color: color-mix(in oklab, var(--foreground) 78%, var(--card));
+  opacity: 1;
+}
+
+.tp-cell.is-live {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.tp-track {
+  position: relative;
+  display: block;
+  height: 13px;
+  border: 1px solid var(--tp-rule);
+  background: color-mix(in oklab, var(--muted) 45%, var(--card));
+}
+
+.tp-track__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background: color-mix(in oklab, var(--foreground) 72%, var(--card));
+  transition: transform 0.32s var(--ease-standard);
+}
+
+.tp-track__fill.is-live {
+  background: var(--primary);
+}
+
+/* The target is the whole point of the instrument, so it is drawn heavier than
+   either bar and sits one pixel proud of the rule. */
+.tp-track__target {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--foreground);
+}
+
+.tp-track__target--cells {
+  z-index: 1;
+}
+
+.tp-load__note {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--tp-label);
+}
+
+.tp-load__pct {
+  font-family: var(--mono-plate);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* ── Station spine: the corridor as its own section ────────── */
+.tp-spine {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.tp-spine__rail {
+  position: relative;
+  height: 22px;
+}
+
+/* Remaining distance is a dashed rule: drawn as something not yet travelled. */
+.tp-spine__remaining {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed var(--tp-rule);
+}
+
+.tp-spine__traversed {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  left: 0;
+  height: 3px;
+  transform-origin: left;
+  background: var(--primary);
+  transition: transform 0.32s var(--ease-standard);
+}
+
+.tp-spine__stop {
+  position: absolute;
+  top: 0;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  border: 1px solid var(--tp-rule);
+  border-radius: 50%;
+  background: var(--card);
+}
+
+.tp-spine__stop.is-hub {
+  border-radius: 1px;
+  border-width: 1.5px;
+  border-color: var(--foreground);
+}
+
+.tp-spine__stop.is-reported {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.tp-spine__stop.is-current {
+  box-shadow: 0 0 0 2.5px color-mix(in oklab, var(--primary) 26%, transparent);
+}
+
+/* Only the ends carry names; a station in between is a tick and a tooltip. */
+.tp-spine__stop-name {
+  position: absolute;
+  top: 12px;
+  display: none;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--tp-label);
+}
+
+.tp-spine__stop:first-of-type .tp-spine__stop-name,
+.tp-spine__stop:last-of-type .tp-spine__stop-name,
+.tp-spine__stop.is-current .tp-spine__stop-name {
+  display: block;
+}
+
+.tp-spine__stop:first-of-type .tp-spine__stop-name {
+  left: 0;
+}
+
+.tp-spine__stop:last-of-type .tp-spine__stop-name {
+  right: -4px;
+}
+
+/* Centring the current station's name is only safe away from the two ends,
+   where it would push the label past the row's own rule. */
+.tp-spine__stop.is-current:not(:first-of-type):not(:last-of-type) .tp-spine__stop-name {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tp-spine__stop.is-current .tp-spine__stop-name {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.tp-spine__legend {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 0 0;
+  font-family: var(--mono-plate);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--tp-label);
+}
+
+.tp-spine__legend--right {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tp-label);
+}
+
+/* Red is reserved for a run that moves: a reported position, a load that will roll. */
+.tp-spine__legend--right.is-reported {
+  color: var(--primary);
+}
+
+/* ── Shipping control: the one variable the page turns on ─── */
+.tp-ship {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 14px;
+  background: color-mix(in oklab, var(--muted) 62%, var(--card));
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+@media (min-width: 700px) {
+  .tp-ship {
+    grid-template-columns: repeat(3, minmax(0, auto));
+    align-items: end;
+    justify-content: start;
+    gap: 20px;
+  }
+}
+
+.tp-ship__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.tp-label {
+  font-family: var(--mono-plate);
+  font-size: 9.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--tp-label);
+}
+
+.tp-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.tp-stepper__btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  color: var(--tp-label);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tp-stepper__btn:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--muted) 70%, var(--card));
+  color: var(--foreground);
+}
+
+.tp-stepper__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tp-stepper__btn + .tp-stepper__btn {
+  border-left: 1px solid var(--border);
+}
+
+.tp-stepper__value {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 5px 9px;
+  border-inline: 1px solid var(--border);
+  font-family: var(--mono-plate);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+
+.tp-stepper__unit {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tp-label);
+}
+
+/* Selection is ink and rule weight, not a filled pill. */
+.tp-segment {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.tp-segment__opt {
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tp-label);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tp-segment__opt + .tp-segment__opt {
+  border-left: 1px solid var(--border);
+}
+
+.tp-segment__opt:hover {
+  background: color-mix(in oklab, var(--muted) 55%, var(--card));
+}
+
+.tp-segment__opt.is-on {
+  color: var(--foreground);
+  font-weight: 600;
+  background: color-mix(in oklab, var(--muted) 80%, var(--card));
+  box-shadow: inset 0 2px 0 var(--foreground);
+}
+
+.tp-segment__opt:focus-visible,
+.tp-stepper__btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* ── The run row: one manifest line ────────────────────────── */
+.tp-run {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 13px 14px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  transition: border-color 0.16s ease, opacity 0.16s ease;
+}
+
+.tp-run:hover {
+  border-color: color-mix(in oklab, var(--border) 30%, var(--foreground) 70%);
+}
+
+.tp-run.is-specimen {
+  background: color-mix(in oklab, var(--muted) 40%, var(--card));
+}
+
+.tp-run__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tp-run__ident {
+  min-width: 0;
+}
+
+.tp-run__code {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--tp-rule);
+  border-radius: 2px;
+  font-family: var(--mono-plate);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--foreground);
+}
+
+.tp-run__title {
+  margin: 5px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.tp-run__arrow {
+  color: var(--tp-label);
+  font-weight: 400;
+}
+
+.tp-run__vehicle {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--tp-label);
+}
+
+.tp-run__stamp {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+/* A rubber stamp, not a badge: ruled, rotated, mono, and never coloured fill. */
+.tp-stamp {
+  padding: 2px 6px;
+  border: 1px solid var(--tp-rule);
+  border-radius: 2px;
+  font-family: var(--mono-plate);
+  font-size: 9.5px;
+  line-height: 1.35;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--tp-label);
+}
+
+.tp-stamp.is-met {
+  color: var(--sem-success);
+  border-color: color-mix(in oklab, var(--sem-success) 55%, var(--border));
+}
+
+.tp-stamp.is-short {
+  color: var(--sem-warning);
+  border-color: color-mix(in oklab, var(--sem-warning) 55%, var(--border));
+}
+
+.tp-stamp.is-live {
+  color: var(--primary);
+  border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+}
+
+.tp-stamp--specimen {
+  transform: rotate(-0.6deg);
+  color: var(--foreground);
+  border-color: var(--foreground);
+  opacity: 0.75;
+}
+
+.tp-run__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .tp-run__body {
+    grid-template-columns: minmax(230px, 0.85fr) minmax(0, 1.15fr);
+    gap: 22px;
+    align-items: start;
+  }
+}
+
+.tp-run__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+}
+
+/* The facts are a ruled cartouche — the same 1px language as the auth plate. */
+.tp-run__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  gap: 1px;
+  margin: 0;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tp-run__facts > div {
+  min-width: 0;
+  padding: 4px 9px 5px;
+  background: color-mix(in oklab, var(--muted) 62%, var(--card));
+}
+
+.tp-run__facts dt {
+  font-family: var(--mono-plate);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tp-label);
+}
+
+.tp-run__facts dd {
+  margin: 1px 0 0;
+  font-family: var(--mono-plate);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+
+/* Amber, not red: this says the lift does not fit, and red is taken — it means
+   the run will roll. */
+.tp-run__facts dd.is-short {
+  color: var(--sem-warning);
+}
+
+.tp-run__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tp-run__refusal {
+  font-size: 11.5px;
+  color: var(--tp-label);
+}
+
+.tp-ghost,
+.tp-primary {
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  border-radius: calc(var(--radius) - 4px);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tp-ghost {
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  background: var(--card);
+}
+
+.tp-ghost:hover {
+  background: color-mix(in oklab, var(--muted) 62%, var(--card));
+}
+
+/* Ink, not brand red: on this surface red says one thing only — this run rolls. */
+.tp-primary {
+  border: 1px solid var(--foreground);
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.tp-primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--foreground) 82%, var(--background));
+  border-color: color-mix(in oklab, var(--foreground) 82%, var(--background));
+}
+
+.tp-primary:disabled {
+  background: color-mix(in oklab, var(--muted) 78%, var(--card));
+  border-color: var(--border);
+  color: var(--tp-label);
+  cursor: not-allowed;
+}
+
+.tp-ghost:focus-visible,
+.tp-primary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ── Booking slip ──────────────────────────────────────────── */
+.tp-slip {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 13px 14px;
+  background: color-mix(in oklab, var(--muted) 48%, var(--card));
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.tp-slip__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 620px) {
+  .tp-slip__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tp-field input,
+.tp-field select {
+  width: 100%;
+  padding: 7px 9px;
+  font-size: 13px;
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.tp-field input:focus-visible,
+.tp-field select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.tp-slip__fee {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--tp-label);
+}
+
+.tp-slip__fee b {
+  font-family: var(--mono-plate);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+
+.tp-slip__receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--tp-label);
+}
+
+.tp-slip__code {
+  font-family: var(--mono-plate);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--foreground);
+}
+
+.tp-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--destructive);
+}
+
+/* ── Checkpoint trail ──────────────────────────────────────── */
+.tp-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-trail__item {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.tp-trail__item:last-child {
+  border-bottom: 0;
+}
+
+.tp-trail__when {
+  font-family: var(--mono-plate);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--tp-label);
+}
+
+.tp-trail__where {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.tp-trail__note {
+  color: var(--tp-label);
+}
+
+/* ── The corridor map ──────────────────────────────────────── */
+.tp-map {
+  position: relative;
+  width: 100%;
+  height: clamp(320px, 46svh, 520px);
+}
+
+.tp-map__canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.leaflet-tooltip.tp-map-tipbox {
+  padding: 4px 7px;
+  border: 1px solid var(--tp-rule, var(--border));
+  border-radius: 2px;
+  box-shadow: none;
+  background: color-mix(in oklab, var(--muted) 62%, var(--card));
+  font-family: var(--mono-plate);
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--foreground);
+}
+
+/* Leaflet draws the tooltip arrow as a coloured border on a pseudo-element, so
+   it has to be repainted from the same rule colour or it floats off-white. */
+.leaflet-tooltip.tp-map-tipbox.leaflet-tooltip-top::before {
+  border-top-color: var(--tp-rule);
+}
+
+.leaflet-tooltip.tp-map-tipbox.leaflet-tooltip-bottom::before {
+  border-bottom-color: var(--tp-rule);
+}
+
+.leaflet-tooltip.tp-map-tipbox.leaflet-tooltip-left::before {
+  border-left-color: var(--tp-rule);
+}
+
+.leaflet-tooltip.tp-map-tipbox.leaflet-tooltip-right::before {
+  border-right-color: var(--tp-rule);
+}
+
+.tp-map-tip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.tp-map-tip__hub {
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.tp-map-tip em {
+  flex: 1 0 100%;
+  font-style: normal;
+  opacity: 0.65;
+}
+
+/* The vehicle is a number plate pinned to the station it was seen at. */
+.tp-map-vehicle {
+  background: none;
+  border: none;
+}
+
+.tp-map-vehicle__plate {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 1px 5px;
+  border: 1.5px solid var(--primary);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  font-family: var(--mono-plate);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  color: var(--primary);
+}
+
+.tp-map-vehicle__plate.is-arrived {
+  border-color: var(--sem-success);
+  color: var(--sem-success);
+}
+
+.leaflet-marker-icon.tp-map-vehicle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-track__fill,
+  .tp-spine__traversed,
+  .tp-run {
+    transition: none;
+  }
+}

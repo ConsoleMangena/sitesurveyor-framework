@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
+  Truck,
   X,
 } from "lucide-react";
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
@@ -696,6 +697,15 @@ export default function PublicMarketPage() {
             <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor's Market</span>
           </span>
           <div className="flex items-center gap-2">
+            <Link
+              to="/transport"
+              className="web3-btn gap-1.5"
+              title="Runs and routes that can carry what you hire or buy"
+            >
+              <Truck className="size-4" aria-hidden="true" />
+              <span className="max-sm:hidden">Transport</span>
+              <span className="sm:hidden">Runs</span>
+            </Link>
             <ThemeToggle />
             {user ? (
               <AccountMenu
