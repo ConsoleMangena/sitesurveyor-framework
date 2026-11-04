@@ -18,7 +18,7 @@
  * FINISH: unreviewed and undocumented is unfinished; this build ends with the
  * finish review, the verdict, and DESIGN.md
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import {
   DEFAULT_FULL_FILE_CHUNK_SIZE,
   buildFullFileAnchorMemo,
@@ -79,6 +79,14 @@ const SEAL = { x: 60, y: 128 } as const;
 /** The tie line: from the sealed block up the left margin back to the file it
  *  verifies, the way a plat ties its recovered corner to a known monument. */
 const TIE_PATH = `M${SEAL.x} ${SEAL.y} H11 V24.5 H38`;
+
+/** The re-survey band travels the schedule on the table's own arithmetic: one
+ *  pitch per chunk, head to foot — so a file with more chunks is swept longer,
+ *  not swept faster. */
+const SWEEP = {
+  from: TABLE.rowTop,
+  to: TABLE.rowTop + CHUNK_COUNT * TABLE.pitch,
+} as const;
 
 const MEMO = buildFullFileAnchorMemo(
   ATTACHMENT_ID,
@@ -187,9 +195,43 @@ export default function AnchorPlat() {
     };
   }, []);
 
+  // The plate loops quietly behind the form, so it must not loop when nobody
+  // can see it: off screen, or behind another tab, the cycle holds its place.
+  useEffect(() => {
+    const figure = figureRef.current;
+    if (!figure) return;
+
+    let offscreen = false;
+    const apply = () => figure.classList.toggle("is-idle", offscreen || document.hidden);
+
+    const watcher = new IntersectionObserver(
+      ([entry]) => {
+        offscreen = !entry.isIntersecting;
+        apply();
+      },
+      { threshold: 0.05 },
+    );
+    watcher.observe(figure);
+    document.addEventListener("visibilitychange", apply);
+
+    return () => {
+      watcher.disconnect();
+      document.removeEventListener("visibilitychange", apply);
+    };
+  }, []);
+
   return (
     <>
-      <div className="auth-plat-figure" ref={figureRef}>
+      <div
+        className="auth-plat-figure"
+        ref={figureRef}
+        style={
+          {
+            "--auth-sweep-from": `${SWEEP.from}px`,
+            "--auth-sweep-to": `${SWEEP.to}px`,
+          } as CSSProperties
+        }
+      >
         <svg
           className="auth-plat-svg"
           ref={svgRef}
@@ -259,7 +301,13 @@ export default function AnchorPlat() {
 
             {/* The file the run starts from. */}
             <g className="auth-plat-ink auth-plat-ink--object">
-              <rect className="auth-plat-fill" x="38" y="20" width="44" height="9" />
+              <rect
+                className="auth-plat-fill auth-plat-fill--object"
+                x="38"
+                y="20"
+                width="44"
+                height="9"
+              />
               <text className="auth-plat-micro" x="60" y="25.6" textAnchor="middle">
                 SOURCE OBJECT
               </text>
@@ -303,6 +351,18 @@ export default function AnchorPlat() {
             </g>
 
             <rect className="auth-plat-hl" x={TABLE.left} y="0" width={TABLE.right - TABLE.left} height={TABLE.pitch} />
+
+            {/* The same band, running unaimed: one pitch per chunk in file
+                order, so the loop reads as a re-survey rather than a shimmer. */}
+            <g className="auth-plat-sweep">
+              <rect
+                x={TABLE.left}
+                y="0"
+                width={TABLE.right - TABLE.left}
+                height={TABLE.pitch}
+              />
+              <path className="auth-plat-line" d={`M${TABLE.left} 0H${TABLE.right}`} />
+            </g>
 
             {CHUNK_SIZES.map((size, index) => (
               <g
@@ -357,6 +417,11 @@ export default function AnchorPlat() {
               d={TIE_PATH}
               pathLength={1}
               fill="none"
+            />
+            <path
+              className="auth-plat-tie--trace"
+              d={TIE_PATH}
+              pathLength={1}
             />
 
             {/* The sealed block: the only red on this half of the sheet. */}

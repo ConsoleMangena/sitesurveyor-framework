@@ -10,6 +10,21 @@ class ResizeObserverMock {
 // Polyfill ResizeObserver for jsdom (required by Radix ScrollArea)
 globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
+// jsdom implements no IntersectionObserver, and the plat's loop gate observes
+// one on mount. Never reporting an entry leaves the plate treated as visible,
+// which is the state a mounted component is under in a test.
+class IntersectionObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
+}
+
+globalThis.IntersectionObserver =
+  IntersectionObserverMock as unknown as typeof IntersectionObserver;
+
 // jsdom exposes no SubtleCrypto; file hashing and anchor manifests need it.
 if (!globalThis.crypto?.subtle) {
   Object.defineProperty(globalThis, "crypto", {

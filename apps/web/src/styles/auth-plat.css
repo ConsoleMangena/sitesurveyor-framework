@@ -178,6 +178,111 @@
   }
 }
 
+/* ── The re-survey loop ─────────────────────────────────────
+   Once the run is drawn the plat keeps checking itself: the band steps
+   the chunks in file order, a dash runs the tie home to the object it
+   verifies, that object lifts, the seal pulses, then the sheet rests
+   until the cycle returns. One clock and one gesture — the same band
+   the pointer aims with, running unaimed. It starts after the draw-in's
+   last row so the two never overlap. */
+.auth-plat {
+  --auth-cycle: 9s;
+  --auth-cycle-start: 2.7s;
+}
+
+.auth-plat-sweep {
+  fill: color-mix(in oklab, currentColor 12%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation:
+    auth-sweep-step var(--auth-cycle) steps(8, end) var(--auth-cycle-start) infinite,
+    auth-sweep-ink var(--auth-cycle) linear var(--auth-cycle-start) infinite;
+}
+
+@keyframes auth-sweep-step {
+  0% {
+    transform: translateY(var(--auth-sweep-from));
+  }
+  23.33%,
+  100% {
+    transform: translateY(var(--auth-sweep-to));
+  }
+}
+
+@keyframes auth-sweep-ink {
+  0%,
+  1.5% {
+    opacity: 0;
+  }
+  3.5%,
+  21% {
+    opacity: 1;
+  }
+  23.5%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The dash that travels the tie line — the block checking itself against
+   the file it is tied to, drawn as movement along a rule already placed. */
+.auth-plat-tie--trace {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 0.55px;
+  opacity: 0;
+  stroke-dasharray: 0.14 0.86;
+  animation: auth-tie-trace var(--auth-cycle) cubic-bezier(0.16, 1, 0.3, 1)
+    var(--auth-cycle-start) infinite;
+}
+
+@keyframes auth-tie-trace {
+  0%,
+  23% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  24%,
+  31% {
+    opacity: 0.9;
+  }
+  33%,
+  100% {
+    stroke-dashoffset: -1;
+    opacity: 0;
+  }
+}
+
+/* The source object answers the tie. */
+.auth-plat-fill--object {
+  animation: auth-verify var(--auth-cycle) ease-out var(--auth-cycle-start) infinite;
+}
+
+@keyframes auth-verify {
+  0%,
+  30% {
+    opacity: 0.8;
+  }
+  34% {
+    opacity: 1;
+  }
+  46%,
+  100% {
+    opacity: 0.8;
+  }
+}
+
+/* A hand on the plate reads the rows itself; the loop stands down. */
+.auth-plat-figure.is-aimed .auth-plat-sweep {
+  visibility: hidden;
+}
+
+/* A loop that is off screen or behind a hidden tab is not a loop. */
+.auth-plat-figure.is-idle
+  :is(.auth-plat-sweep, .auth-plat-tie--trace, .auth-plat-fill--object, .auth-plat-ring) {
+  animation-play-state: paused;
+}
+
 .auth-plat-cap {
   font-family: var(--mono-plate);
   font-size: 3.4px;
@@ -247,17 +352,21 @@
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
-  animation: auth-seal-ring 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) 1.9s forwards;
+  animation: auth-seal-ring var(--auth-cycle) cubic-bezier(0.22, 0.61, 0.36, 1)
+    var(--auth-cycle-start) infinite;
 }
 
 @keyframes auth-seal-ring {
-  0% {
-    opacity: 0.5;
+  0%,
+  46% {
+    opacity: 0;
     transform: scale(0.3);
   }
-  60% {
-    opacity: 0.16;
+  46.5% {
+    opacity: 0.5;
+    transform: scale(0.35);
   }
+  55%,
   100% {
     opacity: 0;
     transform: scale(1.85);
@@ -859,11 +968,11 @@ button.auth-field-row:focus-visible {
    drops the annotations it cannot make legible and keeps the drawing. */
 @media (max-width: 1023px) {
   .auth-plat {
-    min-height: 196px;
+    min-height: 208px;
   }
 
   .auth-plat-figure {
-    flex-basis: 56%;
+    flex-basis: 62%;
   }
 
   .auth-plat-cap,
@@ -881,8 +990,53 @@ button.auth-field-row:focus-visible {
   .auth-plat-line,
   .auth-plat-mark,
   .auth-plat-fill,
-  .auth-plat-tie {
+  .auth-plat-tie,
+  .auth-plat-tie--trace {
     vector-effect: non-scaling-stroke;
+  }
+
+  /* non-scaling-stroke stops the sheet's scale from shrinking a rule, which
+     also means the declared width is taken as CSS pixels outright — and a
+     0.25px schedule row is a quarter of a pixel no matter how much ink it
+     carries. The band's hierarchy is rebuilt from real widths, thinnest on
+     the row hairlines, heaviest on the neat line. */
+  .auth-plat-rule {
+    stroke-width: 0.9px;
+  }
+
+  .auth-plat-rule--inner {
+    stroke-width: 1px;
+  }
+
+  .auth-plat-frame {
+    stroke-width: 0.8px;
+  }
+
+  .auth-plat-hair {
+    stroke-width: 0.5px;
+  }
+
+  .auth-plat-line {
+    stroke-width: 0.7px;
+  }
+
+  .auth-plat-mark,
+  .auth-plat-fill {
+    stroke-width: 0.8px;
+  }
+
+  .auth-plat-tie {
+    stroke-width: 0.8px;
+  }
+
+  .auth-plat-tie--trace {
+    stroke-width: 1.1px;
+  }
+
+  /* The sweep is the only thing that says "these are rows" where every
+     letter is hidden, so it carries more wash here than on the standing sheet. */
+  .auth-plat-sweep {
+    fill: color-mix(in oklab, currentColor 18%, transparent);
   }
 
   /* One device pixel at 45% ink over a muted ground is a pencil ghost, so the
@@ -974,5 +1128,18 @@ button.auth-field-row:focus-visible {
   .auth-plat-ring {
     animation: none;
     opacity: 0;
+  }
+
+  /* The re-survey loop is the movement on this plate, so it stops here and
+     the sheet stays fully drawn: the rows, the tie and the object keep their
+     rest ink rather than their sweep. */
+  .auth-plat-sweep,
+  .auth-plat-tie--trace {
+    animation: none;
+    opacity: 0;
+  }
+
+  .auth-plat-fill--object {
+    animation: none;
   }
 }
