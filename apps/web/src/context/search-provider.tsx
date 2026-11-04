@@ -30,6 +30,9 @@ export function SearchProvider({
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      // Wallet extensions dispatch keydowns without a `key` while their UI is
+      // on screen; a keyless event can't be either shortcut.
+      if (!e.key) return;
       const target = e.target as HTMLElement | null;
       const isTyping =
         target instanceof HTMLInputElement ||
