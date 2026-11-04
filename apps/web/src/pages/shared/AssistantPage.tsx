@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Bot,
   Check,
+  ChevronDown,
+  ChevronRight,
   Loader2,
   MessageSquarePlus,
   PanelLeft,
@@ -19,7 +20,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select.tsx";
 import {
   Sheet,
@@ -29,9 +29,11 @@ import {
 } from "@/components/ui/sheet.tsx";
 import PageLoader from "@/components/PageLoader.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
+import { BrandMark } from "@/components/brand/BrandMark.tsx";
 import { AiMessageText } from "./AiMessageText.tsx";
 import { messageMeta, showRowMeta } from "./messageMeta.ts";
 import { parseAssistantBlocks } from "@/features/ai/assistantBlocks.ts";
+import { cn } from "@/lib/utils.ts";
 import {
   createAiConversation,
   deleteAiConversation,
@@ -39,7 +41,6 @@ import {
   listAiMessages,
   renameAiConversation,
   type AiConversation,
-  type AiConversationContext,
 } from "../../lib/repositories/aiChats.ts";
 import { streamAiReply } from "../../lib/repositories/aiChatApi.ts";
 
@@ -49,12 +50,47 @@ interface ChatMessage {
   text: string;
   streaming?: boolean;
   created_at?: string;
+  /** Workspace actions the agent ran while producing this reply. */
+  steps?: AgentStep[];
+}
+
+/** One agent activity event; repeats of the same action fold into a count. */
+interface AgentStep {
+  label: string;
+  count: number;
 }
 
 const SUGGESTIONS = [
   "Summarise overdue invoices across workspaces",
   "Which asset calibrations are due within the next 14 days?",
   "How many active projects do we have, by status?",
+  "Create a project for a boundary survey and tell me what you set",
+];
+
+/** What the assistant claims about itself — one line per tool group the
+ *  ai-chat runtime actually exposes, so nothing here promises a tool that
+ *  is not wired. */
+const ASSISTANT_CAPABILITIES = [
+  {
+    label: "Query",
+    detail:
+      "Counts and reports read from your own records — projects, jobs and dispatch, quotes, invoices and payments, assets and calibrations, time, contacts, and the public market.",
+  },
+  {
+    label: "Act",
+    detail:
+      "Creates and updates records inside this conversation. Every write is read back and verified before it is reported, and a permanent delete waits for your confirmation.",
+  },
+  {
+    label: "Draft",
+    detail:
+      "Reads drawings, layers and entities, then issues CAD commands for you to execute in the project workspace — nothing reaches a drawing until you press execute.",
+  },
+  {
+    label: "Remember",
+    detail:
+      "Keeps durable facts such as your datum, working layer and standing defaults across chats.",
+  },
 ];
 
 let idCounter = 0;
@@ -64,12 +100,13 @@ function nextId(prefix: string): string {
 }
 
 /** Available AI models the user may choose from (NVIDIA NIM Nemotron). */
-const AI_MODELS: { id: string; label: string; free: boolean }[] = [
-  { id: "nvidia/nemotron-3.5-lightning-30b-a3b", label: "Nemotron 3.5 Lightning 30B", free: true },
-  { id: "nvidia/nemotron-3.5-bolt-e4b", label: "Nemotron 3.5 Bolt E4B (fastest)", free: true },
-  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", label: "Nemotron 3 Nano Omni 30B (reasoning)", free: true },
-  { id: "nvidia/nemotron-3.5-super-vl-120b-a12b", label: "Nemotron 3.5 Super VL 120B", free: true },
-  { id: "nvidia/nemotron-3-ultra-550b-a55b", label: "Nemotron 3 Ultra 550B (strongest)", free: true },
+/** `label` is the full name shown in the picker; `short` fits the header trigger. */
+const AI_MODELS: { id: string; label: string; short: string; free: boolean }[] = [
+  { id: "nvidia/nemotron-3.5-lightning-30b-a3b", label: "Nemotron 3.5 Lightning 30B", short: "Lightning 30B", free: true },
+  { id: "nvidia/nemotron-3.5-bolt-e4b", label: "Nemotron 3.5 Bolt E4B (fastest)", short: "Bolt E4B · fastest", free: true },
+  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", label: "Nemotron 3 Nano Omni 30B (reasoning)", short: "Nano Omni · reasoning", free: true },
+  { id: "nvidia/nemotron-3.5-super-vl-120b-a12b", label: "Nemotron 3.5 Super VL 120B", short: "Super VL 120B", free: true },
+  { id: "nvidia/nemotron-3-ultra-550b-a55b", label: "Nemotron 3 Ultra 550B (strongest)", short: "Ultra 550B · strongest", free: true },
 ];
 const MODEL_STORAGE_KEY = "sitesurveyor-ai-model";
 const DEFAULT_MODEL_ID = AI_MODELS[0].id;
@@ -82,35 +119,44 @@ function loadStoredModel(): string {
   return DEFAULT_MODEL_ID;
 }
 
-/** Friendly labels for agent activity events (thinking / tool names). */
+/** One line per tool the agent can call, keyed by the name the runtime puts
+ *  on its `tool` events. */
 const TOOL_LABELS: Record<string, string> = {
-  query_site_data: "Fetching workspace data…",
-  count_site_data: "Counting records…",
-  inspect_columns: "Inspecting data structure…",
-  insert_site_record: "Creating the record…",
-  update_site_record: "Applying the change…",
-  delete_site_record: "Deleting…",
+  query_site_data: "Querying workspace data",
+  count_site_data: "Counting records",
+  inspect_columns: "Checking the table structure",
+  insert_site_record: "Creating a record",
+  update_site_record: "Updating a record",
+  delete_site_record: "Deleting a record",
+  close_overdue_invoices: "Closing overdue invoices",
+  create_quote_from_line_items: "Building a quote",
+  schedule_job: "Scheduling a job",
+  get_cad_drawing: "Reading the drawing",
+  list_cad_layers: "Listing drawing layers",
+  count_cad_entities: "Counting CAD entities",
+  inspect_cad_entity: "Inspecting a CAD entity",
+  remember: "Saving a durable fact",
+  forget: "Clearing a stored fact",
 };
 
-function activityLabel(event: string | null): string {
-  if (!event) return "Thinking…";
-  return TOOL_LABELS[event] ?? `Working: ${event}…`;
+/** Render a raw `tool` or `status` event value as a reader-facing line. */
+function activityLabel(raw: string): string {
+  const tool = TOOL_LABELS[raw];
+  if (tool) return tool;
+  const step = /^working \(step (\d+)\/(\d+)\)$/.exec(raw);
+  if (step) return `Working — step ${step[1]} of ${step[2]}`;
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-interface AssistantPageProps {
-  /** Hide the page header (panel embedding). */
-  embedded?: boolean;
-  /** Fires when the agent finishes a full reply. */
-  onAssistantFinal?: (text: string) => void;
-  /** Which chat list this page reads/writes. */
-  context?: AiConversationContext;
+function stepText(step: AgentStep): string {
+  return step.count > 1 ? `${step.label} ×${step.count}` : step.label;
 }
 
-export default function AssistantPage({
-  embedded,
-  onAssistantFinal,
-  context = "dashboard",
-}: AssistantPageProps) {
+const BUBBLE_BASE = "max-w-full px-3.5 py-2 text-sm leading-relaxed shadow-sm";
+const BUBBLE_USER = `${BUBBLE_BASE} whitespace-pre-wrap rounded-[16px_16px_0_16px] bg-primary text-primary-foreground`;
+const BUBBLE_AGENT = `${BUBBLE_BASE} rounded-[16px_16px_16px_0] border border-border/60 bg-muted text-card-foreground`;
+
+export default function AssistantPage() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [conversations, setConversations] = useState<AiConversation[]>([]);
@@ -121,7 +167,8 @@ export default function AssistantPage({
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [activity, setActivity] = useState<string | null>(null);
+  const [steps, setSteps] = useState<AgentStep[]>([]);
+  const stepsRef = useRef<AgentStep[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -139,16 +186,27 @@ export default function AssistantPage({
     });
   }, []);
 
+  const recordStep = useCallback((raw: string) => {
+    const label = activityLabel(raw);
+    const last = stepsRef.current[stepsRef.current.length - 1];
+    stepsRef.current =
+      last && last.label === label
+        ? [...stepsRef.current.slice(0, -1), { label, count: last.count + 1 }]
+        : [...stepsRef.current, { label, count: 1 }];
+    setSteps(stepsRef.current);
+    scrollToBottom();
+  }, [scrollToBottom]);
+
   const loadConversations = useCallback(async (): Promise<AiConversation[]> => {
     try {
-      const rows = await listAiConversations(context);
+      const rows = await listAiConversations();
       setConversations(rows);
       return rows;
     } catch (err) {
       console.error("Failed to load AI conversations", err);
       return [];
     }
-  }, [context]);
+  }, []);
 
   const selectConversation = useCallback(
     async (conversation: AiConversation | null) => {
@@ -186,7 +244,6 @@ export default function AssistantPage({
             : Math.random().toString(36).slice(2, 10)
         }`,
         "New chat",
-        context,
       );
       await loadConversations();
       await selectConversation(conversation);
@@ -194,7 +251,7 @@ export default function AssistantPage({
       console.error("Failed to create conversation", err);
       setError("Failed to create the chat in your account.");
     }
-  }, [loadConversations, selectConversation, context]);
+  }, [loadConversations, selectConversation]);
 
   const deleteConversation = useCallback(
     async (conversation: AiConversation) => {
@@ -261,7 +318,8 @@ export default function AssistantPage({
     const conversation = conversations.find((c) => c.id === conversationId);
     setDraft("");
     setStreaming(true);
-    setActivity(null);
+    stepsRef.current = [];
+    setSteps([]);
     setError(null);
     setMessages((prev) => [
       ...prev,
@@ -283,7 +341,6 @@ export default function AssistantPage({
     await streamAiReply(conversationId, text, {
       model: selectedModel !== DEFAULT_MODEL_ID ? selectedModel : undefined,
       onDelta: (delta) => {
-        setActivity(null);
         setMessages((prev) => {
           const existing = prev.find((m) => m.id === "live");
           if (!existing)
@@ -298,17 +355,17 @@ export default function AssistantPage({
         scrollToBottom();
       },
       onFinal: (finalText) => {
-        setActivity(null);
+        const ran = stepsRef.current;
         setMessages((prev) =>
           prev.map((m) =>
             m.id === "live"
-              ? { ...m, id: nextId("a"), text: finalText, streaming: false }
+              ? { ...m, id: nextId("a"), text: finalText, streaming: false, steps: ran }
               : m,
           ),
         );
         setStreaming(false);
+        setSteps([]);
         bumpToTop();
-        onAssistantFinal?.(finalText);
         // Server auto-titles an untouched chat after its first message.
         if (conversation?.title === "New chat") {
           void renameConversation(conversation, text.slice(0, 60), true);
@@ -317,9 +374,13 @@ export default function AssistantPage({
       },
       onError: (message) => {
         setMessages((prev) => prev.filter((m) => m.id !== "live"));
-        setActivity(null);
+        stepsRef.current = [];
+        setSteps([]);
         setError(message);
         setStreaming(false);
+      },
+      onActivity: (raw) => {
+        if (raw) recordStep(raw);
       },
     });
   }, [
@@ -328,7 +389,7 @@ export default function AssistantPage({
     conversations,
     renameConversation,
     scrollToBottom,
-    onAssistantFinal,
+    recordStep,
     selectedModel,
   ]);
 
@@ -397,14 +458,14 @@ export default function AssistantPage({
                   <button
                     type="submit"
                     aria-label="Save name"
-                    className="shrink-0 rounded-none p-1 text-emerald-600 hover:bg-muted"
+                    className="shrink-0 rounded-md p-1 text-success hover:bg-muted"
                   >
                     <Check className="size-3.5" />
                   </button>
                   <button
                     type="button"
                     aria-label="Cancel"
-                    className="shrink-0 rounded-none p-1 text-muted-foreground hover:bg-muted"
+                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
                     onClick={() => setRenamingId(null)}
                   >
                     <X className="size-3.5" />
@@ -415,16 +476,17 @@ export default function AssistantPage({
                   <button
                     type="button"
                     onClick={() => void selectConversation(conversation)}
-                    className="min-w-0 flex-1 truncate px-2 py-2 text-left text-sm"
+                    className="min-w-0 flex-1 truncate rounded-md px-2 py-2 text-left text-sm"
                     title={conversation.title}
                   >
                     {conversation.title}
                   </button>
-                  <span className="flex shrink-0 items-center gap-0.5 pr-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                  {/* Always visible on touch, where there is no hover to reveal on. */}
+                  <span className="flex shrink-0 items-center gap-0.5 pr-1 opacity-100 transition-opacity lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100">
                     <button
                       type="button"
                       aria-label={`Rename "${conversation.title}"`}
-                      className="rounded-none p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+                      className="rounded-md p-1 text-muted-foreground hover:bg-background hover:text-foreground"
                       onClick={() => startRename(conversation)}
                     >
                       <Pencil className="size-3.5" />
@@ -432,7 +494,7 @@ export default function AssistantPage({
                     <button
                       type="button"
                       aria-label={`Delete "${conversation.title}"`}
-                      className="rounded-none p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       onClick={() => void deleteConversation(conversation)}
                     >
                       <Trash2 className="size-3.5" />
@@ -449,193 +511,181 @@ export default function AssistantPage({
 
   const hasLiveText = messages.some((m) => m.id === "live" && m.text.trim());
 
+  const activeModel =
+    AI_MODELS.find((m) => m.id === selectedModel) ?? AI_MODELS[0];
+
   return (
     <div className="relative flex h-full min-h-0 gap-4">
-      {/* Desktop sidebar — suppressed entirely when embedded in a panel */}
-      {!embedded && (
-        <aside className="hidden w-64 shrink-0 flex-col rounded-none border border-border/60 bg-card lg:flex">
-          <p className="px-4 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Chats
-          </p>
-          {conversationList}
-        </aside>
-      )}
+      <aside className="hidden w-64 shrink-0 flex-col rounded-xl border border-border/60 bg-card lg:flex">
+        <h2 className="px-4 pb-1 pt-4 text-sm font-semibold tracking-tight text-foreground">
+          Chats
+        </h2>
+        {conversationList}
+      </aside>
 
-      {/* Mobile sidebar drawer */}
+      {/* Chat history drawer — the sidebar's place on narrow screens */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-72 max-w-[85vw] p-0 flex flex-col [&>button]:hidden">
-          <SheetHeader className="flex flex-row items-center justify-between px-4 pb-1 pt-4 space-y-0 text-left border-b-0">
-            <SheetTitle className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <SheetContent
+          side="left"
+          className="flex w-72 max-w-[85vw] flex-col p-0 [&>button]:hidden"
+        >
+          <SheetHeader className="flex flex-row items-center justify-between space-y-0 border-b-0 px-4 pb-1 pt-4 text-left">
+            <SheetTitle className="text-sm font-semibold tracking-tight text-foreground">
               Chats
             </SheetTitle>
             <button
               type="button"
               aria-label="Close chat history"
-              className="rounded-none p-1 text-muted-foreground hover:bg-muted"
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="size-4" />
             </button>
           </SheetHeader>
-          <div className="flex-1 overflow-hidden">
-            {conversationList}
-          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">{conversationList}</div>
         </SheetContent>
       </Sheet>
 
-      {/* Chat column */}
-      <section className={`flex min-h-0 min-w-0 flex-1 flex-col ${embedded ? "gap-2.5" : "gap-4"}`}>
-        {!embedded && (
-          <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-3 py-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8 shrink-0 rounded-none lg:hidden"
-              aria-label="Open chat history"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <PanelLeft className="size-4" />
-            </Button>
-            <div
-              aria-hidden
-              className="flex size-9 shrink-0 items-center justify-center bg-primary/10 text-primary"
-            >
-              <Bot className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold text-foreground">
-                SiteSurveyor AI agent
-              </h1>
-              <p className="truncate text-[11px] text-muted-foreground">
-                Your surveying reference point — reads and acts on workspace
-                data
-              </p>
-            </div>
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+        <header className="flex shrink-0 items-center gap-2.5 border-b border-border px-3 py-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 lg:hidden"
+            aria-label="Open chat history"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <PanelLeft className="size-4" />
+          </Button>
+          <BrandMark className="size-9" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">
+              SiteSurveyor AI
+            </h1>
+            <p className="truncate text-[11px] text-muted-foreground">
+              Your virtual assistant — works on this workspace&apos;s records
+            </p>
           </div>
-        )}
-
-        {/* Embedded panels have no page header: expose chat history and
-            new-chat as a compact toolbar row instead. */}
-        {embedded && (
-          <div className="flex shrink-0 items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="Chat history"
-              title="Chat history"
-              onClick={() => setSidebarOpen(true)}
+          <Select value={selectedModel} onValueChange={handleModelChange}>
+            <SelectTrigger
+              className="h-7 w-auto max-w-[10.5rem] shrink-0 gap-1.5 border-border/50 bg-muted/40 text-[11px]"
+              aria-label="AI model"
+              title={activeModel.label}
             >
-              <PanelLeft className="size-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="New chat"
-              title="New chat"
-              onClick={() => void createConversation()}
-            >
-              <MessageSquarePlus className="size-3.5" />
-            </Button>
-          </div>
-        )}
+              <span className="truncate">{activeModel.short}</span>
+            </SelectTrigger>
+            <SelectContent>
+              {AI_MODELS.map((model) => (
+                <SelectItem key={model.id} value={model.id} className="text-xs">
+                  {model.label}
+                  {model.free && (
+                    <span className="ml-1.5 rounded-md bg-success/15 px-1.5 py-0.5 text-[10px] font-medium text-success">
+                      free
+                    </span>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </header>
 
-        {error ? (
-          <ErrorNotice tone="danger">
-            {error}
-          </ErrorNotice>
-        ) : null}
+        {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 
         <div
           ref={scrollRef}
-          className={`min-h-0 flex-1 overflow-y-auto rounded-lg pb-[env(safe-area-inset-bottom,0px)] ${
-            embedded
-              ? "border border-[var(--border)] bg-[var(--card)]"
-              : "border border-border/60 bg-card"
-          } ${embedded ? "p-2.5" : "min-h-[280px] p-4"}`}
+          role="log"
+          aria-label="Conversation with SiteSurveyor"
+          aria-busy={streaming}
+          className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/60 bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
         >
           {!booted ? (
             <PageLoader compact />
           ) : messages.length === 0 ? (
-            <div className={`flex h-full flex-col items-center justify-center gap-3 py-8 text-center ${embedded ? "px-1" : ""}`}>
-              <div
-                aria-hidden
-                className="flex size-11 shrink-0 items-center justify-center rounded-none bg-muted text-muted-foreground"
-              >
-                <Bot className={`shrink-0 ${embedded ? "size-5" : "size-6"}`} />
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2.5">
+                <BrandMark className="mt-1 size-8" />
+                <div className={cn(BUBBLE_AGENT, "max-w-[62ch]")}>
+                  <p className="font-medium text-card-foreground">
+                    I&apos;m SiteSurveyor, the virtual assistant for this
+                    workspace — your surveying reference point.
+                  </p>
+                  <ul className="mt-2.5 space-y-2">
+                    {ASSISTANT_CAPABILITIES.map((capability) => (
+                      <li key={capability.label} className="flex gap-2">
+                        <span
+                          aria-hidden
+                          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary"
+                        />
+                        <span className="text-[13px] leading-relaxed text-muted-foreground">
+                          <span className="font-medium text-card-foreground">
+                            {capability.label}:
+                          </span>{" "}
+                          {capability.detail}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div className={`${embedded ? "max-w-none" : "max-w-sm"} space-y-1.5`}>
-                <p className={`font-semibold text-card-foreground ${embedded ? "text-sm" : ""}`}>
-                  Meet SiteSurveyor — every measurement needs a reference
-                </p>
-                <p className={`text-muted-foreground ${embedded ? "text-xs" : "text-sm"}`}>
-                  {embedded
-                    ? "Reads workspace data and acts on what you approve."
-                    : "The agent can query projects, invoices, quotes, assets and the market — then act on what you approve."}
-                </p>
-              </div>
-              <div className={`flex flex-wrap justify-center gap-2 pt-1 ${embedded ? "w-full flex-col items-stretch" : ""}`}>
-                {SUGGESTIONS.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => setDraft(suggestion)}
-                    className={`rounded-none border text-left transition-colors hover:bg-muted hover:text-foreground ${
-                      embedded
-                        ? "border-border bg-background px-2.5 py-2 text-[11px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                        : "border-border/60 bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
+
+              <div className="flex gap-2.5">
+                <span aria-hidden className="size-8 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Start with one of these
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {SUGGESTIONS.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => setDraft(suggestion)}
+                        className="rounded-md border border-border/60 bg-background px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
               {messages.map((message, index) => {
-                const parsed =
-                  message.role === "assistant"
-                    ? parseAssistantBlocks(message.text)
-                    : null;
+                const isUser = message.role === "user";
+                const parsed = isUser
+                  ? null
+                  : parseAssistantBlocks(message.text);
+                const meta = messageMeta(message.role, message.created_at);
+
+                // A reply whose only content so far is a structured block has
+                // no prose to show yet — say so instead of printing an ellipsis.
                 if (parsed && !parsed.clean && !parsed.ask) {
                   return (
-                    <div key={message.id} className="flex justify-start">
-                      <p className={`italic text-muted-foreground ${embedded ? "text-[11px]" : "text-xs"}`}>
-                        …
-                      </p>
+                    <div
+                      key={message.id}
+                      className="flex items-center gap-2 text-[11px] text-muted-foreground"
+                    >
+                      <Loader2 className="size-3 animate-spin" />
+                      SiteSurveyor is replying…
                     </div>
                   );
                 }
+
                 return (
                   <div key={message.id} className="space-y-1.5">
                     {showRowMeta(message.role, messages[index - 1]?.role) && (
                       <div
                         className={`flex items-baseline gap-2 ${
-                          message.role === "user" ? "flex-row-reverse" : ""
+                          isUser ? "flex-row-reverse" : ""
                         }`}
                       >
-                        <span
-                          className={`font-semibold text-foreground/80 ${
-                            embedded ? "text-[11px]" : "text-xs"
-                          }`}
-                        >
-                          {messageMeta(message.role, message.created_at).label}
+                        <span className="text-xs font-semibold text-foreground/80">
+                          {meta.label}
                         </span>
-                        {messageMeta(message.role, message.created_at)
-                          .timeLabel && (
-                          <span
-                            className={`text-muted-foreground/70 ${
-                              embedded ? "text-[9px]" : "text-[10px]"
-                            }`}
-                          >
-                            {
-                              messageMeta(
-                                message.role,
-                                message.created_at,
-                              ).timeLabel
-                            }
+                        {meta.timeLabel && (
+                          <span className="text-[10px] text-muted-foreground/70">
+                            {meta.timeLabel}
                           </span>
                         )}
                       </div>
@@ -643,207 +693,127 @@ export default function AssistantPage({
 
                     <div
                       className={`flex gap-2.5 ${
-                        message.role === "user"
-                          ? "flex-row-reverse"
-                          : "justify-start"
+                        isUser ? "flex-row-reverse" : ""
                       }`}
                     >
-                      {message.role === "assistant" ? (
+                      {isUser ? (
                         <div
                           aria-hidden
-                          className={`mt-1 flex shrink-0 items-center justify-center rounded-none border border-border/60 shadow-sm ${
-                            embedded ? "size-6" : "size-8"
-                          }`}
-                          style={{
-                            background: "var(--muted)",
-                            color: "var(--primary)",
-                            flex: "0 0 auto",
-                          }}
+                          className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
                         >
-                          <Bot
-                            className={embedded ? "size-3.5" : "size-4"}
-                          />
+                          <User className="size-4" />
                         </div>
                       ) : (
-                        <div
-                          aria-hidden
-                          className={`mt-1 flex shrink-0 items-center justify-center rounded-none border border-border/60 bg-primary/10 text-primary shadow-sm ${
-                            embedded ? "size-6" : "size-8"
-                          }`}
-                        >
-                          <User
-                            className={embedded ? "size-3.5" : "size-4"}
-                          />
-                        </div>
+                        <BrandMark className="mt-1 size-8" />
                       )}
+
                       <div
-                        className={`${
-                          embedded
-                            ? "max-w-[calc(100%-2rem)] px-3 py-2 text-[13px]"
-                            : "max-w-[92%] sm:max-w-[85%] px-3.5 py-2 text-sm"
-                        } leading-relaxed shadow-sm ${
-                          message.role === "user"
-                            ? "whitespace-pre-wrap rounded-[16px_16px_0_16px] bg-primary text-primary-foreground"
-                            : "rounded-[16px_16px_16px_0] border text-card-foreground"
-                        } ${
-                          embedded && message.role === "assistant"
-                            ? "border-[var(--border)] bg-[var(--background)]"
-                            : "border-border/60 bg-muted"
+                        className={`flex min-w-0 flex-col gap-1.5 ${
+                          isUser ? "items-end" : "items-start"
                         }`}
                       >
-                        {message.role === "assistant" ? (
-                          <AiMessageText text={parsed?.clean ?? message.text} />
-                        ) : (
-                          message.text
+                        <div
+                          className={cn(
+                            "max-w-[85%]",
+                            isUser ? BUBBLE_USER : BUBBLE_AGENT,
+                          )}
+                        >
+                          {isUser ? (
+                            message.text
+                          ) : (
+                            <>
+                              <AiMessageText text={parsed?.clean ?? message.text} />
+                              {message.streaming && (
+                                <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-current align-middle" />
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Clarifying question with quick-reply options. */}
+                        {parsed?.ask && !message.streaming && (
+                          <div className="max-w-[85%] rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
+                            <p className="text-xs font-medium text-card-foreground">
+                              {parsed.ask.question}
+                            </p>
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {parsed.ask.options.map((option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  disabled={streaming}
+                                  onClick={() => void send(option)}
+                                  className="rounded-md border border-border/70 bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground disabled:opacity-50"
+                                >
+                                  {option}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         )}
-                        {message.streaming && (
-                          <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-none bg-current align-middle" />
+
+                        {message.steps && message.steps.length > 0 ? (
+                          <StepsDisclosure steps={message.steps} />
+                        ) : (
+                          message.streaming &&
+                          steps.length > 0 && <AgentStepList steps={steps} live />
                         )}
                       </div>
                     </div>
-
-                    {/* Clarifying question with quick-reply options. */}
-                    {parsed?.ask && !message.streaming && (
-                      <div className={`flex ${embedded ? "justify-start" : "justify-start"}`}>
-                        <div className="max-w-[92%] rounded-none border border-primary/25 bg-primary/5 px-3 py-2">
-                          <p className="text-xs font-medium text-card-foreground">
-                            {parsed.ask.question}
-                          </p>
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {parsed.ask.options.map((option) => (
-                              <button
-                                key={option}
-                                type="button"
-                                disabled={streaming}
-                                onClick={() => void send(option)}
-                                className="rounded-none border border-border/70 bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground disabled:opacity-50"
-                              >
-                                {option}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
 
-              {/* Thinking skeleton: shown while the agent works before any
-                  reply text streams, with live tool activity underneath once
-                  partial output exists. */}
+              {/* Before any prose arrives, the turn's real tool activity is
+                  the honest placeholder — no invented skeleton text. */}
               {streaming && !hasLiveText && (
-                <div className="flex justify-start gap-2">
-                  {
-                    <div
-                      aria-hidden
-                      className={`mt-1 flex shrink-0 items-center justify-center rounded-none border border-border/60 shadow-sm ${
-                        embedded ? "size-6" : "size-8"
-                      }`}
-                      style={{
-                        background: "var(--muted)",
-                        color: "var(--primary)",
-                        flex: "0 0 auto",
-                      }}
-                    >
-                      <Bot className={embedded ? "size-3.5" : "size-4"} />
-                    </div>
-                  }
-                  <div className={embedded ? "max-w-[calc(100%-2rem)] space-y-2.5 rounded-[16px_16px_16px_0] border border-[var(--border)] bg-[var(--background)] px-3.5 py-3" : "max-w-[85%] space-y-2.5 rounded-[16px_16px_16px_0] border border-border/60 bg-muted px-3.5 py-3 shadow-sm"}>
-                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                      <Loader2 className="size-3.5 animate-spin" />
-                      {activityLabel(activity)}
-                    </div>
-                    <div className="space-y-1.5 pt-0.5" aria-hidden>
-                      <div className="h-3 w-[82%] animate-pulse rounded-none bg-muted-foreground/15" />
-                      <div className="h-3 w-[64%] animate-pulse rounded-none bg-muted-foreground/15 [animation-delay:150ms]" />
-                      <div className="h-3 w-[42%] animate-pulse rounded-none bg-muted-foreground/15 [animation-delay:300ms]" />
-                    </div>
+                <div className="flex gap-2.5">
+                  <BrandMark className="mt-1 size-8" />
+                  <div className={cn(BUBBLE_AGENT, "max-w-[85%]")}>
+                    {steps.length === 0 ? (
+                      <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                        <Loader2 className="size-3.5 animate-spin" />
+                        Thinking…
+                      </p>
+                    ) : (
+                      <AgentStepList steps={steps} live />
+                    )}
                   </div>
-                </div>
-              )}
-              {streaming && hasLiveText && activity && (
-                <div className="flex justify-start">
-                  <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--border)] bg-[var(--background)] px-2.5 py-1 text-[11px] text-muted-foreground">
-                    <Loader2 className="size-3 animate-spin" />
-                    {activityLabel(activity)}
-                  </span>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="flex shrink-0 flex-col gap-1.5">
-          {/* Model selector row */}
-          <div className="flex items-center gap-1.5">
-            <Bot className={`size-3.5 shrink-0 text-muted-foreground ${embedded ? "text-[var(--muted-foreground)]" : ""}`} />
-            <Select value={selectedModel} onValueChange={handleModelChange}>
-              <SelectTrigger
-                className={`w-auto min-w-[140px] gap-1.5 rounded-none ${
-                  embedded
-                    ? "h-7 border-[var(--border)] bg-[var(--card)] text-[11px] text-[var(--foreground)]"
-                    : "border-border/50 bg-muted/40 h-8 text-xs"
-                }`}
-                aria-label="Select AI model"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AI_MODELS.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.label}
-                    {m.free && (
-                      <span className="ml-1.5 rounded-none bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                        free
-                      </span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <form
-            className={`flex items-center gap-2 rounded-none border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15 ${
-              embedded
-                ? "border-[var(--border)] bg-[var(--background)] focus-within:border-[var(--primary)] focus-within:ring-[var(--primary)]/30"
-                : ""
-            }`}
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send();
-            }}
+        <form
+          className="flex shrink-0 items-center gap-2 rounded-xl border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={
+              streaming
+                ? "SiteSurveyor is working…"
+                : "Ask SiteSurveyor to query or change your workspace…"
+            }
+            disabled={streaming}
+            className="h-9 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+            aria-label="Message SiteSurveyor"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            className="size-9 shrink-0"
+            disabled={!draft.trim() || streaming}
+            aria-label="Send message"
           >
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={
-                streaming
-                  ? "SiteSurveyor is thinking…"
-                  : "Tell SiteSurveyor what to do…"
-              }
-              disabled={streaming}
-              className={`flex-1 bg-transparent text-sm focus-visible:outline-hidden ${
-                embedded
-                  ? "h-7 text-[13px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
-                  : "h-8"
-              }`}
-              aria-label="Message SiteSurveyor"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className={`shrink-0 rounded-none ${
-                embedded ? "size-8" : "size-9"
-              }`}
-              disabled={!draft.trim() || streaming}
-              aria-label="Send message"
-            >
-              <SendHorizontal className="size-4" />
-            </Button>
-          </form>
-        </div>
+            <SendHorizontal className="size-4" />
+          </Button>
+        </form>
       </section>
     </div>
   );
@@ -852,9 +822,65 @@ export default function AssistantPage({
 /** Sidebar item styling: highlight the active chat, reveal actions on hover. */
 function cnSidebarItem(active: boolean): string {
   return [
-    "group flex items-center rounded-none text-sm",
+    "group flex items-center rounded-md text-sm",
     active
       ? "bg-primary/10 text-foreground"
       : "text-muted-foreground hover:bg-muted hover:text-foreground",
   ].join(" ");
+}
+
+/** The workspace actions of the current turn, newest last. */
+function AgentStepList({
+  steps,
+  live,
+}: {
+  steps: AgentStep[];
+  live?: boolean;
+}) {
+  return (
+    <ul className="space-y-1">
+      {steps.map((step, index) => (
+        <li
+          key={`${step.label}-${index}`}
+          className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+        >
+          {live && index === steps.length - 1 ? (
+            <Loader2 className="size-3 shrink-0 animate-spin" />
+          ) : (
+            <Check className="size-3 shrink-0 text-success" />
+          )}
+          <span>{stepText(step)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The turn's work, kept out of the reading line until asked for. */
+function StepsDisclosure({ steps }: { steps: AgentStep[] }) {
+  const [open, setOpen] = useState(false);
+  const total = steps.reduce((count, step) => count + step.count, 0);
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        {open ? (
+          <ChevronDown className="size-3" />
+        ) : (
+          <ChevronRight className="size-3" />
+        )}
+        {total} {total === 1 ? "step" : "steps"} SiteSurveyor took
+      </button>
+      {open && (
+        <div className="mt-1 border-l border-border/60 pl-3">
+          <AgentStepList steps={steps} />
+        </div>
+      )}
+    </div>
+  );
 }
