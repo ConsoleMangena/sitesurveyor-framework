@@ -6,6 +6,7 @@ import { AccountMenu, AccountMenuAvatar, AccountMenuItem } from "../../component
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
 import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
 import { RunManifest } from "../../components/transport/RunManifest.tsx";
+import { RunReadout } from "../../components/transport/RunReadout.tsx";
 import { BookingSlip } from "../../components/transport/BookingSlip.tsx";
 import { ShippingControl, type ShippingChoice } from "../../components/transport/ShippingControl.tsx";
 import {
@@ -85,12 +86,16 @@ export default function PublicTransportPage() {
   const user = useAuthStore((s) => s.user);
   const [params, setParams] = useSearchParams();
   const mapRef = useRef<TransportMapHandle>(null);
+  const mapCardRef = useRef<HTMLDivElement>(null);
+  const runsRef = useRef<HTMLElement>(null);
 
   const [network, setNetwork] = useState<TransportNetwork | null>(null);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const [choice, setChoice] = useState<ShippingChoice>({ slots: 1, weightKg: 0, finalMile: false });
   const [bookingRunId, setBookingRunId] = useState<string | null>(null);
+  /** The run the plot is pointing at and the readout is describing. */
+  const [focusedRunId, setFocusedRunId] = useState<string | null>(null);
   const [held, setHeld] = useState<TransportBooking | null>(null);
   /** Keyed by city so a changed destination reads as "not checked yet" without an effect. */
   const [offerState, setOfferState] = useState<{
@@ -196,6 +201,10 @@ export default function PublicTransportPage() {
   // The receipt outlives the row it came from, so it names its own corridor.
   const heldRun = held ? (network?.runs ?? []).find((run) => run.departure_id === held.departure_id) : undefined;
 
+  const focusedRun = (network?.runs ?? []).find(
+    (run) => run.departure_id === focusedRunId,
+  ) ?? null;
+
   /**
    * Vehicles the plot can place: they have left the origin and somebody has
    * reported where. A status alone is not a position, so this is the same claim
@@ -219,9 +228,43 @@ export default function PublicTransportPage() {
   }, [network]);
 
   const focusRun = useCallback((run: TransportRun) => {
-    mapRef.current?.fit(run.route_id);
+    setFocusedRunId(run.departure_id);
     setBookingRunId(null);
+    mapRef.current?.fit(run.route_id);
   }, []);
+
+  /**
+   * Bring the plot and its readout onto the screen as one thing. The card is
+   * never taller than the viewport once the dock is capped, so `nearest` moves
+   * the page only when the map is genuinely out of view — a plate clicked on a
+   * map you are already looking at does not jump.
+   */
+  useEffect(() => {
+    if (!focusedRunId) return;
+    mapCardRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedRunId, network]);
+
+  /**
+   * A row can be hidden by the destination filter, and a run reached from a plate
+   * usually is. Lifting the filter is the recovery and the table is the next thing
+   * to look at; the focused row carries a heavier rule, so it can be found there.
+   */
+  const openRow = useCallback(
+    (run: TransportRun) => {
+      const row = document.getElementById(`tp-run-${run.departure_id}`);
+      if (row) {
+        row.scrollIntoView({ block: "center", behavior: "smooth" });
+        return;
+      }
+      if (destination) {
+        const next = new URLSearchParams(params);
+        next.delete("to");
+        setParams(next, { replace: true });
+      }
+      runsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    },
+    [destination, params, setParams],
+  );
 
   const startBooking = useCallback(
     (run: TransportRun) => {
@@ -284,11 +327,6 @@ export default function PublicTransportPage() {
               <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
                 Book space on a run that is already going your way
               </h1>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-                Verified platform vehicles move between hub towns and leave when a run has
-                gathered the load its size class needs. You pay for the space, not the whole
-                truck — and the run does not roll until what it carries is settled.
-              </p>
             </div>
 
             <ShippingControl value={choice} onChange={setChoice} />
@@ -363,23 +401,24 @@ export default function PublicTransportPage() {
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card">
+          <div
+            ref={mapCardRef}
+            className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card"
+          >
             <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2.5">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-accent-bg text-[var(--web3-brand)]">
                   <Truck className="size-4" aria-hidden="true" />
                 </span>
-                <span className="min-w-0">
-                  <h2 className="market-map-title text-foreground">Corridor network</h2>
-                  <p className="text-micro text-muted-foreground">
-                    Solid to the last reported checkpoint, dashed beyond it
-                  </p>
-                </span>
+                <h2 className="market-map-title text-foreground">Corridor network</h2>
               </div>
               <button
                 type="button"
                 className="tp-ghost"
-                onClick={() => mapRef.current?.fit()}
+                onClick={() => {
+                  setFocusedRunId(null);
+                  mapRef.current?.fit();
+                }}
               >
                 Fit network
               </button>
@@ -402,31 +441,65 @@ export default function PublicTransportPage() {
                   stops={network.stops}
                   checkpoints={network.checkpoints}
                   destinationCityId={destinationId}
+                  focusedRunId={focusedRunId}
                   onSelectRun={(run) => {
+                    setFocusedRunId(run.departure_id);
                     setBookingRunId(null);
                     mapRef.current?.fit(run.route_id);
-                    document
-                      .getElementById(`tp-run-${run.departure_id}`)
-                      ?.scrollIntoView({ block: "center", behavior: "smooth" });
                   }}
                 />
               ) : (
                 <div className="h-[320px] animate-pulse bg-muted/30 sm:h-[420px]" />
               )}
             </div>
+            {network && (
+              <div className="tp-dock" aria-live="polite">
+                {focusedRun ? (
+                  <RunReadout
+                    run={focusedRun}
+                    corridor={corridorByRoute.get(focusedRun.route_id)}
+                    stops={stopsByRoute.get(focusedRun.route_id) ?? []}
+                    trail={trailByRun.get(focusedRun.departure_id) ?? []}
+                    choice={choice}
+                    signedIn={user !== null}
+                    onClose={() => setFocusedRunId(null)}
+                    onOpenRow={openRow}
+                    onBook={(run) => {
+                      startBooking(run);
+                      openRow(run);
+                    }}
+                  />
+                ) : (
+                  <div className="tp-legend">
+                    <span className="tp-legend__item">
+                      <span className="tp-legend__swatch is-live" aria-hidden="true" />
+                      will roll
+                    </span>
+                    <span className="tp-legend__item">
+                      <span className="tp-legend__swatch is-arrived" aria-hidden="true" />
+                      arrived
+                    </span>
+                    <span className="tp-legend__item">
+                      <span className="tp-legend__swatch" aria-hidden="true" />
+                      gathering load
+                    </span>
+                    <span className="tp-legend__item">
+                      <span className="tp-legend__swatch is-specimen" aria-hidden="true" />
+                      specimen
+                    </span>
+                    <span className="tp-legend__hint">Press a plate to read the trip</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="border-y border-border/70 bg-card/45">
+        <section ref={runsRef} className="border-y border-border/70 bg-card/45">
           <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
             <h2 className="market-section-title text-balance text-foreground">
               {destination ? `Runs into ${destination}` : "Every open run, by destination"}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Each row is one vehicle on one corridor. The meter carries two dimensions because
-              a run is booked against both — the one that reaches its target first is what the
-              departure waits on.
-            </p>
 
             {failed && (
               <p className="tp-error mt-6" role="alert">
@@ -447,12 +520,19 @@ export default function PublicTransportPage() {
             )}
 
             {network !== null && shownRuns === 0 && (
-              <div className="mt-8 flex flex-col gap-3 border-t border-border pt-6">
+              <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
                 <p className="text-sm font-medium">No run is open to that town right now.</p>
-                <p className="max-w-xl text-sm text-muted-foreground">
-                  Runs open when a vehicle is assigned and close after they arrive. Try
-                  another destination, or clear the filter to see the whole network.
-                </p>
+                <button
+                  type="button"
+                  className="tp-ghost"
+                  onClick={() => {
+                    const next = new URLSearchParams(params);
+                    next.delete("to");
+                    setParams(next, { replace: true });
+                  }}
+                >
+                  Show every destination
+                </button>
               </div>
             )}
 
@@ -478,6 +558,7 @@ export default function PublicTransportPage() {
                             trail={trailByRun.get(run.departure_id) ?? []}
                             choice={choice}
                             isOpen={isOpen}
+                            focused={focusedRunId === run.departure_id}
                             signedIn={user !== null}
                             onFocus={focusRun}
                             onBook={startBooking}
@@ -515,10 +596,8 @@ export default function PublicTransportPage() {
                     — {money(held.fee, held.currency)} outstanding.
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  The space is reserved now. Nothing has been charged: a coordinator settles the
-                  fee and checks the load before the vehicle rolls, and the run will not depart
-                  while anything on it is unpaid.
+                <p className="tp-slip__note">
+                  Nothing charged yet — the run will not roll until the fee is settled.
                 </p>
                 <div className="tp-run__actions">
                   <button type="button" className="tp-ghost" onClick={() => setHeld(null)}>

@@ -8,6 +8,7 @@ import { LoadMeter } from "./LoadMeter.tsx";
 import { StationSpine } from "./StationSpine.tsx";
 import type { ShippingChoice } from "./ShippingControl.tsx";
 import { charterable, defaultMode, money, quoteFare } from "../../lib/transportQuote.ts";
+import { STATUS_TONE, STATUS_WORD, clock, vehicleWords } from "./runStatus.ts";
 
 /**
  * One run in the consolidation table. The row is the manifest: what is on the
@@ -16,39 +17,6 @@ import { charterable, defaultMode, money, quoteFare } from "../../lib/transportQ
  * on this page may read as a service that has been announced.
  */
 
-const STATUS_WORD: Record<string, string> = {
-  draft: "not opened",
-  open: "taking load",
-  quorum_met: "target met",
-  overdue: "past its date",
-  rolling: "loading",
-  in_transit: "on the road",
-  at_destination: "arrived",
-  closed: "closed",
-  cancelled: "cancelled",
-  expired: "expired",
-};
-
-const STATUS_TONE: Record<string, string> = {
-  open: "",
-  quorum_met: "is-live",
-  overdue: "is-short",
-  rolling: "is-live",
-  in_transit: "is-live",
-  at_destination: "is-met",
-  expired: "is-short",
-  cancelled: "is-short",
-};
-
-function clock(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 type RunManifestProps = {
   run: TransportRun;
   corridor: TransportCorridor | undefined;
@@ -56,6 +24,8 @@ type RunManifestProps = {
   trail: TransportCheckpoint[];
   choice: ShippingChoice;
   isOpen: boolean;
+  /** The run the plot is currently pointing at, so row and plate agree. */
+  focused: boolean;
   signedIn: boolean;
   onFocus: (run: TransportRun) => void;
   onBook: (run: TransportRun) => void;
@@ -68,6 +38,7 @@ export function RunManifest({
   trail,
   choice,
   isOpen,
+  focused,
   signedIn,
   onFocus,
   onBook,
@@ -80,7 +51,9 @@ export function RunManifest({
 
   return (
     <article
-      className={`tp-run${run.is_sample ? " is-specimen" : ""}${isOpen ? " is-open" : ""}`}
+      className={`tp-run${run.is_sample ? " is-specimen" : ""}${isOpen ? " is-open" : ""}${
+        focused ? " is-focused" : ""
+      }`}
       aria-label={`${run.route_code} to ${run.destination_city}, ${
         STATUS_WORD[run.status] ?? run.status
       }`}
@@ -93,8 +66,7 @@ export function RunManifest({
             {run.destination_city}
           </h3>
           <p className="tp-run__vehicle">
-            {run.vehicle_class ?? "Vehicle to be assigned"}
-            {run.is_private_charter ? " · bought whole" : ""}
+            {vehicleWords(run)}
             {charterable(run) && bookable ? " · whole vehicle available" : ""}
           </p>
         </div>
@@ -154,8 +126,13 @@ export function RunManifest({
           </div>
         </dl>
         <div className="tp-run__actions">
-          <button type="button" className="tp-ghost" onClick={() => onFocus(run)}>
-            Show on map
+          <button
+            type="button"
+            className="tp-ghost"
+            aria-pressed={focused}
+            onClick={() => onFocus(run)}
+          >
+            {focused ? "On the map" : "Show on map"}
           </button>
           {bookable ? (
             <button
