@@ -3,6 +3,7 @@
 @import './styles/auth-background.css';
 @import './styles/auth-plat.css';
 @import './styles/transport-plat.css';
+@import './styles/web3.css';
 
 /* ─────────────────────────────────────────────────────────────
    SiteSurveyor — shadcn-admin design tokens (ported)

@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { PackageSearch, Truck } from "lucide-react";
+import { LayoutGrid, Search, Store, Truck, X } from "lucide-react";
+import { getPageNumbers } from "../../lib/utils.ts";
 import { Button } from "../../components/ui/button.tsx";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "../../components/ui/pagination.tsx";
 import { AccountMenu, AccountMenuAvatar, AccountMenuItem } from "../../components/account-menu.tsx";
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
 import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
@@ -40,10 +50,10 @@ import { loadWords, money } from "../../lib/transportQuote.ts";
  * already sits on, so the corridors read as the same country.
  *
  * STORY — Top to bottom: say what you are shipping (the one variable) → see the
- * corridors that can carry it → pick the town you need it in → read the runs as
- * manifest rows, each with its load meter and its own longitudinal section →
- * hold a space. Live runs report where they were seen, never where they are
- * guessed to be.
+ * corridors that can carry it → type the town you need it in → read the matching
+ * runs as manifest rows, page by page, each with its load meter and its own
+ * longitudinal section → hold a space. Live runs report where they were seen,
+ * never where they are guessed to be.
  *
  * FIRST VIEWPORT — The shipping control and the corridor map, side by side, with
  * the soonest bookable roll named in the ruled band under the control (while
@@ -61,17 +71,7 @@ import { loadWords, money } from "../../lib/transportQuote.ts";
  * vehicle is on a road unless a checkpoint was reported.
  */
 
-function clock(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/** The same instant, shortened to fit a facts cell. */
+/** An instant, shortened to fit a facts cell. */
 function stamp(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     day: "numeric",
@@ -79,6 +79,42 @@ function stamp(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/** Rows on one page of the manifest. A run row is tall — it carries its own
+ * load meter — so five is what a reader can compare at once. */
+const PAGE_SIZE = 5;
+
+/**
+ * A trip is found by the town it must reach — the search asks "where must it go",
+ * so the answer stays honest to that question — or by the code on its plate. The
+ * corridor's published name is deliberately not searched: it reads
+ * "Bulawayo – Harare", so matching it would list a run leaving the town the visitor
+ * asked to reach, going the other way.
+ */
+function matchesQuery(run: TransportRun, query: string): boolean {
+  if (!query) return true;
+  const needle = query.toLowerCase();
+  return [run.destination_city, run.route_code].some((field) =>
+    field.toLowerCase().includes(needle),
+  );
+}
+
+const bySoonestRoll = (a: TransportRun, b: TransportRun) =>
+  a.planned_departure_at.localeCompare(b.planned_departure_at);
+
+/**
+ * Turning to the page that holds a row and scrolling to it are one act, but the
+ * row is not in the document until that page has rendered, so this waits a few
+ * frames instead of pretending it already is.
+ */
+function scrollToRow(id: string, frame = 0) {
+  const row = document.getElementById(`tp-run-${id}`);
+  if (row) {
+    row.scrollIntoView({ block: "center", behavior: "smooth" });
+    return;
+  }
+  if (frame < 30) requestAnimationFrame(() => scrollToRow(id, frame + 1));
 }
 
 export default function PublicTransportPage() {
@@ -92,6 +128,9 @@ export default function PublicTransportPage() {
   const [network, setNetwork] = useState<TransportNetwork | null>(null);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
+  /** The trip search, mirrored into `?to=` so a found list is a shareable link. */
+  const [search, setSearch] = useState(() => params.get("to") ?? "");
+  const [page, setPage] = useState(1);
   const [choice, setChoice] = useState<ShippingChoice>({ slots: 1, weightKg: 0, finalMile: false });
   const [bookingRunId, setBookingRunId] = useState<string | null>(null);
   /** The run the plot is pointing at and the readout is describing. */
@@ -123,7 +162,7 @@ export default function PublicTransportPage() {
     setReload((n) => n + 1);
   }
 
-  const destination = params.get("to");
+  const query = search.trim();
 
   const stopsByRoute = useMemo(() => {
     const map = new Map<string, TransportStop[]>();
@@ -152,27 +191,35 @@ export default function PublicTransportPage() {
     return map;
   }, [network]);
 
-  /** Runs grouped by the town they end in, groups ordered by their soonest roll. */
-  const groups = useMemo(() => {
-    const byCity = new Map<string, TransportRun[]>();
+  /** The towns runs actually end in, most served first, so the search box only
+   * offers answers this network can give. */
+  const destinations = useMemo(() => {
+    const counts = new Map<string, number>();
     for (const run of network?.runs ?? []) {
-      const list = byCity.get(run.destination_city);
-      if (list) list.push(run);
-      else byCity.set(run.destination_city, [run]);
+      counts.set(run.destination_city, (counts.get(run.destination_city) ?? 0) + 1);
     }
-    return [...byCity.entries()]
-      .map(([city, runs]) => ({
-        city,
-        runs: runs.sort((a, b) => a.planned_departure_at.localeCompare(b.planned_departure_at)),
-        soonest: runs[0].planned_departure_at,
-        allSample: runs.every((run) => run.is_sample),
-      }))
-      .sort((a, b) => a.city.localeCompare(b.city));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [network]);
 
+  /** Every run the search can still answer for, soonest roll first. The pager cuts
+   * this one list, so searching and turning pages are the same act. */
+  const matchedRuns = useMemo(
+    () => (network?.runs ?? []).filter((run) => matchesQuery(run, query)).sort(bySoonestRoll),
+    [network, query],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(matchedRuns.length / PAGE_SIZE));
+  /** The list can shorten under a held page — a narrower match, a reload — so the
+   * page the reader stands on is clamped to the pages that exist. */
+  const currentPage = Math.min(Math.max(page, 1), pageCount);
+  const pageNumbers = getPageNumbers(currentPage, pageCount);
+  const pageRuns = matchedRuns.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const firstShown = matchedRuns.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const lastShown = Math.min(currentPage * PAGE_SIZE, matchedRuns.length);
+
   const destinationId = useMemo(
-    () => (destination && network ? cityIdFromStops(network.stops, destination) : null),
-    [destination, network],
+    () => (query && network ? cityIdFromStops(network.stops, query) : null),
+    [query, network],
   );
 
   useEffect(() => {
@@ -195,8 +242,6 @@ export default function PublicTransportPage() {
 
   const offers =
     destinationId !== null && offerState?.cityId === destinationId ? offerState.rows : null;
-
-  const visibleGroups = destination ? groups.filter((group) => group.city === destination) : groups;
 
   // The receipt outlives the row it came from, so it names its own corridor.
   const heldRun = held ? (network?.runs ?? []).find((run) => run.departure_id === held.departure_id) : undefined;
@@ -244,26 +289,45 @@ export default function PublicTransportPage() {
     mapCardRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [focusedRunId, network]);
 
+  /** Typing re-filters from page one. The town stays in the URL so a found list is
+   * a link somebody else can open. */
+  const runSearch = useCallback(
+    (value: string) => {
+      setSearch(value);
+      setPage(1);
+      setBookingRunId(null);
+      const next = new URLSearchParams(params);
+      if (value.trim()) next.set("to", value);
+      else next.delete("to");
+      setParams(next, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  /** Turning a page is a fresh read of the table, not a continuation of the last
+   * scroll position, so the list head comes back into view with it. */
+  const gotoPage = useCallback((next: number) => {
+    setPage(next);
+    setBookingRunId(null);
+    runsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, []);
+
   /**
-   * A row can be hidden by the destination filter, and a run reached from a plate
-   * usually is. Lifting the filter is the recovery and the table is the next thing
-   * to look at; the focused row carries a heavier rule, so it can be found there.
+   * A plate can point at a run the search has hidden, so this works out which page
+   * holds that row — clearing the search first when the row is not in it — turns to
+   * the page, and brings the row to the middle of the screen. The focused row
+   * carries a heavier rule, so it can be found there.
    */
   const openRow = useCallback(
     (run: TransportRun) => {
-      const row = document.getElementById(`tp-run-${run.departure_id}`);
-      if (row) {
-        row.scrollIntoView({ block: "center", behavior: "smooth" });
-        return;
-      }
-      if (destination) {
-        const next = new URLSearchParams(params);
-        next.delete("to");
-        setParams(next, { replace: true });
-      }
-      runsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      const inList = matchedRuns.some((row) => row.departure_id === run.departure_id);
+      const list = inList ? matchedRuns : (network?.runs ?? []).slice().sort(bySoonestRoll);
+      if (!inList) runSearch("");
+      const index = list.findIndex((row) => row.departure_id === run.departure_id);
+      if (index >= 0) setPage(Math.floor(index / PAGE_SIZE) + 1);
+      scrollToRow(run.departure_id);
     },
-    [destination, params, setParams],
+    [matchedRuns, network, runSearch],
   );
 
   const startBooking = useCallback(
@@ -278,8 +342,6 @@ export default function PublicTransportPage() {
     [navigate, user],
   );
 
-  const shownRuns = visibleGroups.reduce((total, group) => total + group.runs.length, 0);
-
   return (
     <div className="web3-surface">
       <header className="web3-header">
@@ -292,6 +354,15 @@ export default function PublicTransportPage() {
             <span className="web3-brand-sub hidden truncate sm:inline">/ Platform Transport</span>
           </span>
           <div className="flex items-center gap-2">
+            <Link
+              to="/market"
+              className="web3-btn gap-1.5"
+              title="Tools, hires, materials and people for hire"
+            >
+              <Store className="size-4" aria-hidden="true" />
+              <span className="max-sm:hidden">Public Market</span>
+              <span className="sm:hidden">Hire</span>
+            </Link>
             <ThemeToggle />
             {user ? (
               <AccountMenu
@@ -309,7 +380,7 @@ export default function PublicTransportPage() {
                   </Button>
                 }
               >
-                <AccountMenuItem icon={PackageSearch} label="Browse the market" to="/market" />
+                <AccountMenuItem icon={LayoutGrid} label="Open your workspace" to="/" />
               </AccountMenu>
             ) : (
               <Link to="/login" className="web3-btn web3-btn-primary">
@@ -348,57 +419,53 @@ export default function PublicTransportPage() {
               </dl>
             )}
 
-            {destination && (
+            <div className="tp-field w-full sm:max-w-[380px]">
+              <label className="tp-label" htmlFor="tp-search">
+                Where must it go
+              </label>
+              <span className="tp-search">
+                <Search className="tp-search__icon" aria-hidden="true" />
+                <input
+                  id="tp-search"
+                  value={search}
+                  list="tp-destinations"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  placeholder="Town it must reach, or a route code"
+                  onChange={(event) => runSearch(event.target.value)}
+                />
+                {search ? (
+                  <button
+                    type="button"
+                    className="tp-search__clear"
+                    onClick={() => runSearch("")}
+                    aria-label="Clear the trip search"
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                ) : null}
+              </span>
+              <datalist id="tp-destinations">
+                {destinations.map(([city, count]) => (
+                  <option key={city} value={city}>
+                    {count} run{count === 1 ? "" : "s"}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+
+            {destinationId !== null && (
               <p className="text-sm text-muted-foreground">
                 {offers === null
                   ? "Checking which runs can still take your load…"
                   : `${offers.length} run${
                       offers.length === 1 ? "" : "s"
-                    } to ${destination} can still take ${loadWords(
+                    } to ${query} can still take ${loadWords(
                       choice.slots,
                       choice.weightKg,
                     )}.`}
               </p>
             )}
-
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="tp-label" htmlFor="tp-destination">
-                I need it in
-              </label>
-              <div className="tp-field min-w-0 grow sm:grow-0">
-                <select
-                  id="tp-destination"
-                  value={destination ?? ""}
-                  onChange={(event) => {
-                    const next = new URLSearchParams(params);
-                    if (event.target.value) next.set("to", event.target.value);
-                    else next.delete("to");
-                    setParams(next, { replace: true });
-                    setBookingRunId(null);
-                  }}
-                >
-                  <option value="">Every destination</option>
-                  {groups.map((group) => (
-                    <option key={group.city} value={group.city}>
-                      {group.city} ({group.runs.length})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {destination && (
-                <button
-                  type="button"
-                  className="tp-ghost"
-                  onClick={() => {
-                    const next = new URLSearchParams(params);
-                    next.delete("to");
-                    setParams(next, { replace: true });
-                  }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
           </div>
 
           <div
@@ -498,8 +565,22 @@ export default function PublicTransportPage() {
         <section ref={runsRef} className="border-y border-border/70 bg-card/45">
           <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
             <h2 className="market-section-title text-balance text-foreground">
-              {destination ? `Runs into ${destination}` : "Every open run, by destination"}
+              {query ? `Runs for “${query}”` : "Every open run, soonest roll first"}
             </h2>
+
+            {!failed && (
+              <p className="tp-list-count" aria-live="polite">
+                {network === null
+                  ? "Reading the network…"
+                  : matchedRuns.length === 0
+                    ? query
+                      ? `Nothing matches “${query}”`
+                      : "Nothing is open to load"
+                    : `Viewing ${firstShown}–${lastShown} of ${matchedRuns.length} run${
+                        matchedRuns.length === 1 ? "" : "s"
+                      }`}
+              </p>
+            )}
 
             {failed && (
               <p className="tp-error mt-6" role="alert">
@@ -508,7 +589,7 @@ export default function PublicTransportPage() {
             )}
 
             {network === null && !failed && (
-              <div className="mt-8 flex flex-col gap-4" aria-live="polite">
+              <div className="mt-8 flex flex-col gap-4">
                 <span className="sr-only">Loading the corridor network</span>
                 {[0, 1, 2].map((index) => (
                   <div key={index} className="tp-run">
@@ -519,72 +600,113 @@ export default function PublicTransportPage() {
               </div>
             )}
 
-            {network !== null && shownRuns === 0 && (
+            {network !== null && matchedRuns.length === 0 && (
               <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
-                <p className="text-sm font-medium">No run is open to that town right now.</p>
-                <button
-                  type="button"
-                  className="tp-ghost"
-                  onClick={() => {
-                    const next = new URLSearchParams(params);
-                    next.delete("to");
-                    setParams(next, { replace: true });
-                  }}
-                >
-                  Show every destination
-                </button>
+                <p className="text-sm font-medium">
+                  {query
+                    ? "No run reaches that town or code on the network yet."
+                    : "No run is open on the network right now."}
+                </p>
+                {query && (
+                  <button type="button" className="tp-ghost" onClick={() => runSearch("")}>
+                    Show every destination
+                  </button>
+                )}
               </div>
             )}
 
-            {network !== null &&
-              visibleGroups.map((group) => (
-                <div key={group.city} className="mt-10">
-                  <h3 className="auth-rule">
-                    {group.city}
-                    <span className="ml-2 font-mono text-micro tabular-nums normal-case tracking-normal text-muted-foreground">
-                      {group.allSample ? "soonest specimen " : "soonest "}
-                      {clock(group.soonest)}
-                    </span>
-                  </h3>
-                  <div className="mt-4 flex flex-col gap-4">
-                    {group.runs.map((run) => {
-                      const isOpen = bookingRunId === run.departure_id;
-                      return (
-                        <div key={run.departure_id} id={`tp-run-${run.departure_id}`}>
-                          <RunManifest
+            {network !== null && pageRuns.length > 0 && (
+              <div className="mt-8 flex flex-col gap-4">
+                {pageRuns.map((run) => {
+                  const isOpen = bookingRunId === run.departure_id;
+                  return (
+                    <div key={run.departure_id} id={`tp-run-${run.departure_id}`}>
+                      <RunManifest
+                        run={run}
+                        corridor={corridorByRoute.get(run.route_id)}
+                        stops={stopsByRoute.get(run.route_id) ?? []}
+                        trail={trailByRun.get(run.departure_id) ?? []}
+                        choice={choice}
+                        isOpen={isOpen}
+                        focused={focusedRunId === run.departure_id}
+                        signedIn={user !== null}
+                        onFocus={focusRun}
+                        onBook={startBooking}
+                      />
+                      {isOpen && user && (
+                        <div className="mt-3">
+                          <BookingSlip
                             run={run}
                             corridor={corridorByRoute.get(run.route_id)}
-                            stops={stopsByRoute.get(run.route_id) ?? []}
-                            trail={trailByRun.get(run.departure_id) ?? []}
+                            stops={network.stops}
                             choice={choice}
-                            isOpen={isOpen}
-                            focused={focusedRunId === run.departure_id}
-                            signedIn={user !== null}
-                            onFocus={focusRun}
-                            onBook={startBooking}
+                            workspaceId={user.workspaceId}
+                            recipientName={user.name}
+                            onBooked={(booking) => {
+                              setHeld(booking);
+                              setBookingRunId(null);
+                            }}
                           />
-                          {isOpen && user && (
-                            <div className="mt-3">
-                              <BookingSlip
-                                run={run}
-                                corridor={corridorByRoute.get(run.route_id)}
-                                stops={network.stops}
-                                choice={choice}
-                                workspaceId={user.workspaceId}
-                                recipientName={user.name}
-                                onBooked={(booking) => {
-                                  setHeld(booking);
-                                  setBookingRunId(null);
-                                }}
-                              />
-                            </div>
-                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {network !== null && pageCount > 1 && (
+              <div className="tp-pager">
+                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                  <PaginationContent className="flex-wrap gap-1">
+                    <PaginationItem>
+                      <PaginationPrevious
+                        className={
+                          currentPage === 1 ? "pointer-events-none opacity-50" : undefined
+                        }
+                        href="#"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          gotoPage(currentPage - 1);
+                        }}
+                      />
+                    </PaginationItem>
+                    {pageNumbers.map((pageNumber, index) =>
+                      pageNumber === "..." ? (
+                        <PaginationItem key={`gap-${index}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={`page-${pageNumber}`}>
+                          <PaginationLink
+                            href="#"
+                            isActive={pageNumber === currentPage}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              gotoPage(pageNumber);
+                            }}
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ),
+                    )}
+                    <PaginationItem>
+                      <PaginationNext
+                        className={
+                          currentPage === pageCount ? "pointer-events-none opacity-50" : undefined
+                        }
+                        href="#"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          gotoPage(currentPage + 1);
+                        }}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
 
             {held && (
               <div className="tp-slip mt-10" role="status" aria-live="polite">

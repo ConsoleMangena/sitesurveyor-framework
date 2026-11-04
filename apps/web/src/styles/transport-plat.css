@@ -13,6 +13,7 @@
 .tp-ship,
 .tp-run,
 .tp-slip,
+.tp-field,
 .tp-dock,
 .tp-readout,
 .tp-map {
@@ -666,6 +667,71 @@
 .tp-field select:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 1px;
+}
+
+/* ── Trip search: one box, the towns the network actually serves ── */
+.tp-search {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.tp-search__icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  color: var(--tp-label);
+  pointer-events: none;
+}
+
+.tp-field .tp-search input {
+  padding: 7px 30px 7px 28px;
+}
+
+.tp-search__clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  border-radius: calc(var(--radius) - 4px);
+  color: var(--tp-label);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tp-search__clear:hover {
+  background: color-mix(in oklab, var(--muted) 78%, var(--card));
+  color: var(--foreground);
+}
+
+.tp-search__clear:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* How many rows the search answered, and which slice of them is on screen. */
+.tp-list-count {
+  margin: 6px 0 0;
+  font-family: var(--mono-plate);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--tp-label);
+}
+
+/* ── Manifest pager: the table is read a page at a time ────── */
+.tp-pager {
+  display: flex;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
 }
 
 .tp-slip__fee {

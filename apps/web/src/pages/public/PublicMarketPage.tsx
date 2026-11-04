@@ -72,7 +72,6 @@ import {
   type RailItem,
 } from "../../components/market/marketItems.ts";
 import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
-import "../../styles/web3.css";
 
 
 type Scope = "all" | "listing" | "professional" | "job" | "firm" | "event";
