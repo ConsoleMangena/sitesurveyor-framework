@@ -80,117 +80,6 @@ import { assetMediaUrl } from "../../lib/repositories/assetMedia.ts";
 import { getEquipmentPlaceholder } from "../../components/market/marketPlaceholders.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 
-/* ── SVG Icon Components ── */
-function IconTotalStation() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 21v-3" />
-      <path d="M8 21l2-3" />
-      <path d="M16 21l-2-3" />
-      <path d="M9 18h6" />
-      <rect x="10" y="15" width="4" height="3" rx="0.5" />
-      <path d="M10 15v-6a2 2 0 0 1 4 0v6" />
-      <rect x="7" y="6" width="10" height="4" rx="1" />
-      <path d="M17 7v2" />
-      <path d="M7 7v2" />
-      <path d="M5 7.5h2v1H5z" />
-      <path d="M10 6V4h4v2" />
-    </svg>
-  );
-}
-
-function IconGnss() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 21V9" />
-      <path d="M10 21h4" />
-      <path d="M8 9h8a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2z" />
-      <path d="M9 4c1-2 5-2 6 0" />
-      <path d="M8 6L7 2" />
-      <rect x="13" y="12" width="3" height="5" rx="0.5" />
-    </svg>
-  );
-}
-
-function IconLevel() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 21v-3" />
-      <path d="M8 21l2-3" />
-      <path d="M16 21l-2-3" />
-      <path d="M9 18h6" />
-      <rect x="6" y="10" width="12" height="8" rx="1" />
-      <path d="M18 11v6" />
-      <path d="M6 12v4" />
-      <path d="M4 12.5h2v3H4z" />
-      <rect x="9" y="12" width="4" height="4" rx="0.5" />
-      <path d="M11 10V9h2v1" />
-    </svg>
-  );
-}
-
-function IconDrone() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="9" width="6" height="6" rx="2" />
-      <path d="M11 15v2h2v-2" />
-      <circle cx="12" cy="18" r="1" />
-      <line x1="9" y1="9" x2="5" y2="5" />
-      <line x1="15" y1="9" x2="19" y2="5" />
-      <line x1="9" y1="15" x2="5" y2="19" />
-      <line x1="15" y1="15" x2="19" y2="19" />
-      <ellipse cx="5" cy="5" rx="3" ry="1" />
-      <ellipse cx="19" cy="5" rx="3" ry="1" />
-      <ellipse cx="5" cy="19" rx="3" ry="1" />
-      <ellipse cx="19" cy="19" rx="3" ry="1" />
-    </svg>
-  );
-}
-
-function IconController() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="3" width="16" height="18" rx="2" />
-      <rect x="6" y="5" width="12" height="10" rx="1" />
-      <circle cx="9" cy="18" r="1" />
-      <circle cx="15" cy="18" r="1" />
-      <circle cx="12" cy="17" r="0.5" />
-      <circle cx="12" cy="19" r="0.5" />
-      <circle cx="11" cy="18" r="0.5" />
-      <circle cx="13" cy="18" r="0.5" />
-    </svg>
-  );
-}
-
-function IconCalibration() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 2v4" />
-      <path d="M12 18v4" />
-      <path d="M2 12h4" />
-      <path d="M18 12h4" />
-      <circle cx="12" cy="12" r="2" />
-      <path d="M15 15l5 5a2 2 0 0 1-3 3l-5-5" />
-      <path d="M16 14l2 2" />
-    </svg>
-  );
-}
-
-const iconMap: Record<string, React.FC> = {
-  "Total Station": IconTotalStation,
-  "GNSS Receiver": IconGnss,
-  "Digital Level": IconLevel,
-  "UAV / Drone": IconDrone,
-  Controller: IconController,
-  "Calibration Service": IconCalibration,
-};
-
-function ListingIcon({ type }: { type: string }) {
-  const Ico = iconMap[type] || IconTotalStation;
-  return <Ico />;
-}
-
 const conditionVariant: Record<string, string> = {
   New: "default",
   "Like New": "secondary",
@@ -546,6 +435,19 @@ export default function MarketplacePage({
 
   const canBuy = (l: MarketplaceListingWithAsset) =>
     l.workspace_id !== workspaceId && l.assets?.status !== "deployed";
+
+  /** The asset's own photo when it has one, otherwise the type placeholder. */
+  const listingPhoto = (l: MarketplaceListingWithAsset) =>
+    assetMediaUrl(l.assets?.photos?.[0]) ?? getEquipmentPlaceholder(l.type, l.category);
+
+  /** A photo that fails to load must not retry forever against its own url. */
+  const photoFallback = (l: MarketplaceListingWithAsset) =>
+    (event: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = event.currentTarget;
+      if (img.dataset.fallback) return;
+      img.dataset.fallback = "1";
+      img.src = getEquipmentPlaceholder(l.type, l.category);
+    };
 
   if (editorOpen) {
     return (
@@ -1053,20 +955,9 @@ export default function MarketplacePage({
               <div className="space-y-4">
                 <div className="overflow-hidden rounded-lg border border-border/60 bg-muted">
                   <img
-                    src={
-                      selectedListing.assets?.photos?.[0]
-                        ? assetMediaUrl(selectedListing.assets.photos[0]) ??
-                          getEquipmentPlaceholder(selectedListing.type, selectedListing.category)
-                        : getEquipmentPlaceholder(selectedListing.type, selectedListing.category)
-                    }
+                    src={listingPhoto(selectedListing)}
                     alt={selectedListing.name}
-                    onError={(e) => {
-                      const fb = getEquipmentPlaceholder(
-                        selectedListing.type,
-                        selectedListing.category,
-                      );
-                      if (e.currentTarget.src !== fb) e.currentTarget.src = fb;
-                    }}
+                    onError={photoFallback(selectedListing)}
                     className="aspect-[16/9] w-full object-cover"
                   />
                 </div>
@@ -1234,8 +1125,14 @@ export default function MarketplacePage({
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
                             {(effectivePage - 1) * pageSize + index + 1}
                           </span>
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-muted text-primary">
-                            <ListingIcon type={l.type} />
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                            <img
+                              src={listingPhoto(l)}
+                              alt=""
+                              loading="lazy"
+                              onError={photoFallback(l)}
+                              className="h-full w-full object-cover"
+                            />
                           </div>
                           <div className="min-w-0">
                             <h3 className="truncate font-semibold text-foreground">{l.name}</h3>
@@ -1317,19 +1214,12 @@ export default function MarketplacePage({
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-2 py-3">
-                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-muted">
+                            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
                               <img
-                                src={
-                                  l.assets?.photos?.[0]
-                                    ? assetMediaUrl(l.assets.photos[0]) ??
-                                      getEquipmentPlaceholder(l.type, l.category)
-                                    : getEquipmentPlaceholder(l.type, l.category)
-                                }
+                                src={listingPhoto(l)}
                                 alt=""
-                                onError={(e) => {
-                                  const fb = getEquipmentPlaceholder(l.type, l.category);
-                                  if (e.currentTarget.src !== fb) e.currentTarget.src = fb;
-                                }}
+                                loading="lazy"
+                                onError={photoFallback(l)}
                                 className="h-full w-full object-cover"
                               />
                             </div>
@@ -1383,19 +1273,12 @@ export default function MarketplacePage({
                               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none bg-primary/10 text-xs font-semibold text-primary">
                                 {itemNumber}
                               </span>
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                              <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md bg-muted">
                                 <img
-                                  src={
-                                    l.assets?.photos?.[0]
-                                      ? assetMediaUrl(l.assets.photos[0]) ??
-                                        getEquipmentPlaceholder(l.type, l.category)
-                                      : getEquipmentPlaceholder(l.type, l.category)
-                                  }
+                                  src={listingPhoto(l)}
                                   alt=""
-                                  onError={(e) => {
-                                    const fb = getEquipmentPlaceholder(l.type, l.category);
-                                    if (e.currentTarget.src !== fb) e.currentTarget.src = fb;
-                                  }}
+                                  loading="lazy"
+                                  onError={photoFallback(l)}
                                   className="h-full w-full object-cover"
                                 />
                               </div>
