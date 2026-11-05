@@ -2,7 +2,7 @@
 //
 // Usage:
 //   NVIDIA_API_KEY=nvapi-... node scripts/ai-eval/run.ts
-//   NVIDIA_API_KEY=... node scripts/ai-eval/run.ts --model=nvidia/nemotron-3.5-lightning-30b-a3b --filter=create-contact
+//   NVIDIA_API_KEY=... node scripts/ai-eval/run.ts --model=nvidia/nemotron-3-ultra-550b-a55b --filter=create-contact
 //
 // Runs each labelled case through the REAL agent loop (live NVIDIA NIM
 // Nemotron model at integrate.api.nvidia.com) against an in-memory copy of

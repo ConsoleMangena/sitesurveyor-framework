@@ -16,12 +16,6 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select.tsx";
-import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -99,25 +93,8 @@ function nextId(prefix: string): string {
   return `${prefix}${Date.now()}-${idCounter}`;
 }
 
-/** Available AI models the user may choose from (NVIDIA NIM Nemotron). */
-/** `label` is the full name shown in the picker; `short` fits the header trigger. */
-const AI_MODELS: { id: string; label: string; short: string; free: boolean }[] = [
-  { id: "nvidia/nemotron-3.5-lightning-30b-a3b", label: "Nemotron 3.5 Lightning 30B", short: "Lightning 30B", free: true },
-  { id: "nvidia/nemotron-3.5-bolt-e4b", label: "Nemotron 3.5 Bolt E4B (fastest)", short: "Bolt E4B · fastest", free: true },
-  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning", label: "Nemotron 3 Nano Omni 30B (reasoning)", short: "Nano Omni · reasoning", free: true },
-  { id: "nvidia/nemotron-3.5-super-vl-120b-a12b", label: "Nemotron 3.5 Super VL 120B", short: "Super VL 120B", free: true },
-  { id: "nvidia/nemotron-3-ultra-550b-a55b", label: "Nemotron 3 Ultra 550B (strongest)", short: "Ultra 550B · strongest", free: true },
-];
-const MODEL_STORAGE_KEY = "sitesurveyor-ai-model";
-const DEFAULT_MODEL_ID = AI_MODELS[0].id;
-
-function loadStoredModel(): string {
-  try {
-    const stored = localStorage.getItem(MODEL_STORAGE_KEY);
-    if (stored && AI_MODELS.some((m) => m.id === stored)) return stored;
-  } catch { /* ignore */ }
-  return DEFAULT_MODEL_ID;
-}
+/** SiteSurveyor AI runs on one model; the engine name is shown, not chosen. */
+const ENGINE_LABEL = "Nemotron 3 Ultra";
 
 /** One line per tool the agent can call, keyed by the name the runtime puts
  *  on its `tool` events. */
@@ -174,12 +151,6 @@ export default function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
-  const [selectedModel, setSelectedModel] = useState(loadStoredModel);
-
-  const handleModelChange = useCallback((value: string) => {
-    setSelectedModel(value);
-    try { localStorage.setItem(MODEL_STORAGE_KEY, value); } catch { /* ignore */ }
-  }, []);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -356,7 +327,6 @@ export default function AssistantPage() {
         );
 
       await streamAiReply(conversationId, text, {
-        model: selectedModel !== DEFAULT_MODEL_ID ? selectedModel : undefined,
         onDelta: (delta) => {
           setMessages((prev) => {
             const existing = prev.find((m) => m.id === "live");
@@ -412,7 +382,6 @@ export default function AssistantPage() {
     renameConversation,
     scrollToBottom,
     recordStep,
-    selectedModel,
   ]);
 
   const startRename = useCallback((conversation: AiConversation) => {
@@ -533,9 +502,6 @@ export default function AssistantPage() {
 
   const hasLiveText = messages.some((m) => m.id === "live" && m.text.trim());
 
-  const activeModel =
-    AI_MODELS.find((m) => m.id === selectedModel) ?? AI_MODELS[0];
-
   return (
     <div className="relative flex h-full min-h-0 gap-4">
       <aside className="hidden w-64 shrink-0 flex-col rounded-xl border border-border/60 bg-card lg:flex">
@@ -588,27 +554,13 @@ export default function AssistantPage() {
               Your virtual assistant — works on this workspace&apos;s records
             </p>
           </div>
-          <Select value={selectedModel} onValueChange={handleModelChange}>
-            <SelectTrigger
-              className="h-7 w-auto max-w-[10.5rem] shrink-0 gap-1.5 border-border/50 bg-muted/40 text-[11px]"
-              aria-label="AI model"
-              title={activeModel.label}
-            >
-              <span className="truncate">{activeModel.short}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {AI_MODELS.map((model) => (
-                <SelectItem key={model.id} value={model.id} className="text-xs">
-                  {model.label}
-                  {model.free && (
-                    <span className="ml-1.5 rounded-md bg-success/15 px-1.5 py-0.5 text-[10px] font-medium text-success">
-                      free
-                    </span>
-                  )}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <span
+            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/50 bg-muted/40 px-2.5 font-mono text-[11px] font-medium text-muted-foreground"
+            title="SiteSurveyor AI runs on NVIDIA Nemotron 3 Ultra"
+          >
+            <span className="web3-live-dot" aria-hidden="true" />
+            {ENGINE_LABEL}
+          </span>
         </header>
 
         {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
@@ -628,7 +580,7 @@ export default function AssistantPage() {
                 <BrandMark className="mt-1 size-8" />
                 <div className={cn(BUBBLE_AGENT, "max-w-[62ch]")}>
                   <p className="font-medium text-card-foreground">
-                    I&apos;m SiteSurveyor, the virtual assistant for this
+                    I&apos;m SiteSurveyor AI, the virtual assistant for this
                     workspace — your surveying reference point.
                   </p>
                   <ul className="mt-2.5 space-y-2">

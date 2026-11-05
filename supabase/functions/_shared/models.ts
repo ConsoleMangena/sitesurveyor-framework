@@ -5,28 +5,21 @@
 // https://integrate.api.nvidia.com/v1, authenticated with an `nvapi-` key.
 
 /**
- * NVIDIA NIM Nemotron model ids, in the `nvidia/<model>` form the endpoint
- * expects. Every id here is live-verified against the account's catalog: the
- * free tier exposes only a subset of build.nvidia.com, and an unentitled model
- * fails at call time with a 404 "Function not found for account" rather than
- * at key-validation time, so the list is deliberately narrow.
+ * The single model SiteSurveyor AI runs on: NVIDIA NIM's Nemotron 3 Ultra,
+ * the strongest id in the account's catalog. Every id here is live-verified
+ * against the account: the free tier exposes only a subset of
+ * build.nvidia.com, and an unentitled model fails at call time with a 404
+ * "Function not found for account" rather than at key-validation time.
  */
 export const NVIDIA_NEMOTRON_MODELS: ReadonlySet<string> = new Set([
-  "nvidia/nemotron-3.5-bolt-e4b",
-  "nvidia/nemotron-3.5-lightning-30b-a3b",
-  "nvidia/nemotron-3.5-super-vl-120b-a12b",
-  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
   "nvidia/nemotron-3-ultra-550b-a55b",
 ]);
 
-/** Default model. */
-export const DEFAULT_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
+/** The one model, used for every task. */
+export const DEFAULT_MODEL = "nvidia/nemotron-3-ultra-550b-a55b";
 
-/** Strong model for complex tasks. */
-export const STRONG_MODEL = "nvidia/nemotron-3-ultra-550b-a55b";
-
-/** Escalation fallback used when STRONG_MODEL is not available in configured models. */
-export const STRONG_MODEL_FALLBACK = "nvidia/nemotron-3.5-super-vl-120b-a12b";
+/** Alias kept for callers that ask for the escalation target. */
+export const STRONG_MODEL = DEFAULT_MODEL;
 
 /** Models users may select. Anything outside silently falls back to DEFAULT_MODEL. */
 export const ALLOWED_MODELS: ReadonlySet<string> = new Set([
@@ -46,29 +39,24 @@ export function isAllowedModel(requested: string | undefined): boolean {
 }
 
 /**
- * Pick a model honouring the user's request, the allowlist, and (when the
- * task looks complex) escalating to STRONG_MODEL. `available` is the set of
- * models whose provider key is configured on this serve path (defaults to the
- * full allowlist). Escalation prefers STRONG_MODEL (nemotron-3-ultra), falls
- * back to STRONG_MODEL_FALLBACK (nemotron-3.5-super-vl), then DEFAULT_MODEL.
- * An explicit allowlisted request that is unavailable locally silently falls
- * back to DEFAULT_MODEL. Never returns an unknown value.
+ * Pick a model honouring the user's request and the allowlist. `available` is
+ * the set of models whose provider key is configured on this serve path
+ * (defaults to the full allowlist). With a single-model catalog every path —
+ * simple or complex, requested or not — resolves to DEFAULT_MODEL unless that
+ * model is unavailable locally, in which case the first available one wins.
+ * Never returns an unknown value.
  */
 export function resolveModel(
   requested: string | undefined,
-  complexity: Complexity = "simple",
+  _complexity: Complexity = "simple",
   available: ReadonlySet<string> = ALLOWED_MODELS,
 ): string {
   const safe = typeof requested === "string" && ALLOWED_MODELS.has(requested.trim())
     ? requested.trim()
     : "";
   if (safe) return available.has(safe) ? safe : DEFAULT_MODEL;
-  if (complexity === "complex") {
-    if (available.has(STRONG_MODEL)) return STRONG_MODEL;
-    if (available.has(STRONG_MODEL_FALLBACK)) return STRONG_MODEL_FALLBACK;
-    return DEFAULT_MODEL;
-  }
-  return DEFAULT_MODEL;
+  if (available.has(DEFAULT_MODEL)) return DEFAULT_MODEL;
+  return [...available][0] ?? DEFAULT_MODEL;
 }
 
 /** Keyword signals that suggest a multi-step/complex task. */

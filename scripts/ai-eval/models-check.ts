@@ -5,7 +5,6 @@ import {
   ALLOWED_MODELS,
   DEFAULT_MODEL,
   NVIDIA_NEMOTRON_MODELS,
-  STRONG_MODEL_FALLBACK,
   STRONG_MODEL,
   isAllowedModel,
   providerFor,
@@ -25,10 +24,11 @@ function check(name: string, cond: boolean): void {
   }
 }
 
-// Allowlist shape.
+// Allowlist shape: one model, used for everything.
 check("allowlist-has-default", ALLOWED_MODELS.has(DEFAULT_MODEL));
 check("allowlist-has-strong", ALLOWED_MODELS.has(STRONG_MODEL));
-check("allowlist-size", ALLOWED_MODELS.size >= 3);
+check("allowlist-size", ALLOWED_MODELS.size === 1);
+check("strong-is-default", STRONG_MODEL === DEFAULT_MODEL);
 
 // isAllowedModel + resolveModel: explicit allowed value wins.
 check(
@@ -40,28 +40,23 @@ check(
   resolveModel(STRONG_MODEL, "complex") === STRONG_MODEL,
 );
 
-check(
-  "resolve-explicit-allowed-fallback",
-  resolveModel(STRONG_MODEL_FALLBACK, "complex") === STRONG_MODEL_FALLBACK,
-);
-
-// resolveModel: empty / unknown falls back to default or strong by complexity.
+// resolveModel: empty / unknown falls back to default regardless of complexity.
 check("resolve-empty-simple", resolveModel(undefined, "simple") === DEFAULT_MODEL);
-check("resolve-empty-complex", resolveModel(undefined, "complex") === STRONG_MODEL);
+check("resolve-empty-complex", resolveModel(undefined, "complex") === DEFAULT_MODEL);
 check(
   "resolve-unknown-simple",
   resolveModel("not-a-real-model", "simple") === DEFAULT_MODEL,
 );
 check(
   "resolve-unknown-complex",
-  resolveModel("not-a-real-model", "complex") === STRONG_MODEL,
+  resolveModel("not-a-real-model", "complex") === DEFAULT_MODEL,
 );
 
 // NVIDIA NIM allowlist + provider routing.
 check("allowlist-has-nemotron-default", ALLOWED_MODELS.has(DEFAULT_MODEL));
 check("allowlist-has-nemotron-strong", ALLOWED_MODELS.has(STRONG_MODEL));
-check("nemotron-set-size", NVIDIA_NEMOTRON_MODELS.size === 5);
-check("nemotron-set-nonempty", NVIDIA_NEMOTRON_MODELS.size >= 5);
+check("nemotron-set-size", NVIDIA_NEMOTRON_MODELS.size === 1);
+check("nemotron-set-nonempty", NVIDIA_NEMOTRON_MODELS.size >= 1);
 check(
   "nemotron-ids-are-namespaced",
   [...NVIDIA_NEMOTRON_MODELS].every((m) => m.startsWith("nvidia/")),
@@ -73,12 +68,16 @@ check("provider-unknown-defaults-nvidia", providerFor("wat") === "nvidia-nim");
 // Availability-aware resolution.
 check("resolve-explicit-nemotron", resolveModel(DEFAULT_MODEL, "simple") === DEFAULT_MODEL);
 check(
-  "resolve-explicit-nemotron-unavailable",
+  "resolve-explicit-nemotron-available",
   resolveModel(DEFAULT_MODEL, "simple", new Set([STRONG_MODEL])) === DEFAULT_MODEL,
 );
 check(
-  "resolve-complex-without-strong-falls-back",
-  resolveModel(undefined, "complex", new Set([STRONG_MODEL_FALLBACK])) === STRONG_MODEL_FALLBACK,
+  "resolve-complex-with-only-model",
+  resolveModel(undefined, "complex", new Set([DEFAULT_MODEL])) === DEFAULT_MODEL,
+);
+check(
+  "resolve-nothing-available-still-returns-the-model",
+  resolveModel(undefined, "complex", new Set()) === DEFAULT_MODEL,
 );
 
 // isAllowedModel: blanks are allowed (no model == default), unknowns are not.
