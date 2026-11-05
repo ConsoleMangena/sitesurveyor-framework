@@ -56,11 +56,11 @@ import {
   ChevronRight,
   Copy,
   Download,
-  Globe2,
   Loader2,
   Lock,
   LogIn,
   LogOut,
+  Store,
   User,
   UserPlus,
   Wallet,
@@ -772,19 +772,13 @@ export default function WalletLoginPage() {
       }
       description="Solana Web3 Authentication"
       footer={
-        <div className="flex flex-col items-center gap-3">
-          <Link
-            to="/market"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
-          >
-            <Globe2 className="size-4" aria-hidden="true" />
-            Go to public market
-          </Link>
-          <p className="text-xs text-muted-foreground">
-            By continuing you agree to SiteSurveyor&apos;s terms and privacy
-            policy.
-          </p>
-        </div>
+        <Link
+          to="/market"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+        >
+          <Store className="size-4" aria-hidden="true" />
+          Go to public market
+        </Link>
       }
     >
       <div className="auth-content">

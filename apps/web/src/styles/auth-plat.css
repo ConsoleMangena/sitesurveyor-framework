@@ -624,20 +624,14 @@
 
 .auth-side-foot {
   display: flex;
-  /* The footer band never shrinks: at phone width the terms wrap to a third
-     line, and a shrunk band cuts it off at the sheet rule. */
+  /* The footer band never shrinks: a shrunk band cuts its link off at the
+     sheet rule. */
   flex: 0 0 auto;
   justify-content: center;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
   text-align: center;
   font-size: 0.8125rem;
-}
-
-.auth-terms {
-  margin: 0;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
 }
 
 /* ── Shared page furniture ─────────────────────────────────── */
@@ -967,6 +961,21 @@ button.auth-field-row:focus-visible {
    its user units, so lettering set at 2.6–3.4 units is under 5px. The plate
    drops the annotations it cannot make legible and keeps the drawing. */
 @media (max-width: 1023px) {
+  /* A phone works a page, not a pane. The sheet stops being a fixed-height
+     frame with its own scroller and lets the document scroll instead, so a
+     focused field scrolls into view natively and the last row of the form is
+     reachable rather than parked behind the keyboard. The viewport meta runs
+     the sheet edge-to-edge (`viewport-fit=cover`), so the bottom also clears
+     the home indicator, which otherwise covers the end of a scrolled form. */
+  .auth-side-body {
+    overflow: visible;
+    padding-bottom: max(clamp(20px, 3svh, 30px), env(safe-area-inset-bottom));
+  }
+
+  .auth-side-foot {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
   .auth-plat {
     min-height: 208px;
   }

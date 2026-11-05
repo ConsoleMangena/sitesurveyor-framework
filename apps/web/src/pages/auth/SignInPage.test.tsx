@@ -66,7 +66,6 @@ describe("SignInPage", () => {
     expect(
       screen.getByRole("link", { name: /create an account/i }),
     ).toHaveAttribute("href", "/signup");
-    expect(screen.getByText(/One account — email, GitHub, or wallet/i)).toBeInTheDocument();
   });
 
   it("shows validation errors and never calls auth when the form is empty", async () => {

@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, LogIn, Wallet } from "lucide-react";
-import AuthShell, { AuthRule, AuthTerms } from "../../components/auth/AuthShell";
+import AuthShell, { AuthRule } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -78,18 +78,15 @@ export default function SignInPage() {
       title="Welcome back to the field."
       description="Sign in to your SiteSurveyor account."
       footer={
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            New to SiteSurveyor?{" "}
-            <Link
-              to="/signup"
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              Create an account
-            </Link>
-          </p>
-          <AuthTerms />
-        </div>
+        <p className="text-sm text-muted-foreground">
+          New to SiteSurveyor?{" "}
+          <Link
+            to="/signup"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Create an account
+          </Link>
+        </p>
       }
     >
         <div className="auth-content">
@@ -185,11 +182,6 @@ export default function SignInPage() {
             <span>Continue with wallet</span>
           </Button>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          One account — email, GitHub, or wallet. Link them from account
-          settings after you sign in.
-        </p>
       </div>
     </AuthShell>
   );

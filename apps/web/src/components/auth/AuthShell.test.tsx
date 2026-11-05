@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import AuthShell, { AuthTerms } from "./AuthShell";
+import AuthShell from "./AuthShell";
 
 function renderShell(
   props: Partial<React.ComponentProps<typeof AuthShell>> = {},
@@ -18,7 +18,7 @@ describe("AuthShell", () => {
     renderShell({
       title: "Welcome back to the field.",
       description: "Sign in to your SiteSurveyor account.",
-      footer: <AuthTerms />,
+      footer: <p>New to SiteSurveyor?</p>,
     });
 
     expect(
@@ -31,9 +31,7 @@ describe("AuthShell", () => {
       screen.getByText("Sign in to your SiteSurveyor account."),
     ).toBeInTheDocument();
     expect(screen.getByText("Card body")).toBeInTheDocument();
-    expect(
-      screen.getByText(/By continuing you agree to SiteSurveyor's terms/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText("New to SiteSurveyor?")).toBeInTheDocument();
   });
 
   it("keeps the public-market escape hatch and theme toggle", () => {
@@ -63,21 +61,8 @@ describe("AuthShell", () => {
     expect(screen.getByText("Card body")).toBeInTheDocument();
   });
 
-  it("omits the footer when none is supplied", () => {
-    renderShell();
-    expect(screen.queryByText(/terms and privacy policy/i)).not.toBeInTheDocument();
-  });
-
-  it("renders terms copy as a standalone element", () => {
-    render(
-      <MemoryRouter>
-        <AuthTerms />
-      </MemoryRouter>,
-    );
-    expect(
-      screen.getByText(
-        "By continuing you agree to SiteSurveyor's terms and privacy policy.",
-      ),
-    ).toBeInTheDocument();
+  it("omits the footer band when none is supplied", () => {
+    const { container } = renderShell();
+    expect(container.querySelector("footer")).not.toBeInTheDocument();
   });
 });

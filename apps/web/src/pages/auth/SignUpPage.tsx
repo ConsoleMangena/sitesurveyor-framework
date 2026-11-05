@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, UserPlus } from "lucide-react";
-import AuthShell, { AuthRule, AuthTerms } from "../../components/auth/AuthShell";
+import AuthShell, { AuthRule } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -137,20 +137,16 @@ export default function SignUpPage() {
   return (
     <AuthShell
       title="Create your account"
-      description="Email, GitHub, or wallet — one account for all three."
       footer={
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              Sign in
-            </Link>
-          </p>
-          <AuthTerms />
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Sign in
+          </Link>
+        </p>
       }
     >
       <div className="auth-content">

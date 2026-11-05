@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Globe2 } from "lucide-react";
+import { Store } from "lucide-react";
 import AuthBackground from "../AuthBackground";
 import AnchorPlat from "./AnchorPlat";
 import { ThemeToggle } from "../theme/ThemeToggle";
@@ -19,7 +19,7 @@ export interface AuthShellProps {
    * content pass false and render it themselves.
    */
   showBrand?: boolean;
-  /** Extra content pinned under the working column (terms, escape links). */
+  /** Extra content pinned under the working column (cross-links, escape routes). */
   footer?: ReactNode;
   className?: string;
 }
@@ -54,7 +54,7 @@ export default function AuthShell({
         <section className="auth-side">
           <header className="auth-side-bar">
             <Link to="/" className="auth-escape">
-              <Globe2 className="size-4" aria-hidden="true" />
+              <Store className="size-4" aria-hidden="true" />
               <span className="auth-escape-full">Public market</span>
               <span className="auth-escape-short">Home</span>
             </Link>
@@ -98,15 +98,6 @@ export default function AuthShell({
         </section>
       </div>
     </div>
-  );
-}
-
-/** Standard terms line shared by the sign-up and sign-in screens. */
-export function AuthTerms() {
-  return (
-    <p className="auth-terms">
-      By continuing you agree to SiteSurveyor&apos;s terms and privacy policy.
-    </p>
   );
 }
 
