@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import FieldError from "@/components/errors/FieldError.tsx";
 import {
   Package,
   Search,
@@ -37,26 +36,25 @@ import {
 } from "../../lib/repositories/adminPlatform.ts";
 import {
   createMarketplaceRequest,
-  hasActiveRequest,
+  getMyRequestForListing,
   listMyRequestsWithListings,
   listSellerRequestsWithListings,
   updateRequestStatus,
+  type MarketplaceRequestRow,
   type RequestWithListing,
   type RequestWithListingAndWorkspace,
 } from "../../lib/repositories/marketplaceRequests.ts";
-import {
-  createMarketplaceOrder,
-} from "../../lib/repositories/marketplaceOrders.ts";
 import { notifyMarketplaceRequest } from "../../lib/repositories/notificationEvents.ts";
 import {
   getMarketplaceWallet,
   getWorkspaceById,
 } from "../../lib/repositories/workspaces.ts";
-import { usePhantomWallet } from "../../features/phantom/hooks/usePhantomWallet.ts";
-import { SOLANA_CLUSTER } from "../../features/phantom/lib/config.ts";
-import { sendTokens } from "../../features/phantom/payments/phantomPay.ts";
-import { PublicKey } from "@solana/web3.js";
-import SelectDropdown from "../../components/SelectDropdown.tsx";
+import { AddToCartButton } from "../../components/market/AddToCartButton.tsx";
+import {
+  MarketCartButton,
+  MarketCartSheet,
+} from "../../components/market/MarketCartSheet.tsx";
+import { ListingPaymentPanel } from "../../components/market/ListingPaymentPanel.tsx";
 import PageLoader from "../../components/PageLoader.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
@@ -80,6 +78,7 @@ import { Switch } from "../../components/ui/switch.tsx";
 import { cn } from "../../lib/utils.ts";
 import { assetMediaUrl } from "../../lib/repositories/assetMedia.ts";
 import { getEquipmentPlaceholder } from "../../components/market/marketPlaceholders.ts";
+import { useAuthStore } from "../../lib/auth/auth-store.ts";
 
 /* ── SVG Icon Components ── */
 function IconTotalStation() {
@@ -269,14 +268,16 @@ export default function MarketplacePage({
   const [requestEndDate, setRequestEndDate] = useState("");
   const [requestSending, setRequestSending] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
-  const [alreadyRequested, setAlreadyRequested] = useState(false);
+  /** The buyer's latest request on the open listing — payment waits on `accepted`. */
+  const [listingRequest, setListingRequest] =
+    useState<MarketplaceRequestRow | null>(null);
 
   const [showPayment, setShowPayment] = useState(false);
-  const [paymentToken, setPaymentToken] = useState<"SOL" | "USDC">("USDC");
-  const [paymentBusy, setPaymentBusy] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState<{ signature: string; orderId: string } | null>(null);
+  /** Which accepted request is showing its payment panel in My Requests. */
+  const [payRequestId, setPayRequestId] = useState<string | null>(null);
 
-  const phantomWallet = usePhantomWallet();
+  const [cartOpen, setCartOpen] = useState(false);
+  const authUser = useAuthStore((s) => s.user);
 
   const fetchListings = useCallback(async () => {
     try {
@@ -380,17 +381,16 @@ export default function MarketplacePage({
     setRequestStartDate("");
     setRequestEndDate("");
     setShowPayment(false);
-    setPaymentToken("USDC");
-    setPaymentSuccess(null);
-    const active = await hasActiveRequest(listing.id);
-    setAlreadyRequested(active);
+    setListingRequest(null);
+    const existing = await getMyRequestForListing(listing.id);
+    setListingRequest(existing);
   }, []);
 
   const handleSubmitRequest = useCallback(async () => {
     if (!selectedListing) return;
     setRequestSending(true);
     try {
-      await createMarketplaceRequest({
+      const created = await createMarketplaceRequest({
         listingId: selectedListing.id,
         requesterWorkspaceId: workspaceId,
         message: requestMessage.trim() || null,
@@ -399,7 +399,7 @@ export default function MarketplacePage({
       });
       setRequestSent(true);
       setShowRequestForm(false);
-      setAlreadyRequested(true);
+      setListingRequest(created);
       const ws = await getWorkspaceById(workspaceId).catch(() => null);
       void notifyMarketplaceRequest({
         sellerWorkspaceId: selectedListing.workspace_id,
@@ -413,59 +413,6 @@ export default function MarketplacePage({
       setRequestSending(false);
     }
   }, [selectedListing, workspaceId, requestMessage, requestStartDate, requestEndDate]);
-
-  const isValidSolanaAddress = useCallback((value: string) => {
-    if (!value.trim()) return false;
-    try {
-      new PublicKey(value.trim());
-      return true;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const handlePayWithSolana = useCallback(async () => {
-    if (!selectedListing) return;
-    if (!selectedListing.seller_wallet_address) {
-      setNotice("This listing does not have a Solana payment address.");
-      return;
-    }
-    if (!isValidSolanaAddress(selectedListing.seller_wallet_address)) {
-      setNotice("The seller wallet address on this listing is invalid.");
-      return;
-    }
-    setPaymentBusy(true);
-    setNotice(null);
-    try {
-      const { signature } = await sendTokens({
-        token: paymentToken,
-        recipient: selectedListing.seller_wallet_address,
-        amount: selectedListing.price,
-      });
-      const order = await createMarketplaceOrder({
-        listing_id: selectedListing.id,
-        listing_workspace_id: selectedListing.workspace_id,
-        buyer_workspace_id: workspaceId,
-        amount: selectedListing.price,
-        currency: paymentToken,
-        provider: "solana",
-        external_payment_ref: signature,
-        payment_status: "completed",
-        platform_fee_amount: 0,
-        metadata: {
-          listing_type: selectedListing.listing_type,
-          token: paymentToken,
-          seller_wallet_address: selectedListing.seller_wallet_address,
-        },
-      });
-      setPaymentSuccess({ signature, orderId: order.id });
-      setShowPayment(false);
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Payment failed. Please try again.");
-    } finally {
-      setPaymentBusy(false);
-    }
-  }, [selectedListing, workspaceId, paymentToken, isValidSolanaAddress]);
 
   const openCreateListing = () => {
     setEditingId(null);
@@ -584,6 +531,21 @@ export default function MarketplacePage({
   const saleListings = listingState.filter((l) => l.listing_type !== "hire").length;
   const hireListings = listingState.filter((l) => l.listing_type === "hire").length;
   const inUseListings = listingState.filter((l) => l.assets?.status === "deployed").length;
+
+  /** A row becomes a basket entry; own listings and deployed assets never do. */
+  const cartListingOf = (l: MarketplaceListingWithAsset) => ({
+    id: l.id,
+    name: l.name,
+    price: l.price,
+    currency: l.currency,
+    listingType: l.listing_type,
+    seller: l.seller,
+    location: l.location,
+    sellerWorkspaceId: l.workspace_id,
+  });
+
+  const canBuy = (l: MarketplaceListingWithAsset) =>
+    l.workspace_id !== workspaceId && l.assets?.status !== "deployed";
 
   if (editorOpen) {
     return (
@@ -865,11 +827,16 @@ export default function MarketplacePage({
         title="Marketplace"
         description="Browse available survey instruments and calibration services"
         actions={
-          isPlatformAdmin ? (
-            <Button onClick={openCreateListing} className="gap-2">
-              <Plus className="h-4 w-4" /> List a global instrument
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <MarketCartButton onClick={() => setCartOpen(true)}>
+              Cart
+            </MarketCartButton>
+            {isPlatformAdmin ? (
+              <Button onClick={openCreateListing} className="gap-2">
+                <Plus className="h-4 w-4" /> List a global instrument
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -1040,39 +1007,40 @@ export default function MarketplacePage({
                               Currently In Use
                             </Button>
                           )}
-                          {!isOwner && !isDeployed && alreadyRequested && (
-                            <>
-                              <Button disabled className="w-full sm:w-auto">
-                                <CheckCircle2 className="mr-2 h-4 w-4" /> Request Pending
-                              </Button>
-                              {selectedListing.seller_wallet_address ? (
-                                <Button
-                                  onClick={() => setShowPayment(true)}
-                                  className="w-full sm:w-auto"
-                                >
-                                  Make Payment
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  disabled
-                                  className="w-full sm:w-auto"
-                                >
-                                  Seller has no wallet
-                                </Button>
-                              )}
-                            </>
-                          )}
-                          {!isOwner && !isDeployed && !alreadyRequested && (
-                            <Button
-                              onClick={() => setShowRequestForm(true)}
-                              className="w-full sm:w-auto"
-                            >
-                              {selectedListing.listing_type === "hire"
-                                ? "Request Hire"
-                                : "Request Purchase"}
+                          {!isOwner && !isDeployed && listingRequest?.status === "pending" && (
+                            <Button variant="outline" disabled className="w-full sm:w-auto">
+                              <Clock className="mr-2 h-4 w-4" /> Request pending
                             </Button>
                           )}
+                          {!isOwner && !isDeployed && listingRequest?.status === "accepted" && (
+                            <Button
+                              onClick={() => setShowPayment(true)}
+                              className="w-full sm:w-auto"
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Approved — pay now
+                            </Button>
+                          )}
+                          {!isOwner &&
+                            !isDeployed &&
+                            (!listingRequest ||
+                              listingRequest.status === "declined" ||
+                              listingRequest.status === "cancelled") && (
+                              <>
+                                <Button
+                                  onClick={() => setShowRequestForm(true)}
+                                  className="w-full sm:w-auto"
+                                >
+                                  {selectedListing.listing_type === "hire"
+                                    ? "Request Hire"
+                                    : "Request Purchase"}
+                                </Button>
+                                <AddToCartButton
+                                  listing={cartListingOf(selectedListing)}
+                                  className="w-full sm:w-auto"
+                                />
+                              </>
+                            )}
                         </div>
                       );
                     })()
@@ -1203,92 +1171,24 @@ export default function MarketplacePage({
                   </Alert>
                 )}
 
-                {showPayment && selectedListing && (
-                  <div className="space-y-3 rounded-lg border bg-muted/40 p-4">
-                    <h4 className="text-sm font-semibold">Pay with Phantom</h4>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Recipient wallet</Label>
-                      <code className="block break-all rounded bg-background px-2 py-1 text-xs text-muted-foreground">
-                        {selectedListing.seller_wallet_address}
-                      </code>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Amount</span>
-                      <span className="font-medium">
-                        {selectedListing.price} {paymentToken}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Token</Label>
-                      <SelectDropdown
-                        options={[
-                          { value: "USDC", label: "USDC" },
-                          { value: "SOL", label: "SOL" },
-                        ]}
-                        value={paymentToken}
-                        onChange={(v) => setPaymentToken(v as "SOL" | "USDC")}
-                      />
-                    </div>
-
-                    {!phantomWallet.installed ? (
-                      <FieldError>
-                        Phantom wallet is not installed. Install the browser
-                        extension to pay.
-                      </FieldError>
-                    ) : phantomWallet.connected && phantomWallet.shortAddress ? (
-                      <p className="text-xs text-muted-foreground">
-                        Paying from{" "}
-                        <span className="font-mono">{phantomWallet.shortAddress}</span>
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Your Phantom wallet will ask you to connect when you
-                        confirm the payment.
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowPayment(false)}
-                        disabled={paymentBusy}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={paymentBusy || !phantomWallet.installed}
-                        onClick={handlePayWithSolana}
-                      >
-                        {paymentBusy ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
-                          </>
-                        ) : (
-                          `Pay ${selectedListing.price} ${paymentToken}`
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {paymentSuccess && (
-                  <Alert variant="success">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <AlertDescription className="space-y-1">
-                      <p>Payment sent and order recorded.</p>
-                      <a
-                        href={`https://explorer.solana.com/tx/${paymentSuccess.signature}?cluster=${SOLANA_CLUSTER}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-primary underline"
-                      >
-                        View transaction on Solana Explorer
-                      </a>
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {showPayment &&
+                  selectedListing &&
+                  listingRequest?.status === "accepted" && (
+                    <ListingPaymentPanel
+                      listing={{
+                        id: selectedListing.id,
+                        name: selectedListing.name,
+                        price: selectedListing.price,
+                        currency: selectedListing.currency,
+                        listingType: selectedListing.listing_type,
+                      }}
+                      buyerWorkspaceId={workspaceId}
+                      onPaid={(orderId) => {
+                        setNotice(`Order ${orderId.slice(0, 8)} recorded.`);
+                        setShowPayment(false);
+                      }}
+                    />
+                  )}
               </div>
             )}
           </DialogTemplate>
@@ -1365,6 +1265,9 @@ export default function MarketplacePage({
                               Posted {new Date(l.created_at).toLocaleDateString()}
                             </p>
                           </div>
+                          {canBuy(l) ? (
+                            <AddToCartButton listing={cartListingOf(l)} size="sm" />
+                          ) : null}
                         </div>
                       </CardContent>
                     </Card>
@@ -1448,6 +1351,12 @@ export default function MarketplacePage({
                             <p className="text-xs text-muted-foreground">
                               Posted {new Date(l.created_at).toLocaleDateString()}
                             </p>
+                            {canBuy(l) ? (
+                              <AddToCartButton
+                                listing={cartListingOf(l)}
+                                className="mt-1 w-full sm:w-auto"
+                              />
+                            ) : null}
                           </div>
                         </CardContent>
                       </Card>
@@ -1519,6 +1428,12 @@ export default function MarketplacePage({
                           <p className="mt-auto text-xs text-muted-foreground">
                             Posted {new Date(l.created_at).toLocaleDateString()}
                           </p>
+                          {canBuy(l) ? (
+                            <AddToCartButton
+                              listing={cartListingOf(l)}
+                              className="w-full"
+                            />
+                          ) : null}
                         </CardContent>
                       </Card>
                     );
@@ -1560,7 +1475,8 @@ export default function MarketplacePage({
                   <PageLoader />
                 ) : myRequests.length === 0 ? (
                   <div className="py-12 text-center text-sm text-muted-foreground">
-                    You have not requested any items yet.
+                    Nothing requested yet. Add listings to your cart, then send
+                    one request for the whole basket.
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1610,8 +1526,39 @@ export default function MarketplacePage({
                                 <Ban className="mr-2 h-3 w-3" /> Cancel
                               </Button>
                             )}
+                            {req.status === "accepted" && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  setPayRequestId((current) =>
+                                    current === req.id ? null : req.id,
+                                  )
+                                }
+                              >
+                                <DollarSign className="mr-2 h-3 w-3" />
+                                {payRequestId === req.id ? "Hide payment" : "Pay now"}
+                              </Button>
+                            )}
                           </div>
                         </CardContent>
+                        {payRequestId === req.id && (
+                          <CardContent className="border-t border-border/60 py-4">
+                            <ListingPaymentPanel
+                              listing={{
+                                id: req.listing_id,
+                                name: req.marketplace_listings.name,
+                                price: req.marketplace_listings.price,
+                                currency: req.marketplace_listings.currency,
+                                listingType: req.marketplace_listings.listing_type,
+                              }}
+                              buyerWorkspaceId={workspaceId}
+                              onPaid={() => {
+                                setPayRequestId(null);
+                                void fetchMyRequests();
+                              }}
+                            />
+                          </CardContent>
+                        )}
                       </Card>
                     ))}
                   </div>
@@ -1698,6 +1645,12 @@ export default function MarketplacePage({
           </Tabs>
         </>
       )}
+
+      <MarketCartSheet
+        open={cartOpen}
+        onOpenChange={setCartOpen}
+        buyer={{ workspaceId, name: authUser?.name ?? null }}
+      />
     </DashboardShell>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Ban, Loader2 } from "lucide-react";
+import { Ban, CreditCard, Loader2 } from "lucide-react";
 import { supabase } from "../../lib/supabase/client.ts";
 import type { UiUser } from "../../features/workspace/types.ts";
 import {
@@ -9,6 +9,7 @@ import {
   type MarketplaceRequestRow,
 } from "../../lib/repositories/marketplaceRequests.ts";
 import { notifyMarketplaceRequest } from "../../lib/repositories/notificationEvents.ts";
+import { ListingPaymentPanel } from "./ListingPaymentPanel.tsx";
 import FieldError from "@/components/errors/FieldError.tsx";
 import type { ListingRow } from "./marketFeed.ts";
 import { Button } from "../ui/button.tsx";
@@ -39,6 +40,7 @@ export function ListingRequestPanel({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -202,6 +204,9 @@ export function ListingRequestPanel({
             <span className="capitalize text-muted-foreground">
               {request.status}
             </span>
+            {request.status === "accepted" ? (
+              <span className="text-muted-foreground"> — you can pay now</span>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {request.status === "pending" ? (
@@ -220,6 +225,16 @@ export function ListingRequestPanel({
                 Cancel
               </Button>
             ) : null}
+            {request.status === "accepted" ? (
+              <Button
+                size="sm"
+                onClick={() => setPayOpen((open) => !open)}
+                className="h-9 px-3 text-xs"
+              >
+                <CreditCard className="mr-1 size-3.5" />
+                {payOpen ? "Hide payment" : "Pay now"}
+              </Button>
+            ) : null}
             {onClose ? (
               <Button
                 variant="ghost"
@@ -232,6 +247,19 @@ export function ListingRequestPanel({
             ) : null}
           </div>
         </div>
+        {payOpen && request.status === "accepted" ? (
+          <ListingPaymentPanel
+            listing={{
+              id: listing.id,
+              name: listing.name,
+              price: listing.price,
+              currency: listing.currency,
+              listingType: listing.listing_type,
+            }}
+            buyerWorkspaceId={user.workspaceId}
+            onPaid={() => setPayOpen(false)}
+          />
+        ) : null}
         {declinedLike ? (
           <>
             <DialogActionRow>

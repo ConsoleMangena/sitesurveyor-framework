@@ -102,29 +102,6 @@ export async function hasPendingRequest(
 }
 
 /**
- * Check if the current user has an active request (pending or accepted) on a
- * listing. Used to gate the payment button behind a request.
- */
-export async function hasActiveRequest(listingId: string): Promise<boolean> {
-  const user = await getCurrentUser()
-  if (!user) return false
-
-  const { data, error } = await supabase
-    .from('marketplace_requests')
-    .select('id')
-    .eq('listing_id', listingId)
-    .eq('requester_user_id', user.id)
-    .in('status', ['pending', 'accepted'])
-    .limit(1)
-
-  if (error) {
-    console.warn('Failed to check active request', error)
-    return false
-  }
-  return (data?.length ?? 0) > 0
-}
-
-/**
  * List requests for a specific listing (seller view).
  */
 export async function listRequestsForListing(

@@ -97,6 +97,32 @@
     letter-spacing: -0.02em;
   }
 
+  /* ── Registry band ──────────────────────────────────────────── */
+
+  /* The registry needs a ground of its own: on a pure-white page the
+     tiles, the search deck and the empty states all read as the same
+     flat sheet. Light mode drops them onto the muted tint; dark mode
+     sinks the band below the cards so the cards still float. Secondary
+     text is pulled toward the foreground inside the band — the same
+     mix in both themes, since foreground is always the further colour
+     from a tinted ground, and --muted-foreground alone misses 4.5:1. */
+  .web3-surface .market-registry {
+    --muted-foreground: color-mix(
+      in oklab,
+      var(--muted-foreground),
+      var(--foreground) 45%
+    );
+
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--muted);
+  }
+
+  .dark .web3-surface .market-registry,
+  [data-theme="dark"] .web3-surface .market-registry {
+    background: color-mix(in oklab, var(--background), black 30%);
+  }
+
   /* ── Map ─────────────────────────────────────────────────────── */
 
   .market-map-frame {

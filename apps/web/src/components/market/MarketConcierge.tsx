@@ -185,7 +185,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
 
   return (
     <section
-      aria-label="Market concierge chat"
+      aria-label="SiteSurveyor AI market chat"
       className={cn(
         "flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card sm:min-h-[460px] lg:min-h-[400px]",
         className,
@@ -201,7 +201,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
           />
           <div className="min-w-0">
             <h2 className="market-map-title truncate text-foreground">
-              SiteSurveyor
+              SiteSurveyor AI
             </h2>
             <p className="truncate text-micro text-muted-foreground">
               Ask about listings, people, jobs, training
@@ -221,7 +221,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
         ref={scrollRef}
         onScroll={handleScroll}
         role="log"
-        aria-label="Conversation with the market concierge"
+        aria-label="Conversation with SiteSurveyor AI"
         aria-busy={streaming}
         className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
       >

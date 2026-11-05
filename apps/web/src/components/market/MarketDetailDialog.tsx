@@ -36,6 +36,7 @@ import {
   type ShowcaseItemRow,
 } from "./marketFeed.ts";
 import { ListingGallery } from "./ListingGallery.tsx";
+import { AddToCartButton } from "./AddToCartButton.tsx";
 import {
   getEquipmentPlaceholder,
   getKindPlaceholder,
@@ -756,26 +757,58 @@ export function MarketDetailDialog({
     if (allowRequest && activeDot.kind === "listing") {
       if (!signedIn) {
         return (
-          <DialogActionRow>
-            <CloseAction onClose={onClose} />
-            <Button asChild size="sm" className={primaryActionClass}>
-              <Link to="/login">
-                {listing?.listing_type === "hire"
-                  ? "Sign In to Hire"
-                  : "Sign In to Buy"}
-              </Link>
-            </Button>
-          </DialogActionRow>
+          <div className="w-full space-y-2.5">
+            {listing ? (
+              <AddToCartButton
+                listing={{
+                  id: listing.id,
+                  name: listing.name,
+                  price: listing.price,
+                  currency: listing.currency,
+                  listingType: listing.listing_type,
+                  seller: listing.seller,
+                  location: listing.location,
+                  sellerWorkspaceId: null,
+                }}
+                className="w-full"
+              />
+            ) : null}
+            <DialogActionRow>
+              <CloseAction onClose={onClose} />
+              <Button asChild size="sm" className={primaryActionClass}>
+                <Link to="/login">
+                  {listing?.listing_type === "hire"
+                    ? "Sign In to Hire"
+                    : "Sign In to Buy"}
+                </Link>
+              </Button>
+            </DialogActionRow>
+          </div>
         );
       }
       if (!listing || !user) return null;
       return (
-        <ListingRequestPanel
-          key={listing.id}
-          listing={listing}
-          user={user}
-          onClose={onClose}
-        />
+        <div className="w-full space-y-2.5">
+          <AddToCartButton
+            listing={{
+              id: listing.id,
+              name: listing.name,
+              price: listing.price,
+              currency: listing.currency,
+              listingType: listing.listing_type,
+              seller: listing.seller,
+              location: listing.location,
+              sellerWorkspaceId: null,
+            }}
+            className="w-full"
+          />
+          <ListingRequestPanel
+            key={listing.id}
+            listing={listing}
+            user={user}
+            onClose={onClose}
+          />
+        </div>
       );
     }
     if (allowRequest && user) {

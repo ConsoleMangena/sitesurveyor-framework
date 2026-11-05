@@ -165,7 +165,7 @@ export default function MarketRail({
     <section aria-label={rail.title} className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          <h3 className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground sm:text-lg">
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: rail.accent }} aria-hidden="true" />
             <span className="truncate">{rail.title}</span>
             <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">{rail.items.length}</span>
