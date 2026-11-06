@@ -3,6 +3,7 @@ import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   Circle,
+  ImageOverlay,
   MapContainer,
   Marker,
   Polyline,
@@ -21,7 +22,9 @@ import {
   Crosshair,
   Download,
   Eye,
+  Image as ImageIcon,
   Layers,
+  Loader,
   MapPin,
   Maximize2,
   Minimize2,
@@ -45,6 +48,7 @@ import {
   type MapCandidate,
 } from "../../lib/surveys/workbench.ts";
 import {
+  CATEGORY_EXPORTS,
   CATEGORY_LABELS,
   coordText,
   distanceText,
@@ -60,7 +64,10 @@ import {
   initialBearingDegrees,
   type ClassifiedVectorFeatureCollection,
 } from "../../lib/surveys/vectorGeoJson.ts";
-import type { SurveyDeliverable } from "../../lib/repositories/satelliteSurveys.ts";
+import {
+  deliverableUrl,
+  type SurveyDeliverable,
+} from "../../lib/repositories/satelliteSurveys.ts";
 
 interface ClassifiedVectorViewerProps {
   isOpen: boolean;
@@ -72,6 +79,7 @@ interface ClassifiedVectorViewerProps {
   clientName?: string;
   crs?: string | null;
   deliverables?: SurveyDeliverable[];
+  classifiedImageUrl?: string | null;
   onDownloadKmz?: () => void;
 }
 
@@ -140,6 +148,7 @@ export default function ClassifiedVectorViewer({
   clientName = "Site Survey",
   crs = "WGS 84 / EPSG:4326",
   deliverables = [],
+  classifiedImageUrl: propClassifiedImageUrl,
   onDownloadKmz,
 }: ClassifiedVectorViewerProps) {
   const [selectedCandidate, setSelectedCandidate] = useState<MapCandidate | null>(
@@ -156,6 +165,7 @@ export default function ClassifiedVectorViewer({
     "satellite",
   );
   const [layers, setLayers] = useState({
+    classifiedImage: true,
     candidates: true,
     coreZones: true,
     verificationZones: true,
@@ -163,6 +173,42 @@ export default function ClassifiedVectorViewer({
     rangeRings: true,
     aoiEnvelope: true,
   });
+
+  const [internalImageUrl, setInternalImageUrl] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(false);
+  const [classifiedOpacity, setClassifiedOpacity] = useState(0.85);
+  const [showImageLightbox, setShowImageLightbox] = useState(false);
+
+  const mapKind = CATEGORY_EXPORTS[activeDossierCategory]?.map;
+  const mapDeliverable = useMemo(() => {
+    if (!mapKind) return null;
+    return deliverables.find((d) => d.kind === mapKind) ?? null;
+  }, [deliverables, mapKind]);
+
+  useEffect(() => {
+    if (propClassifiedImageUrl) {
+      setInternalImageUrl(propClassifiedImageUrl);
+      return;
+    }
+    if (!mapDeliverable) {
+      setInternalImageUrl(null);
+      return;
+    }
+    let active = true;
+    setLoadingImage(true);
+    void deliverableUrl(mapDeliverable)
+      .then((url) => {
+        if (active) setInternalImageUrl(url);
+      })
+      .finally(() => {
+        if (active) setLoadingImage(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [propClassifiedImageUrl, mapDeliverable]);
+
+  const effectiveImageUrl = propClassifiedImageUrl || internalImageUrl;
 
   const [showGeoJsonModal, setShowGeoJsonModal] = useState(false);
   const [copiedCoords, setCopiedCoords] = useState(false);
@@ -365,6 +411,21 @@ export default function ClassifiedVectorViewer({
             ))}
           </div>
 
+          {/* HD Classified Map Image view */}
+          {effectiveImageUrl ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImageLightbox(true)}
+              className="h-8 gap-1.5 border-slate-800 bg-slate-900/80 text-xs text-sky-300 hover:bg-slate-800 hover:text-sky-200"
+              title="Open Processed Classified Map Image in High Resolution"
+            >
+              <ImageIcon className="size-3.5 text-sky-400" />
+              <span className="hidden sm:inline">HD Image</span>
+            </Button>
+          ) : null}
+
           {/* GeoJSON code view */}
           <Button
             type="button"
@@ -434,6 +495,16 @@ export default function ClassifiedVectorViewer({
             maxZoom={20}
             maxNativeZoom={activeBasemap.maxNativeZoom ?? 19}
           />
+
+          {/* Georeferenced Processed Classified Image Overlay */}
+          {layers.classifiedImage && effectiveImageUrl ? (
+            <ImageOverlay
+              url={effectiveImageUrl}
+              bounds={bounds}
+              opacity={classifiedOpacity}
+              zIndex={250}
+            />
+          ) : null}
 
           {/* AOI Bounding Envelope */}
           {layers.aoiEnvelope ? (
@@ -727,6 +798,77 @@ export default function ClassifiedVectorViewer({
                 />
                 <span>AOI Survey Boundary</span>
               </label>
+
+              {/* Processed Classified Image Section */}
+              <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer hover:text-slate-100 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={layers.classifiedImage}
+                      onChange={(e) =>
+                        setLayers((l) => ({
+                          ...l,
+                          classifiedImage: e.target.checked,
+                        }))
+                      }
+                      className="rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500"
+                    />
+                    <span className="flex items-center gap-1.5">
+                      <ImageIcon className="size-3 text-sky-400" />
+                      <span>Classified Map Raster</span>
+                    </span>
+                  </label>
+                  {loadingImage ? (
+                    <span className="text-[10px] text-amber-400 animate-pulse flex items-center gap-1">
+                      <Loader className="size-2.5 animate-spin" />
+                      Loading…
+                    </span>
+                  ) : effectiveImageUrl ? (
+                    <span className="text-[10px] text-emerald-400 font-semibold">Active</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500">Not found</span>
+                  )}
+                </div>
+
+                {layers.classifiedImage && effectiveImageUrl ? (
+                  <div className="mt-2 space-y-1.5 pl-5">
+                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                      <span>Raster Opacity</span>
+                      <span className="font-mono text-slate-200">
+                        {Math.round(classifiedOpacity * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.05"
+                      value={classifiedOpacity}
+                      onChange={(e) =>
+                        setClassifiedOpacity(parseFloat(e.target.value))
+                      }
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-800 accent-sky-500"
+                    />
+                    <div className="flex items-center gap-1 pt-0.5">
+                      {[0.4, 0.7, 0.85, 1.0].map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setClassifiedOpacity(val)}
+                          className={`rounded px-1.5 py-0.5 text-[9.5px] font-mono transition-colors ${
+                            classifiedOpacity === val
+                              ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
+                              : "bg-slate-900 text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          {Math.round(val * 100)}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -985,6 +1127,55 @@ export default function ClassifiedVectorViewer({
             </div>
             <div className="flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed text-slate-300">
               <pre>{JSON.stringify(geoJsonData, null, 2)}</pre>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* FULL-RESOLUTION CLASSIFIED IMAGE LIGHTBOX */}
+      {showImageLightbox && effectiveImageUrl ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[600] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div className="flex max-h-[92vh] max-w-5xl w-full flex-col rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden">
+            <div className="flex h-12 items-center justify-between border-b border-slate-800 px-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                <ImageIcon className="size-4 text-sky-400" />
+                <span>Processed Classified Map Image — {categoryInfo.name}</span>
+                <span className="text-xs text-slate-400 font-normal">
+                  ({clientName})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={effectiveImageUrl}
+                  download={`${(clientName || "survey").toLowerCase().replace(/[^a-z0-9_-]/g, "_")}_${activeDossierCategory}_classified_map.png`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-800 bg-slate-900 px-2.5 text-xs text-slate-200 hover:bg-slate-800"
+                >
+                  <Download className="size-3 text-emerald-400" />
+                  <span>Download PNG</span>
+                </a>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowImageLightbox(false)}
+                  className="size-7 text-slate-400 hover:text-slate-100"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-900/40">
+              <img
+                src={effectiveImageUrl}
+                alt={`Classified ${categoryInfo.name} Map`}
+                className="max-h-[78vh] w-auto rounded-lg shadow-2xl object-contain border border-slate-800/80"
+              />
             </div>
           </div>
         </div>

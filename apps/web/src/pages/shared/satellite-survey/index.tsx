@@ -147,7 +147,7 @@ export default function SatelliteSurveyPage({
     });
   }, [fetchJobs]);
 
-  const [layers, setLayers] = useState({ aoi: true, candidates: true });
+  const [layers, setLayers] = useState({ aoi: true, candidates: true, classifiedImage: true });
   const [basemap, setBasemap] = useState("satellite");
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -210,6 +210,27 @@ export default function SatelliteSurveyPage({
     const kinds = CATEGORY_EXPORTS[jobDossierCategory];
     return (detail?.deliverables ?? []).find((d) => d.kind === kinds.kmz) ?? null;
   }, [detail?.deliverables, jobDossierCategory]);
+
+  const mapDeliverable = useMemo(() => {
+    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
+    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.map) ?? null;
+  }, [detail?.deliverables, jobDossierCategory]);
+
+  const [classifiedImageUrl, setClassifiedImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mapDeliverable) {
+      setClassifiedImageUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void deliverableUrl(mapDeliverable).then((url) => {
+      if (!cancelled) setClassifiedImageUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mapDeliverable]);
 
   const handleDownloadKmz = useCallback(async () => {
     if (!kmzDeliverable) return;
@@ -460,6 +481,7 @@ export default function SatelliteSurveyPage({
           }}
           onDeleteJob={handleDeleteJob}
           activeDossierCategory={jobDossierCategory}
+          hasProcessedImage={Boolean(classifiedImageUrl)}
         />
 
         <section className="sw-map-shell sw-map" aria-label="Map canvas">
@@ -502,6 +524,7 @@ export default function SatelliteSurveyPage({
             onMoveTarget={moveTarget}
             onView={setView}
             onOpenVectorViewer={() => setVectorViewerOpen(true)}
+            classifiedImageUrl={classifiedImageUrl}
           />
         </section>
 
@@ -585,6 +608,7 @@ export default function SatelliteSurveyPage({
         clientName={openedJob?.title ?? values.clientName}
         crs={detail?.run.result?.target?.crs ?? "WGS 84 / EPSG:4326"}
         deliverables={detail?.deliverables ?? []}
+        classifiedImageUrl={classifiedImageUrl}
         onDownloadKmz={kmzDeliverable ? () => void handleDownloadKmz() : undefined}
       />
     </DashboardShell>
