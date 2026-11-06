@@ -31,7 +31,7 @@ export default function SatelliteSurveyCard({
 
   return (
     <DashboardCard
-      title="Satellite Survey"
+      title="Earth Observation"
       icon={<Satellite />}
       titleAction={
         <PanelMeta>
@@ -46,7 +46,7 @@ export default function SatelliteSurveyCard({
           className="h-7 px-2 text-xs"
           onClick={() => onNavigate?.("satellite")}
         >
-          Open Satellite Survey
+          Open Earth Observation
         </Button>
       }
       contentClassName="flex flex-col gap-1"

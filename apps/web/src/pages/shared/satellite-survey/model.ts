@@ -25,6 +25,7 @@ export const DEFAULT_HALF_DEG = 0.12;
 export const DEFAULT_TARGET = { latitude: -19.50487, longitude: 29.84598 };
 
 export interface SurveyFormValues {
+  jobId?: string;
   latitude: string;
   longitude: string;
   clientName: string;
@@ -43,6 +44,7 @@ export type SurveyDraft = Omit<StartSurveyInput, "workspaceId" | "projectId">;
 /** The form as the workbench opens it: a real point, a real extent, one category at a time. */
 export function initialForm(): SurveyFormValues {
   return {
+    jobId: "",
     latitude: DEFAULT_TARGET.latitude.toFixed(5),
     longitude: DEFAULT_TARGET.longitude.toFixed(5),
     clientName: "Site Survey",

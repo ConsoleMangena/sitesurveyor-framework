@@ -234,9 +234,9 @@ export default function SatelliteSurveyPage({
   return (
     <DashboardShell>
       <DashboardHeader
-        title="Satellite Survey"
-        description="Screen a coordinate for groundwater, minerals, soil capability and site safety."
-        meta={`${runs.length} survey${runs.length === 1 ? "" : "s"} in this workspace`}
+        title="Earth Observation"
+        description="Screen a coordinate for groundwater, minerals, soil capability and site safety using multi-spectral Earth Observation."
+        meta={`${runs.length} observation${runs.length === 1 ? "" : "s"} in this workspace`}
       />
 
       <WorkbenchBar
@@ -369,6 +369,7 @@ export default function SatelliteSurveyPage({
 
           <div className="sw-panel__body flex-1">
             <TargetForm
+              workspaceId={workspaceId}
               values={values}
               onChange={patch}
               queueing={queueing}

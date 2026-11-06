@@ -15,8 +15,14 @@ import {
   CheckCircle2,
   PlayCircle,
   Clock,
+  Droplets,
+  Sprout,
+  ShieldAlert,
+  Wrench,
+  Satellite,
   type LucideIcon,
 } from "lucide-react";
+import { getRequiredToolsForSurvey } from "../../lib/surveys/surveyTools.ts";
 import {
   archiveJob,
   createJob,
@@ -71,6 +77,7 @@ type JobStatus = Database["public"]["Enums"]["job_status"];
 interface JobsPageProps {
   workspaceId: string;
   isPlatformAdmin?: boolean;
+  onNavigate?: (view: string) => void;
 }
 
 function toDatetimeLocal(iso: string | null): string {
@@ -90,6 +97,10 @@ function fromDatetimeLocal(s: string): string | null {
 
 type JobFilter =
   | "all"
+  | "Groundwater"
+  | "Minerals"
+  | "Soil"
+  | "Hazard"
   | "Topographical"
   | "Cadastral"
   | "Engineering"
@@ -97,6 +108,10 @@ type JobFilter =
   | "Monitoring";
 
 const jobTypeIcons: Record<string, LucideIcon> = {
+  Groundwater: Droplets,
+  Minerals: Pickaxe,
+  Soil: Sprout,
+  Hazard: ShieldAlert,
   Topographical: Mountain,
   Cadastral: MapPinned,
   Engineering: HardHat,
@@ -105,14 +120,22 @@ const jobTypeIcons: Record<string, LucideIcon> = {
 };
 
 const JOB_TYPE_OPTIONS = [
-  { value: "Topographical", label: "Topographical" },
-  { value: "Cadastral", label: "Cadastral" },
-  { value: "Engineering", label: "Engineering" },
-  { value: "Mining", label: "Mining" },
-  { value: "Monitoring", label: "Monitoring" },
+  { value: "Groundwater", label: "Groundwater & Boreholes (Earth Observation)" },
+  { value: "Minerals", label: "Mineral Prospectivity & Gold (Earth Observation)" },
+  { value: "Soil", label: "Soil & Land Capability (Earth Observation)" },
+  { value: "Hazard", label: "Multi-Hazard & Site Safety (Earth Observation)" },
+  { value: "Topographical", label: "Topographical Survey" },
+  { value: "Cadastral", label: "Cadastral & Boundary" },
+  { value: "Engineering", label: "Engineering & Construction" },
+  { value: "Mining", label: "Mining Operations" },
+  { value: "Monitoring", label: "Structural & Geotechnical Monitoring" },
 ];
 
 const jobTypeColors: Record<string, string> = {
+  Groundwater: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
+  Minerals: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  Soil: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  Hazard: "bg-rose-500/15 text-rose-700 dark:text-rose-400",
   Topographical: "bg-primary/10 text-primary",
   Cadastral: "bg-success/15 text-success",
   Engineering: "bg-warning/15 text-warning",
@@ -143,6 +166,7 @@ const statusVariant = (status: string): "default" | "secondary" | "outline" | "d
 export default function JobsPage({
   workspaceId,
   isPlatformAdmin = false,
+  onNavigate,
 }: JobsPageProps) {
   const [jobs, setJobs] = useState<JobWithProject[]>([]);
   const [projects, setProjects] = useState<ProjectWithOrg[]>([]);
@@ -309,6 +333,10 @@ export default function JobsPage({
 
   const filterTabs: { label: string; value: JobFilter }[] = [
     { label: "All", value: "all" },
+    { label: "Groundwater", value: "Groundwater" },
+    { label: "Minerals", value: "Minerals" },
+    { label: "Soil", value: "Soil" },
+    { label: "Hazard", value: "Hazard" },
     { label: "Topographical", value: "Topographical" },
     { label: "Cadastral", value: "Cadastral" },
     { label: "Engineering", value: "Engineering" },
@@ -477,6 +505,53 @@ export default function JobsPage({
                   </div>
                 </CardContent>
               </Card>
+
+              {/* ── Required Tools & Equipment Kit Preview ─────── */}
+              {jobType ? (() => {
+                const tools = getRequiredToolsForSurvey(jobType);
+                return (
+                  <Card className="border-primary/30 bg-primary/5">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/15 text-primary">
+                            <Wrench size={15} />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base">Recommended Equipment Kit</CardTitle>
+                            <CardDescription>
+                              Instruments required for {jobType} surveying.
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {tools.length} instruments
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {tools.slice(0, 6).map((tool) => (
+                          <div
+                            key={tool.id}
+                            className="flex items-start gap-2 rounded-md border border-border/70 bg-card p-2 text-xs"
+                          >
+                            <CheckCircle2 className="mt-0.5 size-3.5 text-primary shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-medium text-foreground block truncate">
+                                {tool.name}
+                              </span>
+                              <p className="text-[10.5px] text-muted-foreground line-clamp-2">
+                                {tool.purpose}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })() : null}
 
               {/* ── Schedule ─────────────────────────────────── */}
               <Card>
@@ -667,6 +742,19 @@ export default function JobsPage({
         size="screen"
         footer={selectedJob ? (
           <>
+            <Button
+              variant="default"
+              className="gap-1.5"
+              onClick={() => {
+                sessionStorage.setItem("sitesurveyor:selected_job_id", selectedJob.id);
+                sessionStorage.setItem("sitesurveyor:selected_job_name", selectedJob.title);
+                setSelectedJob(null);
+                onNavigate?.("satellite");
+              }}
+            >
+              <Satellite className="size-4" />
+              Launch Earth Observation
+            </Button>
             <Button variant="outline" onClick={() => setSelectedJob(null)}>
               Close
             </Button>
@@ -730,6 +818,51 @@ export default function JobsPage({
             </div>
 
             <div className="min-w-0 space-y-4">
+            {(() => {
+              const jobTools = getRequiredToolsForSurvey(selectedJob.job_type ?? "Topographical");
+              return (
+                <Card>
+                  <CardHeader className="py-3 px-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wrench className="size-4 text-primary" />
+                        <CardTitle className="text-sm font-semibold">
+                          Required Equipment & Tools Kit
+                        </CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {jobTools.length} instruments recommended
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-1 space-y-2">
+                    {jobTools.map((tool) => (
+                      <div
+                        key={tool.id}
+                        className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/30 p-2 text-xs"
+                      >
+                        <CheckCircle2 className="mt-0.5 size-3.5 text-primary shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-medium text-foreground">{tool.name}</span>
+                            <Badge
+                              variant={tool.essential ? "destructive" : "secondary"}
+                              className="text-[9px] px-1 py-0 uppercase"
+                            >
+                              {tool.essential ? "Essential" : "Recommended"}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {tool.purpose}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             <EntityFilesCard
               workspaceId={workspaceId}
               entityTable="jobs"

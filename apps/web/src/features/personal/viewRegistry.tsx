@@ -141,6 +141,7 @@ export function renderPersonalView(
         <JobsPage
           workspaceId={user.workspaceId}
           isPlatformAdmin={user.isPlatformAdmin}
+          onNavigate={onNavigate}
         />
       );
 
