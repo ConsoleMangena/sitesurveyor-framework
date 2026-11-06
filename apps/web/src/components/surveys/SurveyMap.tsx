@@ -41,7 +41,6 @@ interface SurveyMapProps {
   focus: { latitude: number; longitude: number; token: number } | null;
   onMoveTarget: (latitude: number, longitude: number) => void;
   onView: (info: MapViewInfo) => void;
-  onOpenVectorViewer?: () => void;
 }
 
 /** Everything that has to reach the Leaflet instance itself, in one child so the page
@@ -134,7 +133,6 @@ export default function SurveyMap({
   focus,
   onMoveTarget,
   onView,
-  onOpenVectorViewer,
 }: SurveyMapProps) {
   const tile = useMemo(() => basemapById(basemap), [basemap]);
   const pin = useMemo(() => targetIcon(outside ? OUTSIDE : BRAND), [outside]);
@@ -260,16 +258,6 @@ export default function SurveyMap({
         <span className="sw-chip">
           Imagery <b>{imagery ?? "Not yet surveyed"}</b>
         </span>
-        {candidates.length > 0 && onOpenVectorViewer ? (
-          <button
-            type="button"
-            onClick={onOpenVectorViewer}
-            className="sw-chip border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-all font-semibold cursor-pointer shadow-sm"
-            title="Open Classified Digital Vector Viewer"
-          >
-            ⚡ Vector Viewer (Deep Zoom)
-          </button>
-        ) : null}
       </div>
 
       {showHint ? <div className="sw-hint">Click the map to move the target pin</div> : null}

@@ -50,7 +50,6 @@ import {
 } from "../../../lib/surveys/sources.ts";
 import TargetForm from "./TargetForm.tsx";
 import EarthObservationSetupForm from "./EarthObservationSetupForm.tsx";
-import ClassifiedVectorViewer from "@/components/surveys/ClassifiedVectorViewer.tsx";
 import {
   initialForm,
   pinTarget,
@@ -92,7 +91,6 @@ export default function SatelliteSurveyPage({
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
-  const [vectorViewerOpen, setVectorViewerOpen] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     setJobsLoading(true);
@@ -393,8 +391,6 @@ export default function SatelliteSurveyPage({
         onToggleLeft={() => togglePanel("left")}
         onToggleRight={() => togglePanel("right")}
         pill={pill}
-        onOpenVectorViewer={() => setVectorViewerOpen(true)}
-        hasResults={candidates.length > 0}
       />
 
       {listError ? (
@@ -501,7 +497,6 @@ export default function SatelliteSurveyPage({
             focus={focus}
             onMoveTarget={moveTarget}
             onView={setView}
-            onOpenVectorViewer={() => setVectorViewerOpen(true)}
           />
         </section>
 
@@ -562,7 +557,6 @@ export default function SatelliteSurveyPage({
               deliverables={detail?.deliverables ?? []}
               surveyed={selected !== null && !selected.active}
               activeDossierCategory={jobDossierCategory}
-              onOpenVectorViewer={() => setVectorViewerOpen(true)}
             />
           </div>
         </div>
@@ -573,18 +567,6 @@ export default function SatelliteSurveyPage({
         crs={detail?.run.result?.target?.crs ?? "No survey scored yet"}
         job={jobText(running ?? selected, queueing)}
         basis={snapshot.basis}
-      />
-
-      <ClassifiedVectorViewer
-        isOpen={vectorViewerOpen}
-        onClose={() => setVectorViewerOpen(false)}
-        target={target}
-        halfDeg={values.halfDeg}
-        candidates={candidates}
-        activeDossierCategory={jobDossierCategory}
-        clientName={openedJob?.title ?? values.clientName}
-        crs={detail?.run.result?.target?.crs ?? "WGS 84 / EPSG:4326"}
-        onDownloadKmz={kmzDeliverable ? () => void handleDownloadKmz() : undefined}
       />
     </DashboardShell>
   );
