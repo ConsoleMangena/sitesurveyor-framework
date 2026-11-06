@@ -19,6 +19,8 @@ import {
   type LucideIcon,
   MessageSquare,
   Package,
+  Puzzle,
+  Satellite,
   Settings,
   Shield,
   ShoppingBag,
@@ -61,6 +63,8 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   settings: Settings,
   gauge: Gauge,
   boxes: Boxes,
+  extensions: Puzzle,
+  satellite: Satellite,
 };
 
 export function getNavIcon(icon: string): ReactNode {

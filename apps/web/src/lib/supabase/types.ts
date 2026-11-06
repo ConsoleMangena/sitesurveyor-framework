@@ -4238,6 +4238,47 @@ export type Database = {
           },
         ]
       }
+      workspace_extensions: {
+        Row: {
+          config: Json | null
+          created_at: string
+          enabled: boolean
+          extension_id: string
+          id: string
+          installed: boolean
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          enabled?: boolean
+          extension_id: string
+          id?: string
+          installed?: boolean
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          enabled?: boolean
+          extension_id?: string
+          id?: string
+          installed?: boolean
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_extensions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_invitations: {
         Row: {
           accepted_at: string | null

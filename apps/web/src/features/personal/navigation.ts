@@ -45,6 +45,7 @@ export const personalNavGroups: WorkspaceNavGroup[] = [
   {
     label: "ACCOUNT",
     items: [
+      { view: "extensions", label: "Extensions", icon: "extensions" },
       { view: "settings", label: "Settings", icon: "settings" },
     ],
   },

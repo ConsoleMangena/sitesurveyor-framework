@@ -50,6 +50,11 @@ export const SHARED_VIEWS: WorkspaceView[] = [
   "billing",
   "timeTracking",
   "team",
+  // Extensions manager, plus the view the satellite extension contributes. The
+  // extension entry is allowed for every account; only the nav injection in the
+  // workspace shells decides whether it is reachable while disabled.
+  "extensions",
+  "satellite",
   "settings",
 ];
 
