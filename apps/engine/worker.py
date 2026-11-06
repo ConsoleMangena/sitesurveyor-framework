@@ -68,10 +68,15 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     "minerals_map": "mineral_prospectivity_map.png",
     "soil_map": "soil_capability_map.png",
     "hazard_map": "hazard_risk_map.png",
+    "boreholes_geojson": "candidate_borehole_sites.geojson",
+    "minerals_geojson": "candidate_mineral_targets.geojson",
+    "soil_geojson": "candidate_land_zones.geojson",
+    "safest_sites_geojson": "safest_buildable_sites.geojson",
 }
 
 CONTENT_TYPES = {
     ".json": "application/json",
+    ".geojson": "application/geo+json",
     ".kmz": "application/vnd.google-earth.kmz",
     ".png": "image/png",
     ".tif": "image/tiff",

@@ -7,6 +7,7 @@ import {
   RefreshCw,
   RotateCcw,
   Eraser,
+  Layers,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -29,6 +30,8 @@ interface WorkbenchBarProps {
   onToggleLeft: () => void;
   onToggleRight: () => void;
   pill: EnginePill;
+  onOpenVectorViewer?: () => void;
+  hasResults?: boolean;
 }
 
 /** The engine's toolbar, one for one, with two links it no longer has.
@@ -49,6 +52,8 @@ export function WorkbenchBar({
   onToggleLeft,
   onToggleRight,
   pill,
+  onOpenVectorViewer,
+  hasResults,
 }: WorkbenchBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -63,6 +68,19 @@ export function WorkbenchBar({
           <Play className="size-3.5" aria-hidden="true" />
           Run survey
         </Button>
+        {hasResults && onOpenVectorViewer ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-[11.5px] border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 font-semibold"
+            onClick={onOpenVectorViewer}
+            title="Open Classified Digital Vector Viewer"
+          >
+            <Layers className="size-3.5 text-primary" aria-hidden="true" />
+            Vector Viewer
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"

@@ -98,6 +98,7 @@ export interface MapCandidate {
   score: number | null;
   distanceKm: number | null;
   readout: string | null;
+  payload?: Record<string, unknown> | null;
 }
 
 function isDossierCategory(value: string): value is DossierCategory {
@@ -137,6 +138,7 @@ export function mapCandidates(
         score: target.score,
         distanceKm: target.distanceKm,
         readout: target.readout,
+        payload: target.payload,
       });
     }
   }
@@ -181,6 +183,7 @@ export interface Basemap {
   url: string;
   attribution: string;
   maxZoom: number;
+  maxNativeZoom?: number;
   /** The swatch the Contents panel shows beside the name. */
   swatch: string;
 }
@@ -191,7 +194,8 @@ export const BASEMAPS: Basemap[] = [
     label: "Satellite imagery",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attribution: "Imagery © Esri, Earthstar Geographics",
-    maxZoom: 18,
+    maxZoom: 20,
+    maxNativeZoom: 19,
     swatch: "linear-gradient(135deg,#1f4735,#2f6b4f)",
   },
   {
@@ -199,7 +203,8 @@ export const BASEMAPS: Basemap[] = [
     label: "Street map",
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: "© OpenStreetMap contributors",
-    maxZoom: 19,
+    maxZoom: 20,
+    maxNativeZoom: 19,
     swatch: "linear-gradient(135deg,#2c3b52,#4a5c76)",
   },
 ];

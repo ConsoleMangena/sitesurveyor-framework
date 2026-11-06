@@ -116,6 +116,7 @@ export interface SurveyTarget {
   score: number | null;
   distanceKm: number | null;
   readout: string | null;
+  payload?: Record<string, unknown> | null;
 }
 
 export interface SurveyDeliverable {
@@ -295,6 +296,7 @@ function toSurveyTarget(row: SurveyTargetRow): SurveyTarget {
     score: row.score === null ? null : num(row.score),
     distanceKm: row.distance_km === null ? null : num(row.distance_km),
     readout: row.readout,
+    payload: (row.payload as Record<string, unknown>) ?? null,
   };
 }
 

@@ -54,12 +54,12 @@ export const AOI_CHOICES = [
  */
 export const CATEGORY_EXPORTS: Record<
   DossierCategory,
-  { map: string; kmz: string }
+  { map: string; kmz: string; geojson: string }
 > = {
-  water: { map: "groundwater_map", kmz: "boreholes_kmz" },
-  minerals: { map: "minerals_map", kmz: "minerals_kmz" },
-  soil_land: { map: "soil_map", kmz: "soil_kmz" },
-  hazard_safety: { map: "hazard_map", kmz: "safest_sites_kmz" },
+  water: { map: "groundwater_map", kmz: "boreholes_kmz", geojson: "boreholes_geojson" },
+  minerals: { map: "minerals_map", kmz: "minerals_kmz", geojson: "minerals_geojson" },
+  soil_land: { map: "soil_map", kmz: "soil_kmz", geojson: "soil_geojson" },
+  hazard_safety: { map: "hazard_map", kmz: "safest_sites_kmz", geojson: "safest_sites_geojson" },
 };
 
 /**

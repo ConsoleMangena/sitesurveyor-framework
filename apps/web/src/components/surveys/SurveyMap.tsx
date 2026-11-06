@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { candidateIcon, targetIcon } from "./mapIcons.ts";
 import {
   basemapById,
@@ -41,6 +41,7 @@ interface SurveyMapProps {
   focus: { latitude: number; longitude: number; token: number } | null;
   onMoveTarget: (latitude: number, longitude: number) => void;
   onView: (info: MapViewInfo) => void;
+  onOpenVectorViewer?: () => void;
 }
 
 /** Everything that has to reach the Leaflet instance itself, in one child so the page
@@ -133,6 +134,7 @@ export default function SurveyMap({
   focus,
   onMoveTarget,
   onView,
+  onOpenVectorViewer,
 }: SurveyMapProps) {
   const tile = useMemo(() => basemapById(basemap), [basemap]);
   const pin = useMemo(() => targetIcon(outside ? OUTSIDE : BRAND), [outside]);
@@ -141,13 +143,15 @@ export default function SurveyMap({
     <MapContainer
       center={[target.latitude, target.longitude]}
       zoom={START_ZOOM}
+      maxZoom={20}
       className="h-full w-full"
     >
       <TileLayer
         key={tile.id}
         url={tile.url}
         attribution={tile.attribution}
-        maxZoom={tile.maxZoom}
+        maxZoom={20}
+        maxNativeZoom={tile.maxNativeZoom ?? 19}
       />
 
       {layers.aoi ? (
@@ -187,31 +191,53 @@ export default function SurveyMap({
 
       {layers.candidates
         ? candidates.map((candidate) => (
-            <Marker
-              key={candidate.key}
-              position={[candidate.latitude, candidate.longitude]}
-              icon={candidateIcon(candidate.color, candidate.letter)}
-            >
-              <Popup>
-                <div className="sw-popup__title" style={{ color: candidate.color }}>
-                  {candidate.kind} {candidate.rank}
-                </div>
-                <div className="sw-popup__line">
-                  Score {scoreText(candidate.score)} / 100
-                </div>
-                <div className="sw-popup__line">
-                  {candidate.distanceKm === null
-                    ? "Distance not recorded"
-                    : `${distanceText(candidate.distanceKm)} from target`}
-                </div>
-                {candidate.readout ? (
-                  <div className="sw-popup__line">{candidate.readout}</div>
-                ) : null}
-                <div className="sw-popup__line">
-                  GPS {coordText(candidate.latitude)}, {coordText(candidate.longitude)}
-                </div>
-              </Popup>
-            </Marker>
+            <span key={`layer_${candidate.key}`}>
+              <Circle
+                center={[candidate.latitude, candidate.longitude]}
+                radius={50}
+                pathOptions={{
+                  color: candidate.color,
+                  weight: 1.5,
+                  fillColor: candidate.color,
+                  fillOpacity: 0.18,
+                }}
+              />
+              <Circle
+                center={[candidate.latitude, candidate.longitude]}
+                radius={150}
+                pathOptions={{
+                  color: candidate.color,
+                  weight: 1,
+                  dashArray: "4 4",
+                  fillColor: candidate.color,
+                  fillOpacity: 0.04,
+                }}
+              />
+              <Marker
+                position={[candidate.latitude, candidate.longitude]}
+                icon={candidateIcon(candidate.color, candidate.letter)}
+              >
+                <Popup>
+                  <div className="sw-popup__title" style={{ color: candidate.color }}>
+                    {candidate.kind} {candidate.rank}
+                  </div>
+                  <div className="sw-popup__line">
+                    Score {scoreText(candidate.score)} / 100
+                  </div>
+                  <div className="sw-popup__line">
+                    {candidate.distanceKm === null
+                      ? "Distance not recorded"
+                      : `${distanceText(candidate.distanceKm)} from target`}
+                  </div>
+                  {candidate.readout ? (
+                    <div className="sw-popup__line">{candidate.readout}</div>
+                  ) : null}
+                  <div className="sw-popup__line">
+                    GPS {coordText(candidate.latitude)}, {coordText(candidate.longitude)}
+                  </div>
+                </Popup>
+              </Marker>
+            </span>
           ))
         : null}
 
@@ -234,6 +260,16 @@ export default function SurveyMap({
         <span className="sw-chip">
           Imagery <b>{imagery ?? "Not yet surveyed"}</b>
         </span>
+        {candidates.length > 0 && onOpenVectorViewer ? (
+          <button
+            type="button"
+            onClick={onOpenVectorViewer}
+            className="sw-chip border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-all font-semibold cursor-pointer shadow-sm"
+            title="Open Classified Digital Vector Viewer"
+          >
+            ⚡ Vector Viewer (Deep Zoom)
+          </button>
+        ) : null}
       </div>
 
       {showHint ? <div className="sw-hint">Click the map to move the target pin</div> : null}

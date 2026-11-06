@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Image, Loader, MapPin } from "lucide-react";
+import { FileText, Image, Layers, Loader, MapPin } from "lucide-react";
 
 import type { SurveyDeliverable } from "../../lib/repositories/satelliteSurveys.ts";
 import { deliverableUrl } from "../../lib/repositories/satelliteSurveys.ts";
@@ -13,11 +13,13 @@ export default function ExportsPanel({
   deliverables,
   surveyed,
   activeDossierCategory,
+  onOpenVectorViewer,
 }: {
   deliverables: SurveyDeliverable[];
   /** False when nothing is on screen, so the note says so instead of blaming the files. */
   surveyed: boolean;
   activeDossierCategory?: DossierCategory;
+  onOpenVectorViewer?: () => void;
 }) {
   const [opening, setOpening] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export default function ExportsPanel({
 
   const ready = categoriesToShow.filter((category) => {
     const kinds = CATEGORY_EXPORTS[category];
-    return byKind.has(kinds.map) || byKind.has(kinds.kmz);
+    return byKind.has(kinds.map) || byKind.has(kinds.kmz) || surveyed;
   }).length;
   const dossier = byKind.get("master_json_dossier") ?? null;
 
@@ -64,6 +66,18 @@ export default function ExportsPanel({
                 {CATEGORY_LABELS[category].name}
               </span>
               <span className="flex shrink-0 gap-1.5">
+                <button
+                  type="button"
+                  onClick={onOpenVectorViewer}
+                  disabled={!surveyed}
+                  title="Open Classified Digital Vector Viewer with deep zoom inspection"
+                  className={`sw-btn sw-btn--xs gap-1 border border-primary/30 bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-all ${
+                    surveyed ? "" : "opacity-40 cursor-not-allowed"
+                  }`}
+                >
+                  <Layers className="size-3 text-primary" aria-hidden="true" />
+                  <span>Vector</span>
+                </button>
                 <ExportButton
                   label="Map"
                   icon="image"
@@ -91,7 +105,24 @@ export default function ExportsPanel({
       <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
         Whole workspace
       </p>
-      <div className="mt-1.5">
+      <div className="mt-1.5 space-y-1.5">
+        <button
+          type="button"
+          onClick={onOpenVectorViewer}
+          disabled={!surveyed}
+          className={`flex w-full items-center justify-between gap-2 rounded-md border border-input px-2.5 py-1.5 text-left text-[11.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            surveyed ? "hover:bg-accent/60" : "opacity-45 cursor-not-allowed"
+          }`}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <Layers className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            <span className="truncate">Classified Vector File (Deep Zoom & GeoJSON)</span>
+          </span>
+          <span className="sw-num shrink-0 text-[10.5px] text-primary font-medium">
+            {surveyed ? "Vector" : "not run"}
+          </span>
+        </button>
+
         <button
           type="button"
           onClick={() => void open(dossier, "Master dossier JSON")}
