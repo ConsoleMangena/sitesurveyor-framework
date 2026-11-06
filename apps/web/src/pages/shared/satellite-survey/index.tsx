@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Sliders } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -41,6 +41,7 @@ import {
   inputsText,
 } from "../../../lib/surveys/sources.ts";
 import TargetForm from "./TargetForm.tsx";
+import EarthObservationSetupForm from "./EarthObservationSetupForm.tsx";
 import {
   initialForm,
   pinTarget,
@@ -78,6 +79,7 @@ export default function SatelliteSurveyPage({
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
+  const [showSetup, setShowSetup] = useState(true);
 
   const [layers, setLayers] = useState({ aoi: true, candidates: true });
   const [basemap, setBasemap] = useState("satellite");
@@ -107,6 +109,12 @@ export default function SatelliteSurveyPage({
     const timer = window.setInterval(() => setLastTickMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [runningId]);
+
+  useEffect(() => {
+    if (running !== null) {
+      setShowSetup(false);
+    }
+  }, [running]);
 
   // A run opened straight after a page load can be younger than the last tick; the
   // elapsed helper clamps that to 0s rather than inventing a negative clock.
@@ -231,12 +239,48 @@ export default function SatelliteSurveyPage({
 
   const outOfCredits = refused !== null && refused.includes("AI credits");
 
+  if (showSetup && !running) {
+    return (
+      <DashboardShell>
+        <EarthObservationSetupForm
+          workspaceId={workspaceId}
+          values={values}
+          onChange={patch}
+          onProceedToWorkbench={() => setShowSetup(false)}
+          onLaunchSurvey={() => {
+            setShowSetup(false);
+            void submit();
+          }}
+          onViewPastObservations={
+            runs.length > 0 ? () => setShowSetup(false) : undefined
+          }
+          hasExistingRuns={runs.length > 0}
+          existingRunsCount={runs.length}
+          busy={running !== null}
+          queueing={queueing}
+        />
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
       <DashboardHeader
         title="Earth Observation"
         description="Screen a coordinate for groundwater, minerals, soil capability and site safety using multi-spectral Earth Observation."
         meta={`${runs.length} observation${runs.length === 1 ? "" : "s"} in this workspace`}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-medium"
+            onClick={() => setShowSetup(true)}
+          >
+            <Sliders className="size-3.5 text-primary" />
+            New Setup / Change Job
+          </Button>
+        }
       />
 
       <WorkbenchBar
@@ -372,6 +416,7 @@ export default function SatelliteSurveyPage({
               workspaceId={workspaceId}
               values={values}
               onChange={patch}
+              onOpenSetup={() => setShowSetup(true)}
               queueing={queueing}
               busy={running !== null}
               stage={running?.stage ?? null}

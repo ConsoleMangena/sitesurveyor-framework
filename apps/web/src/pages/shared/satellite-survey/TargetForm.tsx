@@ -57,6 +57,7 @@ interface TargetFormProps {
   workspaceId: string;
   values: SurveyFormValues;
   onChange: (patch: Partial<SurveyFormValues>) => void;
+  onOpenSetup?: () => void;
   /** True while the queue call is in flight, so the same survey cannot be paid for twice. */
   queueing: boolean;
   /** True while a worker holds a survey of this target, running or not. */
@@ -73,6 +74,7 @@ export default function TargetForm({
   workspaceId,
   values,
   onChange,
+  onOpenSetup,
   queueing,
   busy,
   stage,
@@ -241,6 +243,23 @@ export default function TargetForm({
         onSubmit();
       }}
     >
+      <div className="flex items-center justify-between pb-1 border-b border-border/60">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Observation Controls
+        </span>
+        {onOpenSetup ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10.5px] text-primary hover:text-primary/90"
+            onClick={onOpenSetup}
+          >
+            Open Setup Form
+          </Button>
+        ) : null}
+      </div>
+
       {/* ── STEP 1: Job Selection / Creation ────────────────────────────── */}
       <section className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs">
         <div className="flex items-center justify-between">
