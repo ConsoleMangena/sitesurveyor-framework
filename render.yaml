@@ -1,8 +1,20 @@
-# The web app publishes as static files, so the satellite survey worker is deployed from
-# its own blueprint at apps/engine/render.yaml: a Docker worker needs that directory as
-# its build context, which this root blueprint cannot give it without breaking the
-# engine's COPY paths. Both services build from this repository.
+# ==============================================================================
+# SiteSurveyor — Unified Render Blueprint
+# ==============================================================================
+# One blueprint, two services, one repository.
+#
+# 1. sitesurveyor-web    — static site (free), serves the React SPA from CDN
+# 2. sitesurveyor-engine — background worker (standard), polls survey_runs and
+#                          runs the satellite raster pipeline
+#
+# Create both with:  render blueprint apply
+# Or connect this repository as a Blueprint in the Render dashboard.
+#
+# The engine uses rootDir so its Dockerfile COPY paths resolve against
+# apps/engine/ as the build context — no separate blueprint needed.
+
 services:
+  # ── Web App ────────────────────────────────────────────────────────────────
   - type: web
     name: sitesurveyor-web
     runtime: static
@@ -14,9 +26,9 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_SUPABASE_URL
-        value: https://csjjmuexzuewqnopzbik.supabase.co
+        sync: false
       - key: VITE_SUPABASE_ANON_KEY
-        value: sb_publishable_Ff8dzgN6UUKGIArhIN4UtA_Gye7Wx9C
+        sync: false
       - key: VITE_SOLANA_CLUSTER
         value: devnet
       - key: VITE_SOLANA_RPC_URL
@@ -24,4 +36,44 @@ services:
       - key: VITE_SOLANA_USDC_MINT
         value: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
       - key: VITE_SOLANA_TREASURY_ADDRESS
-        value: EopjFKFe77fHk2yty4h95TR4rPNH44fhBKhWHJiAwgTy
+        sync: false
+
+  # ── Satellite Survey Engine ────────────────────────────────────────────────
+  # Background worker: no URL, no port, no health endpoint. Polls survey_runs
+  # via FOR UPDATE SKIP LOCKED, runs the raster pipeline, and publishes results
+  # and deliverable files back to Supabase.
+  #
+  # Plan: standard (2 GB RAM / 1 CPU). The starter plan's 512 MB ceiling is hit
+  # during the matplotlib map-export stage of a full 4-category survey — the
+  # process is SIGKILLed with no traceback. 2 GB gives safe headroom even with
+  # all four engines running sequentially.
+  #
+  # Run exactly one instance. The engines read the active AOI from module globals
+  # in src/config.py and write fixed filenames under outputs/. A second worker
+  # would analyse one AOI while overwriting another's files.
+  - type: worker
+    name: sitesurveyor-engine
+    runtime: docker
+    rootDir: apps/engine
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    autoDeploy: true
+    disk:
+      name: sitesurveyor-state
+      mountPath: /app/state
+      sizeGB: 1
+    envVars:
+      - key: SITESURVEYOR_STATE_DIR
+        value: /app/state
+      - key: GDAL_DISABLE_READDIR_ON_OPEN
+        value: "EMPTY_DIR"
+      # Secrets — set these in the Render Dashboard after the first deploy.
+      # The worker needs the privileged Supabase key to call the four survey RPCs
+      # and upload to the survey-deliverables bucket. It cannot read any other
+      # table — the migration grants restrict it.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DE_AFRICA_TOKEN
+        sync: false

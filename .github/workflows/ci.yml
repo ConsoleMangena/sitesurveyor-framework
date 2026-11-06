@@ -51,3 +51,31 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # ── Render deploy ──────────────────────────────────────────────────────────
+  # Triggers both services (web static site + engine worker) only after all
+  # checks pass. Requires two repository secrets:
+  #
+  #   RENDER_DEPLOY_HOOK_WEB     — Deploy hook URL for sitesurveyor-web
+  #   RENDER_DEPLOY_HOOK_ENGINE  — Deploy hook URL for sitesurveyor-engine
+  #
+  # To get these URLs: Render Dashboard → each service → Settings → Deploy Hook.
+  # If the secrets are not set the step is silently skipped, so the workflow
+  # stays green on forks and during initial setup.
+  deploy:
+    name: Deploy to Render
+    needs: web
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy web static site
+        if: env.RENDER_DEPLOY_HOOK_WEB != ''
+        env:
+          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+        run: curl -sS "$RENDER_DEPLOY_HOOK_WEB"
+
+      - name: Deploy engine worker
+        if: env.RENDER_DEPLOY_HOOK_ENGINE != ''
+        env:
+          RENDER_DEPLOY_HOOK_ENGINE: ${{ secrets.RENDER_DEPLOY_HOOK_ENGINE }}
+        run: curl -sS "$RENDER_DEPLOY_HOOK_ENGINE"

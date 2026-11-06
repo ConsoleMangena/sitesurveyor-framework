@@ -36,14 +36,18 @@ The worker is useless before these exist, and it says so in its logs rather than
 
 ## 2. Deploy on Render
 
-Create a **Blueprint** from this repository and point it at `apps/engine/render.yaml`. The
-blueprint has to build from `apps/engine`, because that is the only directory the Dockerfile's
-`COPY` paths (`src/`, `main.py`, `worker.py`) are relative to. The root `render.yaml`
-publishes the web app and refers here for the survey compute.
+Create a **Blueprint** from this repository pointing at the **root `render.yaml`**. It
+defines both services in a single file:
 
-Render reads the service definition, the environment variables and the disk from that file.
-The two secrets it cannot know are `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
-(`sync: false`), which you fill in on the first deploy.
+1. **`sitesurveyor-web`** — a free static site serving `apps/web/dist` from Render's CDN.
+2. **`sitesurveyor-engine`** — a Standard-plan background worker (2 GB RAM / 1 CPU) that
+   builds from `apps/engine/` via `rootDir` and runs `python worker.py`.
+
+The standalone `apps/engine/render.yaml` is kept for independent engine deploys during
+development but is no longer the primary blueprint.
+
+Render reads the service definitions, environment variables and the disk from the root file.
+Secrets marked `sync: false` must be set in the Render Dashboard after the first deploy.
 
 | Variable | Required | Notes |
 | :--- | :--- | :--- |
