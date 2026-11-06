@@ -27,7 +27,7 @@ import { ProjectTimelineChart } from "@/components/dashboard/ProjectTimelineChar
 import { RecentProjectsTable } from "@/components/dashboard/RecentProjectsTable";
 import { TodaysSchedule } from "@/components/dashboard/TodaysSchedule";
 import MarketGlobeCard from "../../components/market/MarketGlobeCard";
-import ExtensionsCard from "../../components/dashboard/ExtensionsCard";
+import SatelliteSurveyCard from "../../components/dashboard/SatelliteSurveyCard";
 import { DatabaseStorageCard } from "@/components/dashboard/DatabaseStorageCard";
 
 import { listProjects, type ProjectWithOrg } from "../../lib/repositories/projects";
@@ -317,7 +317,7 @@ export default function BusinessDashboardPage({
                 <MarketGlobeCard onNavigate={onNavigate} />
               </div>
               <div className="col-span-1 lg:col-span-3">
-                <ExtensionsCard workspaceId={workspaceId} onNavigate={onNavigate} />
+                <SatelliteSurveyCard workspaceId={workspaceId} onNavigate={onNavigate} />
               </div>
             </div>
         </div>

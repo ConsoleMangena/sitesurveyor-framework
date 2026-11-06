@@ -17,6 +17,7 @@ export const personalNavGroups: WorkspaceNavGroup[] = [
       { view: "assets", label: "Asset Management", icon: "asset" },
       { view: "files", label: "File Manager", icon: "file-manager" },
       { view: "quotes", label: "Quotes", icon: "document" },
+      { view: "satellite", label: "Satellite Survey", icon: "satellite" },
     ],
   },
   {
@@ -45,7 +46,6 @@ export const personalNavGroups: WorkspaceNavGroup[] = [
   {
     label: "ACCOUNT",
     items: [
-      { view: "extensions", label: "Extensions", icon: "extensions" },
       { view: "settings", label: "Settings", icon: "settings" },
     ],
   },

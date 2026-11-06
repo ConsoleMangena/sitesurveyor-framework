@@ -1,3 +1,7 @@
+# The web app publishes as static files, so the satellite survey worker is deployed from
+# its own blueprint at apps/engine/render.yaml: a Docker worker needs that directory as
+# its build context, which this root blueprint cannot give it without breaking the
+# engine's COPY paths. Both services build from this repository.
 services:
   - type: web
     name: sitesurveyor-web

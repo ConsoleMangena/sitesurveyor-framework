@@ -23,7 +23,6 @@ export const WORKSPACE_VIEWS = [
   "billing",
   "contacts",
   "timeTracking",
-  "extensions",
   "satellite",
   "admin_overview",
   "admin_activity",

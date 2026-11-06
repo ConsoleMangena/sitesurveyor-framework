@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import WorkspaceShell from "../../components/workspace/WorkspaceShell";
 import { platformAdminNavGroup } from "../admin/adminNav.ts";
-import { extensionNavGroups } from "../extensions/nav.ts";
-import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
-import { entriesFor, loadExtensions, useExtensions } from "../extensions/store.ts";
 import {
   getAccessibleView,
   getWorkspaceShellAccountLabel,
@@ -33,10 +30,6 @@ export default function BusinessWorkspaceShell({
     return isWorkspaceView(saved) ? saved : "dashboard";
   });
   const [isProjectFullscreen, setIsProjectFullscreen] = useState(false);
-  const extensions = useExtensions();
-
-  useAsyncAction(() => loadExtensions(user.workspaceId), [user.workspaceId]);
-
 
   const activeView = useMemo(
     () => getAccessibleView("business", currentView, user.isPlatformAdmin),
@@ -44,22 +37,15 @@ export default function BusinessWorkspaceShell({
   );
 
   const navGroups = useMemo(() => {
-    const withExtensions = [
-      ...businessNavGroups,
-      // Enabled extensions contribute their own group, so switching one on adds
-      // its page to the sidebar and the command palette without either file
-      // being edited.
-      ...extensionNavGroups(entriesFor(extensions)),
-    ];
     const allowed = new Set(
-      withExtensions
+      businessNavGroups
         .flatMap((group) => group.items.map((item) => item.view))
         .filter(
           (view) =>
             getAccessibleView("business", view, user.isPlatformAdmin) === view,
         ),
     );
-    const base = withExtensions
+    const base = businessNavGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => allowed.has(item.view)),
@@ -75,7 +61,7 @@ export default function BusinessWorkspaceShell({
     );
     if (adminItems.length === 0) return base;
     return [...base, { ...platformAdminNavGroup, items: adminItems }];
-  }, [user.isPlatformAdmin, extensions]);
+  }, [user.isPlatformAdmin]);
 
   useEffect(() => {
     localStorage.setItem(storageKey, activeView);

@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import WorkspaceShell from "../../components/workspace/WorkspaceShell";
 import { platformAdminNavGroup } from "../admin/adminNav.ts";
-import { extensionNavGroups } from "../extensions/nav.ts";
-import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
-import { entriesFor, loadExtensions, useExtensions } from "../extensions/store.ts";
 import {
   getAccessibleView,
   getWorkspaceShellAccountLabel,
@@ -33,9 +30,6 @@ export default function PersonalWorkspaceShell({
     return isWorkspaceView(saved) ? saved : "dashboard";
   });
   const [isProjectFullscreen, setIsProjectFullscreen] = useState(false);
-  const extensions = useExtensions();
-
-  useAsyncAction(() => loadExtensions(user.workspaceId), [user.workspaceId]);
 
   const activeView = useMemo(
     () => getAccessibleView("personal", currentView, user.isPlatformAdmin),
@@ -43,19 +37,15 @@ export default function PersonalWorkspaceShell({
   );
 
   const navGroups = useMemo(() => {
-    const withExtensions = [
-      ...personalNavGroups,
-      ...extensionNavGroups(entriesFor(extensions)),
-    ];
     const allowed = new Set(
-      withExtensions
+      personalNavGroups
         .flatMap((group) => group.items.map((item) => item.view))
         .filter(
           (view) =>
             getAccessibleView("personal", view, user.isPlatformAdmin) === view,
         ),
     );
-    const base = withExtensions
+    const base = personalNavGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => allowed.has(item.view)),
@@ -71,7 +61,7 @@ export default function PersonalWorkspaceShell({
     );
     if (adminItems.length === 0) return base;
     return [...base, { ...platformAdminNavGroup, items: adminItems }];
-  }, [user.isPlatformAdmin, extensions]);
+  }, [user.isPlatformAdmin]);
 
   useEffect(() => {
     localStorage.setItem(storageKey, activeView);

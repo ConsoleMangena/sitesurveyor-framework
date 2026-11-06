@@ -3268,6 +3268,200 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_deliverables: {
+        Row: {
+          content_type: string
+          created_at: string
+          id: string
+          kind: string
+          run_id: string
+          size_bytes: number | null
+          storage_path: string
+          workspace_id: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          id?: string
+          kind: string
+          run_id: string
+          size_bytes?: number | null
+          storage_path: string
+          workspace_id: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          run_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_deliverables_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "survey_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_deliverables_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_runs: {
+        Row: {
+          address: string | null
+          categories: string[]
+          claimed_at: string | null
+          client_name: string
+          completed_at: string | null
+          composite: Json | null
+          created_at: string
+          created_by: string | null
+          data_sources: Json | null
+          estimated_minutes: number | null
+          error_message: string | null
+          half_deg: number
+          id: string
+          latitude: number
+          longitude: number
+          progress: number
+          project_id: string | null
+          result: Json | null
+          stage: string | null
+          status: string
+          updated_at: string
+          worker_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          address?: string | null
+          categories?: string[]
+          claimed_at?: string | null
+          client_name?: string
+          completed_at?: string | null
+          composite?: Json | null
+          created_at?: string
+          created_by?: string | null
+          data_sources?: Json | null
+          estimated_minutes?: number | null
+          error_message?: string | null
+          half_deg?: number
+          id?: string
+          latitude: number
+          longitude: number
+          progress?: number
+          project_id?: string | null
+          result?: Json | null
+          stage?: string | null
+          status?: string
+          updated_at?: string
+          worker_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          address?: string | null
+          categories?: string[]
+          claimed_at?: string | null
+          client_name?: string
+          completed_at?: string | null
+          composite?: Json | null
+          created_at?: string
+          created_by?: string | null
+          data_sources?: Json | null
+          estimated_minutes?: number | null
+          error_message?: string | null
+          half_deg?: number
+          id?: string
+          latitude?: number
+          longitude?: number
+          progress?: number
+          project_id?: string | null
+          result?: Json | null
+          stage?: string | null
+          status?: string
+          updated_at?: string
+          worker_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_targets: {
+        Row: {
+          category: string
+          created_at: string
+          distance_km: number | null
+          id: string
+          latitude: number
+          longitude: number
+          payload: Json | null
+          rank: number
+          readout: string | null
+          run_id: string
+          score: number | null
+          workspace_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          payload?: Json | null
+          rank: number
+          readout?: string | null
+          run_id: string
+          score?: number | null
+          workspace_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          payload?: Json | null
+          rank?: number
+          readout?: string | null
+          run_id?: string
+          score?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_targets_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "survey_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_targets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           color: string | null
@@ -4238,47 +4432,6 @@ export type Database = {
           },
         ]
       }
-      workspace_extensions: {
-        Row: {
-          config: Json | null
-          created_at: string
-          enabled: boolean
-          extension_id: string
-          id: string
-          installed: boolean
-          updated_at: string
-          workspace_id: string
-        }
-        Insert: {
-          config?: Json | null
-          created_at?: string
-          enabled?: boolean
-          extension_id: string
-          id?: string
-          installed?: boolean
-          updated_at?: string
-          workspace_id: string
-        }
-        Update: {
-          config?: Json | null
-          created_at?: string
-          enabled?: boolean
-          extension_id?: string
-          id?: string
-          installed?: boolean
-          updated_at?: string
-          workspace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workspace_extensions_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       workspace_invitations: {
         Row: {
           accepted_at: string | null
@@ -5116,9 +5269,18 @@ export type Database = {
         Args: { target_workspace_id: string }
         Returns: boolean
       }
+      cancel_survey_run: { Args: { p_run_id: string }; Returns: undefined }
+      claim_next_survey_run: {
+        Args: { p_worker_id: string }
+        Returns: Json
+      }
       create_business_workspace: {
         Args: { workspace_name: string; workspace_slug?: string }
         Returns: string
+      }
+      fail_survey_run: {
+        Args: { p_error: string; p_run_id: string }
+        Returns: undefined
       }
       fulfil_workspace_package_purchase: {
         Args: { p_transaction_id: string }
@@ -5238,6 +5400,15 @@ export type Database = {
         }[]
       }
       prune_auth_nonces: { Args: never; Returns: undefined }
+      publish_survey_run: {
+        Args: {
+          p_deliverables: Json
+          p_result: Json
+          p_run_id: string
+          p_targets: Json
+        }
+        Returns: undefined
+      }
       record_pesepay_transaction_refund: {
         Args: { p_reason: string; p_transaction_id: string }
         Returns: {
@@ -5457,6 +5628,15 @@ export type Database = {
       }
       update_marketplace_wallet: {
         Args: { p_address: string; p_workspace_id: string }
+        Returns: undefined
+      }
+      update_survey_run_progress: {
+        Args: {
+          p_progress: number
+          p_run_id: string
+          p_stage: string
+          p_status?: string
+        }
         Returns: undefined
       }
       workspace_storage_limit_bytes: {

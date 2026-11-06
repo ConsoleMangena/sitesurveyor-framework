@@ -1,14 +1,19 @@
+import type {
+  StartSurveyInput,
+  SurveyCategory,
+} from "../../../lib/repositories/satelliteSurveys.ts";
 import {
-  type SurveyCategory,
-  type SurveyInput,
-} from "../../../features/extensions/engine/client.ts";
-import { outsideCoverage } from "../../../features/extensions/engine/coverage.ts";
-import { parseCoordinate } from "../../../features/extensions/engine/labels.ts";
+  COVERAGE,
+  outsideCoverage,
+  parseCoordinate,
+} from "../../../lib/surveys/labels.ts";
 
-/** The four categories the survey form offers, in engine argument form. */
-export type CategoryId = Exclude<SurveyCategory, "all" | "none">;
-
-export const DEFAULT_CATEGORY_IDS: CategoryId[] = ["water", "minerals", "soil", "hazard"];
+export const DEFAULT_CATEGORY_IDS: SurveyCategory[] = [
+  "water",
+  "minerals",
+  "soil",
+  "hazard",
+];
 
 export const DEFAULT_HALF_DEG = 0.12;
 
@@ -18,18 +23,22 @@ export interface SurveyFormValues {
   clientName: string;
   address: string;
   halfDeg: number;
-  categories: CategoryId[];
+  categories: SurveyCategory[];
 }
 
+/** Everything the platform needs to queue a survey, except which workspace asked. */
+export type SurveyDraft = Omit<StartSurveyInput, "workspaceId" | "projectId">;
+
 /**
- * Turn the form's raw strings into what the engine accepts, or say what is wrong.
+ * Turn the form's raw strings into what the survey queue accepts, or say what is wrong.
  *
- * The coordinate box is checked here rather than left to the engine because a
- * refused survey costs a minute of waiting and a downloaded tile set, while this
- * check costs nothing and can name the point the operator actually typed.
+ * The coordinate box is checked here rather than left to the edge function because a
+ * refused survey costs a credit and a queue slot, while this check costs nothing and can
+ * name the point the operator actually typed. The function still checks it again -- it is
+ * the last place that sees the numbers before money moves.
  */
 export function validateForm(form: SurveyFormValues): {
-  input: SurveyInput | null;
+  draft: SurveyDraft | null;
   problems: string[];
 } {
   const problems: string[] = [];
@@ -49,15 +58,16 @@ export function validateForm(form: SurveyFormValues): {
       problems.push("Longitude must be between -180 and 180.");
     } else if (outsideCoverage(latitude, longitude)) {
       problems.push(
-        `(${latitude}, ${longitude}) is outside the satellite coverage this engine can read.`,
+        `(${latitude}, ${longitude}) is outside the satellite coverage this workspace can read — ` +
+          `${COVERAGE.latMin}° to ${COVERAGE.latMax}° latitude, ${COVERAGE.lonMin}° to ${COVERAGE.lonMax}° longitude.`,
       );
     }
   }
 
-  if (problems.length) return { input: null, problems };
+  if (problems.length) return { draft: null, problems };
 
   return {
-    input: {
+    draft: {
       latitude: latitude as number,
       longitude: longitude as number,
       categories: form.categories,

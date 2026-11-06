@@ -1,0 +1,41 @@
+# ==============================================================================
+# SiteSurveyor AI - survey worker, deployed from this monorepo
+# ==============================================================================
+# This service has no URL. It is the compute behind the platform's `satellite-survey`
+# edge function: the app writes a `survey_runs` row and this process claims it, so the
+# engine is reached only through an authenticated call that already charged credits for
+# it. Nothing here is exposed to a browser, and there is no origin to allowlist.
+#
+# Deployed as its own blueprint because the build context must be apps/engine: the
+# Dockerfile's COPY paths (src/, main.py, worker.py) are relative to that directory. The
+# root render.yaml publishes the web app and points here.
+services:
+  - type: worker
+    name: sitesurveyor-engine
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    autoDeploy: true
+    # A container filesystem is discarded on every deploy and restart. The coverage cache
+    # on this disk is what makes re-surveying the same area take minutes instead of
+    # re-downloading six layers, so losing it costs every survey time and quota.
+    # Deliverables no longer need it: the worker uploads them to Supabase Storage, which
+    # is why a redeploy can no longer break an old download link.
+    disk:
+      name: sitesurveyor-state
+      mountPath: /app/state
+      sizeGB: 1
+    envVars:
+      - key: SITESURVEYOR_STATE_DIR
+        value: /app/state
+      - key: GDAL_DISABLE_READDIR_ON_OPEN
+        value: "EMPTY_DIR"
+      # No MAP_DPI here: the export dpi that keeps a survey inside the starter plan's
+      # 512 MB is set once, as the code default in src/config.py, and this file is only
+      # read by blueprint deploys - services created with the CLI get no vars from it.
+      - key: SUPABASE_URL
+        sync: false # Project URL. The worker writes results into this project's database.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Privileged. Restricted to the survey RPCs by grants in the migration.
+      - key: DE_AFRICA_TOKEN
+        sync: false # Set your Digital Earth Africa API Key securely in Render Dashboard

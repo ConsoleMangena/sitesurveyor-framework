@@ -27,7 +27,7 @@ import { ProjectTimelineChart } from "@/components/dashboard/ProjectTimelineChar
 import { RecentProjectsTable } from "@/components/dashboard/RecentProjectsTable";
 import { ProfessionalPortfolioCard } from "../../features/personal/components/ProfessionalPortfolioCard";
 import MarketGlobeCard from "../../components/market/MarketGlobeCard";
-import ExtensionsCard from "../../components/dashboard/ExtensionsCard";
+import SatelliteSurveyCard from "../../components/dashboard/SatelliteSurveyCard";
 import { DatabaseStorageCard } from "@/components/dashboard/DatabaseStorageCard";
 import { cn } from "@/lib/utils";
 
@@ -362,7 +362,7 @@ export default function PersonalDashboardPage({
                 <MarketGlobeCard onNavigate={onNavigate} />
               </div>
               <div className="col-span-1 lg:col-span-3">
-                <ExtensionsCard workspaceId={workspaceId} onNavigate={onNavigate} />
+                <SatelliteSurveyCard workspaceId={workspaceId} onNavigate={onNavigate} />
               </div>
             </div>
             <ProfessionalPortfolioCard workspaceId={workspaceId} userName={userName} />

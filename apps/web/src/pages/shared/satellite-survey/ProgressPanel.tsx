@@ -1,28 +1,40 @@
-import { Loader } from "lucide-react";
+import { Loader, XCircle } from "lucide-react";
 
+import { Button } from "@/components/ui/button.tsx";
 import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
 import { PanelMeta } from "@/components/dashboard/DashboardShell.tsx";
 
+import type { SurveyRun } from "../../../lib/repositories/satelliteSurveys.ts";
+
 interface ProgressPanelProps {
-  submitting: boolean;
-  stage: string;
-  progress: number;
-  /** The engine's own estimate for this AOI, in minutes. */
-  estimatedMinutes: number | null;
+  run: SurveyRun;
+  /** Withdrawing is only possible while the survey is still queued. */
+  onCancel: (runId: string) => void;
+  cancelling: boolean;
 }
 
-/** What the engine said it is doing, at the percent it said it was at. */
+const STAGE_LABELS: Record<string, string> = {
+  queued: "Waiting for a survey worker",
+  acquiring: "Claimed by a survey worker",
+  surveying: "Reading the satellite coverages",
+  publishing: "Publishing maps, targets and files",
+};
+
+/** What the worker recorded, at the percent it recorded.
+ *
+ * Every number here comes from the run's own row, so a reload, a second tab or a
+ * different machine all show the same survey in the same state.
+ */
 export default function ProgressPanel({
-  submitting,
-  stage,
-  progress,
-  estimatedMinutes,
+  run,
+  onCancel,
+  cancelling,
 }: ProgressPanelProps) {
-  const percent = Math.max(0, Math.min(100, Math.round(progress)));
+  const percent = Math.max(0, Math.min(100, Math.round(run.progress)));
 
   return (
     <DashboardCard
-      title={submitting ? "Submitting survey" : "Engine at work"}
+      title={STAGE_LABELS[run.status] ?? "Survey running"}
       icon={<Loader className="animate-spin" />}
       titleAction={<PanelMeta>{percent}%</PanelMeta>}
     >
@@ -40,15 +52,28 @@ export default function ProgressPanel({
             style={{ width: `${percent}%` }}
           />
         </div>
-        <p className="text-sm font-medium">{stage || "Queued"}</p>
+        <p className="text-sm font-medium">{run.stage || STAGE_LABELS[run.status] || "Queued"}</p>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          {estimatedMinutes
-            ? `The engine estimated about ${estimatedMinutes} minute${estimatedMinutes === 1 ? "" : "s"} for this AOI. `
+          {run.estimatedMinutes
+            ? `About ${run.estimatedMinutes} minute${run.estimatedMinutes === 1 ? "" : "s"} for this study area. `
             : ""}
-          Each category downloads its coverages, then scores a 30 m grid across the
-          whole area, so this page holds open and refreshes itself. Leaving the tab
-          does not cancel the job — the engine keeps running it either way.
+          The worker downloads each category&apos;s coverages, then scores a 30 m grid
+          across the whole area. Closing this tab does not stop the survey — it is a row
+          in the database, and the worker finishes it whether you are watching or not.
         </p>
+        {run.status === "queued" ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-fit gap-2"
+            disabled={cancelling}
+            onClick={() => onCancel(run.id)}
+          >
+            <XCircle className="size-4" aria-hidden="true" />
+            {cancelling ? "Cancelling" : "Cancel and refund"}
+          </Button>
+        ) : null}
       </div>
     </DashboardCard>
   );

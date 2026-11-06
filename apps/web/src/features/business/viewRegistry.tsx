@@ -16,7 +16,6 @@ import WorkspaceSettingsPage from "../../pages/shared/WorkspaceSettingsPage";
 import { lazy, Suspense } from "react";
 import type { UiUser, WorkspaceView } from "../workspace/types";
 import PageLoader from "@/components/PageLoader.tsx";
-import { renderExtensionView } from "../extensions/views.tsx";
 
 // Lazy-load heavy / infrequently-used pages so they do not bloat the shared
 // workspace chunk loaded for every view.
@@ -34,7 +33,9 @@ const AssetManagementPage = lazy(() => import("../../pages/shared/AssetManagemen
 const MarketplacePage = lazy(() => import("../../pages/shared/MarketplacePage"));
 const AssistantPage = lazy(() => import("../../pages/shared/AssistantPage"));
 const TeamChatPage = lazy(() => import("../../pages/shared/TeamChatPage"));
-const ExtensionsPage = lazy(() => import("../../pages/shared/ExtensionsPage"));
+const SatelliteSurveyPage = lazy(
+  () => import("../../pages/shared/satellite-survey/index.tsx"),
+);
 
 interface BusinessViewRegistryOptions {
   user: UiUser;
@@ -48,11 +49,6 @@ export function renderBusinessView(
   options: BusinessViewRegistryOptions,
 ) {
   const { user, onEnterFullscreenProject, onExitFullscreenProject, onNavigate } = options;
-
-  // An extension owns its page outright, so it is matched before the switch and
-  // a new extension needs no edit here.
-  const extensionView = renderExtensionView(activeView, { onNavigate });
-  if (extensionView) return extensionView;
 
   switch (activeView) {
     case "dashboard":
@@ -167,10 +163,10 @@ export function renderBusinessView(
     case "settings":
       return <WorkspaceSettingsPage workspaceId={user.workspaceId} isPlatformAdmin={user.isPlatformAdmin} onNavigate={onNavigate} />;
 
-    case "extensions":
+    case "satellite":
       return (
         <Suspense fallback={<PageLoader />}>
-          <ExtensionsPage workspaceId={user.workspaceId} onNavigate={onNavigate} />
+          <SatelliteSurveyPage workspaceId={user.workspaceId} onNavigate={onNavigate} />
         </Suspense>
       );
 

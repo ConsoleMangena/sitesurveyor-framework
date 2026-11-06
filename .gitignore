@@ -66,3 +66,8 @@ ai-gateway/.env
 # Reference templates
 shadcn-admin/
 
+# Python engine (apps/engine)
+__pycache__/
+*.py[cod]
+.venv/
+
