@@ -24,6 +24,7 @@ import {
 import {
   archiveJob,
   createJob,
+  deleteJob,
   listJobs,
   updateJob,
   type JobWithProject,
@@ -289,6 +290,19 @@ export default function JobsPage({
       setSuccessMessage("Job archived successfully.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to archive job.");
+    }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    if (!window.confirm("Permanently delete this job? This action cannot be undone.")) return;
+    setError(null);
+    try {
+      await deleteJob(id);
+      setSelectedJob(null);
+      await fetchJobs();
+      setSuccessMessage("Job deleted successfully.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete job.");
     }
   };
 
@@ -710,16 +724,12 @@ export default function JobsPage({
             <Button variant="outline" onClick={() => setSelectedJob(null)}>
               Close
             </Button>
-            {isPlatformAdmin && (
-              <>
-                <Button variant="outline" onClick={() => openEditEditor(selectedJob)}>
-                  Edit
-                </Button>
-                <Button variant="destructive" onClick={() => void handleArchiveJob(selectedJob.id)}>
-                  Archive
-                </Button>
-              </>
-            )}
+            <Button variant="outline" onClick={() => openEditEditor(selectedJob)}>
+              Edit
+            </Button>
+            <Button variant="destructive" onClick={() => void handleDeleteJob(selectedJob.id)}>
+              Delete Job
+            </Button>
           </>
         ) : undefined}
       >

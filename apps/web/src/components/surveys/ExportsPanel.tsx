@@ -4,28 +4,30 @@ import { FileText, Image, Loader, MapPin } from "lucide-react";
 import type { SurveyDeliverable } from "../../lib/repositories/satelliteSurveys.ts";
 import { deliverableUrl } from "../../lib/repositories/satelliteSurveys.ts";
 import { CATEGORY_EXPORTS, CATEGORY_LABELS } from "../../lib/surveys/labels.ts";
+import type { DossierCategory } from "../../lib/surveys/labels.ts";
 import { DOSSIER_ORDER } from "../../lib/surveys/workbench.ts";
 import { BlockTitle } from "./BlockTitle.tsx";
 
-/** The files a finished survey left behind, opened out of this workspace's storage.
- *
- * The engine's export list was a link per deliverable; here a deliverable only exists if
- * the worker uploaded it, so a row a survey did not produce is a disabled button with a
- * reason rather than a link that would 404 in another person's browser.
- */
+/** The files a finished survey left behind. Only exports for the job's category are shown. */
 export default function ExportsPanel({
   deliverables,
   surveyed,
+  activeDossierCategory,
 }: {
   deliverables: SurveyDeliverable[];
   /** False when nothing is on screen, so the note says so instead of blaming the files. */
   surveyed: boolean;
+  activeDossierCategory?: DossierCategory;
 }) {
   const [opening, setOpening] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   const byKind = new Map(deliverables.map((file) => [file.kind, file]));
-  const ready = DOSSIER_ORDER.filter((category) => {
+  const categoriesToShow: DossierCategory[] = activeDossierCategory
+    ? [activeDossierCategory]
+    : DOSSIER_ORDER;
+
+  const ready = categoriesToShow.filter((category) => {
     const kinds = CATEGORY_EXPORTS[category];
     return byKind.has(kinds.map) || byKind.has(kinds.kmz);
   }).length;
@@ -46,10 +48,10 @@ export default function ExportsPanel({
 
   return (
     <section className="sw-block px-4 py-3.5">
-      <BlockTitle count={`${ready} of ${DOSSIER_ORDER.length}`}>Exports</BlockTitle>
+      <BlockTitle count={`${ready} of ${categoriesToShow.length}`}>Exports</BlockTitle>
 
       <div className="mt-2 space-y-2">
-        {DOSSIER_ORDER.map((category) => {
+        {categoriesToShow.map((category) => {
           const kinds = CATEGORY_EXPORTS[category];
           const map = byKind.get(kinds.map) ?? null;
           const kmz = byKind.get(kinds.kmz) ?? null;
@@ -90,27 +92,29 @@ export default function ExportsPanel({
         Whole workspace
       </p>
       <div className="mt-1.5">
-        <ExportButton
-          label="Master JSON dossier"
-          icon="file"
-          file={dossier}
-          wide
-          opening={opening}
-          disabled={opening !== null}
-          onOpen={() => void open(dossier, "Executive dossier")}
-          title={dossier ? "Every category in one machine-readable file" : "A completed survey writes this"}
-        />
+        <button
+          type="button"
+          onClick={() => void open(dossier, "Master dossier JSON")}
+          disabled={dossier === null || opening !== null}
+          className={`flex w-full items-center justify-between gap-2 rounded-md border border-input px-2.5 py-1.5 text-left text-[11.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            dossier ? "hover:bg-accent/60" : "opacity-45 cursor-not-allowed"
+          }`}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="truncate">Master dossier (raw scores, candidate geojson)</span>
+          </span>
+          <span className="sw-num shrink-0 text-[10.5px] text-muted-foreground">
+            {dossier ? "JSON" : surveyed ? "writing…" : "not run"}
+          </span>
+        </button>
       </div>
 
-      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-        {problem
-          ? problem
-          : dossier
-            ? "The master JSON dossier covers all four categories at once; a category export covers only its own. Files sit in this workspace’s private storage, and the link a click mints expires after half an hour."
-            : surveyed
-              ? "This survey published no files — a category that is skipped produces no map or KMZ for it."
-              : "No survey has finished here, so there is nothing to export yet; the rows above stay disabled until one does."}
-      </p>
+      {problem ? (
+        <p role="alert" className="mt-2 text-[11px] text-destructive">
+          {problem}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -121,34 +125,38 @@ function ExportButton({
   file,
   opening,
   disabled,
-  wide,
   title,
   onOpen,
 }: {
   label: string;
-  icon: "image" | "gps" | "file";
+  icon: "image" | "gps";
   file: SurveyDeliverable | null;
   opening: string | null;
   disabled: boolean;
-  wide?: boolean;
   title: string;
   onOpen: () => void;
 }) {
-  const Glyph = icon === "file" ? FileText : icon === "gps" ? MapPin : Image;
+  const isOpening = file !== null && opening === file.id;
+  const isAvailable = file !== null;
+
   return (
     <button
       type="button"
-      className={`sw-export ${wide ? "w-full justify-center" : ""}`}
-      disabled={file === null || disabled}
-      title={file ? title : `${title} — nothing to open yet`}
       onClick={onOpen}
+      disabled={disabled || !isAvailable}
+      title={title}
+      className={`sw-btn sw-btn--xs gap-1 ${
+        isAvailable ? "hover:bg-accent hover:text-accent-foreground" : "opacity-40 cursor-not-allowed"
+      }`}
     >
-      {opening === file?.id ? (
-        <Loader className="size-3.5 animate-spin" aria-hidden="true" />
+      {isOpening ? (
+        <Loader className="size-3 animate-spin" aria-hidden="true" />
+      ) : icon === "image" ? (
+        <Image className="size-3" aria-hidden="true" />
       ) : (
-        <Glyph className="size-3.5" aria-hidden="true" />
+        <MapPin className="size-3" aria-hidden="true" />
       )}
-      {label}
+      <span>{label}</span>
     </button>
   );
 }

@@ -21,9 +21,9 @@ import {
   startSurvey,
   type SurveyProvenance,
 } from "../../../lib/repositories/satelliteSurveys.ts";
-import { listJobs, type JobWithProject } from "../../../lib/repositories/jobs.ts";
+import { listJobs, deleteJob, type JobWithProject } from "../../../lib/repositories/jobs.ts";
 import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteSurveys.ts";
-import { outsideCoverage, parseCoordinate } from "../../../lib/surveys/labels.ts";
+import { outsideCoverage, parseCoordinate, getJobCategory, toDossierCategory } from "../../../lib/surveys/labels.ts";
 import {
   aoiBounds,
   basisText,
@@ -98,23 +98,27 @@ export default function SatelliteSurveyPage({
     }
   }, [workspaceId]);
 
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    try {
+      await deleteJob(jobId);
+      if (openedJob?.id === jobId) {
+        setOpenedJob(null);
+        setValues((prev) => ({ ...prev, jobId: "", clientName: "", address: "" }));
+      }
+      await fetchJobs();
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+    }
+  }, [openedJob, fetchJobs]);
+
   function applyAndOpenJob(job: JobWithProject) {
+    const cat = getJobCategory(job);
     const patchValues: Partial<SurveyFormValues> = {
       jobId: job.id,
       clientName: job.title,
       address: job.location ?? "",
+      categories: [cat],
     };
-
-    const jt = (job.job_type ?? "").toLowerCase();
-    if (jt.includes("water") || jt.includes("groundwater") || jt.includes("borehole")) {
-      patchValues.categories = ["water"];
-    } else if (jt.includes("mineral") || jt.includes("gold") || jt.includes("mining")) {
-      patchValues.categories = ["minerals"];
-    } else if (jt.includes("soil") || jt.includes("agriculture")) {
-      patchValues.categories = ["soil"];
-    } else if (jt.includes("hazard") || jt.includes("safety") || jt.includes("monitoring")) {
-      patchValues.categories = ["hazard"];
-    }
 
     setValues((prev) => ({ ...prev, ...patchValues }));
     setOpenedJob(job);
@@ -181,8 +185,17 @@ export default function SatelliteSurveyPage({
     coverageLabel(provenance, "optical") ??
     (running ? imageryChip(values.dataSources ?? {}, values.composite ?? DEFAULT_COMPOSITE) : null);
 
-  const candidates = useMemo(() => mapCandidates(detail?.targets ?? []), [detail]);
-  const rows = useMemo(() => candidateRows(detail?.targets ?? []), [detail]);
+  const jobCategory = openedJob ? getJobCategory(openedJob) : (values.categories[0] ?? "water");
+  const jobDossierCategory = toDossierCategory(jobCategory);
+
+  const candidates = useMemo(
+    () => mapCandidates(detail?.targets ?? [], undefined, [jobDossierCategory]),
+    [detail?.targets, jobDossierCategory],
+  );
+  const rows = useMemo(
+    () => candidateRows(detail?.targets ?? [], [jobDossierCategory]),
+    [detail?.targets, jobDossierCategory],
+  );
 
   const snapshot: SurveySnapshot = {
     target: dmsText(target.latitude, target.longitude),
@@ -423,6 +436,8 @@ export default function SatelliteSurveyPage({
             setOpenedJob(null);
             patch({ jobId: "", clientName: "", address: "" });
           }}
+          onDeleteJob={handleDeleteJob}
+          activeDossierCategory={jobDossierCategory}
         />
 
         <section className="sw-map-shell sw-map" aria-label="Map canvas">
@@ -512,11 +527,18 @@ export default function SatelliteSurveyPage({
             <IndicatorsPanel
               scores={detail?.run.result?.scores ?? []}
               note={resultsNote(selected, queuedThisSession)}
+              activeDossierCategory={jobDossierCategory}
             />
-            <CandidateTable rows={rows} selectedKey={focusedKey} onFocus={focusCandidate} />
+            <CandidateTable
+              rows={rows}
+              selectedKey={focusedKey}
+              onFocus={focusCandidate}
+              activeDossierCategory={jobDossierCategory}
+            />
             <ExportsPanel
               deliverables={detail?.deliverables ?? []}
               surveyed={selected !== null && !selected.active}
+              activeDossierCategory={jobDossierCategory}
             />
           </div>
         </div>

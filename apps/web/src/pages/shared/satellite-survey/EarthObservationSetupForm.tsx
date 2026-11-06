@@ -12,6 +12,7 @@ import {
   Satellite,
   Search,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -29,6 +30,7 @@ import {
 import type { SurveyCategory } from "../../../lib/repositories/satelliteSurveys.ts";
 import {
   createJob,
+  deleteJob,
   type JobWithProject,
 } from "../../../lib/repositories/jobs.ts";
 import {
@@ -37,6 +39,7 @@ import {
   SURVEY_CATEGORY_OPTIONS,
   coverageNoteFor,
   parseCoordinate,
+  getJobCategory,
 } from "../../../lib/surveys/labels.ts";
 import {
   DATA_SOURCES,
@@ -95,6 +98,27 @@ export default function EarthObservationSetupForm({
 
   // Search filter for recent jobs
   const [filterQuery, setFilterQuery] = useState("");
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+
+  async function handleDeleteJob(e: React.MouseEvent, job: JobWithProject) {
+    e.stopPropagation();
+    if (!window.confirm(`Permanently delete job "${job.title}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingJobId(job.id);
+    try {
+      await deleteJob(job.id);
+      if (currentJob?.id === job.id || openedJob?.id === job.id) {
+        onSelectJob(null as any);
+        onChange({ jobId: "", clientName: "", address: "" });
+      }
+      await onRefreshJobs?.();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete job.");
+    } finally {
+      setDeletingJobId(null);
+    }
+  }
 
   // Sources accordion state
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -136,6 +160,7 @@ export default function EarthObservationSetupForm({
         title: newJobTitle.trim(),
         location: newJobLocation.trim() || undefined,
         job_type: typeLabel,
+        description: JSON.stringify({ category: newJobCategory }),
         status: "planned",
       });
       const asProjectJob: JobWithProject = { ...created, project_name: null };
@@ -485,6 +510,21 @@ export default function EarthObservationSetupForm({
                         <span>{isSelected ? "Open in EO UI" : "Select Job"}</span>
                         <ArrowRight className="size-3.5" />
                       </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                        title="Delete job"
+                        disabled={deletingJobId === job.id}
+                        onClick={(e) => void handleDeleteJob(e, job)}
+                      >
+                        {deletingJobId === job.id ? (
+                          <Loader className="size-3.5 animate-spin text-destructive" />
+                        ) : (
+                          <Trash2 className="size-3.5" />
+                        )}
+                      </Button>
                     </div>
                   </div>
                 );
@@ -537,45 +577,37 @@ export default function EarthObservationSetupForm({
 
             <CardContent className="pt-0">
               <div
-                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-                role="radiogroup"
+                className="grid grid-cols-1 gap-3"
+                role="region"
                 aria-label="Earth Observation Survey Category"
               >
-                {SURVEY_CATEGORY_OPTIONS.map((option) => {
-                  const active = activeCategory === option.id;
+                {SURVEY_CATEGORY_OPTIONS.filter((option) => option.id === (currentJob ? getJobCategory(currentJob) : activeCategory)).map((option) => {
                   const meta = CATEGORY_LABELS[option.dossier];
                   return (
-                    <label
+                    <div
                       key={option.id}
-                      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 text-left transition-all ${
-                        active
-                          ? "border-primary/60 bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                          : "border-border/70 hover:bg-muted/50"
-                      }`}
+                      className="col-span-full flex items-start gap-3.5 rounded-lg border border-primary/60 bg-primary/10 p-4 text-left shadow-xs ring-1 ring-primary/40"
                     >
-                      <input
-                        type="radio"
-                        name="eo-survey-category"
-                        value={option.id}
-                        checked={active}
-                        disabled={busy}
-                        onChange={() => selectCategory(option.id)}
-                        className="mt-1 size-4 text-primary accent-primary"
-                      />
+                      <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="size-3 stroke-[3]" />
+                      </div>
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-foreground">
                             {meta.short}
                           </span>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                          <Badge variant="default" className="text-[10px] uppercase font-bold tracking-wider">
                             {option.id}
+                          </Badge>
+                          <span className="text-[11px] text-muted-foreground font-medium">
+                            · Category selected for this job
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          {meta.name}
+                          {meta.name} — calibrated multi-spectral indicators for {meta.noun}. Strictly configured for this job.
                         </p>
                       </div>
-                    </label>
+                    </div>
                   );
                 })}
               </div>

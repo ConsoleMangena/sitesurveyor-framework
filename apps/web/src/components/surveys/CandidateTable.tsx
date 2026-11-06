@@ -1,5 +1,5 @@
 import type { MapCandidate } from "../../lib/surveys/workbench.ts";
-import { coordText, distanceText, scoreText } from "../../lib/surveys/labels.ts";
+import { coordText, distanceText, scoreText, type DossierCategory } from "../../lib/surveys/labels.ts";
 import { BlockTitle } from "./BlockTitle.tsx";
 
 /** The ranked targets behind the map markers, in one sortable-free table.
@@ -12,14 +12,20 @@ export default function CandidateTable({
   rows,
   selectedKey,
   onFocus,
+  activeDossierCategory,
 }: {
   rows: MapCandidate[];
   selectedKey: string | null;
   onFocus: (candidate: MapCandidate) => void;
+  activeDossierCategory?: DossierCategory;
 }) {
+  const displayRows = activeDossierCategory
+    ? rows.filter((r) => r.category === activeDossierCategory)
+    : rows;
+
   return (
     <section className="sw-block px-4 py-3.5">
-      <BlockTitle count={rows.length}>Candidate attributes</BlockTitle>
+      <BlockTitle count={displayRows.length}>Candidate attributes</BlockTitle>
 
       <div className="sw-attr-scroll mt-2 rounded-md border border-input">
         <table className="sw-attr-table">
@@ -34,14 +40,14 @@ export default function CandidateTable({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {displayRows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-muted-foreground">
                   No candidates yet. Run a survey to rank field-verification sites.
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              displayRows.map((row) => (
                 <tr
                   key={row.key}
                   role="button"

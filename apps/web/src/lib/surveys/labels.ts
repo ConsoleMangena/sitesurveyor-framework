@@ -110,3 +110,55 @@ export function parseCoordinate(text: string): number | null {
   const value = Number(trimmed);
   return Number.isFinite(value) ? value : null;
 }
+
+
+export function toDossierCategory(cat: SurveyCategory): DossierCategory {
+  switch (cat) {
+    case "water":
+      return "water";
+    case "minerals":
+      return "minerals";
+    case "soil":
+      return "soil_land";
+    case "hazard":
+      return "hazard_safety";
+    default:
+      return "water";
+  }
+}
+
+export function fromDossierCategory(dossier: DossierCategory): SurveyCategory {
+  switch (dossier) {
+    case "water":
+      return "water";
+    case "minerals":
+      return "minerals";
+    case "soil_land":
+      return "soil";
+    case "hazard_safety":
+      return "hazard";
+    default:
+      return "water";
+  }
+}
+
+export function getJobCategory(job: { job_type?: string | null; description?: string | null } | null | undefined): SurveyCategory {
+  if (!job) return "water";
+  if (job.description) {
+    try {
+      const parsed = JSON.parse(job.description);
+      if (parsed?.category && ["water", "minerals", "soil", "hazard"].includes(parsed.category)) {
+        return parsed.category as SurveyCategory;
+      }
+    } catch {
+      if (["water", "minerals", "soil", "hazard"].includes(job.description)) {
+        return job.description as SurveyCategory;
+      }
+    }
+  }
+  const typeStr = (job.job_type ?? "").toLowerCase();
+  if (typeStr.includes("mineral") || typeStr.includes("gold")) return "minerals";
+  if (typeStr.includes("soil") || typeStr.includes("land")) return "soil";
+  if (typeStr.includes("hazard") || typeStr.includes("safety")) return "hazard";
+  return "water";
+}

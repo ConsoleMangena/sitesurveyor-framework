@@ -1,3 +1,4 @@
+import { supabase } from "../supabase/client.ts";
 import { getCurrentSession } from "../auth/session.ts";
 import type { Tables, TablesInsert, TablesUpdate } from "../supabase/types.ts";
 import { getLocalDatabase, isUuid, type LocalDb } from "../localDb/db.ts";
@@ -174,4 +175,38 @@ export async function archiveJob(id: string): Promise<void> {
     archived_at: nowIso(),
     updated_at: nowIso(),
   });
+}
+
+
+export async function deleteJob(id: string): Promise<void> {
+  if (!id || !isUuid(id)) return;
+  const session = await getCurrentSession();
+  if (!session?.user) throw new Error("You must be signed in to delete a job.");
+
+  const db = await getLocalDb();
+  try {
+    const doc = await db.jobs.findOne(id).exec();
+    if (doc) {
+      await doc.remove();
+    }
+  } catch (err) {
+    console.warn("Could not remove local job doc:", err);
+  }
+
+  // Delete directly from Supabase
+  try {
+    const { error } = await (supabase as any)
+      .from("jobs")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      console.warn("Could not hard delete job from Supabase, attempting soft delete:", error.message);
+      await (supabase as any)
+        .from("jobs")
+        .update({ _deleted: true, updated_at: nowIso() })
+        .eq("id", id);
+    }
+  } catch (err) {
+    console.warn("Error deleting job from Supabase:", err);
+  }
 }

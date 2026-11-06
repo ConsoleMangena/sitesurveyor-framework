@@ -24,6 +24,7 @@ import {
   AOI_CHOICES,
   CATEGORY_LABELS,
   SURVEY_CATEGORY_OPTIONS,
+  getJobCategory,
   coverageNoteFor,
   parseCoordinate,
 } from "../../../lib/surveys/labels.ts";
@@ -125,16 +126,7 @@ export default function TargetForm({
       address: job.location ?? "",
     };
 
-    const jt = (job.job_type ?? "").toLowerCase();
-    if (jt.includes("water") || jt.includes("groundwater") || jt.includes("borehole")) {
-      patch.categories = ["water"];
-    } else if (jt.includes("mineral") || jt.includes("gold") || jt.includes("mining")) {
-      patch.categories = ["minerals"];
-    } else if (jt.includes("soil") || jt.includes("agriculture")) {
-      patch.categories = ["soil"];
-    } else if (jt.includes("hazard") || jt.includes("safety") || jt.includes("monitoring")) {
-      patch.categories = ["hazard"];
-    }
+    patch.categories = [getJobCategory(job)];
 
     onChange(patch);
   }
@@ -365,43 +357,30 @@ export default function TargetForm({
 
         <div
           className="grid grid-cols-1 gap-1.5"
-          role="radiogroup"
+          role="region"
           aria-label="Earth Observation Survey Category"
         >
-          {SURVEY_CATEGORY_OPTIONS.map((option) => {
-            const active = activeCategory === option.id;
+          {SURVEY_CATEGORY_OPTIONS.filter((opt) => opt.id === activeCategory).map((option) => {
             const meta = CATEGORY_LABELS[option.dossier];
             return (
-              <label
+              <div
                 key={option.id}
-                className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-2 text-left transition-all ${
-                  active
-                    ? "border-primary/50 bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                    : "border-border/60 hover:bg-muted/60"
-                }`}
+                className="flex items-start gap-2.5 rounded-md border border-primary/50 bg-primary/10 p-2 text-left shadow-xs ring-1 ring-primary/40"
               >
-                <input
-                  type="radio"
-                  name="survey-category"
-                  className="mt-0.5"
-                  checked={active}
-                  disabled={busy}
-                  onChange={() => selectCategory(option.id)}
-                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[12px] font-semibold text-foreground">
                       {meta.short}
                     </span>
-                    <Badge variant={active ? "default" : "secondary"} className="text-[9.5px]">
+                    <Badge variant="default" className="text-[9.5px]">
                       {option.id}
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                    {meta.name}
+                    {meta.name} (locked to job)
                   </p>
                 </div>
-              </label>
+              </div>
             );
           })}
         </div>

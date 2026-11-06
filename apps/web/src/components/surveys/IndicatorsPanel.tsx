@@ -11,31 +11,32 @@ import {
 } from "../../lib/surveys/workbench.ts";
 import { BlockTitle } from "./BlockTitle.tsx";
 
-/** The four domain scores, in the dossier's own order.
- *
- * A card is drawn for every category whether or not the survey scored it, because an
- * absent category is an answer too: the block count says how much of the four was run,
- * and a card that simply vanished would leave a reader guessing.
- */
+/** The domain scores. Only the category selected for the job is displayed. */
 export default function IndicatorsPanel({
   scores,
   note,
+  activeDossierCategory,
 }: {
   scores: SurveyScore[];
   note: string;
+  activeDossierCategory?: DossierCategory;
 }) {
   const byCategory = new Map(scores.map((score) => [score.category, score]));
-  const scored = DOSSIER_ORDER.filter(
+  const categoriesToShow: DossierCategory[] = activeDossierCategory
+    ? [activeDossierCategory]
+    : DOSSIER_ORDER;
+
+  const scored = categoriesToShow.filter(
     (category) => byCategory.get(category)?.score !== null && byCategory.get(category)?.score !== undefined,
   ).length;
 
   return (
     <section className="sw-block px-4 py-3.5">
-      <BlockTitle count={`${scored} / ${DOSSIER_ORDER.length}`}>Indicators</BlockTitle>
+      <BlockTitle count={`${scored} / ${categoriesToShow.length}`}>Indicators</BlockTitle>
       <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{note}</p>
 
       <div aria-live="polite" className="mt-2.5 grid gap-2">
-        {DOSSIER_ORDER.map((category) => (
+        {categoriesToShow.map((category) => (
           <Indicator
             key={category}
             category={category}

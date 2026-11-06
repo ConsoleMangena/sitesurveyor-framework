@@ -115,9 +115,11 @@ function isDossierCategory(value: string): value is DossierCategory {
 export function mapCandidates(
   targets: SurveyTarget[],
   perCategory = MAP_CANDIDATES_PER_CATEGORY,
+  allowedCategories?: DossierCategory[],
 ): MapCandidate[] {
   const rows: MapCandidate[] = [];
-  for (const category of DOSSIER_ORDER) {
+  const categoriesToScan = allowedCategories ?? DOSSIER_ORDER;
+  for (const category of categoriesToScan) {
     const mark = CATEGORY_MARKS[category];
     for (const target of targets) {
       if (!isDossierCategory(target.category) || target.category !== category) continue;
@@ -148,8 +150,11 @@ function categoryCount(rows: MapCandidate[], category: DossierCategory): number 
 }
 
 /** All targets, grouped for the attribute table. */
-export function candidateRows(targets: SurveyTarget[]): MapCandidate[] {
-  return mapCandidates(targets, Number.POSITIVE_INFINITY);
+export function candidateRows(
+  targets: SurveyTarget[],
+  allowedCategories?: DossierCategory[],
+): MapCandidate[] {
+  return mapCandidates(targets, Number.POSITIVE_INFINITY, allowedCategories);
 }
 
 /**

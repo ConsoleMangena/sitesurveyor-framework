@@ -1,4 +1,4 @@
-import { Briefcase, ChevronLeft, Loader, Undo2 } from "lucide-react";
+import { Briefcase, ChevronLeft, Loader, Trash2, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -7,7 +7,7 @@ import { BlockTitle } from "./BlockTitle.tsx";
 import type { SurveyRun } from "../../lib/repositories/satelliteSurveys.ts";
 import type { JobWithProject } from "../../lib/repositories/jobs.ts";
 import { SurveyStatusChip } from "../../components/surveys/SurveyStatusChip.tsx";
-import { coordText } from "../../lib/surveys/labels.ts";
+import { coordText, type DossierCategory } from "../../lib/surveys/labels.ts";
 import {
   BAND_RANGES,
   BASEMAPS,
@@ -45,15 +45,11 @@ interface ContentsPanelProps {
   currentJob?: JobWithProject | null;
   onSelectJob?: (job: JobWithProject) => void;
   onOpenJobSetup?: () => void;
+  onDeleteJob?: (jobId: string) => Promise<void>;
+  activeDossierCategory?: DossierCategory;
 }
 
-/** What is on the map, what it is drawn over, and which survey the numbers came from.
- *
- * The engine's contents column, kept item for item. The one addition is the workspace's
- * own survey list: the sandbox only ever held the last survey its process had run, while
- * here every survey the platform has finished is one click away, so the column needs to
- * say which one is on screen.
- */
+/** What is on the map, what it is drawn over, and which survey the numbers came from. */
 export default function ContentsPanel({
   layers,
   onLayer,
@@ -71,7 +67,11 @@ export default function ContentsPanel({
   currentJob,
   onSelectJob,
   onOpenJobSetup,
+  onDeleteJob,
+  activeDossierCategory,
 }: ContentsPanelProps) {
+  const legendCategories = activeDossierCategory ? [activeDossierCategory] : DOSSIER_ORDER;
+
   return (
     <div className="sw-panel sw-panel--left" aria-label="Map contents">
       <div className="sw-panel__header">
@@ -114,7 +114,7 @@ export default function ContentsPanel({
                 />
                 <span
                   className="sw-swatch"
-                  style={{ background: CATEGORY_COLORS.water }}
+                  style={{ background: CATEGORY_COLORS[activeDossierCategory ?? "water"] }}
                   aria-hidden="true"
                 />
                 Candidate sites
@@ -146,7 +146,7 @@ export default function ContentsPanel({
         <section className="sw-block px-3.5 py-3">
           <BlockTitle>Legend</BlockTitle>
           <ul className="mt-1 list-none p-0">
-            {DOSSIER_ORDER.map((category) => (
+            {legendCategories.map((category) => (
               <li key={category}>
                 <span className="sw-layer">
                   <span
@@ -208,7 +208,7 @@ export default function ContentsPanel({
                 {jobs.map((job) => {
                   const isCurrent = job.id === currentJob?.id;
                   return (
-                    <li key={job.id} className="flex items-center gap-1">
+                    <li key={job.id} className="flex items-center gap-1 group">
                       <button
                         type="button"
                         onClick={() => onSelectJob?.(job)}
@@ -230,6 +230,23 @@ export default function ContentsPanel({
                           {job.status}
                         </span>
                       </button>
+                      {onDeleteJob ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                          title="Delete job"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete job "${job.title}"?`)) {
+                              void onDeleteJob(job.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      ) : null}
                     </li>
                   );
                 })}
@@ -237,6 +254,7 @@ export default function ContentsPanel({
             )
           ) : loading ? (
             <div className="mt-2 space-y-1.5">
+              <Skeleton className="h-9 w-full rounded-md" />
               <Skeleton className="h-9 w-full rounded-md" />
               <Skeleton className="h-9 w-full rounded-md" />
             </div>
