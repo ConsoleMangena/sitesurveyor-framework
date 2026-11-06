@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Circle, ImageOverlay, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { candidateIcon, targetIcon } from "./mapIcons.ts";
 import {
   basemapById,
@@ -27,7 +27,7 @@ interface SurveyMapProps {
   target: { latitude: number; longitude: number };
   bounds: [LatLngTuple, LatLngTuple];
   candidates: MapCandidate[];
-  layers: { aoi: boolean; candidates: boolean; classifiedImage?: boolean };
+  layers: { aoi: boolean; candidates: boolean };
   basemap: string;
   /** Outside the coverage the worker can read: the pin goes amber before the money does. */
   outside: boolean;
@@ -42,7 +42,6 @@ interface SurveyMapProps {
   onMoveTarget: (latitude: number, longitude: number) => void;
   onView: (info: MapViewInfo) => void;
   onOpenVectorViewer?: () => void;
-  classifiedImageUrl?: string | null;
 }
 
 /** Everything that has to reach the Leaflet instance itself, in one child so the page
@@ -136,7 +135,6 @@ export default function SurveyMap({
   onMoveTarget,
   onView,
   onOpenVectorViewer,
-  classifiedImageUrl,
 }: SurveyMapProps) {
   const tile = useMemo(() => basemapById(basemap), [basemap]);
   const pin = useMemo(() => targetIcon(outside ? OUTSIDE : BRAND), [outside]);
@@ -155,16 +153,6 @@ export default function SurveyMap({
         maxZoom={20}
         maxNativeZoom={tile.maxNativeZoom ?? 19}
       />
-
-      {/* Georeferenced Processed Classified Image Overlay */}
-      {layers.classifiedImage && classifiedImageUrl ? (
-        <ImageOverlay
-          url={classifiedImageUrl}
-          bounds={bounds}
-          opacity={0.82}
-          zIndex={250}
-        />
-      ) : null}
 
       {layers.aoi ? (
         <Rectangle

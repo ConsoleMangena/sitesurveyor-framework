@@ -27,8 +27,8 @@ export interface SurveySnapshot {
 }
 
 interface ContentsPanelProps {
-  layers: { aoi: boolean; candidates: boolean; classifiedImage?: boolean };
-  onLayer: (id: "aoi" | "candidates" | "classifiedImage", value: boolean) => void;
+  layers: { aoi: boolean; candidates: boolean };
+  onLayer: (id: "aoi" | "candidates", value: boolean) => void;
   basemap: string;
   onBasemap: (id: string) => void;
   snapshot: SurveySnapshot;
@@ -47,7 +47,6 @@ interface ContentsPanelProps {
   onOpenJobSetup?: () => void;
   onDeleteJob?: (jobId: string) => Promise<void>;
   activeDossierCategory?: DossierCategory;
-  hasProcessedImage?: boolean;
 }
 
 /** What is on the map, what it is drawn over, and which survey the numbers came from. */
@@ -70,7 +69,6 @@ export default function ContentsPanel({
   onOpenJobSetup,
   onDeleteJob,
   activeDossierCategory,
-  hasProcessedImage,
 }: ContentsPanelProps) {
   const legendCategories = activeDossierCategory ? [activeDossierCategory] : DOSSIER_ORDER;
 
@@ -122,25 +120,6 @@ export default function ContentsPanel({
                 Candidate sites
               </label>
             </li>
-            {hasProcessedImage ? (
-              <li>
-                <label className="sw-layer">
-                  <input
-                    type="checkbox"
-                    checked={layers.classifiedImage ?? true}
-                    onChange={(event) => onLayer("classifiedImage", event.target.checked)}
-                  />
-                  <span
-                    className="sw-swatch"
-                    style={{
-                      background: `linear-gradient(135deg, ${CATEGORY_COLORS[activeDossierCategory ?? "water"]}, #0f172a)`,
-                    }}
-                    aria-hidden="true"
-                  />
-                  Classified map image
-                </label>
-              </li>
-            ) : null}
           </ul>
         </section>
 
