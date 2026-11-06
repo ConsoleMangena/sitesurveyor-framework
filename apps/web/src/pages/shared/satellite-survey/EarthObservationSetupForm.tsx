@@ -1,19 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Briefcase,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Globe,
-  Layers,
   Loader,
   MapPin,
   Plus,
   Satellite,
-  ShieldCheck,
   Sparkles,
-  Wrench,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -51,11 +47,6 @@ import {
   windowOptions,
   yearOptions,
 } from "../../../lib/surveys/sources.ts";
-import {
-  getRequiredToolsForSurvey,
-  groupToolsByCategory,
-  type SurveyToolItem,
-} from "../../../lib/surveys/surveyTools.ts";
 import { validateForm, type SurveyFormValues } from "./model.ts";
 
 const fieldClass =
@@ -100,9 +91,6 @@ export default function EarthObservationSetupForm({
 
   // Sources accordion state
   const [sourcesOpen, setSourcesOpen] = useState(false);
-
-  // Equipment checklist state
-  const [checkedTools, setCheckedTools] = useState<Set<string>>(new Set());
 
   // Form validation feedback
   const [validationProblems, setValidationProblems] = useState<string[]>([]);
@@ -212,31 +200,6 @@ export default function EarthObservationSetupForm({
     onChange({ categories: [id] });
   }
 
-  const activeDossier =
-    SURVEY_CATEGORY_OPTIONS.find((o) => o.id === activeCategory)?.dossier ?? "water";
-  const activeCategoryLabel = CATEGORY_LABELS[activeDossier]?.name ?? "selected";
-
-  // Derive required tools kit
-  const requiredTools = useMemo(() => {
-    return getRequiredToolsForSurvey(activeCategory, chosen);
-  }, [activeCategory, chosen]);
-
-  const groupedTools = useMemo(() => {
-    return groupToolsByCategory(requiredTools);
-  }, [requiredTools]);
-
-  const toggleToolCheck = (toolId: string) => {
-    setCheckedTools((prev) => {
-      const next = new Set(prev);
-      if (next.has(toolId)) next.delete(toolId);
-      else next.add(toolId);
-      return next;
-    });
-  };
-
-  const essentialTools = requiredTools.filter((t) => t.essential);
-  const verifiedEssentialCount = essentialTools.filter((t) => checkedTools.has(t.id)).length;
-
   const currentJob = jobs.find((j) => j.id === values.jobId) ?? null;
 
   function handleProceed() {
@@ -273,7 +236,7 @@ export default function EarthObservationSetupForm({
                 Earth Observation Setup
               </h1>
               <p className="text-xs text-muted-foreground">
-                Configure your job, select survey domain, choose data feeds, and review your field kit.
+                Configure your job, select survey domain, and choose data feeds before entering the observation workbench.
               </p>
             </div>
           </div>
@@ -651,100 +614,12 @@ export default function EarthObservationSetupForm({
         </CardContent>
       </Card>
 
-      {/* ── STEP 4: Required Tools & Equipment Kit ──────────────────────── */}
-      <Card className="border-primary/40 bg-primary/5 shadow-xs">
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                4
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <Wrench className="size-4 text-primary" />
-                  <CardTitle className="text-base">
-                    Required Equipment & Tools Kit
-                  </CardTitle>
-                </div>
-                <CardDescription className="text-xs">
-                  Recommended field instruments to ground-truth and survey {activeCategoryLabel.toLowerCase()} targets.
-                </CardDescription>
-              </div>
-            </div>
-
-            <Badge
-              variant={verifiedEssentialCount === essentialTools.length ? "default" : "secondary"}
-              className="self-start sm:self-auto text-xs"
-            >
-              {verifiedEssentialCount} of {essentialTools.length} essential tools verified
-            </Badge>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4 pt-0">
-          {groupedTools.map((group) => (
-            <div key={group.category} className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {group.label}
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {group.tools.map((tool) => {
-                  const isChecked = checkedTools.has(tool.id);
-                  return (
-                    <div
-                      key={tool.id}
-                      onClick={() => toggleToolCheck(tool.id)}
-                      className={`group flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                        isChecked
-                          ? "border-emerald-500/50 bg-emerald-500/10 dark:bg-emerald-950/30"
-                          : "border-border/70 bg-card hover:bg-muted/60"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        id={`setup-tool-${tool.id}`}
-                        checked={isChecked}
-                        onChange={() => toggleToolCheck(tool.id)}
-                        className="mt-0.5 size-4 rounded border-input text-primary focus:ring-primary/60"
-                      />
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center justify-between gap-1">
-                          <span
-                            className={`text-xs font-semibold ${
-                              isChecked ? "text-foreground font-bold" : "text-foreground"
-                            }`}
-                          >
-                            {tool.name}
-                          </span>
-                          <Badge
-                            variant={tool.essential ? "destructive" : "outline"}
-                            className="text-[9px] px-1.5 py-0 uppercase"
-                          >
-                            {tool.essential ? "Essential" : "Recommended"}
-                          </Badge>
-                        </div>
-                        <p className="text-[11.5px] leading-snug text-muted-foreground">
-                          {tool.purpose}
-                        </p>
-                        <p className="text-[10.5px] italic text-muted-foreground/80">
-                          {tool.description}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* ── STEP 5: Site Coordinates & Extent ───────────────────────────── */}
+      {/* ── STEP 4: Site Coordinates & Extent ───────────────────────────── */}
       <Card className="border-border/70 shadow-xs">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-              5
+              4
             </span>
             <div>
               <CardTitle className="text-base">Site Coordinates & Observation Extent</CardTitle>

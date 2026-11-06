@@ -18,11 +18,9 @@ import {
   Droplets,
   Sprout,
   ShieldAlert,
-  Wrench,
   Satellite,
   type LucideIcon,
 } from "lucide-react";
-import { getRequiredToolsForSurvey } from "../../lib/surveys/surveyTools.ts";
 import {
   archiveJob,
   createJob,
@@ -506,52 +504,6 @@ export default function JobsPage({
                 </CardContent>
               </Card>
 
-              {/* ── Required Tools & Equipment Kit Preview ─────── */}
-              {jobType ? (() => {
-                const tools = getRequiredToolsForSurvey(jobType);
-                return (
-                  <Card className="border-primary/30 bg-primary/5">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-primary/15 text-primary">
-                            <Wrench size={15} />
-                          </div>
-                          <div>
-                            <CardTitle className="text-base">Recommended Equipment Kit</CardTitle>
-                            <CardDescription>
-                              Instruments required for {jobType} surveying.
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {tools.length} instruments
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {tools.slice(0, 6).map((tool) => (
-                          <div
-                            key={tool.id}
-                            className="flex items-start gap-2 rounded-md border border-border/70 bg-card p-2 text-xs"
-                          >
-                            <CheckCircle2 className="mt-0.5 size-3.5 text-primary shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <span className="font-medium text-foreground block truncate">
-                                {tool.name}
-                              </span>
-                              <p className="text-[10.5px] text-muted-foreground line-clamp-2">
-                                {tool.purpose}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })() : null}
 
               {/* ── Schedule ─────────────────────────────────── */}
               <Card>
@@ -818,51 +770,6 @@ export default function JobsPage({
             </div>
 
             <div className="min-w-0 space-y-4">
-            {(() => {
-              const jobTools = getRequiredToolsForSurvey(selectedJob.job_type ?? "Topographical");
-              return (
-                <Card>
-                  <CardHeader className="py-3 px-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Wrench className="size-4 text-primary" />
-                        <CardTitle className="text-sm font-semibold">
-                          Required Equipment & Tools Kit
-                        </CardTitle>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {jobTools.length} instruments recommended
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4 pt-1 space-y-2">
-                    {jobTools.map((tool) => (
-                      <div
-                        key={tool.id}
-                        className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/30 p-2 text-xs"
-                      >
-                        <CheckCircle2 className="mt-0.5 size-3.5 text-primary shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="font-medium text-foreground">{tool.name}</span>
-                            <Badge
-                              variant={tool.essential ? "destructive" : "secondary"}
-                              className="text-[9px] px-1 py-0 uppercase"
-                            >
-                              {tool.essential ? "Essential" : "Recommended"}
-                            </Badge>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {tool.purpose}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
             <EntityFilesCard
               workspaceId={workspaceId}
               entityTable="jobs"

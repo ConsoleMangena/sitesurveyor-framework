@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Briefcase,
-  Check,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Layers,
   Loader,
+  MapPin,
   Plus,
-  Wrench,
   Sparkles,
 } from "lucide-react";
 
@@ -40,11 +37,6 @@ import {
   windowOptions,
   yearOptions,
 } from "../../../lib/surveys/sources.ts";
-import {
-  getRequiredToolsForSurvey,
-  groupToolsByCategory,
-  type SurveyToolItem,
-} from "../../../lib/surveys/surveyTools.ts";
 import type { SurveyFormValues } from "./model.ts";
 
 const fieldClass =
@@ -85,7 +77,6 @@ export default function TargetForm({
   onSubmit,
 }: TargetFormProps) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(true);
 
   // Job management state
   const [jobs, setJobs] = useState<JobWithProject[]>([]);
@@ -95,9 +86,6 @@ export default function TargetForm({
   const [newJobLocation, setNewJobLocation] = useState("");
   const [savingJob, setSavingJob] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
-
-  // Checked tools checklist state
-  const [checkedTools, setCheckedTools] = useState<Set<string>>(new Set());
 
   // Load workspace jobs and handle sessionStorage pre-selection
   useEffect(() => {
@@ -109,7 +97,6 @@ export default function TargetForm({
         if (!active) return;
         setJobs(rows);
 
-        // Check if a job ID was passed through sessionStorage (e.g. from JobsPage)
         const storedJobId = sessionStorage.getItem("sitesurveyor:selected_job_id");
         if (storedJobId) {
           sessionStorage.removeItem("sitesurveyor:selected_job_id");
@@ -138,7 +125,6 @@ export default function TargetForm({
       address: job.location ?? "",
     };
 
-    // If the job type corresponds to a known survey category, auto-select it
     const jt = (job.job_type ?? "").toLowerCase();
     if (jt.includes("water") || jt.includes("groundwater") || jt.includes("borehole")) {
       patch.categories = ["water"];
@@ -201,37 +187,10 @@ export default function TargetForm({
   }
 
   const activeCategory = values.categories[0] ?? "water";
-  const activeDossier =
-    SURVEY_CATEGORY_OPTIONS.find((o) => o.id === activeCategory)?.dossier ?? "water";
-  const activeCategoryLabel = CATEGORY_LABELS[activeDossier]?.name ?? "selected";
 
   function selectCategory(id: SurveyCategory) {
     onChange({ categories: [id] });
   }
-
-  // Derive dynamic required tools kit based on chosen survey type and data sources
-  const requiredTools = useMemo(() => {
-    return getRequiredToolsForSurvey(activeCategory, chosen);
-  }, [activeCategory, chosen]);
-
-  const groupedTools = useMemo(() => {
-    return groupToolsByCategory(requiredTools);
-  }, [requiredTools]);
-
-  const toggleToolCheck = (toolId: string) => {
-    setCheckedTools((prev) => {
-      const next = new Set(prev);
-      if (next.has(toolId)) {
-        next.delete(toolId);
-      } else {
-        next.add(toolId);
-      }
-      return next;
-    });
-  };
-
-  const essentialTools = requiredTools.filter((t) => t.essential);
-  const verifiedEssentialCount = essentialTools.filter((t) => checkedTools.has(t.id)).length;
 
   const currentJob = jobs.find((j) => j.id === values.jobId) ?? null;
 
@@ -577,108 +536,11 @@ export default function TargetForm({
         ) : null}
       </section>
 
-      {/* ── STEP 4: Required Tools & Equipment Kit ──────────────────────── */}
-      <section className="rounded-lg border border-primary/30 bg-primary/5 p-3 shadow-xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-              4
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Wrench className="size-3.5 text-primary" />
-              <Label className="text-[11px] font-semibold text-foreground">
-                Required Equipment Kit
-              </Label>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge
-              variant={verifiedEssentialCount === essentialTools.length ? "default" : "secondary"}
-              className="text-[10px] font-medium"
-            >
-              {verifiedEssentialCount} of {essentialTools.length} essential verified
-            </Badge>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground"
-              aria-expanded={toolsOpen}
-              onClick={() => setToolsOpen((open) => !open)}
-              title={toolsOpen ? "Collapse tools" : "Expand tools"}
-            >
-              {toolsOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-            </button>
-          </div>
-        </div>
-
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Recommended field instruments to ground-truth and survey {activeCategoryLabel.toLowerCase()} targets.
-        </p>
-
-        {toolsOpen ? (
-          <div className="mt-3 space-y-3">
-            {groupedTools.map((group) => (
-              <div key={group.category} className="space-y-1.5">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </span>
-                <div className="space-y-1.5">
-                  {group.tools.map((tool) => {
-                    const isChecked = checkedTools.has(tool.id);
-                    return (
-                      <div
-                        key={tool.id}
-                        onClick={() => toggleToolCheck(tool.id)}
-                        className={`group flex cursor-pointer items-start gap-2.5 rounded-md border p-2 text-left transition-colors ${
-                          isChecked
-                            ? "border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/20"
-                            : "border-border/70 bg-card hover:bg-muted/60"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          id={`tool-${tool.id}`}
-                          checked={isChecked}
-                          onChange={() => toggleToolCheck(tool.id)}
-                          className="mt-0.5 size-3.5 rounded border-input text-primary focus:ring-primary/60"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span
-                              className={`text-[11.5px] font-medium ${
-                                isChecked ? "text-foreground font-semibold" : "text-foreground"
-                              }`}
-                            >
-                              {tool.name}
-                            </span>
-                            <Badge
-                              variant={tool.essential ? "destructive" : "outline"}
-                              className="text-[9px] px-1.5 py-0 uppercase"
-                            >
-                              {tool.essential ? "Essential" : "Recommended"}
-                            </Badge>
-                          </div>
-                          <p className="mt-0.5 text-[10.5px] leading-snug text-muted-foreground">
-                            {tool.purpose}
-                          </p>
-                          <p className="mt-0.5 text-[10px] italic text-muted-foreground/75">
-                            {tool.description}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      {/* ── STEP 5: Site Coordinates & Extent ───────────────────────────── */}
+      {/* ── STEP 4: Site Coordinates & Extent ───────────────────────────── */}
       <section className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs space-y-3">
         <div className="flex items-center gap-2">
           <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
-            5
+            4
           </span>
           <Label className={labelClass}>Site Coordinates & Extent</Label>
         </div>
