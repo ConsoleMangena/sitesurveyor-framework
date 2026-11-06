@@ -1,6 +1,6 @@
 import { getCurrentSession } from "../auth/session.ts";
 import type { Tables, TablesInsert, TablesUpdate } from "../supabase/types.ts";
-import { getLocalDatabase, type LocalDb } from "../localDb/db.ts";
+import { getLocalDatabase, isUuid, type LocalDb } from "../localDb/db.ts";
 import { startWorkspaceSync } from "../localDb/sync.ts";
 import { generateLocalId, nowIso, omitNullish } from "../localDb/utils.ts";
 import type { JobDocType } from "../localDb/schemas.ts";
@@ -34,6 +34,8 @@ export async function listJobs(
   workspaceId: string,
   options: { activeOnly?: boolean; status?: string; serviceArea?: string; jobType?: string } = {},
 ): Promise<JobWithProject[]> {
+  if (!workspaceId || !isUuid(workspaceId)) return [];
+
   const session = await getCurrentSession();
   if (!session?.user) return [];
 
@@ -88,6 +90,8 @@ export async function listJobs(
 }
 
 export async function getJob(id: string): Promise<JobWithProject | null> {
+  if (!id || !isUuid(id)) return null;
+
   const session = await getCurrentSession();
   if (!session?.user) return null;
 

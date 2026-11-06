@@ -1,7 +1,7 @@
 import { getCurrentSession } from "../auth/session.ts";
 import { supabase } from "../supabase/client.ts";
 import type { Tables, TablesInsert, TablesUpdate } from "../supabase/types.ts";
-import { getLocalDatabase, type LocalDb } from "../localDb/db.ts";
+import { getLocalDatabase, isUuid, type LocalDb } from "../localDb/db.ts";
 import { startWorkspaceSync } from "../localDb/sync.ts";
 import { generateLocalId, nowIso, omitNullish } from "../localDb/utils.ts";
 import { PROJECT_DEFAULTS } from "../localDb/migrations.ts";
@@ -42,6 +42,7 @@ function toProjectRow(doc: ProjectDocType): ProjectRow {
 export async function listProjects(
   workspaceId: string,
 ): Promise<ProjectWithOrg[]> {
+  if (!workspaceId || !isUuid(workspaceId)) return [];
   const session = await getCurrentSession();
   if (!session?.user) return [];
 
@@ -88,6 +89,7 @@ export async function listProjects(
 }
 
 export async function getProject(id: string): Promise<ProjectRow | null> {
+  if (!id || !isUuid(id)) return null;
   const db = await getLocalDb();
   const doc = await db.projects.findOne(id).exec();
   return doc ? toProjectRow(doc.toMutableJSON()) : null;

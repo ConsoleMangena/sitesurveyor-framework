@@ -59,6 +59,12 @@ export interface LocalDb {
 
 type AnyRow = Record<string, unknown> & { id: string };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(val: unknown): val is string {
+  return typeof val === "string" && UUID_REGEX.test(val);
+}
+
 function normalizePatch<T extends object>(patch: UpdatePatch<T>): Record<string, unknown> {
   const value = patch as Record<string, unknown>;
   return "$set" in value && value.$set && typeof value.$set === "object"
@@ -100,16 +106,72 @@ function makeDoc<T extends object>(table: string, row: AnyRow): WmDoc<T> {
 function makeCollection<T extends object>(table: string): WmCollection<T> {
   const find = (input: { selector?: Record<string, unknown>; sort?: Record<string, SortDirection> } = {}): WmQuery<T> => {
     const execute = async (extraSort?: Record<string, SortDirection>) => {
+      const selector = input.selector ?? {};
+
+      // If any ID column (id or *_id) is queried with an invalid UUID string,
+      // Postgres UUID validation fails with HTTP 400. Return [] immediately.
+      for (const [key, value] of Object.entries(selector)) {
+        if (key === "id" || key.endsWith("_id")) {
+          if (typeof value === "string" && !isUuid(value)) {
+            return [];
+          }
+          if (value && typeof value === "object" && "$in" in value && Array.isArray((value as any).$in)) {
+            const valid = (value as any).$in.filter((v: unknown) => isUuid(v));
+            if (valid.length === 0) return [];
+            (value as any).$in = valid;
+          }
+        }
+      }
+
       let query = (supabase as any).from(table).select("*");
-      for (const [key, value] of Object.entries(input.selector ?? {})) {
-        if (value !== undefined) query = query.eq(key, value);
+      for (const [key, value] of Object.entries(selector)) {
+        if (value === undefined) continue;
+
+        if (value === null) {
+          query = query.is(key, null);
+        } else if (typeof value === "object" && !Array.isArray(value)) {
+          // Support Mongo-style operators: $ne, $in, $nin, $gt, $gte, $lt, $lte
+          const opObj = value as Record<string, unknown>;
+          if ("$ne" in opObj) {
+            query = query.neq(key, opObj.$ne);
+          }
+          if ("$in" in opObj && Array.isArray(opObj.$in)) {
+            query = query.in(key, opObj.$in);
+          }
+          if ("$nin" in opObj && Array.isArray(opObj.$nin)) {
+            query = query.not(key, "in", `(${opObj.$nin.join(",")})`);
+          }
+          if ("$gt" in opObj) {
+            query = query.gt(key, opObj.$gt);
+          }
+          if ("$gte" in opObj) {
+            query = query.gte(key, opObj.$gte);
+          }
+          if ("$lt" in opObj) {
+            query = query.lt(key, opObj.$lt);
+          }
+          if ("$lte" in opObj) {
+            query = query.lte(key, opObj.$lte);
+          }
+        } else {
+          query = query.eq(key, value);
+        }
       }
       for (const [key, direction] of Object.entries({ ...input.sort, ...extraSort })) {
         query = query.order(key, { ascending: direction === "asc" });
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return ((data ?? []) as AnyRow[]).map((row) => makeDoc<T>(table, row));
+
+      try {
+        const { data, error } = await query;
+        if (error) {
+          console.warn(`Query on table ${table} failed:`, error.message || error);
+          return [];
+        }
+        return ((data ?? []) as AnyRow[]).map((row) => makeDoc<T>(table, row));
+      } catch (err) {
+        console.warn(`Unexpected error querying table ${table}:`, err);
+        return [];
+      }
     };
 
     return {
@@ -122,9 +184,18 @@ function makeCollection<T extends object>(table: string): WmCollection<T> {
     find,
     findOne: (id) => ({
       exec: async () => {
-        const { data, error } = await (supabase as any).from(table).select("*").eq("id", id).maybeSingle();
-        if (error) throw error;
-        return data ? makeDoc<T>(table, data as AnyRow) : null;
+        if (!id || !isUuid(id)) return null;
+        try {
+          const { data, error } = await (supabase as any).from(table).select("*").eq("id", id).maybeSingle();
+          if (error) {
+            console.warn(`findOne on table ${table} failed:`, error.message || error);
+            return null;
+          }
+          return data ? makeDoc<T>(table, data as AnyRow) : null;
+        } catch (err) {
+          console.warn(`Unexpected error in findOne on table ${table}:`, err);
+          return null;
+        }
       },
     }),
     insert: async (data) => {
