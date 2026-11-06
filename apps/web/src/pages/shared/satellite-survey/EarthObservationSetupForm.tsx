@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   Briefcase,
+  Calendar,
+  Check,
   ChevronDown,
   ChevronUp,
-  Globe,
   Loader,
   MapPin,
   Plus,
   Satellite,
+  Search,
   Sparkles,
 } from "lucide-react";
 
@@ -27,7 +29,6 @@ import {
 import type { SurveyCategory } from "../../../lib/repositories/satelliteSurveys.ts";
 import {
   createJob,
-  listJobs,
   type JobWithProject,
 } from "../../../lib/repositories/jobs.ts";
 import {
@@ -59,11 +60,13 @@ interface EarthObservationSetupFormProps {
   workspaceId: string;
   values: SurveyFormValues;
   onChange: (patch: Partial<SurveyFormValues>) => void;
-  onProceedToWorkbench: () => void;
-  onLaunchSurvey: () => void;
-  onViewPastObservations?: () => void;
-  hasExistingRuns: boolean;
-  existingRunsCount: number;
+  jobs: JobWithProject[];
+  jobsLoading: boolean;
+  openedJob: JobWithProject | null;
+  onSelectJob: (job: JobWithProject) => void;
+  onProceedToWorkbench: (job: JobWithProject) => void;
+  onLaunchSurvey: (job: JobWithProject) => void;
+  onRefreshJobs?: () => Promise<JobWithProject[]>;
   busy: boolean;
   queueing: boolean;
 }
@@ -72,22 +75,26 @@ export default function EarthObservationSetupForm({
   workspaceId,
   values,
   onChange,
+  jobs,
+  jobsLoading,
+  openedJob,
+  onSelectJob,
   onProceedToWorkbench,
   onLaunchSurvey,
-  onViewPastObservations,
-  hasExistingRuns,
-  existingRunsCount,
+  onRefreshJobs,
   busy,
   queueing,
 }: EarthObservationSetupFormProps) {
-  // Jobs state
-  const [jobs, setJobs] = useState<JobWithProject[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
+  // Job creation state
   const [creatingJob, setCreatingJob] = useState(false);
   const [newJobTitle, setNewJobTitle] = useState("");
   const [newJobLocation, setNewJobLocation] = useState("");
+  const [newJobCategory, setNewJobCategory] = useState<SurveyCategory>("water");
   const [savingJob, setSavingJob] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
+
+  // Search filter for recent jobs
+  const [filterQuery, setFilterQuery] = useState("");
 
   // Sources accordion state
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -95,57 +102,18 @@ export default function EarthObservationSetupForm({
   // Form validation feedback
   const [validationProblems, setValidationProblems] = useState<string[]>([]);
 
-  // Load workspace jobs and handle sessionStorage pre-selection
-  useEffect(() => {
-    let active = true;
-    async function loadJobs() {
-      setJobsLoading(true);
-      try {
-        const rows = await listJobs(workspaceId);
-        if (!active) return;
-        setJobs(rows);
+  const filteredJobs = useMemo(() => {
+    if (!filterQuery.trim()) return jobs;
+    const query = filterQuery.toLowerCase();
+    return jobs.filter(
+      (j) =>
+        j.title.toLowerCase().includes(query) ||
+        (j.location ?? "").toLowerCase().includes(query) ||
+        (j.job_type ?? "").toLowerCase().includes(query),
+    );
+  }, [jobs, filterQuery]);
 
-        const storedJobId = sessionStorage.getItem("sitesurveyor:selected_job_id");
-        if (storedJobId) {
-          sessionStorage.removeItem("sitesurveyor:selected_job_id");
-          sessionStorage.removeItem("sitesurveyor:selected_job_name");
-          const matched = rows.find((j) => j.id === storedJobId);
-          if (matched) {
-            applyJob(matched);
-          }
-        }
-      } catch {
-        // Soft fail
-      } finally {
-        if (active) setJobsLoading(false);
-      }
-    }
-    void loadJobs();
-    return () => {
-      active = false;
-    };
-  }, [workspaceId]);
-
-  function applyJob(job: JobWithProject) {
-    const patch: Partial<SurveyFormValues> = {
-      jobId: job.id,
-      clientName: job.title,
-      address: job.location ?? "",
-    };
-
-    const jt = (job.job_type ?? "").toLowerCase();
-    if (jt.includes("water") || jt.includes("groundwater") || jt.includes("borehole")) {
-      patch.categories = ["water"];
-    } else if (jt.includes("mineral") || jt.includes("gold") || jt.includes("mining")) {
-      patch.categories = ["minerals"];
-    } else if (jt.includes("soil") || jt.includes("agriculture")) {
-      patch.categories = ["soil"];
-    } else if (jt.includes("hazard") || jt.includes("safety") || jt.includes("monitoring")) {
-      patch.categories = ["hazard"];
-    }
-
-    onChange(patch);
-  }
+  const currentJob = openedJob ?? jobs.find((j) => j.id === values.jobId) ?? null;
 
   async function handleCreateJob() {
     if (!newJobTitle.trim()) {
@@ -155,17 +123,27 @@ export default function EarthObservationSetupForm({
     setJobError(null);
     setSavingJob(true);
     try {
+      const typeLabel =
+        newJobCategory === "water"
+          ? "Groundwater & Boreholes"
+          : newJobCategory === "minerals"
+            ? "Mineral Prospectivity & Gold"
+            : newJobCategory === "soil"
+              ? "Soil & Land Capability"
+              : "Multi-Hazard & Safety";
+
       const created = await createJob(workspaceId, {
         title: newJobTitle.trim(),
         location: newJobLocation.trim() || undefined,
+        job_type: typeLabel,
         status: "planned",
       });
       const asProjectJob: JobWithProject = { ...created, project_name: null };
-      setJobs((prev) => [asProjectJob, ...prev]);
-      applyJob(asProjectJob);
       setCreatingJob(false);
       setNewJobTitle("");
       setNewJobLocation("");
+      await onRefreshJobs?.();
+      onSelectJob(asProjectJob);
     } catch (err) {
       setJobError(err instanceof Error ? err.message : "Failed to create job.");
     } finally {
@@ -200,26 +178,32 @@ export default function EarthObservationSetupForm({
     onChange({ categories: [id] });
   }
 
-  const currentJob = jobs.find((j) => j.id === values.jobId) ?? null;
-
   function handleProceed() {
+    if (!currentJob) {
+      setValidationProblems(["A job must be opened before entering the Earth Observation UI."]);
+      return;
+    }
     const check = validateForm(values);
     if (!check.draft) {
       setValidationProblems(check.problems);
       return;
     }
     setValidationProblems([]);
-    onProceedToWorkbench();
+    onProceedToWorkbench(currentJob);
   }
 
   function handleLaunch() {
+    if (!currentJob) {
+      setValidationProblems(["A job must be opened before launching Earth Observation screening."]);
+      return;
+    }
     const check = validateForm(values);
     if (!check.draft) {
       setValidationProblems(check.problems);
       return;
     }
     setValidationProblems([]);
-    onLaunchSurvey();
+    onLaunchSurvey(currentJob);
   }
 
   return (
@@ -233,27 +217,41 @@ export default function EarthObservationSetupForm({
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Earth Observation Setup
+                Earth Observation
               </h1>
               <p className="text-xs text-muted-foreground">
-                Configure your job, select survey domain, and choose data feeds before entering the observation workbench.
+                Select an active job to open Earth Observation screening, or create a new job to start.
               </p>
             </div>
           </div>
         </div>
 
-        {hasExistingRuns && onViewPastObservations ? (
+        {!creatingJob ? (
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-medium self-start sm:self-auto"
+            onClick={() => setCreatingJob(true)}
+            disabled={busy}
+          >
+            <Plus className="size-3.5" />
+            Create New Job
+          </Button>
+        ) : (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={onViewPastObservations}
-            className="self-start sm:self-auto text-xs gap-1.5"
+            className="h-8 gap-1.5 text-xs font-medium self-start sm:self-auto"
+            onClick={() => {
+              setCreatingJob(false);
+              setJobError(null);
+            }}
           >
-            <Globe className="size-3.5" />
-            View Past Observations ({existingRunsCount})
+            Cancel New Job
           </Button>
-        ) : null}
+        )}
       </div>
 
       {validationProblems.length > 0 ? (
@@ -267,471 +265,606 @@ export default function EarthObservationSetupForm({
         </div>
       ) : null}
 
-      {/* ── STEP 1: Job Selection / Creation ────────────────────────────── */}
+      {/* ── Inline Job Creation Form ────────────────────────────────────── */}
+      {creatingJob ? (
+        <Card className="border-primary/40 bg-primary/5 shadow-xs">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Briefcase className="size-4 text-primary" />
+              Create New Job for Earth Observation
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Every Earth Observation session is tied to a workspace job record.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="eo-create-title" className={labelClass}>
+                  Job Title *
+                </Label>
+                <Input
+                  id="eo-create-title"
+                  className={fieldClass}
+                  placeholder="e.g. Masvingo Groundwater Siting"
+                  value={newJobTitle}
+                  disabled={savingJob}
+                  onChange={(e) => setNewJobTitle(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="eo-create-loc" className={labelClass}>
+                  Site Location / Address
+                </Label>
+                <Input
+                  id="eo-create-loc"
+                  className={fieldClass}
+                  placeholder="e.g. Plot 14, Masvingo North"
+                  value={newJobLocation}
+                  disabled={savingJob}
+                  onChange={(e) => setNewJobLocation(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className={labelClass}>Primary Survey Domain</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {SURVEY_CATEGORY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setNewJobCategory(opt.id)}
+                    className={`rounded-md border p-2 text-left text-xs font-medium transition-all ${
+                      newJobCategory === opt.id
+                        ? "border-primary bg-primary/15 text-primary shadow-xs ring-1 ring-primary/40"
+                        : "border-border/70 hover:bg-muted/50 text-muted-foreground"
+                    }`}
+                  >
+                    {CATEGORY_LABELS[opt.dossier].short}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {jobError ? (
+              <p className="text-xs text-destructive">{jobError}</p>
+            ) : null}
+
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 gap-1.5 text-xs font-semibold"
+                disabled={savingJob || !newJobTitle.trim()}
+                onClick={() => void handleCreateJob()}
+              >
+                {savingJob ? <Loader className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                {savingJob ? "Creating Job…" : "Save & Open in Earth Observation"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => {
+                  setCreatingJob(false);
+                  setJobError(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* ── RECENT JOBS SECTION ─────────────────────────────────────────── */}
       <Card className="border-border/70 shadow-xs">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                1
-              </span>
+              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Briefcase className="size-4" />
+              </div>
               <div>
-                <CardTitle className="text-base">Workspace Job</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">Recent Jobs</CardTitle>
+                  <Badge variant="secondary" className="text-[11px] font-mono px-1.5 py-0">
+                    {jobs.length}
+                  </Badge>
+                </div>
                 <CardDescription className="text-xs">
-                  Create a new job record or link an existing job in this workspace.
+                  Choose a recent job to launch or resume multi-spectral satellite screening.
                 </CardDescription>
               </div>
             </div>
-            {!creatingJob ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => setCreatingJob(true)}
-                disabled={busy}
-              >
-                <Plus className="size-3.5 text-primary" />
-                New Job
-              </Button>
+
+            {jobs.length > 3 ? (
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <Input
+                  className="h-8 pl-8 text-xs bg-muted/40"
+                  placeholder="Filter recent jobs…"
+                  value={filterQuery}
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                />
+              </div>
             ) : null}
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-3 pt-0">
-          {!creatingJob ? (
-            <div className="space-y-2">
-              <select
-                id="eo-job-select"
-                className={`w-full ${fieldClass}`}
-                value={values.jobId ?? ""}
-                disabled={busy || jobsLoading}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  if (!id) {
-                    onChange({ jobId: "", clientName: "", address: "" });
-                    return;
-                  }
-                  const found = jobs.find((j) => j.id === id);
-                  if (found) applyJob(found);
-                }}
-              >
-                <option value="">
-                  {jobsLoading ? "Loading jobs…" : "— Select an existing job from your workspace —"}
-                </option>
-                {jobs.map((job) => (
-                  <option key={job.id} value={job.id}>
-                    {job.title} {job.location ? `· ${job.location}` : ""} {job.job_type ? `[${job.job_type}]` : ""}
-                  </option>
-                ))}
-              </select>
-
-              {currentJob ? (
-                <div className="flex items-center justify-between rounded-lg border border-primary/25 bg-primary/5 p-3 text-xs">
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex items-center gap-2 font-medium text-foreground">
-                      <Briefcase className="size-4 text-primary shrink-0" />
-                      <span className="truncate text-sm font-semibold">{currentJob.title}</span>
-                    </div>
-                    {currentJob.location ? (
-                      <p className="flex items-center gap-1.5 text-muted-foreground">
-                        <MapPin className="size-3 text-muted-foreground/80 shrink-0" />
-                        <span className="truncate">{currentJob.location}</span>
-                      </p>
-                    ) : null}
-                  </div>
-                  <Badge variant="outline" className="uppercase text-[10px]">
-                    {currentJob.status}
-                  </Badge>
-                </div>
-              ) : null}
+        <CardContent className="pt-0 space-y-2">
+          {jobsLoading ? (
+            <div className="space-y-2 py-4 text-center text-xs text-muted-foreground">
+              <Loader className="size-4 animate-spin mx-auto text-primary" />
+              <p>Loading recent workspace jobs…</p>
             </div>
-          ) : (
-            <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground">
-                  Create New Job for Earth Observation
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  onClick={() => {
-                    setCreatingJob(false);
-                    setJobError(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="eo-new-title" className={labelClass}>
-                    Job Title *
-                  </Label>
-                  <Input
-                    id="eo-new-title"
-                    className={fieldClass}
-                    placeholder="e.g. Masvingo Groundwater Assessment"
-                    value={newJobTitle}
-                    disabled={savingJob}
-                    onChange={(e) => setNewJobTitle(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="eo-new-location" className={labelClass}>
-                    Location / Address
-                  </Label>
-                  <Input
-                    id="eo-new-location"
-                    className={fieldClass}
-                    placeholder="e.g. Plot 14, Masvingo North"
-                    value={newJobLocation}
-                    disabled={savingJob}
-                    onChange={(e) => setNewJobLocation(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {jobError ? (
-                <p className="text-xs text-destructive">{jobError}</p>
-              ) : null}
-
+          ) : filteredJobs.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border/80 py-8 text-center space-y-2">
+              <Briefcase className="size-8 mx-auto text-muted-foreground/60" />
+              <p className="text-xs font-medium text-foreground">
+                {filterQuery.trim() ? "No jobs match your filter." : "No jobs found in this workspace yet."}
+              </p>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                {filterQuery.trim()
+                  ? "Try clearing the search query or create a new job."
+                  : "To open the Earth Observation UI, create your first job record."}
+              </p>
               <Button
                 type="button"
+                variant="outline"
                 size="sm"
-                className="h-8 gap-1.5 text-xs font-medium"
-                disabled={savingJob || !newJobTitle.trim()}
-                onClick={() => void handleCreateJob()}
+                className="mt-2 text-xs gap-1.5"
+                onClick={() => setCreatingJob(true)}
               >
-                {savingJob ? <Loader className="size-3.5 animate-spin" /> : null}
-                {savingJob ? "Creating Job…" : "Save & Select Job"}
+                <Plus className="size-3.5" />
+                Create First Job
               </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2.5">
+              {filteredJobs.map((job) => {
+                const isSelected = currentJob?.id === job.id;
+                return (
+                  <div
+                    key={job.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border p-3.5 transition-all ${
+                      isSelected
+                        ? "border-primary/70 bg-primary/10 ring-1 ring-primary/40 shadow-xs"
+                        : "border-border/70 bg-card hover:border-border hover:bg-muted/40"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-foreground truncate">
+                          {job.title}
+                        </span>
+                        {isSelected ? (
+                          <Badge variant="default" className="text-[10px] uppercase font-semibold h-4 px-1.5">
+                            Selected
+                          </Badge>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {job.location ? (
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="size-3 text-muted-foreground/80 shrink-0" />
+                            {job.location}
+                          </span>
+                        ) : null}
+                        {job.job_type ? (
+                          <span className="font-medium text-primary">
+                            {job.job_type}
+                          </span>
+                        ) : null}
+                        {job.created_at ? (
+                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground/80">
+                            <Calendar className="size-3" />
+                            {new Date(job.created_at).toLocaleDateString()}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                        {job.status}
+                      </Badge>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isSelected ? "default" : "outline"}
+                        className="h-8 gap-1.5 text-xs font-semibold"
+                        onClick={() => {
+                          onSelectJob(job);
+                        }}
+                      >
+                        <span>{isSelected ? "Open in EO UI" : "Select Job"}</span>
+                        <ArrowRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* ── STEP 2: Survey Type / Domain ────────────────────────────────── */}
-      <Card className="border-border/70 shadow-xs">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-              2
-            </span>
-            <div>
-              <CardTitle className="text-base">Survey Type (Select One)</CardTitle>
-              <CardDescription className="text-xs">
-                Choose the domain of interest to calibrate observation models and analytical indicators.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="pt-0">
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-            role="radiogroup"
-            aria-label="Earth Observation Survey Category"
-          >
-            {SURVEY_CATEGORY_OPTIONS.map((option) => {
-              const active = activeCategory === option.id;
-              const meta = CATEGORY_LABELS[option.dossier];
-              return (
-                <label
-                  key={option.id}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 text-left transition-all ${
-                    active
-                      ? "border-primary/60 bg-primary/10 shadow-xs ring-1 ring-primary/40"
-                      : "border-border/70 hover:bg-muted/50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="eo-setup-category"
-                    className="mt-1"
-                    checked={active}
-                    disabled={busy}
-                    onChange={() => selectCategory(option.id)}
-                  />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-foreground">
-                        {meta.name}
-                      </span>
-                      <Badge variant={active ? "default" : "outline"} className="text-[10px] uppercase">
-                        {option.id}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-snug">
-                      Identifies and scores {meta.noun} across the target extent.
-                    </p>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── STEP 3: Earth Observation Data Inputs ───────────────────────── */}
-      <Card className="border-border/70 shadow-xs">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                3
+      {/* ── SELECTED JOB CONFIGURATION & PARAMETERS ─────────────────────── */}
+      {currentJob ? (
+        <div className="space-y-6 pt-2">
+          {/* Active Job Summary Banner */}
+          <div className="flex items-center justify-between rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Briefcase className="size-4 text-primary shrink-0" />
+              <span>
+                Configuring Earth Observation for: <strong className="text-foreground">{currentJob.title}</strong>
+                {currentJob.location ? ` (${currentJob.location})` : ""}
               </span>
-              <div>
-                <CardTitle className="text-base">Earth Observation Data Inputs</CardTitle>
-                <CardDescription className="text-xs">
-                  Multispectral optical, elevation DEM, radar SAR and water dynamics feeds.
-                </CardDescription>
-              </div>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setSourcesOpen((o) => !o)}
-              className="text-xs gap-1"
+              className="h-6 px-2 text-xs text-primary"
+              onClick={() => {
+                onChange({ jobId: "", clientName: "", address: "" });
+              }}
             >
-              <span>{sourcesOpen ? "Hide Feeds" : "Customize Feeds"}</span>
-              {sourcesOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              Switch Job
             </Button>
           </div>
-        </CardHeader>
 
-        <CardContent className="space-y-3 pt-0">
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            <Badge variant="secondary">
-              Optical: {imageryChip(chosen, { year, window: windowId })}
-            </Badge>
-            <Badge variant="secondary">
-              Elevation: {chosen.dem ?? "Copernicus DEM 30m"}
-            </Badge>
-            <Badge variant="secondary">
-              Land Cover: {chosen.landcover ?? "ESA WorldCover 2021"}
-            </Badge>
-            <Badge variant="outline">ALOS PALSAR Radar SAR</Badge>
-            <Badge variant="outline">Landsat WOfS Water History</Badge>
-            <Badge variant="outline">CHIRPS Rainfall Climatology</Badge>
-          </div>
-
-          {sourcesOpen ? (
-            <div className="space-y-3.5 border-t border-border/60 pt-3 mt-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {DATA_SOURCES.map((field) => (
-                  <div key={field.id} className="space-y-1">
-                    <Label htmlFor={`setup-src-${field.id}`} className={labelClass}>
-                      {field.label}
-                    </Label>
-                    <select
-                      id={`setup-src-${field.id}`}
-                      className={`w-full ${fieldClass}`}
-                      value={chosen[field.id] ?? field.default}
-                      disabled={busy}
-                      onChange={(e) => setSource(field.id, e.target.value)}
-                    >
-                      {field.options.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-
-                <div className="space-y-1">
-                  <Label htmlFor="setup-composite-year" className={labelClass}>
-                    Composite Year
-                  </Label>
-                  <select
-                    id="setup-composite-year"
-                    className={`w-full ${monoClass}`}
-                    value={year}
-                    disabled={busy}
-                    onChange={(e) =>
-                      onChange({
-                        composite: { year: Number(e.target.value), window: windowId },
-                      })
-                    }
-                  >
-                    {years.map((each) => (
-                      <option key={each} value={each}>
-                        {each}
-                      </option>
-                    ))}
-                  </select>
+          {/* ── Survey Type / Domain ──────────────────────────────────────── */}
+          <Card className="border-border/70 shadow-xs">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                  1
+                </span>
+                <div>
+                  <CardTitle className="text-base">Survey Type (Select One)</CardTitle>
+                  <CardDescription className="text-xs">
+                    Choose the domain of interest to calibrate observation models and analytical indicators.
+                  </CardDescription>
                 </div>
+              </div>
+            </CardHeader>
 
-                <div className="space-y-1">
-                  <Label htmlFor="setup-composite-window" className={labelClass}>
-                    Composite Window
-                  </Label>
-                  <select
-                    id="setup-composite-window"
-                    className={`w-full ${fieldClass}`}
-                    value={windowId}
-                    disabled={busy}
-                    onChange={(e) =>
-                      onChange({ composite: { year, window: e.target.value } })
-                    }
-                  >
-                    {windows.map((w) => (
-                      <option
-                        key={w.id}
-                        value={w.id}
-                        disabled={!w.available}
-                        title={w.reason}
+            <CardContent className="pt-0">
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                role="radiogroup"
+                aria-label="Earth Observation Survey Category"
+              >
+                {SURVEY_CATEGORY_OPTIONS.map((option) => {
+                  const active = activeCategory === option.id;
+                  const meta = CATEGORY_LABELS[option.dossier];
+                  return (
+                    <label
+                      key={option.id}
+                      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 text-left transition-all ${
+                        active
+                          ? "border-primary/60 bg-primary/10 shadow-xs ring-1 ring-primary/40"
+                          : "border-border/70 hover:bg-muted/50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="eo-survey-category"
+                        value={option.id}
+                        checked={active}
+                        disabled={busy}
+                        onChange={() => selectCategory(option.id)}
+                        className="mt-1 size-4 text-primary accent-primary"
+                      />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">
+                            {meta.short}
+                          </span>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                            {option.id}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {meta.name}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Earth Observation Data Inputs ───────────────────────────── */}
+          <Card className="border-border/70 shadow-xs">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                    2
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Earth Observation Data Inputs</CardTitle>
+                    <CardDescription className="text-xs">
+                      Satellite imagery and surface coverage feeds used to score the terrain.
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-primary"
+                  onClick={() => setSourcesOpen((prev) => !prev)}
+                >
+                  {sourcesOpen ? (
+                    <>
+                      <span>Collapse</span>
+                      <ChevronUp className="size-3.5 ml-1" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Customize Feeds</span>
+                      <ChevronDown className="size-3.5 ml-1" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4 pt-0">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/60">
+                <span className="font-semibold text-foreground">Active Feeds:</span>
+                <span className="rounded bg-background px-2 py-0.5 border text-foreground font-medium">
+                  {product.label} ({year}, {composite.window})
+                </span>
+                <span className="rounded bg-background px-2 py-0.5 border text-foreground font-medium">
+                  NASADEM 30m Elevation
+                </span>
+                <span className="rounded bg-background px-2 py-0.5 border text-foreground font-medium">
+                  Sentinel-1 SAR Radar
+                </span>
+              </div>
+
+              {sourcesOpen ? (
+                <div className="space-y-4 pt-2 border-t border-border/60">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="eo-optical-source" className={labelClass}>
+                        Optical Imagery Product
+                      </Label>
+                      <select
+                        id="eo-optical-source"
+                        className={`w-full ${fieldClass}`}
+                        value={optical}
+                        disabled={busy}
+                        onChange={(e) => setSource("optical", e.target.value)}
                       >
-                        {w.label}
-                      </option>
-                    ))}
-                  </select>
+                        {OPTICAL_PRODUCTS.map((prod) => (
+                          <option key={prod.id} value={prod.id}>
+                            {prod.label} ({prod.family})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="eo-comp-year" className={labelClass}>
+                          Archive Year
+                        </Label>
+                        <select
+                          id="eo-comp-year"
+                          className={`w-full ${fieldClass}`}
+                          value={year}
+                          disabled={busy}
+                          onChange={(e) =>
+                            onChange({
+                              composite: { ...composite, year: Number(e.target.value), window: windowId },
+                            })
+                          }
+                        >
+                          {years.map((y) => (
+                            <option key={y} value={y}>
+                              {y}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="eo-comp-window" className={labelClass}>
+                          Seasonal Window
+                        </Label>
+                        <select
+                          id="eo-comp-window"
+                          className={`w-full ${fieldClass}`}
+                          value={windowId}
+                          disabled={busy}
+                          onChange={(e) =>
+                            onChange({
+                              composite: { ...composite, year, window: e.target.value },
+                            })
+                          }
+                        >
+                          {windows.map((win) => (
+                            <option key={win.id} value={win.id} disabled={!win.available}>
+                              {win.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {DATA_SOURCES.filter((s) => s.id !== "optical").map((group) => {
+                      const selected = chosen[group.id] ?? group.options[0].value;
+                      return (
+                        <div key={group.id} className="space-y-1.5">
+                          <Label htmlFor={`eo-src-${group.id}`} className={labelClass}>
+                            {group.label}
+                          </Label>
+                          <select
+                            id={`eo-src-${group.id}`}
+                            className={`w-full ${fieldClass}`}
+                            value={selected}
+                            disabled={busy}
+                            onChange={(e) => setSource(group.id, e.target.value)}
+                          >
+                            {group.options.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <details className="text-xs">
+                    <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                      Fixed Pre-Calibrated Models
+                    </summary>
+                    <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-muted-foreground">
+                      {FIXED_SOURCES.map((source) => (
+                        <li key={source}>{source}</li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* ── Site Coordinates & Extent ─────────────────────────────────── */}
+          <Card className="border-border/70 shadow-xs">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                  3
+                </span>
+                <div>
+                  <CardTitle className="text-base">Site Coordinates & Extent</CardTitle>
+                  <CardDescription className="text-xs">
+                    Specify decimal degrees target coordinate and screening area radius.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3.5 pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="eo-lat" className={labelClass}>
+                    Latitude (Decimal Degrees)
+                  </Label>
+                  <Input
+                    id="eo-lat"
+                    className={monoClass}
+                    type="number"
+                    step="0.00001"
+                    min={-90}
+                    max={90}
+                    inputMode="decimal"
+                    value={values.latitude}
+                    disabled={busy}
+                    onChange={(e) => onChange({ latitude: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="eo-lon" className={labelClass}>
+                    Longitude (Decimal Degrees)
+                  </Label>
+                  <Input
+                    id="eo-lon"
+                    className={monoClass}
+                    type="number"
+                    step="0.00001"
+                    min={-180}
+                    max={180}
+                    inputMode="decimal"
+                    value={values.longitude}
+                    disabled={busy}
+                    onChange={(e) => onChange({ longitude: e.target.value })}
+                  />
                 </div>
               </div>
 
-              {deadWindow ? (
-                <p className="text-xs text-muted-foreground">{deadWindow.reason}</p>
+              {note ? (
+                <p
+                  role="status"
+                  className="rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs leading-snug text-amber-700 dark:text-amber-400"
+                >
+                  {note}
+                </p>
               ) : null}
 
-              <details className="text-xs">
-                <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
-                  Fixed Pre-Calibrated Models
-                </summary>
-                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-muted-foreground">
-                  {FIXED_SOURCES.map((source) => (
-                    <li key={source}>{source}</li>
+              <div className="space-y-1.5">
+                <Label htmlFor="eo-extent" className={labelClass}>
+                  Observation Extent (AOI)
+                </Label>
+                <select
+                  id="eo-extent"
+                  className={`w-full ${fieldClass}`}
+                  value={values.halfDeg}
+                  disabled={busy}
+                  onChange={(e) => onChange({ halfDeg: Number(e.target.value) })}
+                >
+                  {AOI_CHOICES.map((choice) => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.label}
+                    </option>
                   ))}
-                </ul>
-              </details>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* ── STEP 4: Site Coordinates & Extent ───────────────────────────── */}
-      <Card className="border-border/70 shadow-xs">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-              4
-            </span>
-            <div>
-              <CardTitle className="text-base">Site Coordinates & Observation Extent</CardTitle>
-              <CardDescription className="text-xs">
-                Specify the decimal degree target pin and study area radius.
-              </CardDescription>
+          {/* ── Footer Actions ────────────────────────────────────────────── */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60">
+            <div className="text-xs text-muted-foreground">
+              <span>Opened Job: <strong className="text-foreground">{currentJob.title}</strong></span>
             </div>
-          </div>
-        </CardHeader>
 
-        <CardContent className="space-y-3.5 pt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="eo-lat" className={labelClass}>
-                Latitude (Decimal Degrees)
-              </Label>
-              <Input
-                id="eo-lat"
-                className={monoClass}
-                type="number"
-                step="0.00001"
-                min={-90}
-                max={90}
-                inputMode="decimal"
-                value={values.latitude}
-                disabled={busy}
-                onChange={(e) => onChange({ latitude: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="eo-lon" className={labelClass}>
-                Longitude (Decimal Degrees)
-              </Label>
-              <Input
-                id="eo-lon"
-                className={monoClass}
-                type="number"
-                step="0.00001"
-                min={-180}
-                max={180}
-                inputMode="decimal"
-                value={values.longitude}
-                disabled={busy}
-                onChange={(e) => onChange({ longitude: e.target.value })}
-              />
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold"
+                disabled={busy || queueing}
+                onClick={handleProceed}
+              >
+                <span>Open Earth Observation Workbench</span>
+                <ArrowRight className="size-4" />
+              </Button>
+
+              <Button
+                type="button"
+                variant="default"
+                className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold"
+                disabled={busy || queueing}
+                onClick={handleLaunch}
+              >
+                {queueing || busy ? <Loader className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                {busy ? "Screening in progress…" : "Launch & Run Screening"}
+              </Button>
             </div>
           </div>
-
-          {note ? (
-            <p
-              role="status"
-              className="rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs leading-snug text-amber-700 dark:text-amber-400"
-            >
-              {note}
-            </p>
-          ) : null}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="eo-extent" className={labelClass}>
-              Observation Extent (AOI)
-            </Label>
-            <select
-              id="eo-extent"
-              className={`w-full ${fieldClass}`}
-              value={values.halfDeg}
-              disabled={busy}
-              onChange={(e) => onChange({ halfDeg: Number(e.target.value) })}
-            >
-              {AOI_CHOICES.map((choice) => (
-                <option key={choice.value} value={choice.value}>
-                  {choice.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── Footer Actions ──────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60">
-        <div className="text-xs text-muted-foreground">
-          {currentJob ? (
-            <span>Linked to job: <strong className="text-foreground">{currentJob.title}</strong></span>
-          ) : (
-            <span>No job linked yet (optional)</span>
-          )}
         </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold"
-            disabled={busy || queueing}
-            onClick={handleProceed}
-          >
-            <span>Proceed to Workbench</span>
-            <ArrowRight className="size-4" />
-          </Button>
-
-          <Button
-            type="button"
-            variant="default"
-            className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold"
-            disabled={busy || queueing}
-            onClick={handleLaunch}
-          >
-            {queueing || busy ? <Loader className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-            {busy ? "Screening in progress…" : "Launch & Run Screening"}
-          </Button>
+      ) : (
+        <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center text-xs text-muted-foreground">
+          Select a job from Recent Jobs above or click &ldquo;Create New Job&rdquo; to configure and open Earth Observation.
         </div>
-      </div>
+      )}
     </div>
   );
 }

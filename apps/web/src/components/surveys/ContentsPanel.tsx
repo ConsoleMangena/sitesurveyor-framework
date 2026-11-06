@@ -1,10 +1,11 @@
-import { ChevronLeft, Loader, Undo2 } from "lucide-react";
+import { Briefcase, ChevronLeft, Loader, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { BlockTitle } from "./BlockTitle.tsx";
 
 import type { SurveyRun } from "../../lib/repositories/satelliteSurveys.ts";
+import type { JobWithProject } from "../../lib/repositories/jobs.ts";
 import { SurveyStatusChip } from "../../components/surveys/SurveyStatusChip.tsx";
 import { coordText } from "../../lib/surveys/labels.ts";
 import {
@@ -39,6 +40,11 @@ interface ContentsPanelProps {
   cancelling: string | null;
   onCancel: (runId: string) => void;
   onCollapse: () => void;
+  // Recent jobs support
+  jobs?: JobWithProject[];
+  currentJob?: JobWithProject | null;
+  onSelectJob?: (job: JobWithProject) => void;
+  onOpenJobSetup?: () => void;
 }
 
 /** What is on the map, what it is drawn over, and which survey the numbers came from.
@@ -61,6 +67,10 @@ export default function ContentsPanel({
   cancelling,
   onCancel,
   onCollapse,
+  jobs,
+  currentJob,
+  onSelectJob,
+  onOpenJobSetup,
 }: ContentsPanelProps) {
   return (
     <div className="sw-panel sw-panel--left" aria-label="Map contents">
@@ -171,8 +181,61 @@ export default function ContentsPanel({
         </section>
 
         <section className="sw-block px-3.5 py-3">
-          <BlockTitle count={runs.length}>Surveys here</BlockTitle>
-          {loading ? (
+          <div className="flex items-center justify-between">
+            <BlockTitle count={jobs ? jobs.length : runs.length}>
+              {jobs ? "Recent Jobs" : "Surveys here"}
+            </BlockTitle>
+            {onOpenJobSetup ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-[11px] text-primary hover:text-primary"
+                onClick={onOpenJobSetup}
+              >
+                Switch Job
+              </Button>
+            ) : null}
+          </div>
+
+          {jobs ? (
+            jobs.length === 0 ? (
+              <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+                No recent jobs found in this workspace.
+              </p>
+            ) : (
+              <ul className="mt-1.5 space-y-1">
+                {jobs.map((job) => {
+                  const isCurrent = job.id === currentJob?.id;
+                  return (
+                    <li key={job.id} className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onSelectJob?.(job)}
+                        aria-current={isCurrent ? "true" : undefined}
+                        className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          isCurrent ? "bg-accent/80 font-medium ring-1 ring-primary/40" : ""
+                        }`}
+                      >
+                        <Briefcase className="size-3.5 shrink-0 text-primary" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[12px] font-medium text-foreground">
+                            {job.title}
+                          </span>
+                          <span className="sw-mono block truncate text-[10.5px] text-muted-foreground">
+                            {job.location ?? "No location specified"}
+                          </span>
+                        </span>
+                        <span className="text-[10px] uppercase font-semibold text-muted-foreground shrink-0">
+                          {job.status}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+          ) : loading ? (
             <div className="mt-2 space-y-1.5">
               <Skeleton className="h-9 w-full rounded-md" />
               <Skeleton className="h-9 w-full rounded-md" />

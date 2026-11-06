@@ -1,12 +1,12 @@
-import { ChevronRight, Satellite } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Briefcase, ChevronRight, Satellite } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
 import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
 import { PanelMeta } from "@/components/dashboard/DashboardShell.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { SurveyStatusChip } from "@/components/surveys/SurveyStatusChip.tsx";
-import { coordText } from "@/lib/surveys/labels.ts";
-import { useSurveyRuns } from "@/lib/hooks/useSatelliteSurveys.ts";
+import { listJobs, type JobWithProject } from "@/lib/repositories/jobs.ts";
 
 interface SatelliteSurveyCardProps {
   workspaceId: string;
@@ -14,20 +14,41 @@ interface SatelliteSurveyCardProps {
 }
 
 /**
- * Dashboard presence for satellite surveying: what is running now, and what the
- * workspace has already asked the satellites about.
- *
- * Both come off the run rows, so a survey another member queued shows here at the same
- * percent it shows on their screen -- and a card that says "running" is one the worker
- * really has claimed.
+ * Dashboard presence for Earth Observation: shows recent jobs available for
+ * multi-spectral satellite screening.
  */
 export default function SatelliteSurveyCard({
   workspaceId,
   onNavigate,
 }: SatelliteSurveyCardProps) {
-  const { runs, loaded } = useSurveyRuns(workspaceId);
-  const inFlight = runs.filter((run) => run.active).length;
+  const [jobs, setJobs] = useState<JobWithProject[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const rows = await listJobs(workspaceId);
+        if (active) setJobs(rows);
+      } catch {
+        // Soft fail
+      } finally {
+        if (active) setLoaded(true);
+      }
+    }
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [workspaceId]);
+
   const loading = !loaded;
+
+  function handleOpenJob(job: JobWithProject) {
+    sessionStorage.setItem("sitesurveyor:selected_job_id", job.id);
+    sessionStorage.setItem("sitesurveyor:selected_job_name", job.title);
+    onNavigate?.("satellite");
+  }
 
   return (
     <DashboardCard
@@ -35,7 +56,7 @@ export default function SatelliteSurveyCard({
       icon={<Satellite />}
       titleAction={
         <PanelMeta>
-          {loading ? "…" : inFlight ? `${inFlight} running` : `${runs.length} run`}
+          {loading ? "…" : `${jobs.length} recent job${jobs.length === 1 ? "" : "s"}`}
         </PanelMeta>
       }
       footer={
@@ -56,30 +77,32 @@ export default function SatelliteSurveyCard({
           <Skeleton className="h-11 w-full rounded-lg" />
           <Skeleton className="h-11 w-full rounded-lg" />
         </>
-      ) : runs.length === 0 ? (
+      ) : jobs.length === 0 ? (
         <p className="px-2 py-3 text-sm text-muted-foreground">
-          Nothing has been surveyed from this workspace yet. Queue a coordinate and its
-          progress shows up here while the worker is out reading the coverages.
+          No jobs in this workspace yet. Create a job to run Earth Observation screening.
         </p>
       ) : (
-        runs.slice(0, 4).map((run) => (
+        jobs.slice(0, 4).map((job) => (
           <button
-            key={run.id}
+            key={job.id}
             type="button"
-            onClick={() => onNavigate?.("satellite")}
+            onClick={() => handleOpenJob(job)}
             className={
               "group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors " +
               "hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             }
-            aria-label={`Survey of ${run.clientName}: ${run.status}`}
+            aria-label={`Open job ${job.title} in Earth Observation`}
           >
+            <Briefcase className="size-4 shrink-0 text-primary" />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{run.clientName}</span>
-              <span className="block truncate font-mono text-xs tabular-nums text-muted-foreground">
-                {coordText(run.latitude)}, {coordText(run.longitude)}
+              <span className="block truncate text-sm font-medium">{job.title}</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {job.location ?? "No location"} {job.job_type ? `· ${job.job_type}` : ""}
               </span>
             </span>
-            <SurveyStatusChip status={run.status} />
+            <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+              {job.status}
+            </Badge>
             <ChevronRight
               className="size-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5"
               aria-hidden="true"

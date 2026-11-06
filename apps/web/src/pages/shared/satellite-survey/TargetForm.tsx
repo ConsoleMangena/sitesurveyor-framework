@@ -214,7 +214,7 @@ export default function TargetForm({
             className="h-6 px-2 text-[10.5px] text-primary hover:text-primary/90"
             onClick={onOpenSetup}
           >
-            Open Setup Form
+            Recent Jobs
           </Button>
         ) : null}
       </div>

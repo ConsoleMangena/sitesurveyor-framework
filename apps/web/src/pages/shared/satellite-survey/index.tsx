@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Sliders } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Briefcase, ChevronLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -21,6 +21,7 @@ import {
   startSurvey,
   type SurveyProvenance,
 } from "../../../lib/repositories/satelliteSurveys.ts";
+import { listJobs, type JobWithProject } from "../../../lib/repositories/jobs.ts";
 import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteSurveys.ts";
 import { outsideCoverage, parseCoordinate } from "../../../lib/surveys/labels.ts";
 import {
@@ -72,6 +73,10 @@ export default function SatelliteSurveyPage({
 }: SatelliteSurveyPageProps) {
   const { runs, error: listError, loaded, refresh, adopt } = useSurveyRuns(workspaceId);
 
+  const [jobs, setJobs] = useState<JobWithProject[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [openedJob, setOpenedJob] = useState<JobWithProject | null>(null);
+
   const [values, setValues] = useState<SurveyFormValues>(initialForm);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [queuedThisSession, setQueuedThisSession] = useState<string | null>(null);
@@ -79,7 +84,55 @@ export default function SatelliteSurveyPage({
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
-  const [showSetup, setShowSetup] = useState(true);
+
+  const fetchJobs = useCallback(async () => {
+    setJobsLoading(true);
+    try {
+      const rows = await listJobs(workspaceId);
+      setJobs(rows);
+      return rows;
+    } catch {
+      return [];
+    } finally {
+      setJobsLoading(false);
+    }
+  }, [workspaceId]);
+
+  function applyAndOpenJob(job: JobWithProject) {
+    const patchValues: Partial<SurveyFormValues> = {
+      jobId: job.id,
+      clientName: job.title,
+      address: job.location ?? "",
+    };
+
+    const jt = (job.job_type ?? "").toLowerCase();
+    if (jt.includes("water") || jt.includes("groundwater") || jt.includes("borehole")) {
+      patchValues.categories = ["water"];
+    } else if (jt.includes("mineral") || jt.includes("gold") || jt.includes("mining")) {
+      patchValues.categories = ["minerals"];
+    } else if (jt.includes("soil") || jt.includes("agriculture")) {
+      patchValues.categories = ["soil"];
+    } else if (jt.includes("hazard") || jt.includes("safety") || jt.includes("monitoring")) {
+      patchValues.categories = ["hazard"];
+    }
+
+    setValues((prev) => ({ ...prev, ...patchValues }));
+    setOpenedJob(job);
+  }
+
+  useEffect(() => {
+    void fetchJobs().then((rows) => {
+      const storedJobId = sessionStorage.getItem("sitesurveyor:selected_job_id");
+      if (storedJobId) {
+        sessionStorage.removeItem("sitesurveyor:selected_job_id");
+        sessionStorage.removeItem("sitesurveyor:selected_job_name");
+        const matched = rows.find((j) => j.id === storedJobId);
+        if (matched) {
+          applyAndOpenJob(matched);
+        }
+      }
+    });
+  }, [fetchJobs]);
 
   const [layers, setLayers] = useState({ aoi: true, candidates: true });
   const [basemap, setBasemap] = useState("satellite");
@@ -109,12 +162,6 @@ export default function SatelliteSurveyPage({
     const timer = window.setInterval(() => setLastTickMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [runningId]);
-
-  useEffect(() => {
-    if (running !== null) {
-      setShowSetup(false);
-    }
-  }, [running]);
 
   // A run opened straight after a page load can be younger than the last tick; the
   // elapsed helper clamps that to 0s rather than inventing a negative clock.
@@ -190,7 +237,16 @@ export default function SatelliteSurveyPage({
     setFocus(null);
     setProblems([]);
     setRefused(null);
-    setValues(initialForm());
+    if (openedJob) {
+      setValues({
+        ...initialForm(),
+        jobId: openedJob.id,
+        clientName: openedJob.title,
+        address: openedJob.location ?? "",
+      });
+    } else {
+      setValues(initialForm());
+    }
     setFitToken((token) => token + 1);
   }
 
@@ -239,23 +295,30 @@ export default function SatelliteSurveyPage({
 
   const outOfCredits = refused !== null && refused.includes("AI credits");
 
-  if (showSetup && !running) {
+  // The EO UI must NEVER open unless a job is opened!
+  const isJobOpened = Boolean(openedJob && values.jobId);
+
+  if (!isJobOpened && !running) {
     return (
       <DashboardShell>
         <EarthObservationSetupForm
           workspaceId={workspaceId}
           values={values}
           onChange={patch}
-          onProceedToWorkbench={() => setShowSetup(false)}
-          onLaunchSurvey={() => {
-            setShowSetup(false);
+          jobs={jobs}
+          jobsLoading={jobsLoading}
+          openedJob={openedJob}
+          onSelectJob={(job) => {
+            applyAndOpenJob(job);
+          }}
+          onProceedToWorkbench={(job) => {
+            applyAndOpenJob(job);
+          }}
+          onLaunchSurvey={(job) => {
+            applyAndOpenJob(job);
             void submit();
           }}
-          onViewPastObservations={
-            runs.length > 0 ? () => setShowSetup(false) : undefined
-          }
-          hasExistingRuns={runs.length > 0}
-          existingRunsCount={runs.length}
+          onRefreshJobs={fetchJobs}
           busy={running !== null}
           queueing={queueing}
         />
@@ -268,17 +331,20 @@ export default function SatelliteSurveyPage({
       <DashboardHeader
         title="Earth Observation"
         description="Screen a coordinate for groundwater, minerals, soil capability and site safety using multi-spectral Earth Observation."
-        meta={`${runs.length} observation${runs.length === 1 ? "" : "s"} in this workspace`}
+        meta={openedJob ? `Job: ${openedJob.title}${openedJob.location ? ` · ${openedJob.location}` : ""}` : undefined}
         actions={
           <Button
             type="button"
             variant="outline"
             size="sm"
             className="h-8 gap-1.5 text-xs font-medium"
-            onClick={() => setShowSetup(true)}
+            onClick={() => {
+              setOpenedJob(null);
+              patch({ jobId: "", clientName: "", address: "" });
+            }}
           >
-            <Sliders className="size-3.5 text-primary" />
-            New Setup / Change Job
+            <Briefcase className="size-3.5 text-primary" />
+            Recent Jobs / Switch Job
           </Button>
         }
       />
@@ -350,6 +416,13 @@ export default function SatelliteSurveyPage({
           cancelling={cancelling}
           onCancel={(runId) => void cancel(runId)}
           onCollapse={() => togglePanel("left")}
+          jobs={jobs}
+          currentJob={openedJob}
+          onSelectJob={(job) => applyAndOpenJob(job)}
+          onOpenJobSetup={() => {
+            setOpenedJob(null);
+            patch({ jobId: "", clientName: "", address: "" });
+          }}
         />
 
         <section className="sw-map-shell sw-map" aria-label="Map canvas">
@@ -416,7 +489,10 @@ export default function SatelliteSurveyPage({
               workspaceId={workspaceId}
               values={values}
               onChange={patch}
-              onOpenSetup={() => setShowSetup(true)}
+              onOpenSetup={() => {
+                setOpenedJob(null);
+                patch({ jobId: "", clientName: "", address: "" });
+              }}
               queueing={queueing}
               busy={running !== null}
               stage={running?.stage ?? null}
