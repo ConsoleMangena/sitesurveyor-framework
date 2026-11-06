@@ -128,7 +128,7 @@ export async function createJob(
     updated_at: nowIso(),
     _deleted: false,
     title: input.title ?? "",
-    status: input.status ?? "draft",
+    status: input.status ?? "planned",
     description: input.description ?? undefined,
     job_type: input.job_type ?? undefined,
     location: input.location ?? undefined,
