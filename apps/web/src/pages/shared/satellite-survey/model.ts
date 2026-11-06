@@ -16,6 +16,8 @@ export const DEFAULT_CATEGORY_IDS: SurveyCategory[] = [
   "hazard",
 ];
 
+export const DEFAULT_CATEGORY: SurveyCategory = "water";
+
 export const DEFAULT_HALF_DEG = 0.12;
 
 /** Where the map opens before anyone has typed a coordinate or run a survey: the site
@@ -38,7 +40,7 @@ export interface SurveyFormValues {
 /** Everything the platform needs to queue a survey, except which workspace asked. */
 export type SurveyDraft = Omit<StartSurveyInput, "workspaceId" | "projectId">;
 
-/** The form as the workbench opens it: a real point, a real extent, all four categories. */
+/** The form as the workbench opens it: a real point, a real extent, one category at a time. */
 export function initialForm(): SurveyFormValues {
   return {
     latitude: DEFAULT_TARGET.latitude.toFixed(5),
@@ -46,7 +48,7 @@ export function initialForm(): SurveyFormValues {
     clientName: "Site Survey",
     address: "",
     halfDeg: DEFAULT_HALF_DEG,
-    categories: [...DEFAULT_CATEGORY_IDS],
+    categories: [DEFAULT_CATEGORY],
   };
 }
 
@@ -86,8 +88,10 @@ export function validateForm(form: SurveyFormValues): {
 
   if (latitude === null) problems.push("Latitude must be a decimal degree.");
   if (longitude === null) problems.push("Longitude must be a decimal degree.");
-  if (!form.categories.length) {
-    problems.push("Pick at least one category — an empty survey answers nothing.");
+  if (form.categories.length === 0) {
+    problems.push("Select a survey category — an empty survey answers nothing.");
+  } else if (form.categories.length > 1) {
+    problems.push("Please select only one category at a time.");
   }
 
   if (latitude !== null && longitude !== null) {

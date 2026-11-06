@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_CATEGORY_IDS,
+  DEFAULT_CATEGORY,
   DEFAULT_HALF_DEG,
   resultsNote,
   sourceText,
@@ -16,7 +16,7 @@ function form(overrides: Partial<SurveyFormValues> = {}): SurveyFormValues {
     clientName: "Kopje Farm",
     address: "Masvingo",
     halfDeg: DEFAULT_HALF_DEG,
-    categories: DEFAULT_CATEGORY_IDS,
+    categories: [DEFAULT_CATEGORY],
     ...overrides,
   };
 }
@@ -29,7 +29,7 @@ describe("validateForm", () => {
     expect(draft).toEqual({
       latitude: -19.50487,
       longitude: 29.84598,
-      categories: DEFAULT_CATEGORY_IDS,
+      categories: ["water"],
       clientName: "Kopje Farm",
       address: "Masvingo",
       halfDeg: DEFAULT_HALF_DEG,
@@ -38,6 +38,15 @@ describe("validateForm", () => {
       dataSources: {},
       composite: {},
     });
+  });
+
+  it("rejects choosing more than one category at a time", () => {
+    const { draft, problems } = validateForm(
+      form({ categories: ["water", "minerals"] }),
+    );
+
+    expect(draft).toBeNull();
+    expect(problems).toEqual(["Please select only one category at a time."]);
   });
 
   it("carries the coverages and composite the panel chose", () => {

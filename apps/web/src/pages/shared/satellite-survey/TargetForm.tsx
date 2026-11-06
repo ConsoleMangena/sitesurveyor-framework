@@ -90,11 +90,8 @@ export default function TargetForm({
     onChange({ dataSources: { ...chosen, [id]: value } });
   }
 
-  function toggleCategory(id: SurveyCategory) {
-    const categories = values.categories.includes(id)
-      ? values.categories.filter((category) => category !== id)
-      : [...values.categories, id];
-    onChange({ categories });
+  function selectCategory(id: SurveyCategory) {
+    onChange({ categories: [id] });
   }
 
   return (
@@ -206,25 +203,30 @@ export default function TargetForm({
       </div>
 
       <fieldset className="mt-3 space-y-1 border-0 p-0">
-        <legend className={labelClass}>Categories</legend>
-        <div className="flex flex-wrap gap-1.5 pt-1">
+        <legend className={labelClass}>Category (select one)</legend>
+        <div
+          className="flex flex-wrap gap-1.5 pt-1"
+          role="radiogroup"
+          aria-label="Survey category"
+        >
           {SURVEY_CATEGORY_OPTIONS.map((option) => {
-            const active = values.categories.includes(option.id);
+            const active = values.categories[0] === option.id;
             return (
               <label
                 key={option.id}
                 className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
                   active
-                    ? "border-primary/45 bg-primary/12 text-primary"
+                    ? "border-primary/45 bg-primary/12 text-primary shadow-xs"
                     : "border-input text-muted-foreground hover:bg-muted"
                 }`}
               >
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="survey-category"
                   className="sr-only"
                   checked={active}
                   disabled={busy}
-                  onChange={() => toggleCategory(option.id)}
+                  onChange={() => selectCategory(option.id)}
                 />
                 {CATEGORY_LABELS[option.dossier].short}
               </label>
