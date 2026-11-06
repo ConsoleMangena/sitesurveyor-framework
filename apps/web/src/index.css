@@ -4,6 +4,7 @@
 @import './styles/auth-plat.css';
 @import './styles/transport-plat.css';
 @import './styles/web3.css';
+@import './styles/survey-workbench.css';
 
 /* ─────────────────────────────────────────────────────────────
    SiteSurveyor — shadcn-admin design tokens (ported)

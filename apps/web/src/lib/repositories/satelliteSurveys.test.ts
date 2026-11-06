@@ -47,7 +47,17 @@ describe("parseSurveyResult", () => {
       executive_summary: "Two targets worth walking to.",
       claim_ceiling: "Priority only.",
       score_basis: "relative_to_aoi_percentile",
-      data_sources: { water: "Sentinel-2" },
+      data_sources: {
+        selectable: {
+          dem: { coverage: "dem_cop_30", label: "Copernicus DEM 30 m" },
+          optical: {
+            coverage: "s2_l2a",
+            label: "Sentinel-2 L2A (clear-scene composite), dry season 2023",
+            credit: "Copernicus Sentinel-2",
+          },
+        },
+        fixed: { rainfall: "CHIRPS monthly rainfall, 24-month mean" },
+      },
       scores: {
         groundwater: { cell_score: 61.4, cell_class: "Moderate" },
         minerals: { cell_score: 12.5, cell_class: "Low" },
@@ -65,7 +75,35 @@ describe("parseSurveyResult", () => {
     expect(parsed?.scores[0]).toMatchObject({ score: 61.4, klass: "Moderate" });
     // Hazard answers with the safety score, not the hazard index.
     expect(parsed?.scores[3]).toMatchObject({ score: 78, klass: "Safe" });
-    expect(parsed?.dataSources).toEqual({ water: "Sentinel-2" });
+    expect(parsed?.dataSources.selectable.optical).toMatchObject({
+      coverage: "s2_l2a",
+      credit: "Copernicus Sentinel-2",
+    });
+    expect(parsed?.dataSources.fixed).toEqual({
+      rainfall: "CHIRPS monthly rainfall, 24-month mean",
+    });
+  });
+
+  it("names the coverage a layer was read from, not the one the form asked for", () => {
+    // A cache hit on an older raster is the case provenance exists for: the label the
+    // workbench prints has to be the pixels the score came from.
+    const parsed = parseSurveyResult({
+      data_sources: {
+        selectable: { optical: { coverage: "gm_s2_annual", label: "Sentinel-2 Annual GeoMAD" } },
+      },
+    });
+
+    expect(parsed?.dataSources.selectable.optical?.label).toBe("Sentinel-2 Annual GeoMAD");
+  });
+
+  it("reads a bare coverage id as both id and name", () => {
+    const parsed = parseSurveyResult({ data_sources: { selectable: { dem: "srtm" } } });
+
+    expect(parsed?.dataSources.selectable.dem).toEqual({
+      coverage: "srtm",
+      label: "srtm",
+      credit: null,
+    });
   });
 
   it("leaves a category it was never scored on unscored rather than at zero", () => {
@@ -85,7 +123,7 @@ describe("parseSurveyResult", () => {
     expect(parseSurveyResult({})).toMatchObject({
       summary: null,
       claimCeiling: null,
-      dataSources: {},
+      dataSources: { selectable: {}, fixed: {} },
       target: null,
     });
   });

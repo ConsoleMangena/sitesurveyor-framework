@@ -1,59 +1,203 @@
-import { useState } from "react";
-import { Satellite, TriangleAlert } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
-import { DashboardCard } from "@/components/dashboard/DashboardCard.tsx";
 import {
   DashboardHeader,
   DashboardShell,
 } from "@/components/dashboard/DashboardShell.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 
+import CandidateTable from "@/components/surveys/CandidateTable.tsx";
+import ContentsPanel, { type SurveySnapshot } from "@/components/surveys/ContentsPanel.tsx";
+import ExportsPanel from "@/components/surveys/ExportsPanel.tsx";
+import IndicatorsPanel from "@/components/surveys/IndicatorsPanel.tsx";
+import SurveyMap, { type MapViewInfo } from "@/components/surveys/SurveyMap.tsx";
+import { StatusStrip, WorkbenchBar } from "@/components/surveys/WorkbenchBar.tsx";
+
 import {
   InsufficientCreditsError,
   cancelSurveyRun,
   startSurvey,
+  type SurveyProvenance,
 } from "../../../lib/repositories/satelliteSurveys.ts";
-import ProgressPanel from "./ProgressPanel.tsx";
-import ResultPanel from "./ResultPanel.tsx";
-import RunList from "./RunList.tsx";
-import TargetForm from "./TargetForm.tsx";
-import type { SurveyDraft } from "./model.ts";
-import { SurveyStatusChip } from "../../../components/surveys/SurveyStatusChip.tsx";
 import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteSurveys.ts";
+import { outsideCoverage, parseCoordinate } from "../../../lib/surveys/labels.ts";
+import {
+  aoiBounds,
+  basisText,
+  candidateRows,
+  dmsText,
+  elapsedText,
+  gridText,
+  jobText,
+  mapCandidates,
+  type MapCandidate,
+} from "../../../lib/surveys/workbench.ts";
+import {
+  DEFAULT_COMPOSITE,
+  coverageLabel,
+  imageryChip,
+  inputsText,
+} from "../../../lib/surveys/sources.ts";
+import TargetForm from "./TargetForm.tsx";
+import {
+  initialForm,
+  pinTarget,
+  resultsNote,
+  sourceText,
+  validateForm,
+  type SurveyFormValues,
+} from "./model.ts";
 
 interface SatelliteSurveyPageProps {
   workspaceId: string;
   onNavigate?: (view: string) => void;
 }
 
-/** One console for the whole workspace: queue a target, follow it, read the result.
+/**
+ * The engine's survey workbench, running on this platform's own tables.
  *
- * There is no address to type and nothing to install. A survey is a row the platform's
- * own worker runs, and this page reads back whatever that worker has published — which is
- * why closing the tab costs a reader nothing but the waiting.
+ * Three regions, one screen: Contents says what is drawn, the map is where the target is
+ * placed, and Analysis holds the parameters, the four scores, the ranked candidates and
+ * the files. All of them read `survey_runs`, `survey_targets` and `survey_deliverables` —
+ * the same rows the platform's worker claims and publishes — so a survey queued here is
+ * the survey a teammate sees moving, and closing the tab costs a reader nothing but the
+ * waiting.
  */
 export default function SatelliteSurveyPage({
   workspaceId,
   onNavigate,
 }: SatelliteSurveyPageProps) {
   const { runs, error: listError, loaded, refresh, adopt } = useSurveyRuns(workspaceId);
+
+  const [values, setValues] = useState<SurveyFormValues>(initialForm);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [queuedThisSession, setQueuedThisSession] = useState<string | null>(null);
   const [queueing, setQueueing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
 
+  const [layers, setLayers] = useState({ aoi: true, candidates: true });
+  const [basemap, setBasemap] = useState("satellite");
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [view, setView] = useState<MapViewInfo | null>(null);
+  const [fitToken, setFitToken] = useState(0);
+  const [resizeToken, setResizeToken] = useState(0);
+  const [focus, setFocus] = useState<{
+    latitude: number;
+    longitude: number;
+    token: number;
+  } | null>(null);
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
+
   const selected = runs.find((run) => run.id === selectedId) ?? runs[0] ?? null;
-  const inFlight = runs.find((run) => run.active) ?? null;
+  const running = runs.find((run) => run.active) ?? null;
   const { detail, error: detailError } = useSurveyDetail(selected);
 
-  async function submit(draft: SurveyDraft) {
+  // Elapsed time is a timer, not `Date.now()` in render: reading the wall clock while
+  // rendering would make the number jump on any unrelated re-render of the page.
+  const [lastTickMs, setLastTickMs] = useState<number | null>(null);
+  const runningId = running?.id ?? null;
+
+  useEffect(() => {
+    if (!runningId) return;
+    const timer = window.setInterval(() => setLastTickMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [runningId]);
+
+  // A run opened straight after a page load can be younger than the last tick; the
+  // elapsed helper clamps that to 0s rather than inventing a negative clock.
+  const elapsed =
+    running && running.status !== "queued" && lastTickMs !== null
+      ? elapsedText(lastTickMs - new Date(running.createdAt).getTime())
+      : null;
+
+  const target = pinTarget(values, selected);
+  const typedLat = parseCoordinate(values.latitude);
+  const typedLon = parseCoordinate(values.longitude);
+  const outside =
+    typedLat !== null && typedLon !== null && outsideCoverage(typedLat, typedLon);
+
+  const provenance: SurveyProvenance | null = detail?.run.result?.dataSources ?? null;
+  const imagery =
+    coverageLabel(provenance, "optical") ??
+    (running ? imageryChip(values.dataSources ?? {}, values.composite ?? DEFAULT_COMPOSITE) : null);
+
+  const candidates = useMemo(() => mapCandidates(detail?.targets ?? []), [detail]);
+  const rows = useMemo(() => candidateRows(detail?.targets ?? []), [detail]);
+
+  const snapshot: SurveySnapshot = {
+    target: dmsText(target.latitude, target.longitude),
+    crs: detail?.run.result?.target?.crs ?? "—",
+    grid: gridText(detail?.run.result?.target?.cellM),
+    source: sourceText(selected, queuedThisSession),
+    inputs: inputsText(provenance),
+    basis: basisText(detail?.run.result?.scoreBasis ?? null),
+  };
+
+  const pill = listError
+    ? { state: "error" as const, text: "Queue unreadable" }
+    : running
+      ? { state: "running" as const, text: "Survey running" }
+      : { state: "ready" as const, text: "Worker ready" };
+
+  function patch(next: Partial<SurveyFormValues>) {
+    setValues((current) => ({ ...current, ...next }));
+  }
+
+  function moveTarget(latitude: number, longitude: number) {
+    patch({ latitude: latitude.toFixed(5), longitude: longitude.toFixed(5) });
+  }
+
+  function focusCandidate(candidate: MapCandidate) {
+    setFocusedKey(candidate.key);
+    setFocus({
+      latitude: candidate.latitude,
+      longitude: candidate.longitude,
+      token: Date.now(),
+    });
+  }
+
+  function togglePanel(side: "left" | "right") {
+    if (side === "left") setLeftOpen((open) => !open);
+    else setRightOpen((open) => !open);
+    // Leaflet sizes its canvas once, and the grid columns animate over 220 ms.
+    setResizeToken((token) => token + 1);
+  }
+
+  function selectRun(runId: string) {
+    setSelectedId(runId);
+    setFocusedKey(null);
+    setFitToken((token) => token + 1);
+  }
+
+  /** Take this survey off the workbench. The workspace keeps every run it has made. */
+  function clearBoard() {
+    setSelectedId(null);
+    setQueuedThisSession(null);
+    setFocusedKey(null);
+    setFocus(null);
+    setProblems([]);
+    setRefused(null);
+    setValues(initialForm());
+    setFitToken((token) => token + 1);
+  }
+
+  async function submit() {
+    const checked = validateForm(values);
+    setProblems(checked.problems);
+    if (!checked.draft) return;
+
     setQueueing(true);
     setRefused(null);
     try {
-      const outcome = await startSurvey({ ...draft, workspaceId });
+      const outcome = await startSurvey({ ...checked.draft, workspaceId });
       adopt(outcome.run);
-      setSelectedId(outcome.run.id);
+      selectRun(outcome.run.id);
+      setQueuedThisSession(outcome.run.id);
     } catch (err) {
       setRefused(
         err instanceof InsufficientCreditsError
@@ -92,23 +236,20 @@ export default function SatelliteSurveyPage({
       <DashboardHeader
         title="Satellite Survey"
         description="Screen a coordinate for groundwater, minerals, soil capability and site safety."
-        meta={
-          inFlight ? (
-            <span className="flex items-center gap-2">
-              <SurveyStatusChip status={inFlight.status} />
-              <span>
-                {inFlight.clientName} — {Math.round(inFlight.progress)}%
-              </span>
-            </span>
-          ) : (
-            `${runs.length} survey${runs.length === 1 ? "" : "s"} in this workspace`
-          )
-        }
-        actions={
-          <Button type="button" variant="outline" size="sm" onClick={() => void refresh()}>
-            Refresh
-          </Button>
-        }
+        meta={`${runs.length} survey${runs.length === 1 ? "" : "s"} in this workspace`}
+      />
+
+      <WorkbenchBar
+        onRun={() => void submit()}
+        running={queueing || running !== null}
+        onResetView={() => setFitToken((token) => token + 1)}
+        onReload={() => void refresh()}
+        onClear={clearBoard}
+        leftOpen={leftOpen}
+        rightOpen={rightOpen}
+        onToggleLeft={() => togglePanel("left")}
+        onToggleRight={() => togglePanel("right")}
+        pill={pill}
       />
 
       {listError ? (
@@ -120,9 +261,7 @@ export default function SatelliteSurveyPage({
       {refused ? (
         <ErrorNotice
           tone={outOfCredits ? "warning" : "danger"}
-          title={
-            outOfCredits ? "This workspace is out of credits" : "The survey was refused"
-          }
+          title={outOfCredits ? "This workspace is out of credits" : "The survey was refused"}
           action={
             outOfCredits ? (
               <Button
@@ -149,66 +288,124 @@ export default function SatelliteSurveyPage({
         </ErrorNotice>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-        <div className="flex flex-col gap-4 lg:col-span-3">
-          <TargetForm
-            busy={queueing}
-            disabled={queueing || inFlight !== null}
-            onSubmit={(draft) => void submit(draft)}
-          />
-          <RunList
-            runs={runs}
-            selectedId={selected?.id ?? null}
-            loading={!loaded}
-            onSelect={setSelectedId}
-          />
-        </div>
+      <div
+        className="sw-workspace gap-3"
+        data-left={leftOpen ? undefined : "collapsed"}
+        data-right={rightOpen ? undefined : "collapsed"}
+      >
+        <ContentsPanel
+          layers={layers}
+          onLayer={(id, value) => setLayers((current) => ({ ...current, [id]: value }))}
+          basemap={basemap}
+          onBasemap={setBasemap}
+          snapshot={snapshot}
+          runs={runs}
+          selectedId={selected?.id ?? null}
+          loading={!loaded}
+          onSelect={selectRun}
+          cancelling={cancelling}
+          onCancel={(runId) => void cancel(runId)}
+          onCollapse={() => togglePanel("left")}
+        />
 
-        <div className="flex flex-col gap-4 lg:col-span-4">
-          {selected && selected.active ? (
-            <ProgressPanel
-              run={selected}
-              cancelling={cancelling === selected.id}
-              onCancel={(runId) => void cancel(runId)}
+        <section className="sw-map-shell sw-map" aria-label="Map canvas">
+          {!leftOpen ? (
+            <button
+              type="button"
+              className="sw-tab sw-tab--left"
+              onClick={() => togglePanel("left")}
+              title="Show Contents"
+            >
+              <span aria-hidden="true">›</span>
+              <span>Contents</span>
+            </button>
+          ) : null}
+          {!rightOpen ? (
+            <button
+              type="button"
+              className="sw-tab sw-tab--right"
+              onClick={() => togglePanel("right")}
+              title="Show Analysis"
+            >
+              <span>Analysis</span>
+              <span aria-hidden="true">‹</span>
+            </button>
+          ) : null}
+
+          <SurveyMap
+            target={target}
+            bounds={aoiBounds(target.latitude, target.longitude, values.halfDeg)}
+            candidates={candidates}
+            layers={layers}
+            basemap={basemap}
+            outside={outside}
+            showHint={running === null}
+            crs={detail?.run.result?.target?.crs ?? null}
+            imagery={imagery}
+            fitToken={fitToken}
+            resizeToken={resizeToken}
+            focus={focus}
+            onMoveTarget={moveTarget}
+            onView={setView}
+          />
+        </section>
+
+        <div className="sw-panel sw-panel--right" aria-label="Analysis">
+          <div className="sw-panel__header">
+            <span className="sw-panel__title">Analysis</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-7"
+              aria-expanded="true"
+              onClick={() => togglePanel("right")}
+              title="Collapse analysis"
+            >
+              <ChevronLeft className="size-4" aria-hidden="true" />
+              <span className="sr-only">Collapse analysis</span>
+            </Button>
+          </div>
+
+          <div className="sw-panel__body flex-1">
+            <TargetForm
+              values={values}
+              onChange={patch}
+              queueing={queueing}
+              busy={running !== null}
+              stage={running?.stage ?? null}
+              progress={running ? running.progress : null}
+              elapsed={elapsed}
+              problems={problems}
+              refused={!outOfCredits ? refused : null}
+              onSubmit={() => void submit()}
             />
-          ) : detailError ? (
-            <ErrorNotice tone="danger" title="This result could not be loaded">
-              {detailError}
-            </ErrorNotice>
-          ) : detail ? (
-            <div className="flex flex-col gap-4">
-              {detail.run.status === "failed" ? (
-                <ErrorNotice tone="danger" title="The survey did not complete">
-                  {detail.run.errorMessage ??
-                    "The worker stopped without recording a reason, and the credits were returned."}
-                </ErrorNotice>
-              ) : null}
-              {detail.run.status === "cancelled" ? (
-                <ErrorNotice tone="info" title="Cancelled before a worker started">
-                  The credits this survey was charged with are back in the workspace
-                  balance.
-                </ErrorNotice>
-              ) : null}
-              <ResultPanel detail={detail} />
-            </div>
-          ) : (
-            <DashboardCard title="Result" icon={<Satellite />}>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Nothing is open. Give the platform a coordinate and it queues the work for
-                its own survey worker, which downloads the Sentinel-2, Copernicus DEM,
-                ALOS PALSAR, Landsat WOfS, ESA WorldCover and CHIRPS layers covering that
-                point, scores a 30 m grid across the study area, and publishes ranked field
-                targets with maps, reports and KMZ files.
-              </p>
-              <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                Every survey this workspace has run stays readable — pick one on the left
-                and its result comes back, however long ago it ran.
-              </p>
-            </DashboardCard>
-          )}
+
+            {detailError ? (
+              <ErrorNotice tone="danger" title="This result could not be loaded">
+                {detailError}
+              </ErrorNotice>
+            ) : null}
+
+            <IndicatorsPanel
+              scores={detail?.run.result?.scores ?? []}
+              note={resultsNote(selected, queuedThisSession)}
+            />
+            <CandidateTable rows={rows} selectedKey={focusedKey} onFocus={focusCandidate} />
+            <ExportsPanel
+              deliverables={detail?.deliverables ?? []}
+              surveyed={selected !== null && !selected.active}
+            />
+          </div>
         </div>
       </div>
+
+      <StatusStrip
+        view={view}
+        crs={detail?.run.result?.target?.crs ?? "No survey scored yet"}
+        job={jobText(running ?? selected, queueing)}
+        basis={snapshot.basis}
+      />
     </DashboardShell>
   );
 }

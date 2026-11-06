@@ -56,6 +56,25 @@ export interface SurveyTargetArea {
   crs: string | null;
 }
 
+/** One layer's provenance, as the worker records the coverage that fed the score.
+ *
+ * `coverage` is the registry id the raster came from and `label` the words a reader can
+ * act on; they differ when a cached layer predates a switch, which is exactly the case a
+ * report must not paper over.
+ */
+export interface SurveySourceEntry {
+  coverage: string;
+  label: string;
+  credit: string | null;
+}
+
+export interface SurveyProvenance {
+  /** Keyed by layer: `dem`, `landcover`, `optical`. */
+  selectable: Record<string, SurveySourceEntry>;
+  /** Inputs the caller cannot choose, named once per survey for the same reason. */
+  fixed: Record<string, string>;
+}
+
 export interface SurveyResult {
   summary: string | null;
   scores: SurveyScore[];
@@ -63,7 +82,7 @@ export interface SurveyResult {
    *  AOI, and a reader who does not see it will compare two sites that cannot be compared. */
   claimCeiling: string | null;
   scoreBasis: string | null;
-  dataSources: Record<string, string>;
+  dataSources: SurveyProvenance;
   target: SurveyTargetArea | null;
 }
 
@@ -157,6 +176,48 @@ function statusOf(value: string): SurveyStatus {
 }
 
 /**
+ * Read the provenance block the worker writes into `result.data_sources`.
+ *
+ * The engine's shape is `{ selectable: { dem: { coverage, label } }, fixed: {...} }`, and
+ * an entry that is only a string is read as the coverage id itself: `used_sources()` has
+ * always carried a label, but a layer named without one should still say what it was.
+ */
+function provenanceOf(raw: unknown): SurveyProvenance {
+  const empty: SurveyProvenance = { selectable: {}, fixed: {} };
+  if (!raw || typeof raw !== "object") return empty;
+  const doc = raw as Record<string, unknown>;
+
+  const selectable: Record<string, SurveySourceEntry> = {};
+  for (const [layer, value] of entriesOf(doc.selectable)) {
+    if (typeof value === "string") {
+      selectable[layer] = { coverage: value, label: value, credit: null };
+      continue;
+    }
+    if (!value || typeof value !== "object") continue;
+    const entry = value as Record<string, unknown>;
+    const coverage = asText(entry.coverage) ?? layer;
+    selectable[layer] = {
+      coverage,
+      label: asText(entry.label) ?? coverage,
+      credit: asText(entry.credit),
+    };
+  }
+
+  const fixed: Record<string, string> = {};
+  for (const [layer, value] of entriesOf(doc.fixed)) {
+    if (typeof value === "string" && value.trim()) fixed[layer] = value;
+  }
+
+  return { selectable, fixed };
+}
+
+function entriesOf(value: unknown): [string, unknown][] {
+  return value && typeof value === "object"
+    ? Object.entries(value as Record<string, unknown>)
+    : [];
+}
+
+/**
  * Read the engine's result blob into what the page renders.
  *
  * Everything here is defensive on purpose: the result is a JSON document the engine owns
@@ -173,9 +234,7 @@ export function parseSurveyResult(raw: unknown): SurveyResult | null {
     summary: asText(result.executive_summary),
     claimCeiling: asText(result.claim_ceiling),
     scoreBasis: asText(result.score_basis),
-    dataSources: (result.data_sources && typeof result.data_sources === "object"
-      ? result.data_sources
-      : {}) as Record<string, string>,
+    dataSources: provenanceOf(result.data_sources),
     scores: SCORE_KEYS.map(({ category, key, label }) => {
       const entry = (scores[key] ?? {}) as Record<string, unknown>;
       // Hazard is scored the other way round by the engine: a higher index is worse, and

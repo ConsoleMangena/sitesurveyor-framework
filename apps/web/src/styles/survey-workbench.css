@@ -1,0 +1,601 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Satellite survey workbench.
+   Ported from the engine's sandbox page, which was written in plain CSS against
+   the same shadcn slate tokens this app uses. What lives here is only what
+   Tailwind cannot express: Leaflet's own surfaces, the drawn markers, the panel
+   collapse transition and the dense numeric table. Colour always comes from a
+   token, so the workbench follows the app theme instead of carrying its own.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.sw-workspace {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr) 410px;
+  /* The workbench is one screen: the map holds its own height and each panel scrolls its
+     own column, which is what keeps the analysis blocks beside the canvas instead of
+     under it. */
+  height: calc(100vh - 300px);
+  min-height: 600px;
+  transition: grid-template-columns 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sw-workspace[data-left="collapsed"] {
+  grid-template-columns: 0px minmax(0, 1fr) 410px;
+}
+
+.sw-workspace[data-right="collapsed"] {
+  grid-template-columns: 290px minmax(0, 1fr) 0px;
+}
+
+.sw-workspace[data-left="collapsed"][data-right="collapsed"] {
+  grid-template-columns: 0px minmax(0, 1fr) 0px;
+}
+
+/* A folded panel is zero-width, not absent: it still holds focusable controls, so it has
+   to leave the tab order and the screen rather than hide behind the map. */
+.sw-workspace[data-left="collapsed"] > .sw-panel--left,
+.sw-workspace[data-right="collapsed"] > .sw-panel--right {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sw-workspace > .sw-panel {
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+
+/* Below the width where three regions stop being a workbench, the map leads and the
+   panels stack under it — the same order the page reads in on a tablet. */
+@media (max-width: 1180px) {
+  .sw-workspace,
+  .sw-workspace[data-left="collapsed"],
+  .sw-workspace[data-right="collapsed"],
+  .sw-workspace[data-left="collapsed"][data-right="collapsed"] {
+    grid-template-columns: 260px minmax(0, 1fr) 370px;
+  }
+}
+
+@media (max-width: 980px) {
+  .sw-workspace,
+  .sw-workspace[data-left="collapsed"],
+  .sw-workspace[data-right="collapsed"],
+  .sw-workspace[data-left="collapsed"][data-right="collapsed"] {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: auto;
+    min-height: 0;
+  }
+
+  /* Stacked, there is no width to buy back, so the collapse state cannot hide a panel —
+     the tabs that would undo it are gone with the columns. */
+  .sw-workspace > .sw-panel {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sw-workspace .sw-map {
+    order: 1;
+    height: 55vh;
+    min-height: 320px;
+  }
+
+  .sw-workspace .sw-panel--right {
+    order: 2;
+  }
+
+  .sw-workspace .sw-panel--left {
+    order: 3;
+  }
+
+  .sw-workspace .sw-panel {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .sw-workspace .sw-panel__body {
+    overflow: visible;
+  }
+
+  .sw-tabs {
+    display: none;
+  }
+
+  .sw-attr-scroll {
+    max-height: 200px;
+  }
+}
+
+.sw-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sw-panel__body {
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+
+/* ── Map ── */
+
+.sw-map-shell {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--muted);
+}
+
+.sw-map-shell .leaflet-container {
+  background: var(--muted);
+  font-family: inherit;
+}
+
+.sw-map-shell .leaflet-control-attribution {
+  font-size: 10px;
+  background: color-mix(in oklab, var(--card) 78%, transparent);
+  color: var(--muted-foreground);
+}
+
+.sw-map-shell .leaflet-control-attribution a {
+  color: var(--muted-foreground);
+}
+
+.sw-map-shell .leaflet-control-zoom a {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.sw-map-shell .leaflet-popup-content-wrapper,
+.sw-map-shell .leaflet-popup-tip {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+}
+
+.sw-map-shell .leaflet-popup-content {
+  margin: 10px 12px;
+  line-height: 1.45;
+}
+
+.sw-popup__title {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.sw-popup__line {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+/* The target reticle: a ring, a centre dot and four ticks, in the brand red the rest
+   of the app uses for the action that costs something. Amber when the point is outside
+   the coverage the worker can read, so a refused survey is visible before it is queued. */
+.sw-pin {
+  display: grid;
+  place-items: center;
+}
+
+.sw-cand-wrap {
+  background: none;
+  border: none;
+}
+
+.sw-cand-wrap > span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  color: #fff;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.45);
+}
+
+/* Map furniture sits on the canvas, so it carries its own backdrop. */
+.sw-chips {
+  position: absolute;
+  z-index: 500;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.sw-chip {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+.sw-chip b {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.sw-chip--accent {
+  border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
+  color: color-mix(in oklab, var(--primary) 70%, var(--foreground));
+}
+
+.sw-hint {
+  position: absolute;
+  z-index: 500;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+/* Edge tabs: the panels fold away to give the map the width, and the only trace left
+   has to be something a keyboard can find too. */
+.sw-tab {
+  position: absolute;
+  z-index: 600;
+  top: 66px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.sw-tab--left {
+  left: 14px;
+}
+
+.sw-tab--right {
+  right: 14px;
+}
+
+/* ── Dense numerics ── */
+
+.sw-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.sw-attr-scroll {
+  max-height: 236px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sw-attr-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+.sw-attr-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sw-attr-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.sw-attr-table .sw-num {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sw-attr-table tbody tr[role="button"] {
+  cursor: pointer;
+}
+
+.sw-attr-table tbody tr[role="button"]:hover,
+.sw-attr-table tbody tr[role="button"]:focus-visible {
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+
+.sw-attr-table tbody tr[data-selected="true"] {
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+}
+
+.sw-rank {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Score bands. The hue is the meaning, and both themes get their own values so a
+   "High" card says the same thing on paper as it does on slate. The app's default is
+   light and dark arrives as `.dark` / `[data-theme="dark"]`. */
+.sw-band {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  border: 1px solid;
+  max-width: 68%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sw-band--high {
+  color: #065f46;
+  background: rgb(16 185 129 / 0.14);
+  border-color: rgb(16 185 129 / 0.35);
+}
+
+.sw-band--mid {
+  color: #92400e;
+  background: rgb(245 158 11 / 0.16);
+  border-color: rgb(245 158 11 / 0.4);
+}
+
+.sw-band--low {
+  color: #b91c1c;
+  background: rgb(239 68 68 / 0.12);
+  border-color: rgb(239 68 68 / 0.35);
+}
+
+.sw-band--none {
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-color: var(--border);
+}
+
+.dark .sw-band--high,
+[data-theme="dark"] .sw-band--high {
+  color: #34d399;
+  background: rgb(16 185 129 / 0.15);
+  border-color: rgb(16 185 129 / 0.3);
+}
+
+.dark .sw-band--mid,
+[data-theme="dark"] .sw-band--mid {
+  color: #fbbf24;
+  background: rgb(245 158 11 / 0.15);
+  border-color: rgb(245 158 11 / 0.3);
+}
+
+.dark .sw-band--low,
+[data-theme="dark"] .sw-band--low {
+  color: #f87171;
+  background: rgb(239 68 68 / 0.15);
+  border-color: rgb(239 68 68 / 0.3);
+}
+
+.sw-legend-band {
+  font-size: 9.5px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+/* The 3px edge is what ties an indicator card to its markers on the map. */
+.sw-accent-left {
+  border-left-width: 3px;
+}
+
+.sw-meter {
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.sw-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
+.sw-progress {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.sw-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), #f59e0b);
+  transition: width 0.4s ease;
+}
+
+.sw-kv dd {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sw-status {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+/* ── Panel chrome ── */
+
+.sw-panel__header {
+  flex: 0 0 auto;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sw-panel__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.sw-block + .sw-block {
+  border-top: 1px solid var(--border);
+}
+
+/* Layer and legend rows are one density everywhere in the workbench; the swatch carries
+   the colour a reader is being told about, so it never depends on the text beside it. */
+.sw-layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.sw-layer input {
+  accent-color: var(--primary);
+  margin: 0;
+}
+
+.sw-swatch {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.sw-swatch--aoi {
+  background: color-mix(in oklab, #d14141 18%, transparent);
+  border: 1.5px dashed #d14141;
+}
+
+.sw-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sw-export:hover:not(:disabled) {
+  background: var(--muted);
+}
+
+.sw-export:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* The engine's toolbar is the only place a survey is started from the keyboard, so the
+   buttons sit in a real group rather than beside the page title. */
+.sw-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.sw-toolbar__divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+/* What the workbench thinks is happening to this workspace's queue right now. It reports
+   only what the app can actually observe — a row being claimed, a read that failed — so
+   the pill cannot claim a worker is alive when nothing has proved it. */
+.sw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+}
+
+.sw-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.sw-pill[data-state="running"] {
+  color: #92400e;
+  border-color: rgb(245 158 11 / 0.4);
+  background: rgb(245 158 11 / 0.12);
+}
+
+.sw-pill[data-state="error"] {
+  color: var(--destructive);
+  border-color: color-mix(in oklab, var(--destructive) 40%, var(--border));
+  background: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+
+.dark .sw-pill[data-state="running"] {
+  color: #fbbf24;
+}

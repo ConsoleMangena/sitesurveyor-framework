@@ -29,35 +29,38 @@ export const CATEGORY_LABELS: Record<
   hazard_safety: { name: "Hazard & site safety", short: "Hazard", noun: "safe build sites" },
 };
 
-/** AOI half-width choices, in degrees, with the km each implies. */
+/**
+ * Study area choices, in degrees each way from the target, with the ground distance each
+ * one implies and what that size of area is typically surveyed for.
+ *
+ * These are the engine's own bands, kept because the worker's runtime scales with them:
+ * a district is the same six coverages read across more pixels, so the label warns about
+ * the wait rather than pretending every extent costs the same.
+ */
 export const AOI_CHOICES = [
-  { value: 0.05, label: "±5.5 km" },
-  { value: 0.12, label: "±13.3 km (default)" },
-  { value: 0.2, label: "±22 km" },
-  { value: 0.35, label: "±39 km" },
+  { value: 0.045, label: "≈ 5 km · single plot" },
+  { value: 0.12, label: "≈ 13 km · farm or claim" },
+  { value: 0.23, label: "≈ 25 km · district" },
+  { value: 0.45, label: "≈ 50 km · regional (slow)" },
 ];
 
-/** The deliverable kinds the worker publishes, keyed as `survey_deliverables.kind`. */
-export const DELIVERABLE_LABELS: Record<string, string> = {
-  master_json_dossier: "Executive dossier (JSON)",
-  boreholes_kmz: "Borehole targets (KMZ)",
-  minerals_kmz: "Exploration targets (KMZ)",
-  soil_kmz: "Land zones (KMZ)",
-  safest_sites_kmz: "Safe build sites (KMZ)",
-  groundwater_map: "Groundwater potential map",
-  minerals_map: "Mineral prospectivity map",
-  soil_map: "Soil capability map",
-  hazard_map: "Hazard risk map",
+/**
+ * The two files each category publishes, keyed as the worker keys them.
+ *
+ * The engine's export panel offered a row per domain, and the row was only live when that
+ * category's files existed. Same here, but spelled against `SURVEY_DELIVERABLES` in
+ * `apps/engine/worker.py`: a category the survey skipped simply has no file to open,
+ * which is a truer answer than a link that 404s.
+ */
+export const CATEGORY_EXPORTS: Record<
+  DossierCategory,
+  { map: string; kmz: string }
+> = {
+  water: { map: "groundwater_map", kmz: "boreholes_kmz" },
+  minerals: { map: "minerals_map", kmz: "minerals_kmz" },
+  soil_land: { map: "soil_map", kmz: "soil_kmz" },
+  hazard_safety: { map: "hazard_map", kmz: "safest_sites_kmz" },
 };
-
-export function deliverableGroup(
-  key: string,
-): "Dossier" | "Maps" | "Field navigation" | "Reports & viewers" {
-  if (key.startsWith("master_json")) return "Dossier";
-  if (key.endsWith("_kmz")) return "Field navigation";
-  if (key.endsWith("_map")) return "Maps";
-  return "Reports & viewers";
-}
 
 /**
  * The geographic envelope the survey worker can actually read.
@@ -75,6 +78,17 @@ export function outsideCoverage(latitude: number, longitude: number): boolean {
     longitude >= COVERAGE.lonMin &&
     longitude <= COVERAGE.lonMax
   );
+}
+
+/** The live warning under the coordinate fields, worded as the engine's own page words it.
+ *  A reader needs the reason the point is refused, not just the fact. */
+export const COVERAGE_LEAD = "Outside satellite coverage. ";
+export const COVERAGE_NOTE =
+  "Digital Earth Africa serves roughly 30°W–66°E and 56°S–41°N. A survey here would screen " +
+  "empty rasters, so it cannot run.";
+
+export function coverageNoteFor(latitude: number, longitude: number): string {
+  return outsideCoverage(latitude, longitude) ? COVERAGE_LEAD + COVERAGE_NOTE : "";
 }
 
 export function scoreText(value: number | null | undefined): string {
