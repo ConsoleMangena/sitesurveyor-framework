@@ -27,6 +27,7 @@ describe("validateForm", () => {
 
     expect(problems).toEqual([]);
     expect(draft).toEqual({
+      jobId: null,
       latitude: -19.50487,
       longitude: 29.84598,
       categories: ["water"],

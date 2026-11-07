@@ -52,8 +52,14 @@ import {
   yearOptions,
 } from "../../../lib/surveys/sources.ts";
 import { canAfford, areaText, type SurveyQuote } from "../../../lib/surveys/pricing.ts";
+import { useSurveyQuote } from "../../../lib/hooks/useSurveyQuote.ts";
+import {
+  jobSpecFrom,
+  jobSpecProblems,
+  serializeJobSpec,
+} from "../../../lib/surveys/jobSpec.ts";
 import CreditCostPanel from "../../../components/surveys/CreditCostPanel.tsx";
-import { validateForm, type SurveyFormValues } from "./model.ts";
+import { validateForm, DEFAULT_HALF_DEG, DEFAULT_TARGET, type SurveyFormValues } from "./model.ts";
 
 const fieldClass =
   "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-[2px] focus-visible:ring-ring/60";
@@ -105,6 +111,16 @@ export default function EarthObservationSetupForm({
   const [newJobTitle, setNewJobTitle] = useState("");
   const [newJobLocation, setNewJobLocation] = useState("");
   const [newJobCategory, setNewJobCategory] = useState<SurveyCategory>("water");
+  /**
+   * The ground the new job covers.
+   *
+   * These are part of the job, not part of the form that follows it: the survey type
+   * and the ground are what the job costs, so a job cannot be created without them.
+   */
+  const [newJobLatitude, setNewJobLatitude] = useState(DEFAULT_TARGET.latitude.toFixed(5));
+  const [newJobLongitude, setNewJobLongitude] = useState(DEFAULT_TARGET.longitude.toFixed(5));
+  const [newJobHalfDeg, setNewJobHalfDeg] = useState(DEFAULT_HALF_DEG);
+  const [newJobProblems, setNewJobProblems] = useState<string[]>([]);
   const [savingJob, setSavingJob] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
 
@@ -151,11 +167,45 @@ export default function EarthObservationSetupForm({
 
   const currentJob = openedJob ?? jobs.find((j) => j.id === values.jobId) ?? null;
 
+  /** The ground the new job would cover, and what that costs. */
+  const draftLatitude = parseCoordinate(newJobLatitude);
+  const draftLongitude = parseCoordinate(newJobLongitude);
+  const draftQuote = useSurveyQuote(
+    draftLatitude === null
+      ? null
+      : { categories: [newJobCategory], halfDeg: newJobHalfDeg, latitude: draftLatitude },
+  );
+  const draftNote =
+    draftLatitude !== null && draftLongitude !== null
+      ? coverageNoteFor(draftLatitude, draftLongitude)
+      : "";
+
   async function handleCreateJob() {
-    if (!newJobTitle.trim()) {
-      setJobError("Job title is required.");
+    const problems = jobSpecProblems({
+      title: newJobTitle,
+      category: newJobCategory,
+      latitude: newJobLatitude,
+      longitude: newJobLongitude,
+      halfDeg: newJobHalfDeg,
+    });
+    if (problems.length > 0) {
+      setNewJobProblems(problems);
+      setJobError(null);
       return;
     }
+
+    const spec = jobSpecFrom({
+      category: newJobCategory,
+      latitude: newJobLatitude,
+      longitude: newJobLongitude,
+      halfDeg: newJobHalfDeg,
+    });
+    if (!spec) {
+      setNewJobProblems(["The area to be analysed could not be read."]);
+      return;
+    }
+
+    setNewJobProblems([]);
     setJobError(null);
     setSavingJob(true);
     try {
@@ -172,7 +222,7 @@ export default function EarthObservationSetupForm({
         title: newJobTitle.trim(),
         location: newJobLocation.trim() || undefined,
         job_type: typeLabel,
-        description: JSON.stringify({ category: newJobCategory }),
+        description: serializeJobSpec(spec),
         status: "planned",
       });
       const asProjectJob: JobWithProject = { ...created, project_name: null };
@@ -321,7 +371,8 @@ export default function EarthObservationSetupForm({
               Create New Job for Earth Observation
             </CardTitle>
             <CardDescription className="text-xs">
-              Every Earth Observation session is tied to a workspace job record.
+              Every Earth Observation session is tied to a workspace job record. The survey
+              type and the ground it covers set what the job costs in AI credits.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
@@ -375,6 +426,111 @@ export default function EarthObservationSetupForm({
               </div>
             </div>
 
+            {/* ── The ground this job covers ─────────────────────────────── */}
+            <div className="space-y-3 rounded-lg border border-border/70 bg-background/60 p-3">
+              <div>
+                <p className="text-xs font-semibold text-foreground">Area to be analysed</p>
+                <p className="text-[11.5px] text-muted-foreground">
+                  The coordinate and the extent are what the job costs. A job cannot be
+                  created without them.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="eo-new-lat" className={labelClass}>
+                    Latitude *
+                  </Label>
+                  <Input
+                    id="eo-new-lat"
+                    className={monoClass}
+                    type="number"
+                    step="0.00001"
+                    min={-90}
+                    max={90}
+                    inputMode="decimal"
+                    value={newJobLatitude}
+                    disabled={savingJob}
+                    onChange={(e) => setNewJobLatitude(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="eo-new-lon" className={labelClass}>
+                    Longitude *
+                  </Label>
+                  <Input
+                    id="eo-new-lon"
+                    className={monoClass}
+                    type="number"
+                    step="0.00001"
+                    min={-180}
+                    max={180}
+                    inputMode="decimal"
+                    value={newJobLongitude}
+                    disabled={savingJob}
+                    onChange={(e) => setNewJobLongitude(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="eo-new-extent" className={labelClass}>
+                  Surface area to survey *
+                </Label>
+                <select
+                  id="eo-new-extent"
+                  className={`w-full ${fieldClass}`}
+                  value={newJobHalfDeg}
+                  disabled={savingJob}
+                  onChange={(e) => setNewJobHalfDeg(Number(e.target.value))}
+                >
+                  {AOI_CHOICES.map((choice) => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.label}
+                    </option>
+                  ))}
+                </select>
+                {draftQuote.quote ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Ground covered:{" "}
+                    <span className="font-medium text-foreground">
+                      {areaText(draftQuote.quote)}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+
+              {draftNote ? (
+                <p
+                  role="status"
+                  className="rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs leading-snug text-amber-700 dark:text-amber-400"
+                >
+                  {draftNote}
+                </p>
+              ) : null}
+
+              <CreditCostPanel
+                quote={draftQuote.quote}
+                loading={draftQuote.loading}
+                balance={balance}
+                onNavigateBilling={onNavigateBilling}
+              />
+            </div>
+
+            {newJobProblems.length > 0 ? (
+              <div
+                role="alert"
+                className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
+              >
+                <p className="font-semibold mb-1">This job cannot be priced yet:</p>
+                <ul className="list-disc space-y-0.5 pl-4">
+                  {newJobProblems.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             {jobError ? (
               <p className="text-xs text-destructive">{jobError}</p>
             ) : null}
@@ -388,7 +544,11 @@ export default function EarthObservationSetupForm({
                 onClick={() => void handleCreateJob()}
               >
                 {savingJob ? <Loader className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-                {savingJob ? "Creating Job…" : "Save & Open in Earth Observation"}
+                {savingJob
+                  ? "Creating Job…"
+                  : draftQuote.quote
+                    ? `Save & Open · ${draftQuote.quote.credits} credit${draftQuote.quote.credits === 1 ? "" : "s"}`
+                    : "Save & Open in Earth Observation"}
               </Button>
               <Button
                 type="button"

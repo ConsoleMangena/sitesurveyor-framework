@@ -62,7 +62,7 @@ comment on column public.survey_credit_rates.minimum_credits is
 --   hazard    6 + 0.00022/ha   multi-hazard overlay carries slope, rainfall and
 --                              geology factors together
 --
--- At the default extent those come to 17, 15, 22 and 20 credits -- the same order as
+-- At the default extent those come to 17, 15, 23 and 21 credits -- the same order as
 -- the flat rate they replace, and now proportional to the work.
 insert into public.survey_credit_rates (
   category, label, base_credits, per_hectare_credits, minimum_credits, estimated_cost

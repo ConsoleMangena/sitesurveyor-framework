@@ -11,7 +11,6 @@ import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 
 import CandidateTable from "@/components/surveys/CandidateTable.tsx";
 import ContentsPanel, { type SurveySnapshot } from "@/components/surveys/ContentsPanel.tsx";
-import CreditCostPanel from "@/components/surveys/CreditCostPanel.tsx";
 import ExportsPanel from "@/components/surveys/ExportsPanel.tsx";
 import IndicatorsPanel from "@/components/surveys/IndicatorsPanel.tsx";
 import SurveyMap, { type MapViewInfo } from "@/components/surveys/SurveyMap.tsx";
@@ -22,13 +21,18 @@ import {
   InsufficientCreditsError,
   cancelSurveyRun,
   deliverableUrl,
-  quoteSurvey,
   startSurvey,
   type SurveyProvenance,
 } from "../../../lib/repositories/satelliteSurveys.ts";
 import { getAiCreditBalance } from "../../../lib/repositories/pesepay.ts";
-import { listJobs, deleteJob, type JobWithProject } from "../../../lib/repositories/jobs.ts";
+import {
+  listJobs,
+  deleteJob,
+  updateJob,
+  type JobWithProject,
+} from "../../../lib/repositories/jobs.ts";
 import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteSurveys.ts";
+import { useSurveyQuote } from "../../../lib/hooks/useSurveyQuote.ts";
 import {
   CATEGORY_EXPORTS,
   CATEGORY_RASTER_PALETTE,
@@ -37,7 +41,12 @@ import {
   getJobCategory,
   toDossierCategory,
 } from "../../../lib/surveys/labels.ts";
-import { canAfford, type SurveyQuote } from "../../../lib/surveys/pricing.ts";
+import { canAfford } from "../../../lib/surveys/pricing.ts";
+import {
+  jobSpecFrom,
+  parseJobSpec,
+  serializeJobSpec,
+} from "../../../lib/surveys/jobSpec.ts";
 import { parseZoneCollection, zoneLegend, type ZoneCollection } from "../../../lib/surveys/zoneLayers.ts";
 import {
   aoiBounds,
@@ -114,10 +123,6 @@ export default function SatelliteSurveyPage({
    * type cannot leave the previous price on screen for a frame -- and a quote that
    * failed to load is not shown as a price of zero.
    */
-  const [quoteState, setQuoteState] = useState<{
-    key: string;
-    quote: SurveyQuote | null;
-  } | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   /** What the last queued survey was charged, and what was left afterwards. */
   const [charged, setCharged] = useState<{ credits: number; remaining: number | null } | null>(null);
@@ -151,13 +156,22 @@ export default function SatelliteSurveyPage({
   }, [openedJob, fetchJobs, refresh]);
 
   function applyAndOpenJob(job: JobWithProject) {
-    const cat = getJobCategory(job);
+    const spec = parseJobSpec(job.description);
+    const cat = spec?.category ?? getJobCategory(job);
     const patchValues: Partial<SurveyFormValues> = {
       jobId: job.id,
       clientName: job.title,
       address: job.location ?? "",
       categories: [cat],
     };
+
+    // The job holds the ground it covers, so opening a job restores the coordinate and
+    // the extent it was created for rather than starting from the defaults.
+    if (spec?.hasGround) {
+      patchValues.latitude = spec.latitude.toFixed(5);
+      patchValues.longitude = spec.longitude.toFixed(5);
+      patchValues.halfDeg = spec.halfDeg;
+    }
 
     setValues((prev) => ({ ...prev, ...patchValues }));
     setOpenedJob(job);
@@ -235,40 +249,13 @@ export default function SatelliteSurveyPage({
    * The price of the job the form currently describes.
    *
    * Asked of the platform rather than worked out here: the platform is what charges, so
-   * the number on screen and the number on the ledger are the same computation. The
-   * request is keyed by what it was priced for, so a quote for a different extent is
-   * never mistaken for this one.
+   * the number on screen and the number on the ledger are the same computation.
    */
-  const quoteKey =
+  const { quote, loading: quoteLoading } = useSurveyQuote(
     typedLat !== null && values.categories.length
-      ? `${values.categories.join(",")}:${values.halfDeg}:${values.latitude}`
-      : null;
-  const quote = quoteState !== null && quoteState.key === quoteKey ? quoteState.quote : null;
-  const quoteLoading = quoteKey !== null && quoteState?.key !== quoteKey;
-
-  useEffect(() => {
-    if (quoteKey === null || typedLat === null) return;
-    let active = true;
-    // Debounced: the extent and the coordinates are typed, and each keystroke would
-    // otherwise be a pricing request.
-    const timer = window.setTimeout(() => {
-      void quoteSurvey({
-        categories: values.categories,
-        halfDeg: values.halfDeg,
-        latitude: typedLat,
-      })
-        .then((next) => {
-          if (active) setQuoteState({ key: quoteKey, quote: next });
-        })
-        .catch(() => {
-          if (active) setQuoteState({ key: quoteKey, quote: null });
-        });
-    }, 250);
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [quoteKey, typedLat, values.categories, values.halfDeg]);
+      ? { categories: values.categories, halfDeg: values.halfDeg, latitude: typedLat }
+      : null,
+  );
 
   useEffect(() => {
     let active = true;
@@ -459,16 +446,54 @@ export default function SatelliteSurveyPage({
     setProblems([]);
     setRefused(null);
     if (openedJob) {
+      const spec = parseJobSpec(openedJob.description);
       setValues({
         ...initialForm(),
         jobId: openedJob.id,
         clientName: openedJob.title,
         address: openedJob.location ?? "",
+        categories: [spec?.category ?? getJobCategory(openedJob)],
+        ...(spec?.hasGround
+          ? {
+              latitude: spec.latitude.toFixed(5),
+              longitude: spec.longitude.toFixed(5),
+              halfDeg: spec.halfDeg,
+            }
+          : {}),
       });
     } else {
       setValues(initialForm());
     }
     setFitToken((token) => token + 1);
+  }
+
+  /**
+   * Keep the job's own record of what it covers in step with what is being run.
+   *
+   * The specification is what the job is priced by, so a job whose record still held
+   * the old ground would say one thing and cost another.
+   */
+  async function recordJobSpecification(): Promise<void> {
+    const jobId = values.jobId || openedJob?.id || null;
+    if (!jobId) return;
+
+    const spec = jobSpecFrom({
+      category: values.categories[0] ?? "water",
+      latitude: values.latitude,
+      longitude: values.longitude,
+      halfDeg: values.halfDeg,
+    });
+    if (!spec) return;
+
+    const description = serializeJobSpec(spec);
+    if (openedJob?.description === description) return;
+
+    try {
+      await updateJob(jobId, { description });
+      setOpenedJob((prev) => (prev ? { ...prev, description } : prev));
+    } catch (err) {
+      console.warn("Could not record the job's survey specification:", err);
+    }
   }
 
   async function submit() {
@@ -490,6 +515,7 @@ export default function SatelliteSurveyPage({
     setQueueing(true);
     setRefused(null);
     try {
+      await recordJobSpecification();
       const outcome = await startSurvey({
         ...checked.draft,
         workspaceId,
