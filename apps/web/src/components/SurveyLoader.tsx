@@ -8,10 +8,10 @@ interface SurveyLoaderProps {
   className?: string;
 }
 
-const sizeClasses: Record<SurveyLoaderSize, { ring: string; label: string }> = {
-  sm: { ring: "size-7 border-2", label: "text-xs" },
-  md: { ring: "size-11 border-2", label: "text-sm" },
-  lg: { ring: "size-14 border-2", label: "text-base" },
+const sizeClasses: Record<SurveyLoaderSize, { ring: string }> = {
+  sm: { ring: "size-7 border-2" },
+  md: { ring: "size-11 border-2" },
+  lg: { ring: "size-14 border-2" },
 };
 
 export default function SurveyLoader({
@@ -23,7 +23,7 @@ export default function SurveyLoader({
 
   return (
     <div
-      className={cn("inline-flex flex-col items-center gap-3", className)}
+      className={cn("inline-flex flex-col items-center justify-center", className)}
       role="status"
       aria-live="polite"
       aria-label={label ?? "Loading"}
@@ -35,11 +35,7 @@ export default function SurveyLoader({
           sizes.ring,
         )}
       />
-      {label ? (
-        <span className={cn("font-medium text-muted-foreground", sizes.label)}>{label}</span>
-      ) : (
-        <span className="sr-only">Loading</span>
-      )}
+      <span className="sr-only">{label ?? "Loading"}</span>
     </div>
   );
 }
