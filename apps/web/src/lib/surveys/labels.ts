@@ -54,12 +54,100 @@ export const AOI_CHOICES = [
  */
 export const CATEGORY_EXPORTS: Record<
   DossierCategory,
-  { map: string; kmz: string; geojson: string }
+  { map: string; kmz: string; geojson: string; tif: string; overlay: string; zones: string }
 > = {
-  water: { map: "groundwater_map", kmz: "boreholes_kmz", geojson: "boreholes_geojson" },
-  minerals: { map: "minerals_map", kmz: "minerals_kmz", geojson: "minerals_geojson" },
-  soil_land: { map: "soil_map", kmz: "soil_kmz", geojson: "soil_geojson" },
-  hazard_safety: { map: "hazard_map", kmz: "safest_sites_kmz", geojson: "safest_sites_geojson" },
+  water: {
+    map: "groundwater_map",
+    kmz: "boreholes_kmz",
+    geojson: "boreholes_geojson",
+    tif: "groundwater_tif",
+    overlay: "groundwater_overlay",
+    zones: "groundwater_zones_geojson",
+  },
+  minerals: {
+    map: "minerals_map",
+    kmz: "minerals_kmz",
+    geojson: "minerals_geojson",
+    tif: "minerals_tif",
+    overlay: "minerals_overlay",
+    zones: "minerals_zones_geojson",
+  },
+  soil_land: {
+    map: "soil_map",
+    kmz: "soil_kmz",
+    geojson: "soil_geojson",
+    tif: "soil_tif",
+    overlay: "soil_overlay",
+    zones: "soil_zones_geojson",
+  },
+  hazard_safety: {
+    map: "hazard_map",
+    kmz: "safest_sites_kmz",
+    geojson: "safest_sites_geojson",
+    tif: "hazard_tif",
+    overlay: "hazard_overlay",
+    zones: "hazard_zones_geojson",
+  },
+};
+
+/**
+ * Class colours, in zone-code order (0 water, 1 very low, …, 5 very high, 6 built-up).
+ *
+ * Mirrors `ZONE_PALETTES` in `apps/engine/src/utils/classification.py`. The engine writes
+ * the same table into the GeoTIFF as a colour map; this copy is the fallback for files
+ * produced before that change, and the source of the map legend.
+ */
+export const CATEGORY_RASTER_PALETTE: Record<DossierCategory, readonly string[]> = {
+  water: ["#1f77b4", "#d73027", "#f46d43", "#fdae61", "#a6d96a", "#1a9850", "#7f7f7f"],
+  minerals: ["#1f77b4", "#4575b4", "#74add1", "#fee090", "#f46d43", "#d73027", "#7f7f7f"],
+  soil_land: ["#2166ac", "#d73027", "#fc8d59", "#fee08b", "#91cf60", "#1a9850", "#808080"],
+  hazard_safety: ["#2166ac", "#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027", "#808080"],
+};
+
+/**
+ * The class names each category puts on its zones, in zone-code order.
+ *
+ * Mirrors `ZONE_LABELS` in `apps/engine/src/utils/classification.py`. The vector layer
+ * carries these names itself, so this copy is only what the legend falls back to for a
+ * survey whose vector zones are missing.
+ */
+export const CATEGORY_ZONE_LABELS: Record<DossierCategory, readonly string[]> = {
+  water: [
+    "Water body",
+    "Very low potential",
+    "Low potential",
+    "Moderate potential",
+    "High potential",
+    "Very high potential",
+    "Built-up (excluded)",
+  ],
+  minerals: [
+    "Water body",
+    "Very low prospectivity",
+    "Low prospectivity",
+    "Moderate prospectivity",
+    "High prospectivity",
+    "Very high prospectivity",
+    "Built-up (excluded)",
+  ],
+  soil_land: [
+    "Water body",
+    "Very low capability",
+    "Low capability",
+    "Moderate capability",
+    "High capability",
+    "Very high capability",
+    "Built-up (excluded)",
+  ],
+  hazard_safety: [
+    "Water body",
+    "Very low hazard (safe)",
+    "Low hazard",
+    "Moderate hazard",
+    "High hazard",
+    "Very high hazard",
+    "Built-up (excluded)",
+  ],
 };
 
 /**

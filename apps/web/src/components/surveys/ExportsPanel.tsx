@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Image, Loader, MapPin } from "lucide-react";
+import { FileDown, FileText, Image, Layers, Loader, MapPin } from "lucide-react";
 
 import type { SurveyDeliverable } from "../../lib/repositories/satelliteSurveys.ts";
 import { deliverableUrl } from "../../lib/repositories/satelliteSurveys.ts";
@@ -29,7 +29,7 @@ export default function ExportsPanel({
 
   const ready = categoriesToShow.filter((category) => {
     const kinds = CATEGORY_EXPORTS[category];
-    return byKind.has(kinds.map) || byKind.has(kinds.kmz) || surveyed;
+    return byKind.has(kinds.map) || byKind.has(kinds.kmz) || byKind.has(kinds.tif) || surveyed;
   }).length;
   const dossier = byKind.get("master_json_dossier") ?? null;
 
@@ -55,6 +55,8 @@ export default function ExportsPanel({
           const kinds = CATEGORY_EXPORTS[category];
           const map = byKind.get(kinds.map) ?? null;
           const kmz = byKind.get(kinds.kmz) ?? null;
+          const tif = byKind.get(kinds.tif) ?? null;
+          const zones = byKind.get(kinds.zones) ?? null;
           return (
             <div
               key={category}
@@ -71,7 +73,25 @@ export default function ExportsPanel({
                   opening={opening}
                   disabled={opening !== null}
                   onOpen={() => void open(map, `${CATEGORY_LABELS[category].name} map`)}
-                  title={map ? "Open the classified map" : "No map for this category yet"}
+                  title={map ? "Open the classified preview map" : "No preview map for this category yet"}
+                />
+                <ExportButton
+                  label="Zones"
+                  icon="zones"
+                  file={zones}
+                  opening={opening}
+                  disabled={opening !== null}
+                  onOpen={() => void open(zones, `${CATEGORY_LABELS[category].name} classification zones`)}
+                  title={zones ? "Download the classification zones as GeoJSON" : "No zone geometry for this category yet"}
+                />
+                <ExportButton
+                  label="GeoTIFF"
+                  icon="tif"
+                  file={tif}
+                  opening={opening}
+                  disabled={opening !== null}
+                  onOpen={() => void open(tif, `${CATEGORY_LABELS[category].name} GeoTIFF`)}
+                  title={tif ? "Download georeferenced GeoTIFF (for QGIS/ArcGIS)" : "No GeoTIFF for this category yet"}
                 />
                 <ExportButton
                   label="KMZ"
@@ -129,7 +149,7 @@ function ExportButton({
   onOpen,
 }: {
   label: string;
-  icon: "image" | "gps";
+  icon: "image" | "gps" | "tif" | "zones";
   file: SurveyDeliverable | null;
   opening: string | null;
   disabled: boolean;
@@ -153,6 +173,10 @@ function ExportButton({
         <Loader className="size-3 animate-spin" aria-hidden="true" />
       ) : icon === "image" ? (
         <Image className="size-3" aria-hidden="true" />
+      ) : icon === "zones" ? (
+        <Layers className="size-3" aria-hidden="true" />
+      ) : icon === "tif" ? (
+        <FileDown className="size-3" aria-hidden="true" />
       ) : (
         <MapPin className="size-3" aria-hidden="true" />
       )}

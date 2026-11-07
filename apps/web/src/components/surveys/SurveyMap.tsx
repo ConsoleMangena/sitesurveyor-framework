@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef } from "react";
 import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { Camera } from "lucide-react";
+import ClassifiedVectorLayer from "./ClassifiedVectorLayer.tsx";
+import GeoTiffOverlay from "./GeoTiffOverlay.tsx";
 import { candidateIcon, targetIcon } from "./mapIcons.ts";
 import {
   basemapById,
@@ -12,6 +15,7 @@ import {
   type MapCandidate,
 } from "../../lib/surveys/workbench.ts";
 import { coordText, distanceText, scoreText } from "../../lib/surveys/labels.ts";
+import type { ZoneCollection } from "../../lib/surveys/zoneLayers.ts";
 
 const BRAND = "#D14141";
 const OUTSIDE = "#f59e0b";
@@ -27,7 +31,15 @@ interface SurveyMapProps {
   target: { latitude: number; longitude: number };
   bounds: [LatLngTuple, LatLngTuple];
   candidates: MapCandidate[];
-  layers: { aoi: boolean; candidates: boolean };
+  layers: { aoi: boolean; candidates: boolean; raster?: boolean; zones?: boolean };
+  classifiedImageUrl?: string | null;
+  /** Georeferenced zone GeoTIFF preferred over the flattened PNG. */
+  classifiedTiffUrl?: string | null;
+  /** The classified zones as vector geometry: the map layer that replaces the drape. */
+  zones?: ZoneCollection | null;
+  /** Class colours used when the GeoTIFF has no embedded colour table. */
+  rasterPalette?: readonly string[];
+  classifiedOpacity?: number;
   basemap: string;
   /** Outside the coverage the worker can read: the pin goes amber before the money does. */
   outside: boolean;
@@ -41,6 +53,8 @@ interface SurveyMapProps {
   focus: { latitude: number; longitude: number; token: number } | null;
   onMoveTarget: (latitude: number, longitude: number) => void;
   onView: (info: MapViewInfo) => void;
+  onMapReady?: (map: LeafletMap) => void;
+  onOpenExportView?: () => void;
 }
 
 /** Everything that has to reach the Leaflet instance itself, in one child so the page
@@ -52,11 +66,15 @@ function Controller({
   focus,
   onMoveTarget,
   onView,
+  onMapReady,
 }: Pick<
   SurveyMapProps,
-  "bounds" | "fitToken" | "resizeToken" | "focus" | "onMoveTarget" | "onView"
+  "bounds" | "fitToken" | "resizeToken" | "focus" | "onMoveTarget" | "onView" | "onMapReady"
 >) {
   const map = useMap();
+  useEffect(() => {
+    onMapReady?.(map);
+  }, [map, onMapReady]);
   // `bounds` moves with every keystroke in the form, so the effect reads it through a ref
   // and only an explicit fit token can put the camera somewhere.
   const boundsRef = useRef(bounds);
@@ -123,6 +141,11 @@ export default function SurveyMap({
   bounds,
   candidates,
   layers,
+  classifiedImageUrl,
+  classifiedTiffUrl,
+  zones,
+  rasterPalette,
+  classifiedOpacity = 0.65,
   basemap,
   outside,
   showHint,
@@ -133,6 +156,8 @@ export default function SurveyMap({
   focus,
   onMoveTarget,
   onView,
+  onMapReady,
+  onOpenExportView,
 }: SurveyMapProps) {
   const tile = useMemo(() => basemapById(basemap), [basemap]);
   const pin = useMemo(() => targetIcon(outside ? OUTSIDE : BRAND), [outside]);
@@ -162,6 +187,21 @@ export default function SurveyMap({
             fillColor: BRAND,
             fillOpacity: 0.05,
           }}
+        />
+      ) : null}
+
+      {layers.zones !== false && zones ? (
+        <ClassifiedVectorLayer data={zones} opacity={classifiedOpacity} />
+      ) : null}
+
+      {layers.raster !== false && (classifiedTiffUrl || classifiedImageUrl) ? (
+        <GeoTiffOverlay
+          url={classifiedTiffUrl}
+          fallbackUrl={classifiedImageUrl}
+          bounds={bounds}
+          opacity={classifiedOpacity}
+          palette={rasterPalette}
+          zIndex={200}
         />
       ) : null}
 
@@ -246,6 +286,7 @@ export default function SurveyMap({
         focus={focus}
         onMoveTarget={onMoveTarget}
         onView={onView}
+        onMapReady={onMapReady}
       />
 
       <div className="sw-chips">
@@ -258,6 +299,17 @@ export default function SurveyMap({
         <span className="sw-chip">
           Imagery <b>{imagery ?? "Not yet surveyed"}</b>
         </span>
+        {onOpenExportView ? (
+          <button
+            type="button"
+            onClick={onOpenExportView}
+            className="sw-chip sw-chip--accent hover:brightness-110 cursor-pointer flex items-center gap-1.5 transition-all text-white bg-primary/80 hover:bg-primary font-medium"
+            title="Export the currently framed map extent as PNG or PDF"
+          >
+            <Camera className="size-3" aria-hidden="true" />
+            <span>Export View</span>
+          </button>
+        ) : null}
       </div>
 
       {showHint ? <div className="sw-hint">Click the map to move the target pin</div> : null}

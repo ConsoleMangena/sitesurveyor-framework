@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Briefcase, ChevronLeft } from "lucide-react";
+import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -13,6 +14,7 @@ import ContentsPanel, { type SurveySnapshot } from "@/components/surveys/Content
 import ExportsPanel from "@/components/surveys/ExportsPanel.tsx";
 import IndicatorsPanel from "@/components/surveys/IndicatorsPanel.tsx";
 import SurveyMap, { type MapViewInfo } from "@/components/surveys/SurveyMap.tsx";
+import MapExportModal from "@/components/surveys/MapExportModal.tsx";
 import { StatusStrip, WorkbenchBar } from "@/components/surveys/WorkbenchBar.tsx";
 
 import {
@@ -26,11 +28,13 @@ import { listJobs, deleteJob, type JobWithProject } from "../../../lib/repositor
 import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteSurveys.ts";
 import {
   CATEGORY_EXPORTS,
+  CATEGORY_RASTER_PALETTE,
   outsideCoverage,
   parseCoordinate,
   getJobCategory,
   toDossierCategory,
 } from "../../../lib/surveys/labels.ts";
+import { parseZoneCollection, zoneLegend, type ZoneCollection } from "../../../lib/surveys/zoneLayers.ts";
 import {
   aoiBounds,
   basisText,
@@ -91,6 +95,13 @@ export default function SatelliteSurveyPage({
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
+  const [layers, setLayers] = useState({ aoi: true, candidates: true, raster: true, zones: true });
+  /**
+   * Whether the reader asked for the drape on or off. Left null, the drape stands in
+   * only for a survey that published no vector geometry -- the zones are the map now.
+   */
+  const [rasterOverride, setRasterOverride] = useState<boolean | null>(null);
+  const [rasterOpacity, setRasterOpacity] = useState(0.65);
 
   const fetchJobs = useCallback(async () => {
     setJobsLoading(true);
@@ -129,6 +140,8 @@ export default function SatelliteSurveyPage({
 
     setValues((prev) => ({ ...prev, ...patchValues }));
     setOpenedJob(job);
+    // The new job may classify a different category, and the drape follows the category.
+    setRasterOverride(null);
   }
 
   useEffect(() => {
@@ -145,7 +158,9 @@ export default function SatelliteSurveyPage({
     });
   }, [fetchJobs]);
 
-  const [layers, setLayers] = useState({ aoi: true, candidates: true });
+  const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [mapViewInfo, setMapViewInfo] = useState<MapViewInfo>({ zoom: 13, scale: "—", coords: "—" });
   const [basemap, setBasemap] = useState("satellite");
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -209,6 +224,93 @@ export default function SatelliteSurveyPage({
     return (detail?.deliverables ?? []).find((d) => d.kind === kinds.kmz) ?? null;
   }, [detail?.deliverables, jobDossierCategory]);
 
+  const overlayDeliverable = useMemo(() => {
+    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
+    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.overlay) ?? null;
+  }, [detail?.deliverables, jobDossierCategory]);
+
+  const tifDeliverable = useMemo(() => {
+    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
+    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.tif) ?? null;
+  }, [detail?.deliverables, jobDossierCategory]);
+
+  const zonesDeliverable = useMemo(() => {
+    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
+    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.zones) ?? null;
+  }, [detail?.deliverables, jobDossierCategory]);
+
+  const [rasterUrl, setRasterUrl] = useState<string | null>(null);
+  const [geoTiffUrl, setGeoTiffUrl] = useState<string | null>(null);
+  /**
+   * The zones file, tagged with the deliverable it came from.
+   *
+   * Keying it means switching surveys cannot leave the previous survey's zones on the
+   * map for a frame, and it removes the reset that would otherwise blank the map.
+   */
+  const [zonesResult, setZonesResult] = useState<{
+    key: string | null;
+    collection: ZoneCollection | null;
+  }>({ key: null, collection: null });
+
+  const zonesKey = zonesDeliverable?.id ?? null;
+  const zones =
+    zonesResult.key !== null && zonesResult.key === zonesKey ? zonesResult.collection : null;
+  /** True once we know whether this survey published vector geometry at all. */
+  const zonesResolved = zonesKey === null || zonesResult.key === zonesKey;
+
+  useEffect(() => {
+    let active = true;
+    setRasterUrl(null);
+    if (!overlayDeliverable) return;
+    void deliverableUrl(overlayDeliverable).then((url) => {
+      if (active) setRasterUrl(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [overlayDeliverable]);
+
+  useEffect(() => {
+    let active = true;
+    setGeoTiffUrl(null);
+    if (!tifDeliverable) return;
+    void deliverableUrl(tifDeliverable).then((url) => {
+      if (active) setGeoTiffUrl(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [tifDeliverable]);
+
+  useEffect(() => {
+    const deliverable = zonesDeliverable;
+    if (!deliverable) return;
+    const key = deliverable.id;
+    let active = true;
+    void (async () => {
+      let collection: ZoneCollection | null = null;
+      try {
+        const url = await deliverableUrl(deliverable);
+        if (url) {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(String(response.status));
+          collection = parseZoneCollection(await response.json());
+        }
+      } catch {
+        // A missing or malformed zones file leaves the map on the drape rather than blank.
+      }
+      if (active) setZonesResult({ key, collection });
+    })();
+    return () => {
+      active = false;
+    };
+  }, [zonesDeliverable]);
+
+  const hasZones = zones !== null;
+  const hasRaster = Boolean(overlayDeliverable || tifDeliverable);
+  const rasterOn = rasterOverride ?? (!hasZones && zonesResolved && hasRaster);
+  const legend = useMemo(() => zoneLegend(zones), [zones]);
+
   const handleDownloadKmz = useCallback(async () => {
     if (!kmzDeliverable) return;
     const url = await deliverableUrl(kmzDeliverable);
@@ -254,9 +356,21 @@ export default function SatelliteSurveyPage({
     setResizeToken((token) => token + 1);
   }
 
+  /** The drape is the fallback for a survey with no vector geometry, so its switch is
+   *  remembered separately: unchecking it once must not uncheck it for every survey. */
+  function setLayer(id: "aoi" | "candidates" | "raster" | "zones", value: boolean) {
+    if (id === "raster") {
+      setRasterOverride(value);
+      return;
+    }
+    setLayers((current) => ({ ...current, [id]: value }));
+  }
+
   function selectRun(runId: string) {
     setSelectedId(runId);
     setFocusedKey(null);
+    // Another survey decides for itself whether it needs the drape.
+    setRasterOverride(null);
     setFitToken((token) => token + 1);
   }
 
@@ -386,6 +500,7 @@ export default function SatelliteSurveyPage({
         onResetView={() => setFitToken((token) => token + 1)}
         onReload={() => void refresh()}
         onClear={clearBoard}
+        onExportView={() => setExportModalOpen(true)}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => togglePanel("left")}
@@ -435,8 +550,13 @@ export default function SatelliteSurveyPage({
         data-right={rightOpen ? undefined : "collapsed"}
       >
         <ContentsPanel
-          layers={layers}
-          onLayer={(id, value) => setLayers((current) => ({ ...current, [id]: value }))}
+          layers={{ ...layers, raster: rasterOn }}
+          onLayer={setLayer}
+          rasterOpacity={rasterOpacity}
+          onRasterOpacityChange={setRasterOpacity}
+          hasRaster={hasRaster}
+          hasZones={hasZones}
+          zoneLegend={legend}
           basemap={basemap}
           onBasemap={setBasemap}
           snapshot={snapshot}
@@ -486,7 +606,12 @@ export default function SatelliteSurveyPage({
             target={target}
             bounds={aoiBounds(target.latitude, target.longitude, values.halfDeg)}
             candidates={candidates}
-            layers={layers}
+            layers={{ ...layers, raster: rasterOn }}
+            zones={zones}
+            classifiedImageUrl={rasterUrl}
+            classifiedTiffUrl={geoTiffUrl}
+            rasterPalette={CATEGORY_RASTER_PALETTE[jobDossierCategory]}
+            classifiedOpacity={rasterOpacity}
             basemap={basemap}
             outside={outside}
             showHint={running === null}
@@ -496,7 +621,12 @@ export default function SatelliteSurveyPage({
             resizeToken={resizeToken}
             focus={focus}
             onMoveTarget={moveTarget}
-            onView={setView}
+            onView={(info) => {
+              setView(info);
+              setMapViewInfo(info);
+            }}
+            onMapReady={setMapInstance}
+            onOpenExportView={() => setExportModalOpen(true)}
           />
         </section>
 
@@ -567,6 +697,16 @@ export default function SatelliteSurveyPage({
         crs={detail?.run.result?.target?.crs ?? "No survey scored yet"}
         job={jobText(running ?? selected, queueing)}
         basis={snapshot.basis}
+      />
+
+      <MapExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        map={mapInstance}
+        target={target}
+        viewInfo={mapViewInfo}
+        categoryName={jobCategory.toUpperCase()}
+        clientName={values.clientName}
       />
     </DashboardShell>
   );

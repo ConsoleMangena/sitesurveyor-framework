@@ -7,7 +7,8 @@ import { BlockTitle } from "./BlockTitle.tsx";
 import type { SurveyRun } from "../../lib/repositories/satelliteSurveys.ts";
 import type { JobWithProject } from "../../lib/repositories/jobs.ts";
 import { SurveyStatusChip } from "../../components/surveys/SurveyStatusChip.tsx";
-import { coordText, type DossierCategory } from "../../lib/surveys/labels.ts";
+import { coordText, type DossierCategory, CATEGORY_RASTER_PALETTE, CATEGORY_ZONE_LABELS } from "../../lib/surveys/labels.ts";
+import type { ZoneLegendEntry } from "../../lib/surveys/zoneLayers.ts";
 import {
   BAND_RANGES,
   BASEMAPS,
@@ -27,8 +28,15 @@ export interface SurveySnapshot {
 }
 
 interface ContentsPanelProps {
-  layers: { aoi: boolean; candidates: boolean };
-  onLayer: (id: "aoi" | "candidates", value: boolean) => void;
+  layers: { aoi: boolean; candidates: boolean; raster?: boolean; zones?: boolean };
+  onLayer: (id: "aoi" | "candidates" | "raster" | "zones", value: boolean) => void;
+  rasterOpacity?: number;
+  onRasterOpacityChange?: (opacity: number) => void;
+  hasRaster?: boolean;
+  /** True when the survey published its classification as vector geometry. */
+  hasZones?: boolean;
+  /** The class rows the vector layer is drawing, read off the published zones. */
+  zoneLegend?: ZoneLegendEntry[] | null;
   basemap: string;
   onBasemap: (id: string) => void;
   snapshot: SurveySnapshot;
@@ -53,6 +61,11 @@ interface ContentsPanelProps {
 export default function ContentsPanel({
   layers,
   onLayer,
+  rasterOpacity,
+  onRasterOpacityChange,
+  hasRaster,
+  hasZones,
+  zoneLegend,
   basemap,
   onBasemap,
   snapshot,
@@ -71,6 +84,12 @@ export default function ContentsPanel({
   activeDossierCategory,
 }: ContentsPanelProps) {
   const legendCategories = activeDossierCategory ? [activeDossierCategory] : DOSSIER_ORDER;
+  const rasterCategory = activeDossierCategory ?? "water";
+  const rasterPalette = CATEGORY_RASTER_PALETTE[rasterCategory];
+  const rasterLegend = [5, 4, 3, 2, 1].map((code) => ({
+    code,
+    label: CATEGORY_ZONE_LABELS[rasterCategory][code],
+  }));
 
   return (
     <div className="sw-panel sw-panel--left" aria-label="Map contents">
@@ -120,6 +139,64 @@ export default function ContentsPanel({
                 Candidate sites
               </label>
             </li>
+            {hasZones ? (
+              <li>
+                <label className="sw-layer">
+                  <input
+                    type="checkbox"
+                    checked={layers.zones !== false}
+                    onChange={(event) => onLayer("zones", event.target.checked)}
+                  />
+                  <span
+                    className="sw-swatch"
+                    style={{
+                      background: `linear-gradient(135deg, ${rasterPalette[5]}, ${rasterPalette[3]}, ${rasterPalette[1]})`,
+                    }}
+                    aria-hidden="true"
+                  />
+                  Classification zones (vector)
+                </label>
+              </li>
+            ) : null}
+            {hasRaster ? (
+              <li>
+                <label className="sw-layer">
+                  <input
+                    type="checkbox"
+                    checked={layers.raster !== false}
+                    onChange={(event) => onLayer("raster", event.target.checked)}
+                  />
+                  <span
+                    className="sw-swatch"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(45deg, #6b7280 0 4px, #9ca3af 4px 8px)",
+                    }}
+                    aria-hidden="true"
+                  />
+                  Classified raster (drape)
+                </label>
+              </li>
+            ) : null}
+            {(layers.zones !== false || layers.raster !== false) && onRasterOpacityChange ? (
+              <li>
+                <div className="ml-6 flex items-center gap-2 pr-2 pt-1.5">
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.05"
+                    value={rasterOpacity ?? 0.65}
+                    onChange={(e) => onRasterOpacityChange(parseFloat(e.target.value))}
+                    className="h-1.5 w-full accent-primary cursor-pointer"
+                    title="Adjust classification transparency"
+                  />
+                  <span className="font-mono text-[10px] text-muted-foreground w-7 shrink-0 text-right">
+                    {Math.round((rasterOpacity ?? 0.65) * 100)}%
+                  </span>
+                </div>
+              </li>
+            ) : null}
           </ul>
         </section>
 
@@ -166,6 +243,45 @@ export default function ContentsPanel({
               </span>
             ))}
           </div>
+
+          {zoneLegend && zoneLegend.length ? (
+            <div className="mt-3 border-t border-border pt-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground block mb-1.5">
+                Classification zones
+              </span>
+              <div className="space-y-1 text-[11px]">
+                {zoneLegend.map((entry) => (
+                  <div key={entry.classCode} className="flex items-center gap-2">
+                    <span
+                      className="size-2.5 rounded-full shrink-0"
+                      style={{ background: entry.color }}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                    <span className="sw-mono shrink-0 text-[10px] text-muted-foreground">
+                      {Math.round(entry.areaHa).toLocaleString()} ha
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : hasRaster && layers.raster !== false ? (
+            <div className="mt-3 border-t border-border pt-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground block mb-1.5">
+                {rasterCategory === "hazard_safety" ? "Classified Risk" : "Classified Potential"}
+              </span>
+              <div className="space-y-1 text-[11px]">
+                {rasterLegend.map((entry) => (
+                  <div key={entry.code} className="flex items-center gap-2">
+                    <span
+                      className="size-2.5 rounded-full shrink-0"
+                      style={{ background: rasterPalette[entry.code] }}
+                    />
+                    <span>{entry.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="sw-block px-3.5 py-3">

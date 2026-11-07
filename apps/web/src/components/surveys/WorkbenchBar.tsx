@@ -1,4 +1,5 @@
 import {
+  Camera,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -24,6 +25,7 @@ interface WorkbenchBarProps {
   onResetView: () => void;
   onReload: () => void;
   onClear: () => void;
+  onExportView?: () => void;
   leftOpen: boolean;
   rightOpen: boolean;
   onToggleLeft: () => void;
@@ -44,6 +46,7 @@ export function WorkbenchBar({
   onResetView,
   onReload,
   onClear,
+  onExportView,
   leftOpen,
   rightOpen,
   onToggleLeft,
@@ -74,6 +77,19 @@ export function WorkbenchBar({
           <RotateCcw className="size-3.5" aria-hidden="true" />
           Reset view
         </Button>
+        {onExportView ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-[11.5px]"
+            onClick={onExportView}
+            title="Export current framed view as high-res PNG or PDF"
+          >
+            <Camera className="size-3.5" aria-hidden="true" />
+            Export view
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"
