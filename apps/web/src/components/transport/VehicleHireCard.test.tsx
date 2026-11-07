@@ -46,7 +46,7 @@ describe("VehicleHireCard", () => {
     expect(screen.getByText("AFK-8921")).toBeDefined();
     expect(screen.getByText("Tendai Moyo")).toBeDefined();
     expect(screen.getByText("$410.15")).toBeDefined();
-    expect(screen.getByText("8m away")).toBeDefined();
+    expect(screen.getByText("8m ETA")).toBeDefined();
   });
 
   it("calls onSelect when clicked", () => {
@@ -77,3 +77,4 @@ describe("VehicleHireCard", () => {
     expect(screen.getByText("Selected")).toBeDefined();
   });
 });
+

@@ -3,10 +3,12 @@ import {
   calculateHireFare,
   calculateRoadDistanceKm,
   estimateDriveDurationMinutes,
+  formatCoordinates,
   formatDriveDuration,
   generateBookingReference,
-  generateFleetForLocation,
-  REGIONAL_HUBS,
+  generateFleetForCoordinates,
+  parseCoordinateString,
+  SURVEY_GPS_PRESETS,
   VEHICLE_TIERS,
 } from "./transportHire.ts";
 
@@ -18,30 +20,50 @@ describe("transportHire", () => {
     });
 
     it("calculates realistic Harare to Bulawayo highway distance (~430-460 km)", () => {
-      const harare = REGIONAL_HUBS.find((h) => h.id === "hre-central")!;
-      const bulawayo = REGIONAL_HUBS.find((h) => h.id === "byo-central")!;
+      const harare = SURVEY_GPS_PRESETS.find((h) => h.id === "hre-central")!;
+      const bulawayo = SURVEY_GPS_PRESETS.find((h) => h.id === "byo-central")!;
       const dist = calculateRoadDistanceKm(
-        harare.latitude,
-        harare.longitude,
-        bulawayo.latitude,
-        bulawayo.longitude,
+        harare.lat,
+        harare.lng,
+        bulawayo.lat,
+        bulawayo.lng,
       );
-      // Harare to Bulawayo road distance is ~439 km
       expect(dist).toBeGreaterThan(400);
       expect(dist).toBeLessThan(480);
     });
 
     it("calculates short inter-city distance for Gweru to Kwekwe (~60-70 km)", () => {
-      const gweru = REGIONAL_HUBS.find((h) => h.id === "gwe-central")!;
-      const kwekwe = REGIONAL_HUBS.find((h) => h.id === "kwe-central")!;
+      const gweru = SURVEY_GPS_PRESETS.find((h) => h.id === "gwe-central")!;
+      const kwekwe = SURVEY_GPS_PRESETS.find((h) => h.id === "kwe-central")!;
       const dist = calculateRoadDistanceKm(
-        gweru.latitude,
-        gweru.longitude,
-        kwekwe.latitude,
-        kwekwe.longitude,
+        gweru.lat,
+        gweru.lng,
+        kwekwe.lat,
+        kwekwe.lng,
       );
       expect(dist).toBeGreaterThan(50);
       expect(dist).toBeLessThan(80);
+    });
+  });
+
+  describe("parseCoordinateString & formatCoordinates", () => {
+    it("parses comma-separated latitude and longitude", () => {
+      const parsed = parseCoordinateString("-17.8292, 31.0522");
+      expect(parsed).toEqual({ lat: -17.8292, lng: 31.0522 });
+    });
+
+    it("parses space-separated coordinates", () => {
+      const parsed = parseCoordinateString("-20.1500 28.5833");
+      expect(parsed).toEqual({ lat: -20.15, lng: 28.5833 });
+    });
+
+    it("returns null for invalid strings", () => {
+      expect(parseCoordinateString("invalid")).toBeNull();
+      expect(parseCoordinateString("")).toBeNull();
+    });
+
+    it("formats coordinates properly", () => {
+      expect(formatCoordinates(-17.8292, 31.0522)).toBe("-17.82920, 31.05220");
     });
   });
 
@@ -61,13 +83,12 @@ describe("transportHire", () => {
     });
   });
 
-  describe("calculateHireFare (Uber-style dynamic distance pricing)", () => {
+  describe("calculateHireFare (dynamic distance pricing)", () => {
     it("charges base fare + distance * rate for 4x4 Bakkie", () => {
       const tier = VEHICLE_TIERS.bakkie_4x4;
       const distanceKm = 100;
       const breakdown = calculateHireFare(tier, distanceKm);
 
-      // Base fare = 25, Rate = 0.85/km, Tolls for 100km = 2 toll passes * 2 = 4
       expect(breakdown.baseFare).toBe(25);
       expect(breakdown.distanceCost).toBe(85);
       expect(breakdown.ratePerKm).toBe(0.85);
@@ -93,10 +114,10 @@ describe("transportHire", () => {
     });
   });
 
-  describe("generateFleetForLocation", () => {
-    it("generates available vehicles positioned near the pickup hub", () => {
-      const harare = REGIONAL_HUBS[0];
-      const fleet = generateFleetForLocation(harare);
+  describe("generateFleetForCoordinates", () => {
+    it("generates available vehicles positioned near the pickup GPS coordinate", () => {
+      const harare = SURVEY_GPS_PRESETS[0];
+      const fleet = generateFleetForCoordinates(harare);
 
       expect(fleet.length).toBeGreaterThan(0);
       fleet.forEach((vehicle) => {
@@ -104,15 +125,14 @@ describe("transportHire", () => {
         expect(vehicle.licensePlate).toBeTruthy();
         expect(vehicle.driverRating).toBeGreaterThanOrEqual(4.5);
         expect(vehicle.etaMinutes).toBeGreaterThan(0);
-        // Vehicle location is within reasonable distance from depot (~0.1 degrees)
-        expect(Math.abs(vehicle.currentLat - harare.latitude)).toBeLessThan(0.15);
-        expect(Math.abs(vehicle.currentLng - harare.longitude)).toBeLessThan(0.15);
+        expect(Math.abs(vehicle.currentLat - harare.lat)).toBeLessThan(0.15);
+        expect(Math.abs(vehicle.currentLng - harare.lng)).toBeLessThan(0.15);
       });
     });
 
     it("filters fleet when a tier filter is passed", () => {
-      const harare = REGIONAL_HUBS[0];
-      const vanFleet = generateFleetForLocation(harare, "crew_van");
+      const harare = SURVEY_GPS_PRESETS[0];
+      const vanFleet = generateFleetForCoordinates(harare, "crew_van");
 
       expect(vanFleet.length).toBeGreaterThan(0);
       vanFleet.forEach((v) => {

@@ -41,6 +41,7 @@
     "@solana/wallet-adapter-wallets": "0.19.40",
     "@solana/web3.js": "^1.99.0",
     "@supabase/supabase-js": "^2.104.1",
+    "@tabler/icons-react": "^3.50.0",
     "@tanstack/react-table": "^8.21.3",
     "@types/leaflet": "^1.9.22",
     "buffer": "^6.0.3",

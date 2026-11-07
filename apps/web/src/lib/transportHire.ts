@@ -1,21 +1,19 @@
 /**
- * SiteSurveyor On-Demand Vehicle Hire & Distance-Based Pricing Engine
+ * SiteSurveyor On-Demand Vehicle Hire & Dynamic Distance Pricing Engine
  *
- * Implements Uber-style dynamic distance-based pricing:
- *   Total Fare = Base Fare + (Distance in km × Rate per km) + Regional Road/Toll Levies
+ * Fully coordinate-based (GPS Latitude & Longitude) route calculation:
+ *   Total Fare = Base Fare + (Road Distance km × Rate per km) + Toll Levies
  *
- * Provides real-time fleet availability, regional survey depots/hubs,
- * geodesy calculations with road tortuosity multipliers, and booking state helpers.
+ * Supports browser GPS geolocation, custom map coordinates, and
+ * regional survey baseline coordinate presets.
  */
 
-export interface HireLocation {
-  id: string;
-  name: string;
-  subtitle: string;
-  latitude: number;
-  longitude: number;
-  region: string;
-  type: "depot" | "mining_hub" | "border_post" | "town" | "survey_base" | "custom_pin";
+export interface LocationCoordinate {
+  id?: string;
+  label: string;
+  lat: number;
+  lng: number;
+  isCustom?: boolean;
 }
 
 export type VehicleTierId =
@@ -72,8 +70,8 @@ export interface HireBooking {
   bookingRef: string;
   vehicle: HireVehicle;
   tier: VehicleTier;
-  pickup: HireLocation;
-  dropoff: HireLocation;
+  pickup: LocationCoordinate;
+  dropoff: LocationCoordinate;
   fareBreakdown: FareBreakdown;
   durationMinutes: number;
   status: "dispatched" | "arrived" | "completed";
@@ -168,7 +166,7 @@ export const VEHICLE_TIERS: Record<VehicleTierId, VehicleTier> = {
       "Full Leather Interior & Climate Control",
       "Kinetic Dynamic Suspension (KDSS)",
       "High-Clearance 4x4 Underbody Protection",
-      "Starlink / High-Gain Satellite WiFi Ready",
+      "Satellite WiFi Ready",
       "Tinted Privacy Glass",
     ],
   },
@@ -195,167 +193,111 @@ export const VEHICLE_TIERS: Record<VehicleTierId, VehicleTier> = {
 };
 
 /**
- * Zimbabwe regional hubs, depots, and key mining/border survey stations.
+ * Standard survey base stations and key mining baseline coordinate presets.
  */
-export const REGIONAL_HUBS: HireLocation[] = [
+export const SURVEY_GPS_PRESETS: LocationCoordinate[] = [
   {
     id: "hre-central",
-    name: "Harare Central Hub",
-    subtitle: "CBD Logistics Depot, Robert Mugabe Way",
-    latitude: -17.8292,
-    longitude: 31.0522,
-    region: "Harare Province",
-    type: "depot",
+    label: "Harare Core Depot",
+    lat: -17.8292,
+    lng: 31.0522,
   },
   {
     id: "hre-msasa",
-    name: "Harare Msasa Industrial",
-    subtitle: "Heavy Machinery & Survey Yard, Mutare Rd",
-    latitude: -17.8385,
-    longitude: 31.1089,
-    region: "Harare Province",
-    type: "depot",
+    label: "Msasa Survey Yard",
+    lat: -17.8385,
+    lng: 31.1089,
   },
   {
     id: "byo-central",
-    name: "Bulawayo Main Depot",
-    subtitle: "Fife Street Depot & Equipment Depot",
-    latitude: -20.15,
-    longitude: 28.5833,
-    region: "Bulawayo Province",
-    type: "depot",
-  },
-  {
-    id: "byo-belmont",
-    name: "Bulawayo Belmont",
-    subtitle: "Industrial Haulage Yard, Khami Rd",
-    latitude: -20.165,
-    longitude: 28.568,
-    region: "Bulawayo Province",
-    type: "depot",
+    label: "Bulawayo Hub Station",
+    lat: -20.1500,
+    lng: 28.5833,
   },
   {
     id: "mut-central",
-    name: "Mutare Logistics Hub",
-    subtitle: "Eastern Highlands Depot, Aerodrome Rd",
-    latitude: -18.9728,
-    longitude: 32.6695,
-    region: "Manicaland",
-    type: "town",
+    label: "Mutare Border Depot",
+    lat: -18.9728,
+    lng: 32.6695,
   },
   {
     id: "gwe-central",
-    name: "Gweru Midlands Depot",
-    subtitle: "Midlands Survey Base, Main St",
-    latitude: -19.45,
-    longitude: 29.8167,
-    region: "Midlands",
-    type: "depot",
+    label: "Gweru Midlands Base",
+    lat: -19.4500,
+    lng: 29.8167,
   },
   {
     id: "mas-central",
-    name: "Masvingo Mining Base",
-    subtitle: "Great Zimbabwe Transit Point, Beitbridge Rd",
-    latitude: -20.0744,
-    longitude: 30.8328,
-    region: "Masvingo",
-    type: "mining_hub",
+    label: "Masvingo Transit Hub",
+    lat: -20.0744,
+    lng: 30.8328,
   },
   {
     id: "kwe-central",
-    name: "Kwekwe Minerals Post",
-    subtitle: "Gold & Steel Corridor Depot, Cobar St",
-    latitude: -18.9281,
-    longitude: 29.8149,
-    region: "Midlands",
-    type: "mining_hub",
-  },
-  {
-    id: "chi-central",
-    name: "Chinhoyi Agricultural Depot",
-    subtitle: "Mashonaland West Survey Yard, Magamba Way",
-    latitude: -17.3667,
-    longitude: 30.2,
-    region: "Mashonaland West",
-    type: "town",
-  },
-  {
-    id: "vic-central",
-    name: "Victoria Falls Station",
-    subtitle: "Zambezi Field Station, Livingstone Way",
-    latitude: -17.9311,
-    longitude: 25.8402,
-    region: "Matabeleland North",
-    type: "survey_base",
-  },
-  {
-    id: "bei-central",
-    name: "Beitbridge Border Hub",
-    subtitle: "Commercial Border Terminal, N1 Corridor",
-    latitude: -22.2167,
-    longitude: 30.0,
-    region: "Matabeleland South",
-    type: "border_post",
+    label: "Kwekwe Mineral Post",
+    lat: -18.9281,
+    lng: 29.8149,
   },
   {
     id: "zvi-central",
-    name: "Zvishavane Platinum Belt",
-    subtitle: "Mimosa / Shabanie Corridor Depot",
-    latitude: -20.3333,
-    longitude: 30.0667,
-    region: "Midlands",
-    type: "mining_hub",
+    label: "Great Dyke Platinum Belt",
+    lat: -20.3333,
+    lng: 30.0667,
   },
   {
-    id: "kad-central",
-    name: "Kadoma Mining Base",
-    subtitle: "Claw Dam Corridor, Rimuka St",
-    latitude: -18.3333,
-    longitude: 29.9167,
-    region: "Mashonaland West",
-    type: "mining_hub",
+    id: "vic-central",
+    label: "Vic Falls Field Station",
+    lat: -17.9311,
+    lng: 25.8402,
   },
   {
-    id: "mar-central",
-    name: "Marondera Agricultural Yard",
-    subtitle: "Mashonaland East Dispatch, 4th St",
-    latitude: -18.1856,
-    longitude: 31.5519,
-    region: "Mashonaland East",
-    type: "town",
+    id: "bei-central",
+    label: "Beitbridge Terminal",
+    lat: -22.2167,
+    lng: 30.0000,
   },
   {
-    id: "bin-central",
-    name: "Bindura Nickel Hub",
-    subtitle: "Trojan Mine Way Depot",
-    latitude: -17.3,
-    longitude: 31.3333,
-    region: "Mashonaland Central",
-    type: "mining_hub",
-  },
-  {
-    id: "hwa-central",
-    name: "Hwange Colliery Yard",
-    subtitle: "Coal Field Survey Outpost, Coronation Dr",
-    latitude: -18.3667,
-    longitude: 26.5,
-    region: "Matabeleland North",
-    type: "mining_hub",
-  },
-  {
-    id: "kar-central",
-    name: "Kariba Hydro Base",
-    subtitle: "Heights Dam Outpost, Mahombekombe",
-    latitude: -16.5167,
-    longitude: 28.8,
-    region: "Mashonaland West",
-    type: "survey_base",
+    id: "chi-central",
+    label: "Chinhoyi Outpost",
+    lat: -17.3667,
+    lng: 30.2000,
   },
 ];
 
 /**
- * Calculates Great-Circle distance using the Haversine formula and
- * adjusts with a realistic road tortuosity factor (~1.25) to model actual highway distance.
+ * Parses user input into valid numeric latitude and longitude.
+ * Supports:
+ *   - "-17.8292, 31.0522"
+ *   - "-17.8292 31.0522"
+ *   - "17.8292 S, 31.0522 E"
+ */
+export function parseCoordinateString(input: string): { lat: number; lng: number } | null {
+  if (!input || !input.trim()) return null;
+  const cleaned = input.trim();
+
+  // Try standard comma or space separated numbers: "lat, lng" or "lat lng"
+  const match = cleaned.match(/^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/);
+  if (match) {
+    const lat = parseFloat(match[1]);
+    const lng = parseFloat(match[2]);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat: Math.round(lat * 100000) / 100000, lng: Math.round(lng * 100000) / 100000 };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Formats coordinates for clean visual display (e.g. "-17.82920, 31.05220")
+ */
+export function formatCoordinates(lat: number, lng: number): string {
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+/**
+ * Great-Circle Haversine formula adjusted with a realistic road tortuosity multiplier (~1.25)
+ * to accurately estimate driving distance from exact coordinates.
  */
 export function calculateRoadDistanceKm(
   lat1: number,
@@ -377,7 +319,7 @@ export function calculateRoadDistanceKm(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const directDistance = R * c;
 
-  // Road tortuosity multiplier: highways curve and follow terrain contours
+  // Road network tortuosity factor
   const highwayFactor = 1.25;
   const roadKm = directDistance * highwayFactor;
 
@@ -386,12 +328,11 @@ export function calculateRoadDistanceKm(
 
 /**
  * Computes estimated driving duration in minutes.
- * Average speeds: ~75 km/h for inter-city corridors, minimum 10 mins.
  */
 export function estimateDriveDurationMinutes(distanceKm: number): number {
   if (distanceKm <= 0) return 0;
   const hours = distanceKm / 75;
-  return Math.max(12, Math.round(hours * 60));
+  return Math.max(10, Math.round(hours * 60));
 }
 
 /**
@@ -434,7 +375,7 @@ export function calculateHireFare(tier: VehicleTier, distanceKm: number): FareBr
 
 /**
  * Deterministic pseudo-random generator seeded by string, ensuring stable
- * fleet generation for each chosen pickup depot.
+ * fleet generation for each chosen pickup coordinate.
  */
 function seedRandom(seedStr: string): () => number {
   let hash = 0;
@@ -516,13 +457,14 @@ const FLEET_MODELS: Record<
 };
 
 /**
- * Generates available fleet near a given pickup point.
+ * Generates available fleet positioned near a given pickup coordinate.
  */
-export function generateFleetForLocation(
-  pickup: HireLocation,
+export function generateFleetForCoordinates(
+  pickup: LocationCoordinate,
   tierFilter?: VehicleTierId | "all",
 ): HireVehicle[] {
-  const rng = seedRandom(pickup.id + pickup.name);
+  const seedKey = `${pickup.lat.toFixed(3)}_${pickup.lng.toFixed(3)}`;
+  const rng = seedRandom(seedKey);
   const tiers: VehicleTierId[] = [
     "bakkie_4x4",
     "bakkie_4x4",
@@ -548,16 +490,16 @@ export function generateFleetForLocation(
     const plate = fleetConfig.plates[(index + Math.floor(rng() * 5)) % fleetConfig.plates.length];
     const color = fleetConfig.colors[index % fleetConfig.colors.length];
 
-    // Jitter vehicle coordinates within 1.5 - 6 km around the pickup hub
+    // Jitter vehicle coordinates within 0.8 - 4.5 km around the pickup coordinate
     const angle = rng() * 2 * Math.PI;
-    const radiusKm = 0.8 + rng() * 4.5;
+    const radiusKm = 0.8 + rng() * 3.8;
     const latOffset = (radiusKm / 111) * Math.cos(angle);
-    const lngOffset = (radiusKm / (111 * Math.cos((pickup.latitude * Math.PI) / 180))) * Math.sin(angle);
+    const lngOffset = (radiusKm / (111 * Math.cos((pickup.lat * Math.PI) / 180))) * Math.sin(angle);
 
-    const etaMins = Math.max(4, Math.round(radiusKm * 2.4 + rng() * 3));
+    const etaMins = Math.max(3, Math.round(radiusKm * 2.2 + rng() * 2));
 
     vehicles.push({
-      id: `VEH-${pickup.id.toUpperCase().slice(0, 3)}-${100 + index}`,
+      id: `VEH-GPS-${100 + index}`,
       tierId,
       model,
       licensePlate: plate,
@@ -565,8 +507,8 @@ export function generateFleetForLocation(
       driverRating: driver.rating,
       completedTrips: driver.trips,
       driverPhone: driver.phone,
-      currentLat: pickup.latitude + latOffset,
-      currentLng: pickup.longitude + lngOffset,
+      currentLat: pickup.lat + latOffset,
+      currentLng: pickup.lng + lngOffset,
       etaMinutes: etaMins,
       status: "available",
       color,

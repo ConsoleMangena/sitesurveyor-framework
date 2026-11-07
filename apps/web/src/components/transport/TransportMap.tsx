@@ -7,27 +7,33 @@ import {
   BASEMAP_LABELS_URL,
   BASEMAP_MAX_NATIVE_ZOOM,
 } from "../map/basemap.ts";
-import type { HireLocation, HireVehicle } from "../../lib/transportHire.ts";
-import { calculateRoadDistanceKm, estimateDriveDurationMinutes, formatDriveDuration } from "../../lib/transportHire.ts";
-import { Maximize2, Navigation } from "lucide-react";
+import type { HireVehicle, LocationCoordinate } from "../../lib/transportHire.ts";
+import {
+  calculateRoadDistanceKm,
+  estimateDriveDurationMinutes,
+  formatCoordinates,
+  formatDriveDuration,
+} from "../../lib/transportHire.ts";
 
 export interface TransportMapHandle {
   fitRoute: () => void;
   focusVehicle: (vehicle: HireVehicle) => void;
+  centerCoordinate: (lat: number, lng: number) => void;
   resetView: () => void;
 }
 
 interface TransportMapProps {
-  pickup: HireLocation | null;
-  dropoff: HireLocation | null;
+  pickup: LocationCoordinate;
+  dropoff: LocationCoordinate;
   vehicles: HireVehicle[];
   selectedVehicleId: string | null;
+  activePinMode: "pickup" | "dropoff" | null;
   onSelectVehicle?: (vehicle: HireVehicle) => void;
-  onMapClickCoordinate?: (lat: number, lng: number) => void;
+  onCoordinatesChange: (type: "pickup" | "dropoff", newCoords: LocationCoordinate) => void;
   className?: string;
 }
 
-const DEFAULT_CENTER: L.LatLngTuple = [-18.5, 29.8]; // Central Zimbabwe overview
+const DEFAULT_CENTER: L.LatLngTuple = [-18.5, 29.8];
 const DEFAULT_ZOOM = 6.8;
 
 export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
@@ -37,8 +43,9 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       dropoff,
       vehicles,
       selectedVehicleId,
+      activePinMode,
       onSelectVehicle,
-      onMapClickCoordinate,
+      onCoordinatesChange,
       className,
     },
     ref,
@@ -54,9 +61,12 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       vehicleMarkersGroup?: L.LayerGroup;
     }>({});
 
-    const routeDistance = pickup && dropoff
-      ? calculateRoadDistanceKm(pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude)
-      : 0;
+    const routeDistance = calculateRoadDistanceKm(
+      pickup.lat,
+      pickup.lng,
+      dropoff.lat,
+      dropoff.lng,
+    );
     const routeDuration = estimateDriveDurationMinutes(routeDistance);
 
     // Zoom & Fit bounds helper
@@ -66,20 +76,14 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
       if (pickup && dropoff) {
         const bounds = L.latLngBounds([
-          [pickup.latitude, pickup.longitude],
-          [dropoff.latitude, dropoff.longitude],
+          [pickup.lat, pickup.lng],
+          [dropoff.lat, dropoff.lng],
         ]);
         map.fitBounds(bounds, {
-          padding: [60, 60],
+          padding: [70, 70],
           maxZoom: 12,
           animate: true,
         });
-      } else if (pickup) {
-        map.setView([pickup.latitude, pickup.longitude], 12, { animate: true });
-      } else if (dropoff) {
-        map.setView([dropoff.latitude, dropoff.longitude], 12, { animate: true });
-      } else {
-        map.setView(DEFAULT_CENTER, DEFAULT_ZOOM, { animate: true });
       }
     }, [pickup, dropoff]);
 
@@ -89,26 +93,37 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       map.setView([vehicle.currentLat, vehicle.currentLng], 14, { animate: true });
     }, []);
 
+    const centerCoordinate = useCallback((lat: number, lng: number) => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.setView([lat, lng], 13, { animate: true });
+    }, []);
+
     const resetView = useCallback(() => {
       const map = mapRef.current;
       if (!map) return;
       map.setView(DEFAULT_CENTER, DEFAULT_ZOOM, { animate: true });
     }, []);
 
-    useImperativeHandle(ref, () => ({
-      fitRoute,
-      focusVehicle,
-      resetView,
-    }), [fitRoute, focusVehicle, resetView]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        fitRoute,
+        focusVehicle,
+        centerCoordinate,
+        resetView,
+      }),
+      [fitRoute, focusVehicle, centerCoordinate, resetView],
+    );
 
-    // Initialize Leaflet Map
+    // Initialize Map
     useEffect(() => {
       const container = containerRef.current;
       if (!container || mapRef.current) return;
 
       const map = L.map(container, {
-        center: DEFAULT_CENTER,
-        zoom: DEFAULT_ZOOM,
+        center: [pickup.lat, pickup.lng],
+        zoom: 7,
         zoomControl: false,
         attributionControl: false,
       });
@@ -136,13 +151,6 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
       mapRef.current = map;
 
-      // Handle map clicks for custom coordinates
-      map.on("click", (e: L.LeafletMouseEvent) => {
-        if (onMapClickCoordinate) {
-          onMapClickCoordinate(e.latlng.lat, e.latlng.lng);
-        }
-      });
-
       const resizeObserver = new ResizeObserver(() => {
         map.invalidateSize();
       });
@@ -154,14 +162,36 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
         mapRef.current = null;
         layersRef.current = {};
       };
-    }, [onMapClickCoordinate]);
+    }, []);
 
-    // Update Route & Markers
+    // Handle Map Clicks for Active Pin Placement
     useEffect(() => {
       const map = mapRef.current;
       if (!map) return;
 
-      // Clean up previous markers & polylines
+      const handleMapClick = (e: L.LeafletMouseEvent) => {
+        const targetType = activePinMode || "dropoff";
+        const newCoords: LocationCoordinate = {
+          lat: Math.round(e.latlng.lat * 100000) / 100000,
+          lng: Math.round(e.latlng.lng * 100000) / 100000,
+          label: targetType === "pickup" ? "Pinned Pickup GPS" : "Pinned Destination GPS",
+          isCustom: true,
+        };
+        onCoordinatesChange(targetType, newCoords);
+      };
+
+      map.on("click", handleMapClick);
+      return () => {
+        map.off("click", handleMapClick);
+      };
+    }, [activePinMode, onCoordinatesChange]);
+
+    // Update Draggable Markers & Route Polyline
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map) return;
+
+      // Clear old layers
       if (layersRef.current.routeLayer) {
         map.removeLayer(layersRef.current.routeLayer);
         layersRef.current.routeLayer = undefined;
@@ -175,105 +205,118 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
         layersRef.current.dropoffMarker = undefined;
       }
 
-      // Draw Pickup Marker
-      if (pickup) {
-        const pickupIcon = L.divIcon({
-          className: "custom-pickup-pin",
-          html: `
-            <div class="relative flex items-center justify-center">
-              <span class="absolute w-8 h-8 rounded-full bg-emerald-500/30 animate-ping"></span>
-              <div class="relative flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white rounded-full shadow-lg border-2 border-white dark:border-zinc-900 text-xs font-semibold whitespace-nowrap">
-                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                <span>PICKUP: ${pickup.name.split(" ")[0]}</span>
-              </div>
-            </div>
-          `,
-          iconSize: [120, 36],
-          iconAnchor: [60, 18],
-        });
-
-        const pMarker = L.marker([pickup.latitude, pickup.longitude], {
-          icon: pickupIcon,
-          zIndexOffset: 1000,
-        }).addTo(map);
-
-        pMarker.bindPopup(`
-          <div class="p-2 text-xs">
-            <div class="font-bold text-emerald-600">Pickup Location</div>
-            <div class="font-medium text-zinc-900 dark:text-zinc-100">${pickup.name}</div>
-            <div class="text-zinc-500 text-[11px]">${pickup.subtitle}</div>
+      // Pickup Draggable Marker
+      const pickupHtml = `
+        <div class="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
+          <span class="absolute w-8 h-8 rounded-full bg-emerald-500/30 animate-ping"></span>
+          <div class="relative flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white rounded-full shadow-xl border-2 border-white dark:border-zinc-900 text-xs font-semibold whitespace-nowrap">
+            <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+            <span>PICKUP</span>
           </div>
-        `);
-
-        layersRef.current.pickupMarker = pMarker;
-      }
-
-      // Draw Dropoff Marker
-      if (dropoff) {
-        const dropoffIcon = L.divIcon({
-          className: "custom-dropoff-pin",
-          html: `
-            <div class="relative flex items-center justify-center">
-              <div class="relative flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 text-white rounded-full shadow-lg border-2 border-white dark:border-zinc-900 text-xs font-semibold whitespace-nowrap">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span>DROPOFF: ${dropoff.name.split(" ")[0]}</span>
-              </div>
-            </div>
-          `,
-          iconSize: [130, 36],
-          iconAnchor: [65, 18],
-        });
-
-        const dMarker = L.marker([dropoff.latitude, dropoff.longitude], {
-          icon: dropoffIcon,
-          zIndexOffset: 1000,
-        }).addTo(map);
-
-        dMarker.bindPopup(`
-          <div class="p-2 text-xs">
-            <div class="font-bold text-rose-600">Destination</div>
-            <div class="font-medium text-zinc-900 dark:text-zinc-100">${dropoff.name}</div>
-            <div class="text-zinc-500 text-[11px]">${dropoff.subtitle}</div>
+          <div class="mt-1 px-1.5 py-0.5 rounded bg-zinc-950/80 text-[10px] text-zinc-100 font-mono shadow">
+            ${pickup.lat.toFixed(4)}, ${pickup.lng.toFixed(4)}
           </div>
-        `);
+        </div>
+      `;
 
-        layersRef.current.dropoffMarker = dMarker;
-      }
+      const pIcon = L.divIcon({
+        className: "custom-pickup-pin",
+        html: pickupHtml,
+        iconSize: [120, 52],
+        iconAnchor: [60, 20],
+      });
 
-      // Draw Polyline Route if both pickup and dropoff exist
-      if (pickup && dropoff) {
-        const polylineCoords: L.LatLngTuple[] = [
-          [pickup.latitude, pickup.longitude],
-          [dropoff.latitude, dropoff.longitude],
-        ];
+      const pMarker = L.marker([pickup.lat, pickup.lng], {
+        icon: pIcon,
+        draggable: true,
+        zIndexOffset: 1000,
+      }).addTo(map);
 
-        const routeLine = L.polyline(polylineCoords, {
-          color: "#e11d48",
-          weight: 4.5,
-          opacity: 0.85,
-          dashArray: "1, 10",
-          lineCap: "round",
-          lineJoin: "round",
-        }).addTo(map);
-
-        layersRef.current.routeLayer = routeLine;
-
-        // Auto fit route if not already zoomed closely
-        const bounds = L.latLngBounds([
-          [pickup.latitude, pickup.longitude],
-          [dropoff.latitude, dropoff.longitude],
-        ]);
-        map.fitBounds(bounds, {
-          padding: [50, 50],
-          maxZoom: 11,
-          animate: true,
+      pMarker.on("dragend", () => {
+        const ll = pMarker.getLatLng();
+        onCoordinatesChange("pickup", {
+          lat: Math.round(ll.lat * 100000) / 100000,
+          lng: Math.round(ll.lng * 100000) / 100000,
+          label: "Dragged Pickup GPS",
+          isCustom: true,
         });
-      } else if (pickup) {
-        map.setView([pickup.latitude, pickup.longitude], 12, { animate: true });
-      }
-    }, [pickup, dropoff]);
+      });
 
-    // Update Vehicle Fleet Markers
+      pMarker.bindPopup(`
+        <div class="p-2 text-xs font-sans">
+          <div class="font-bold text-emerald-600">Pickup Location</div>
+          <div class="font-mono text-zinc-800 dark:text-zinc-200">${formatCoordinates(pickup.lat, pickup.lng)}</div>
+          <div class="text-[11px] text-zinc-500 mt-1">Drag marker anywhere to adjust pickup</div>
+        </div>
+      `);
+
+      layersRef.current.pickupMarker = pMarker;
+
+      // Dropoff Draggable Marker
+      const dropoffHtml = `
+        <div class="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
+          <div class="relative flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 text-white rounded-full shadow-xl border-2 border-white dark:border-zinc-900 text-xs font-semibold whitespace-nowrap">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+            <span>DROPOFF</span>
+          </div>
+          <div class="mt-1 px-1.5 py-0.5 rounded bg-zinc-950/80 text-[10px] text-zinc-100 font-mono shadow">
+            ${dropoff.lat.toFixed(4)}, ${dropoff.lng.toFixed(4)}
+          </div>
+        </div>
+      `;
+
+      const dIcon = L.divIcon({
+        className: "custom-dropoff-pin",
+        html: dropoffHtml,
+        iconSize: [120, 52],
+        iconAnchor: [60, 20],
+      });
+
+      const dMarker = L.marker([dropoff.lat, dropoff.lng], {
+        icon: dIcon,
+        draggable: true,
+        zIndexOffset: 1000,
+      }).addTo(map);
+
+      dMarker.on("dragend", () => {
+        const ll = dMarker.getLatLng();
+        onCoordinatesChange("dropoff", {
+          lat: Math.round(ll.lat * 100000) / 100000,
+          lng: Math.round(ll.lng * 100000) / 100000,
+          label: "Dragged Destination GPS",
+          isCustom: true,
+        });
+      });
+
+      dMarker.bindPopup(`
+        <div class="p-2 text-xs font-sans">
+          <div class="font-bold text-rose-600">Destination Location</div>
+          <div class="font-mono text-zinc-800 dark:text-zinc-200">${formatCoordinates(dropoff.lat, dropoff.lng)}</div>
+          <div class="text-[11px] text-zinc-500 mt-1">Drag marker anywhere to adjust destination</div>
+        </div>
+      `);
+
+      layersRef.current.dropoffMarker = dMarker;
+
+      // Draw Route Polyline
+      const polylineCoords: L.LatLngTuple[] = [
+        [pickup.lat, pickup.lng],
+        [dropoff.lat, dropoff.lng],
+      ];
+
+      const routeLine = L.polyline(polylineCoords, {
+        color: "#e11d48",
+        weight: 4,
+        opacity: 0.9,
+        dashArray: "1, 9",
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(map);
+
+      layersRef.current.routeLayer = routeLine;
+    }, [pickup, dropoff, onCoordinatesChange]);
+
+    // Update Fleet Vehicle Markers
     useEffect(() => {
       const map = mapRef.current;
       const group = layersRef.current.vehicleMarkersGroup;
@@ -285,25 +328,27 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
         const isSelected = selectedVehicleId === vehicle.id;
 
         const vehicleHtml = `
-          <div class="cursor-pointer transition-transform duration-200 hover:scale-110 ${isSelected ? "scale-125 z-50" : ""}">
+          <div class="cursor-pointer transition-all duration-200 hover:scale-110 ${
+            isSelected ? "scale-125 z-50" : ""
+          }">
             <div class="relative flex items-center justify-center">
               ${
                 isSelected
                   ? '<span class="absolute -inset-2 rounded-full bg-rose-500/40 animate-ping"></span>'
                   : ""
               }
-              <div class="flex items-center gap-1 px-2 py-0.5 rounded-md shadow-md border ${
+              <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full shadow-lg border ${
                 isSelected
                   ? "bg-rose-600 text-white border-rose-400 font-bold"
                   : "bg-background/95 text-foreground border-border font-medium hover:border-primary"
               } text-[11px] whitespace-nowrap">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.7 2 11 2 11.3V16c0 .6.4 1 1 1h2"/>
                   <circle cx="7" cy="17" r="2"/>
                   <path d="M9 17h6"/>
                   <circle cx="17" cy="17" r="2"/>
                 </svg>
-                <span>${vehicle.etaMinutes}m</span>
+                <span class="font-mono">${vehicle.etaMinutes}m</span>
               </div>
             </div>
           </div>
@@ -312,8 +357,8 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
         const vIcon = L.divIcon({
           className: `fleet-vehicle-pin-${vehicle.id}`,
           html: vehicleHtml,
-          iconSize: [64, 26],
-          iconAnchor: [32, 13],
+          iconSize: [68, 30],
+          iconAnchor: [34, 15],
         });
 
         const vMarker = L.marker([vehicle.currentLat, vehicle.currentLng], {
@@ -329,10 +374,10 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
         vMarker.bindTooltip(
           `
-          <div class="font-sans text-xs p-1">
+          <div class="font-sans text-xs p-1.5">
             <div class="font-bold text-foreground">${vehicle.model}</div>
-            <div class="text-muted-foreground text-[10px]">${vehicle.licensePlate} • Driver: ${vehicle.driverName} (${vehicle.driverRating}★)</div>
-            <div class="text-rose-500 font-semibold text-[11px] mt-0.5">ETA to pickup: ${vehicle.etaMinutes} mins</div>
+            <div class="text-muted-foreground text-[10px] font-mono">${vehicle.licensePlate} • Driver: ${vehicle.driverName} (${vehicle.driverRating}★)</div>
+            <div class="text-rose-500 font-semibold text-[11px] mt-0.5 font-mono">ETA to pickup: ${vehicle.etaMinutes} mins</div>
           </div>
         `,
           { direction: "top", offset: [0, -10] },
@@ -343,22 +388,26 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
     }, [vehicles, selectedVehicleId, onSelectVehicle]);
 
     return (
-      <div className={`relative w-full h-full min-h-[380px] overflow-hidden rounded-xl border border-border bg-muted/20 ${className ?? ""}`}>
+      <div
+        className={`relative w-full h-full min-h-[380px] overflow-hidden rounded-2xl border border-border bg-muted/20 ${
+          activePinMode ? "cursor-crosshair" : ""
+        } ${className ?? ""}`}
+      >
         {/* Leaflet Canvas */}
         <div ref={containerRef} className="w-full h-full min-h-[380px] z-0" />
 
-        {/* Floating Route Overview Bar */}
-        {pickup && dropoff && routeDistance > 0 && (
-          <div className="absolute top-4 left-4 right-4 sm:left-6 sm:right-auto z-[400] max-w-md bg-background/95 backdrop-blur-md border border-border/80 shadow-xl rounded-xl p-3 text-xs pointer-events-auto">
+        {/* Floating Route Overview HUD (Top Center) */}
+        {routeDistance > 0 && (
+          <div className="absolute top-4 left-4 right-4 sm:left-6 sm:right-auto z-[400] max-w-sm bg-background/95 backdrop-blur-md border border-border/80 shadow-2xl rounded-2xl p-3 text-xs pointer-events-auto">
             <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/60">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-semibold text-foreground truncate max-w-[140px] sm:max-w-[160px]">
-                  {pickup.name}
+                <span className="font-mono text-muted-foreground text-[11px]">
+                  {pickup.lat.toFixed(3)}, {pickup.lng.toFixed(3)}
                 </span>
                 <span className="text-muted-foreground font-mono">→</span>
-                <span className="font-semibold text-foreground truncate max-w-[140px] sm:max-w-[160px]">
-                  {dropoff.name}
+                <span className="font-mono text-muted-foreground text-[11px]">
+                  {dropoff.lat.toFixed(3)}, {dropoff.lng.toFixed(3)}
                 </span>
               </div>
               <button
@@ -367,12 +416,12 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 title="Fit route in view"
                 className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                <Maximize2 className="h-3.5 w-3.5" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
               </button>
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <div>
                   <span className="text-muted-foreground text-[10px] uppercase font-mono tracking-wider block">
                     Calculated Distance
@@ -384,7 +433,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 <div className="h-6 w-px bg-border/60" />
                 <div>
                   <span className="text-muted-foreground text-[10px] uppercase font-mono tracking-wider block">
-                    Est. Drive Time
+                    Estimated Time
                   </span>
                   <span className="font-mono text-sm font-bold text-foreground">
                     {formatDriveDuration(routeDuration)}
@@ -392,20 +441,31 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 </div>
               </div>
 
-              <div className="text-right">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-[11px] font-semibold">
-                  <Navigation className="h-3 w-3" />
-                  Direct Highway
-                </span>
-              </div>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-[10px] font-semibold">
+                Direct Route
+              </span>
             </div>
           </div>
         )}
 
-        {/* Map Click Instructions Helper */}
+        {/* Active Pin Placement Banner */}
+        {activePinMode && (
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[400] px-4 py-2 rounded-full bg-zinc-950 text-white font-medium text-xs shadow-2xl border border-zinc-700 flex items-center gap-2 animate-bounce">
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${
+                activePinMode === "pickup" ? "bg-emerald-400" : "bg-rose-400"
+              }`}
+            />
+            <span>
+              Click map to set {activePinMode === "pickup" ? "Pickup" : "Destination"} GPS coordinates
+            </span>
+          </div>
+        )}
+
+        {/* Drag Helper Tooltip */}
         <div className="absolute bottom-3 left-3 z-[400] pointer-events-none hidden sm:block">
-          <div className="px-2.5 py-1 rounded-md bg-background/90 backdrop-blur-sm border border-border/70 text-[10px] text-muted-foreground font-mono shadow-sm">
-            Click map to pin custom field coordinates
+          <div className="px-3 py-1 rounded-lg bg-background/90 backdrop-blur-sm border border-border/70 text-[10px] text-muted-foreground font-mono shadow-sm">
+            Drag markers or click anywhere on the map to place GPS pins
           </div>
         </div>
       </div>
