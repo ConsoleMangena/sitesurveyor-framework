@@ -318,13 +318,6 @@ export default function PublicTransportPage() {
                   Live vehicle dispatch
                 </span>
               </div>
-
-              <h1 className="market-section-title text-balance text-foreground mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight">
-                Field Vehicle Hire by GPS Coordinates
-              </h1>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-                On-demand 4x4 bakkies, crew carriers, and heavy equipment flatbeds dispatched directly to your worksite with distance-based pricing.
-              </p>
             </div>
 
             {/* Coordinate Dispatch Deck */}
