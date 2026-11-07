@@ -65,6 +65,11 @@ already hands a row to exactly one caller; the ceiling is the process, not the c
 Throughput rises only when an immutable per-job context with a namespaced output directory
 replaces those globals — scale the code, not the replica count.
 
+The worker enforces this: on startup it takes an exclusive lock on
+`$SITESURVEYOR_STATE_DIR/worker.lock` and exits with status 1 if another process
+holds it. A second replica fails loudly instead of publishing another survey's
+files.
+
 ### The disk
 
 The 1 GB disk at `/app/state` is the coverage cache: what makes re-surveying an area take

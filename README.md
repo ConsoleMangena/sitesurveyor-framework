@@ -45,6 +45,7 @@ Open source makes the framework inspectable, adaptable, and available for survey
 | [Product brief](PRODUCT.md) | Product and design teams | Users, positioning, capabilities, principles, and constraints |
 | [Web app guide](apps/web/README.md) | Frontend developers | Setup, environment, structure, testing, PWA, and build |
 | [AI gateway guide](ai-gateway/README.md) | AI/platform developers | Edge Function, self-hosted fallback, MCP, models, and configuration |
+| [Contributing guide](CONTRIBUTING.md) | Contributors | Setup, checks, database rules, and pull request expectations |
 
 ## Why SiteSurveyor
 
@@ -185,7 +186,7 @@ sitesurveyor-framework/
 
 ### Prerequisites
 
-- Node.js 22 and npm (the Docker build uses Node 22).
+- Node.js 22.18 or newer and npm (the Docker build uses Node 22; 22.18+ is required because the deterministic AI check scripts run TypeScript directly).
 - A Supabase project with the repository schema and required Edge Functions.
 - A Solana wallet for wallet sign-in and transaction testing. Use devnet for development.
 - An NVIDIA NIM API key if you will deploy or run the AI runtime.
@@ -257,6 +258,7 @@ Run these from the repository root:
 | `npm run typecheck` | Run TypeScript project checks |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run the Vitest suite once |
+| `npm run test:coverage` | Run the Vitest suite with a coverage report and thresholds |
 | `npm run build` | Create the production web bundle |
 | `npm --prefix apps/web run preview` | Preview the production build locally |
 | `npm run ai:eval` | Run the AI evaluation harness |
@@ -269,13 +271,29 @@ Before submitting a change, run at least `npm run typecheck`, `npm run lint`, `n
 
 ## Docker
 
-Build and serve the production SPA through Nginx:
+Build and serve the production SPA through Nginx. The Supabase URL and anon key
+are required build arguments — the build fails without them, so a local image
+can never silently point at another project:
 
 ```bash
+export VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+export VITE_SUPABASE_ANON_KEY=your-anon-or-publishable-key
 docker compose up --build
 ```
 
-Open **http://localhost:8080**. Supply deployment-specific build values through your local environment rather than treating repository defaults as your own production configuration.
+Or with plain Docker:
+
+```bash
+docker build \
+  --build-arg VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
+  --build-arg VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \
+  -t sitesurveyor-web .
+```
+
+Open **http://localhost:8080**. Supply deployment-specific values through your
+local environment rather than treating repository defaults as your own
+production configuration. `VITE_SOLANA_CLUSTER`, `VITE_SOLANA_RPC_URL`,
+`VITE_SOLANA_USDC_MINT`, and `VITE_SOLANA_TREASURY_ADDRESS` remain optional.
 
 ## Current boundaries
 
@@ -289,7 +307,7 @@ Open **http://localhost:8080**. Supply deployment-specific build values through 
 
 ## Contributing
 
-Keep product claims tied to implemented behaviour, preserve the distinction between default private off-chain storage, public hash proofs, and any future opt-in full-file mode, and update the relevant guide when a workflow or configuration changes. Follow the [Code of Conduct](CODE_OF_CONDUCT.md) and run the checks above before submitting changes.
+Keep product claims tied to implemented behaviour, preserve the distinction between default private off-chain storage, public hash proofs, and any future opt-in full-file mode, and update the relevant guide when a workflow or configuration changes. Follow the [Code of Conduct](CODE_OF_CONDUCT.md) and the [contributing guide](CONTRIBUTING.md), then run the checks above before submitting changes.
 
 ## License
 
