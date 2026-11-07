@@ -3,6 +3,7 @@ import type { Tables, TablesInsert, TablesUpdate } from "../supabase/types.ts";
 import { getLocalDatabase, type LocalDb } from "../localDb/db.ts";
 import { startWorkspaceSync } from "../localDb/sync.ts";
 import { generateLocalId, nowIso, omitNullish } from "../localDb/utils.ts";
+import { notifyJobAssigned } from "./notificationEvents.ts";
 import type {
   JobAssignmentDocType,
   JobAssignmentMemberDocType,
@@ -214,6 +215,15 @@ export async function createJobAssignment(
     ),
   );
 
+  if (memberIds.length > 0) {
+    void notifyJobAssigned({
+      workspaceId,
+      memberIds,
+      jobTitle: payload.notes || "Job assignment",
+      assignmentId: assignment.id,
+    });
+  }
+
   return getJobAssignment(assignment.id) as Promise<AssignmentWithDetails>;
 }
 
@@ -280,6 +290,16 @@ export async function replaceAssignmentMembers(
   const existing = await db.job_assignment_members
     .find({ selector: { workspace_id: workspaceId, assignment_id: assignmentId, _deleted: false } })
     .exec();
+
+  const existingIds = new Set(existing.map((m) => m.toMutableJSON().workspace_member_id));
+  const newMemberIds = memberIds.filter((id) => !existingIds.has(id));
+  if (newMemberIds.length > 0) {
+    void notifyJobAssigned({
+      workspaceId,
+      memberIds: newMemberIds,
+      assignmentId,
+    });
+  }
 
   await Promise.all(
     existing.map((m) => m.incrementalPatch({ _deleted: true, updated_at: now })),

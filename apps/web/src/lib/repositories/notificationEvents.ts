@@ -67,8 +67,7 @@ export async function notifyJobAssigned(params: {
   );
   if (recipientIds.length === 0) return;
 
-  const label =
-    params.jobTitle ?? params.projectName ?? "a job";
+  const label = params.jobTitle ?? params.projectName ?? "a job";
   const context = params.projectName ? ` on ${params.projectName}` : "";
 
   await emit(
@@ -196,6 +195,7 @@ export async function notifyChatMessage(params: {
       body: `${params.senderName}: ${snippet}`,
       metadata: {
         type: "chat_message",
+        view: "teamChat",
       },
     })),
   );
@@ -244,4 +244,27 @@ export async function notifyMarketplaceRequest(params: {
       },
     })),
   );
+}
+
+/** Notify user about a dispatched field vehicle hire. */
+export async function notifyVehicleHireDispatched(params: {
+  workspaceId: string;
+  userId: string;
+  bookingRef: string;
+  vehicleModel: string;
+  driverName: string;
+  totalFare?: number;
+}): Promise<void> {
+  await emit([
+    {
+      workspaceId: params.workspaceId,
+      userId: params.userId,
+      title: "Field vehicle dispatched",
+      body: `${params.vehicleModel} (${params.driverName}) has been dispatched for booking ${params.bookingRef}.`,
+      metadata: {
+        type: "transport_hire",
+        booking_ref: params.bookingRef,
+      },
+    },
+  ]);
 }

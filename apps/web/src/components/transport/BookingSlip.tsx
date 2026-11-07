@@ -37,6 +37,8 @@ import {
   IconStarFilled,
 } from "@tabler/icons-react";
 import { cn } from "../../lib/utils.ts";
+import { useAuthStore } from "../../lib/auth/auth-store.ts";
+import { notifyVehicleHireDispatched } from "../../lib/repositories/notificationEvents.ts";
 import { VEHICLE_TIER_THEME } from "./vehicleTierTheme.ts";
 import { getVehiclePlaceholder } from "./transportPlaceholders.ts";
 
@@ -124,6 +126,18 @@ export function BookingSlip({
       setConfirmedBooking(booking);
       setIsSubmitting(false);
       onBookingConfirmed(booking);
+
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.workspaceId) {
+        void notifyVehicleHireDispatched({
+          workspaceId: currentUser.workspaceId,
+          userId: currentUser.id,
+          bookingRef: booking.bookingRef,
+          vehicleModel: vehicle.model,
+          driverName: vehicle.driverName,
+          totalFare: fareBreakdown.totalFare,
+        });
+      }
     }, 850);
   };
 

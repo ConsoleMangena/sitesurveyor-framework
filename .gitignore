@@ -77,3 +77,7 @@ apps/web/coverage/
 
  
 /blobs/
+ 
+/manifests/
+/manifests-v2/
+/metadata/
