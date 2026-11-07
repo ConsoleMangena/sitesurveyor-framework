@@ -139,14 +139,20 @@ function inAppLabel(kind: MarketDot["kind"]): string {
       : "Open Marketplace";
 }
 
-function logInLabel(kind: MarketDot["kind"]): string {
-  return kind === "job"
-    ? "Sign In to Apply"
-    : kind === "event"
-      ? "Sign In to Register"
-      : kind === "firm"
-        ? "Sign In to Contact"
-        : "Sign In to Inquire";
+function logInActionContent(kind: MarketDot["kind"]) {
+  const suffix =
+    kind === "job"
+      ? "to Apply"
+      : kind === "event"
+        ? "to Register"
+        : kind === "firm"
+          ? "to Contact"
+          : "to Inquire";
+  return (
+    <>
+      Sign In <span className="hidden sm:inline">{suffix}</span>
+    </>
+  );
 }
 
 /** Full market detail dialog for map pins and registry items. */
@@ -775,9 +781,10 @@ export function MarketDetailDialog({
               <CloseAction onClose={onClose} />
               <Button asChild size="sm" className={primaryActionClass}>
                 <Link to="/login">
-                  {listing?.listing_type === "hire"
-                    ? "Sign In to Hire"
-                    : "Sign In to Buy"}
+                  Sign In{" "}
+                  <span className="hidden sm:inline">
+                    {listing?.listing_type === "hire" ? "to Hire" : "to Buy"}
+                  </span>
                 </Link>
               </Button>
             </DialogActionRow>
@@ -848,7 +855,7 @@ export function MarketDetailDialog({
       <DialogActionRow>
         <CloseAction onClose={onClose} />
         <Button asChild size="sm" className={primaryActionClass}>
-          <Link to="/login">{logInLabel(activeDot.kind)}</Link>
+          <Link to="/login">{logInActionContent(activeDot.kind)}</Link>
         </Button>
       </DialogActionRow>
     );

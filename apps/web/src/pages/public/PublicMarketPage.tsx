@@ -833,24 +833,23 @@ export default function PublicMarketPage() {
             </Link>
             <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor's Market</span>
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Link
               to="/transport"
-              className="web3-btn gap-1.5"
+              className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
               title="Runs and routes that can carry what you hire or buy"
             >
-              <Truck className="size-4" aria-hidden="true" />
-              <span className="max-sm:hidden">Transport</span>
-              <span className="sm:hidden">Runs</span>
+              <Truck className="size-4 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">Transport</span>
             </Link>
             <button
               type="button"
               onClick={() => setCartOpen(true)}
-              className="web3-btn gap-1.5"
+              className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
               aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
             >
-              <ShoppingCart className="size-4" aria-hidden="true" />
-              <span className="max-sm:hidden">Cart</span>
+              <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 ? (
                 <span className="flex size-5 items-center justify-center rounded-full bg-[var(--web3-brand,#d92d20)] font-mono text-[11px] font-semibold tabular-nums text-white">
                   {cartCount}
@@ -891,7 +890,10 @@ export default function PublicMarketPage() {
                 />
               </AccountMenu>
             ) : (
-              <Link to="/login" className="web3-btn web3-btn-primary">
+              <Link
+                to="/login"
+                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4"
+              >
                 Sign in
               </Link>
             )}

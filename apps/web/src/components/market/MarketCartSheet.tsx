@@ -295,7 +295,9 @@ function CartSheetBody({ buyer, onClose }: { buyer: CartBuyer | null; onClose: (
               </div>
             ) : (
               <Button asChild className="w-full">
-                <Link to="/login">Sign in to send requests</Link>
+                <Link to="/login">
+                  Sign In <span className="hidden sm:inline">to send requests</span>
+                </Link>
               </Button>
             )}
           </SheetFooter>

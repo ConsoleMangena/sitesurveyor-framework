@@ -383,7 +383,7 @@ export default function PublicTransportPage() {
                 <AccountMenuItem icon={LayoutGrid} label="Open your workspace" to="/" />
               </AccountMenu>
             ) : (
-              <Link to="/login" className="web3-btn web3-btn-primary">
+              <Link to="/login" className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4">
                 Sign in
               </Link>
             )}
