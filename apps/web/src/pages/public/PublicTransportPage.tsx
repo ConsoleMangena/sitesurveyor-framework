@@ -1,736 +1,558 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { LayoutGrid, Search, Store, Truck, X } from "lucide-react";
-import { getPageNumbers } from "../../lib/utils.ts";
-import { Button } from "../../components/ui/button.tsx";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "../../components/ui/pagination.tsx";
+  ArrowDownUp,
+  ArrowRight,
+  Car,
+  ChevronRight,
+  Clock,
+  Compass,
+  History,
+  Layers,
+  MapPin,
+  Navigation,
+  RotateCcw,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Store,
+  Truck,
+  Users,
+  Weight,
+  X,
+} from "lucide-react";
+import { Button } from "../../components/ui/button.tsx";
+import { Badge } from "../../components/ui/badge.tsx";
 import { AccountMenu, AccountMenuAvatar, AccountMenuItem } from "../../components/account-menu.tsx";
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
-import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
-import { RunManifest } from "../../components/transport/RunManifest.tsx";
-import { RunReadout } from "../../components/transport/RunReadout.tsx";
-import { BookingSlip } from "../../components/transport/BookingSlip.tsx";
-import { ShippingControl, type ShippingChoice } from "../../components/transport/ShippingControl.tsx";
-import {
-  cityIdFromStops,
-  fetchOffersForCity,
-  fetchTransportNetwork,
-  isOnTheRoad,
-  type TransportBooking,
-  type TransportCheckpoint,
-  type TransportCorridor,
-  type TransportNetwork,
-  type TransportOffer,
-  type TransportRun,
-  type TransportStop,
-} from "../../lib/repositories/transportNetwork.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
-import { loadWords, money } from "../../lib/transportQuote.ts";
-
-/**
- * DIRECTION CONTRACT
- *
- * THESIS — A freight manifest, not a feature page. The visitor is a surveyor who
- * needs an instrument or a tonne of gravel moved between two named towns, and the
- * only question the surface answers is: which vehicle is going that way, how full
- * is it, and will it actually roll?
- *
- * OWN-WORLD — The sheet grammar the auth plates already established: hairline
- * rules instead of card shadows, IBM Plex Mono for anything that measures or
- * numbers, ruled cartouches for facts, and brand red reserved for one meaning —
- * this run will roll. The Esri keyless grey ground is the same map the market
- * already sits on, so the corridors read as the same country.
- *
- * STORY — Top to bottom: say what you are shipping (the one variable) → see the
- * corridors that can carry it → type the town you need it in → read the matching
- * runs as manifest rows, page by page, each with its load meter and its own
- * longitudinal section → hold a space. Live runs report where they were seen,
- * never where they are guessed to be.
- *
- * FIRST VIEWPORT — The shipping control and the corridor map, side by side, with
- * the soonest bookable roll named in the ruled band under the control (while
- * every departure is a specimen the band says so rather than quoting a date). No
- * hero and no marketing metrics: the instrument the page sells is a load meter,
- * and it is on screen immediately.
- *
- * FORM — Concept seed 4f05ef01, assignment 6: a consolidation table. Two columns
- * at desktop, one stack at 390px. Rows are ruled blocks, the load meter is
- * discrete cells below 24 slots so a bakkie and a tipper are not the same
- * picture, and the spine places stations at their real offset.
- *
- * FINISH — Every run and corridor on the surface is specimen data and stamped as
- * such; the page refuses a specimen booking in its own words. Nothing claims a
- * vehicle is on a road unless a checkpoint was reported.
- */
-
-/** An instant, shortened to fit a facts cell. */
-function stamp(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/** Rows on one page of the manifest. A run row is tall — it carries its own
- * load meter — so five is what a reader can compare at once. */
-const PAGE_SIZE = 5;
-
-/**
- * A trip is found by the town it must reach — the search asks "where must it go",
- * so the answer stays honest to that question — or by the code on its plate. The
- * corridor's published name is deliberately not searched: it reads
- * "Bulawayo – Harare", so matching it would list a run leaving the town the visitor
- * asked to reach, going the other way.
- */
-function matchesQuery(run: TransportRun, query: string): boolean {
-  if (!query) return true;
-  const needle = query.toLowerCase();
-  return [run.destination_city, run.route_code].some((field) =>
-    field.toLowerCase().includes(needle),
-  );
-}
-
-const bySoonestRoll = (a: TransportRun, b: TransportRun) =>
-  a.planned_departure_at.localeCompare(b.planned_departure_at);
-
-/**
- * Turning to the page that holds a row and scrolling to it are one act, but the
- * row is not in the document until that page has rendered, so this waits a few
- * frames instead of pretending it already is.
- */
-function scrollToRow(id: string, frame = 0) {
-  const row = document.getElementById(`tp-run-${id}`);
-  if (row) {
-    row.scrollIntoView({ block: "center", behavior: "smooth" });
-    return;
-  }
-  if (frame < 30) requestAnimationFrame(() => scrollToRow(id, frame + 1));
-}
+import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
+import { VehicleHireCard } from "../../components/transport/VehicleHireCard.tsx";
+import { BookingSlip } from "../../components/transport/BookingSlip.tsx";
+import {
+  calculateHireFare,
+  calculateRoadDistanceKm,
+  estimateDriveDurationMinutes,
+  formatDriveDuration,
+  generateFleetForLocation,
+  loadSavedBookings,
+  REGIONAL_HUBS,
+  VEHICLE_TIERS,
+  type HireBooking,
+  type HireLocation,
+  type HireVehicle,
+  type VehicleTierId,
+} from "../../lib/transportHire.ts";
 
 export default function PublicTransportPage() {
-  const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
-  const [params, setParams] = useSearchParams();
+  const { user } = useAuthStore();
   const mapRef = useRef<TransportMapHandle>(null);
-  const mapCardRef = useRef<HTMLDivElement>(null);
-  const runsRef = useRef<HTMLElement>(null);
 
-  const [network, setNetwork] = useState<TransportNetwork | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [reload, setReload] = useState(0);
-  /** The trip search, mirrored into `?to=` so a found list is a shareable link. */
-  const [search, setSearch] = useState(() => params.get("to") ?? "");
-  const [page, setPage] = useState(1);
-  const [choice, setChoice] = useState<ShippingChoice>({ slots: 1, weightKg: 0, finalMile: false });
-  const [bookingRunId, setBookingRunId] = useState<string | null>(null);
-  /** The run the plot is pointing at and the readout is describing. */
-  const [focusedRunId, setFocusedRunId] = useState<string | null>(null);
-  const [held, setHeld] = useState<TransportBooking | null>(null);
-  /** Keyed by city so a changed destination reads as "not checked yet" without an effect. */
-  const [offerState, setOfferState] = useState<{
-    cityId: string;
-    rows: TransportOffer[];
-  } | null>(null);
+  // Locations state
+  const [pickup, setPickup] = useState<HireLocation>(REGIONAL_HUBS[0]); // Default Harare Central
+  const [dropoff, setDropoff] = useState<HireLocation>(REGIONAL_HUBS[2]); // Default Bulawayo Main
+  const [selectedTier, setSelectedTier] = useState<VehicleTierId | "all">("all");
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchTransportNetwork()
-      .then((next) => {
-        if (!cancelled) setNetwork(next);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
+  // Mobile View Tab
+  const [mobileTab, setMobileTab] = useState<"fleet" | "map">("fleet");
 
-  function retry() {
-    setNetwork(null);
-    setFailed(false);
-    setReload((n) => n + 1);
-  }
+  // Booking Modal State
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [recentBookings, setRecentBookings] = useState<HireBooking[]>(() => loadSavedBookings());
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  const query = search.trim();
-
-  const stopsByRoute = useMemo(() => {
-    const map = new Map<string, TransportStop[]>();
-    for (const stop of network?.stops ?? []) {
-      const list = map.get(stop.route_id);
-      if (list) list.push(stop);
-      else map.set(stop.route_id, [stop]);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.sequence - b.sequence);
-    return map;
-  }, [network]);
-
-  const corridorByRoute = useMemo(() => {
-    const map = new Map<string, TransportCorridor>();
-    for (const corridor of network?.corridors ?? []) map.set(corridor.route_id, corridor);
-    return map;
-  }, [network]);
-
-  const trailByRun = useMemo(() => {
-    const map = new Map<string, TransportCheckpoint[]>();
-    for (const checkpoint of network?.checkpoints ?? []) {
-      const list = map.get(checkpoint.departure_id);
-      if (list) list.push(checkpoint);
-      else map.set(checkpoint.departure_id, [checkpoint]);
-    }
-    return map;
-  }, [network]);
-
-  /** The towns runs actually end in, most served first, so the search box only
-   * offers answers this network can give. */
-  const destinations = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const run of network?.runs ?? []) {
-      counts.set(run.destination_city, (counts.get(run.destination_city) ?? 0) + 1);
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [network]);
-
-  /** Every run the search can still answer for, soonest roll first. The pager cuts
-   * this one list, so searching and turning pages are the same act. */
-  const matchedRuns = useMemo(
-    () => (network?.runs ?? []).filter((run) => matchesQuery(run, query)).sort(bySoonestRoll),
-    [network, query],
-  );
-
-  const pageCount = Math.max(1, Math.ceil(matchedRuns.length / PAGE_SIZE));
-  /** The list can shorten under a held page — a narrower match, a reload — so the
-   * page the reader stands on is clamped to the pages that exist. */
-  const currentPage = Math.min(Math.max(page, 1), pageCount);
-  const pageNumbers = getPageNumbers(currentPage, pageCount);
-  const pageRuns = matchedRuns.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const firstShown = matchedRuns.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
-  const lastShown = Math.min(currentPage * PAGE_SIZE, matchedRuns.length);
-
-  const destinationId = useMemo(
-    () => (query && network ? cityIdFromStops(network.stops, query) : null),
-    [query, network],
-  );
-
-  useEffect(() => {
-    if (destinationId === null) return;
-    let cancelled = false;
-    fetchOffersForCity(destinationId)
-      .then((rows) => {
-        if (!cancelled) setOfferState({ cityId: destinationId, rows });
-      })
-      .catch(() => {
-        // A city with no answer and a city with no room are different claims,
-        // but both mean "we could not confirm space", so say nothing rather
-        // than imply an offer count the database did not return.
-        if (!cancelled) setOfferState({ cityId: destinationId, rows: [] });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [destinationId]);
-
-  const offers =
-    destinationId !== null && offerState?.cityId === destinationId ? offerState.rows : null;
-
-  // The receipt outlives the row it came from, so it names its own corridor.
-  const heldRun = held ? (network?.runs ?? []).find((run) => run.departure_id === held.departure_id) : undefined;
-
-  const focusedRun = (network?.runs ?? []).find(
-    (run) => run.departure_id === focusedRunId,
-  ) ?? null;
-
-  /**
-   * Vehicles the plot can place: they have left the origin and somebody has
-   * reported where. A status alone is not a position, so this is the same claim
-   * the map draws, not a wider one.
-   */
-  const liveRuns = useMemo(() => {
-    const reported = new Set((network?.checkpoints ?? []).map((cp) => cp.departure_id));
-    return (network?.runs ?? []).filter(
-      (run) => isOnTheRoad(run.status) && reported.has(run.departure_id),
+  // Distance & Drive Time
+  const distanceKm = useMemo(() => {
+    if (!pickup || !dropoff) return 0;
+    return calculateRoadDistanceKm(
+      pickup.latitude,
+      pickup.longitude,
+      dropoff.latitude,
+      dropoff.longitude,
     );
-  }, [network]);
+  }, [pickup, dropoff]);
 
-  /** The soonest vehicle a visitor could actually put load on. */
-  const nextRoll = useMemo(() => {
-    const open = (network?.runs ?? []).filter(
-      (run) => (run.status === "open" || run.status === "quorum_met") && !run.is_sample,
-    );
-    return open.length
-      ? open.reduce((a, b) => (a.planned_departure_at <= b.planned_departure_at ? a : b))
-      : null;
-  }, [network]);
+  const durationMinutes = useMemo(() => {
+    return estimateDriveDurationMinutes(distanceKm);
+  }, [distanceKm]);
 
-  const focusRun = useCallback((run: TransportRun) => {
-    setFocusedRunId(run.departure_id);
-    setBookingRunId(null);
-    mapRef.current?.fit(run.route_id);
-  }, []);
+  // Generate fleet for current pickup location
+  const fleet = useMemo(() => {
+    return generateFleetForLocation(pickup, selectedTier);
+  }, [pickup, selectedTier]);
 
-  /**
-   * Bring the plot and its readout onto the screen as one thing. The card is
-   * never taller than the viewport once the dock is capped, so `nearest` moves
-   * the page only when the map is genuinely out of view — a plate clicked on a
-   * map you are already looking at does not jump.
-   */
-  useEffect(() => {
-    if (!focusedRunId) return;
-    mapCardRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [focusedRunId, network]);
+  // Automatically select the first vehicle if none selected or selected one not in filtered fleet
+  const activeVehicle = useMemo(() => {
+    if (selectedVehicleId) {
+      const found = fleet.find((v) => v.id === selectedVehicleId);
+      if (found) return found;
+    }
+    return fleet[0] || null;
+  }, [fleet, selectedVehicleId]);
 
-  /** Typing re-filters from page one. The town stays in the URL so a found list is
-   * a link somebody else can open. */
-  const runSearch = useCallback(
-    (value: string) => {
-      setSearch(value);
-      setPage(1);
-      setBookingRunId(null);
-      const next = new URLSearchParams(params);
-      if (value.trim()) next.set("to", value);
-      else next.delete("to");
-      setParams(next, { replace: true });
-    },
-    [params, setParams],
-  );
+  // Swap pickup & dropoff
+  const handleSwapLocations = useCallback(() => {
+    setPickup(dropoff);
+    setDropoff(pickup);
+  }, [pickup, dropoff]);
 
-  /** Turning a page is a fresh read of the table, not a continuation of the last
-   * scroll position, so the list head comes back into view with it. */
-  const gotoPage = useCallback((next: number) => {
-    setPage(next);
-    setBookingRunId(null);
-    runsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, []);
-
-  /**
-   * A plate can point at a run the search has hidden, so this works out which page
-   * holds that row — clearing the search first when the row is not in it — turns to
-   * the page, and brings the row to the middle of the screen. The focused row
-   * carries a heavier rule, so it can be found there.
-   */
-  const openRow = useCallback(
-    (run: TransportRun) => {
-      const inList = matchedRuns.some((row) => row.departure_id === run.departure_id);
-      const list = inList ? matchedRuns : (network?.runs ?? []).slice().sort(bySoonestRoll);
-      if (!inList) runSearch("");
-      const index = list.findIndex((row) => row.departure_id === run.departure_id);
-      if (index >= 0) setPage(Math.floor(index / PAGE_SIZE) + 1);
-      scrollToRow(run.departure_id);
-    },
-    [matchedRuns, network, runSearch],
-  );
-
-  const startBooking = useCallback(
-    (run: TransportRun) => {
-      if (!user) {
-        navigate("/login");
-        return;
+  // Set quick corridor route
+  const handleSelectQuickRoute = useCallback(
+    (originId: string, destId: string) => {
+      const orig = REGIONAL_HUBS.find((h) => h.id === originId);
+      const dest = REGIONAL_HUBS.find((h) => h.id === destId);
+      if (orig && dest) {
+        setPickup(orig);
+        setDropoff(dest);
+        setSelectedVehicleId(null);
       }
-      setHeld(null);
-      setBookingRunId((current) => (current === run.departure_id ? null : run.departure_id));
     },
-    [navigate, user],
+    [],
   );
+
+  // Handle map click for custom coordinate pin
+  const handleMapClickCoordinate = useCallback(
+    (lat: number, lng: number) => {
+      // Create a custom field pin as dropoff if user clicks the map
+      const customPin: HireLocation = {
+        id: `custom-pin-${Date.now()}`,
+        name: `Field Site (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+        subtitle: "Custom GPS Coordinates pinned on map",
+        latitude: lat,
+        longitude: lng,
+        region: "Field Worksite",
+        type: "custom_pin",
+      };
+      setDropoff(customPin);
+    },
+    [],
+  );
+
+  const handleSelectVehicle = useCallback((vehicle: HireVehicle) => {
+    setSelectedVehicleId(vehicle.id);
+    if (mapRef.current) {
+      mapRef.current.focusVehicle(vehicle);
+    }
+  }, []);
+
+  const handleBookingConfirmed = useCallback((booking: HireBooking) => {
+    setRecentBookings((prev) => [booking, ...prev.slice(0, 19)]);
+  }, []);
 
   return (
-    <div className="web3-surface">
-      <header className="web3-header">
-        <div className="web3-header-inner">
-          <span className="flex min-w-0 items-baseline gap-2">
-            <Link to="/" aria-label="SiteSurveyor home" className="web3-brand">
-              <img src="/logo.svg" alt="" className="web3-brand-logo" aria-hidden="true" />
-              <span className="web3-brand-name">SiteSurveyor</span>
+    <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-rose-500/20 selection:text-rose-600">
+      {/* Top Navigation Bar */}
+      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-2 font-bold text-foreground">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-600 text-white font-mono text-sm font-extrabold shadow-sm">
+                S
+              </span>
+              <span className="tracking-tight text-base">SiteSurveyor</span>
             </Link>
-            <span className="web3-brand-sub hidden truncate sm:inline">/ Platform Transport</span>
-          </span>
-          <div className="flex items-center gap-2">
+
+            <span className="hidden sm:inline-block h-4 w-px bg-border" />
+
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-xs font-semibold">
+              <Truck className="h-3.5 w-3.5" />
+              <span>Vehicle Hire</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
             <Link
               to="/market"
-              className="web3-btn gap-1.5"
-              title="Tools, hires, materials and people for hire"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors"
             >
-              <Store className="size-4" aria-hidden="true" />
-              <span className="max-sm:hidden">Public Market</span>
-              <span className="sm:hidden">Hire</span>
+              <Store className="h-3.5 w-3.5" />
+              <span>Marketplace</span>
             </Link>
+
+            {recentBookings.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-muted/60 hover:bg-muted text-foreground transition-colors"
+              >
+                <History className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="hidden sm:inline">Trips</span>
+                <Badge variant="secondary" className="px-1 py-0 text-[10px] h-4 font-mono">
+                  {recentBookings.length}
+                </Badge>
+              </button>
+            )}
+
             <ThemeToggle />
+
             {user ? (
               <AccountMenu
                 user={user}
                 trigger={
-                  <Button
-                    variant="outline"
-                    className="group h-10 gap-2 rounded-full py-1.5 pl-1.5 pr-3"
-                    aria-label={`Open account menu (${user.name})`}
+                  <button
+                    type="button"
+                    className="rounded-full ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <AccountMenuAvatar user={user} />
-                    <span className="max-w-[132px] truncate text-sm font-semibold max-sm:hidden">
-                      {user.name}
-                    </span>
-                  </Button>
+                  </button>
                 }
               >
-                <AccountMenuItem icon={LayoutGrid} label="Open your workspace" to="/" />
+                <AccountMenuItem icon={Settings} label="Settings" to="/settings" />
               </AccountMenu>
             ) : (
-              <Link to="/login" className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4">
-                Sign in
-              </Link>
+              <Button asChild size="sm" variant="default" className="text-xs bg-rose-600 hover:bg-rose-700 text-white h-8">
+                <Link to="/auth/sign-in">Sign In</Link>
+              </Button>
             )}
           </div>
         </div>
       </header>
 
-      <main>
-        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-10">
-          <div className="flex min-w-0 flex-col gap-5">
-            <div className="max-w-xl">
-              <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-                Book space on a run that is already going your way
-              </h1>
-            </div>
-
-            <ShippingControl value={choice} onChange={setChoice} />
-
-            {network && (
-              <dl className="tp-run__facts w-full">
-                <div>
-                  <dt>Corridors</dt>
-                  <dd>{network.corridors.length}</dd>
-                </div>
-                <div>
-                  <dt>Next roll</dt>
-                  <dd>{nextRoll ? stamp(nextRoll.planned_departure_at) : "none scheduled"}</dd>
-                </div>
-                <div>
-                  <dt>On the road</dt>
-                  <dd>{liveRuns.length}</dd>
-                </div>
-              </dl>
-            )}
-
-            <div className="tp-field w-full sm:max-w-[380px]">
-              <label className="tp-label" htmlFor="tp-search">
-                Where must it go
-              </label>
-              <span className="tp-search">
-                <Search className="tp-search__icon" aria-hidden="true" />
-                <input
-                  id="tp-search"
-                  value={search}
-                  list="tp-destinations"
-                  autoComplete="off"
-                  enterKeyHint="search"
-                  placeholder="Town it must reach, or a route code"
-                  onChange={(event) => runSearch(event.target.value)}
-                />
-                {search ? (
-                  <button
-                    type="button"
-                    className="tp-search__clear"
-                    onClick={() => runSearch("")}
-                    aria-label="Clear the trip search"
-                  >
-                    <X className="size-3.5" aria-hidden="true" />
-                  </button>
-                ) : null}
-              </span>
-              <datalist id="tp-destinations">
-                {destinations.map(([city, count]) => (
-                  <option key={city} value={city}>
-                    {count} run{count === 1 ? "" : "s"}
-                  </option>
-                ))}
-              </datalist>
-            </div>
-
-            {destinationId !== null && (
-              <p className="text-sm text-muted-foreground">
-                {offers === null
-                  ? "Checking which runs can still take your load…"
-                  : `${offers.length} run${
-                      offers.length === 1 ? "" : "s"
-                    } to ${query} can still take ${loadWords(
-                      choice.slots,
-                      choice.weightKg,
-                    )}.`}
-              </p>
-            )}
-          </div>
-
-          <div
-            ref={mapCardRef}
-            className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card"
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        {/* Mobile View Toggle Bar */}
+        <div className="md:hidden flex items-center p-1 bg-muted/60 rounded-xl mb-4 border border-border/80">
+          <button
+            type="button"
+            onClick={() => setMobileTab("fleet")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+              mobileTab === "fleet"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-accent-bg text-[var(--web3-brand)]">
-                  <Truck className="size-4" aria-hidden="true" />
-                </span>
-                <h2 className="market-map-title text-foreground">Corridor network</h2>
-              </div>
-              <button
-                type="button"
-                className="tp-ghost"
-                onClick={() => {
-                  setFocusedRunId(null);
-                  mapRef.current?.fit();
-                }}
-              >
-                Fit network
-              </button>
+            <Car className="h-3.5 w-3.5" />
+            <span>Vehicles ({fleet.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("map")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+              mobileTab === "map"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Compass className="h-3.5 w-3.5" />
+            <span>Map & Route</span>
+          </button>
+        </div>
+
+        {/* Desktop Split Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Route Selector, Tier Filter & Available Vehicles List */}
+          <div
+            className={`md:col-span-6 lg:col-span-5 space-y-4 ${
+              mobileTab === "fleet" ? "block" : "hidden md:block"
+            }`}
+          >
+            {/* Header Title */}
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+                Field Vehicle Hire
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                On-demand survey 4x4 bakkies, crew vans & heavy haulage. Dynamic Uber-style distance pricing.
+              </p>
             </div>
-            <div className="min-h-0 flex-1">
-              {failed ? (
-                <div className="flex h-[320px] flex-col items-center justify-center gap-3 px-6 text-center">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    The corridor network could not be read.
-                  </p>
-                  <Button variant="outline" size="sm" onClick={retry}>
-                    Retry
-                  </Button>
-                </div>
-              ) : network ? (
-                <TransportMap
-                  ref={mapRef}
-                  corridors={network.corridors}
-                  runs={network.runs}
-                  stops={network.stops}
-                  checkpoints={network.checkpoints}
-                  destinationCityId={destinationId}
-                  focusedRunId={focusedRunId}
-                  onSelectRun={(run) => {
-                    setFocusedRunId(run.departure_id);
-                    setBookingRunId(null);
-                    mapRef.current?.fit(run.route_id);
+
+            {/* Route Planning Card */}
+            <div className="p-4 rounded-xl border border-border bg-card shadow-sm space-y-3">
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-xs font-bold uppercase tracking-wider font-mono text-muted-foreground">
+                  Trip Route
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSwapLocations}
+                  className="inline-flex items-center gap-1 text-[11px] font-mono text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold transition-colors"
+                >
+                  <ArrowDownUp className="h-3 w-3" />
+                  <span>Swap Direction</span>
+                </button>
+              </div>
+
+              {/* Pickup Selector */}
+              <div className="space-y-1">
+                <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Pickup Location (Survey Depot / Station)</span>
+                </label>
+                <select
+                  value={pickup.id}
+                  onChange={(e) => {
+                    const found = REGIONAL_HUBS.find((h) => h.id === e.target.value);
+                    if (found) setPickup(found);
                   }}
-                />
-              ) : (
-                <div className="h-[320px] animate-pulse bg-muted/30 sm:h-[420px]" />
+                  className="w-full text-xs rounded-lg border border-border bg-background px-3 py-2 font-medium text-foreground focus:ring-1 focus:ring-rose-500 focus:outline-none"
+                >
+                  {REGIONAL_HUBS.map((hub) => (
+                    <option key={hub.id} value={hub.id}>
+                      {hub.name} ({hub.region})
+                    </option>
+                  ))}
+                </select>
+                <div className="text-[10px] text-muted-foreground pl-3.5 truncate">
+                  {pickup.subtitle}
+                </div>
+              </div>
+
+              {/* Dropoff Selector */}
+              <div className="space-y-1 pt-1">
+                <label className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                  <span className="h-2 w-2 rounded-full bg-rose-500" />
+                  <span>Dropoff / Field Destination</span>
+                </label>
+                <select
+                  value={dropoff.id}
+                  onChange={(e) => {
+                    const found = REGIONAL_HUBS.find((h) => h.id === e.target.value);
+                    if (found) setDropoff(found);
+                  }}
+                  className="w-full text-xs rounded-lg border border-border bg-background px-3 py-2 font-medium text-foreground focus:ring-1 focus:ring-rose-500 focus:outline-none"
+                >
+                  {dropoff.type === "custom_pin" && (
+                    <option value={dropoff.id}>{dropoff.name}</option>
+                  )}
+                  {REGIONAL_HUBS.map((hub) => (
+                    <option key={hub.id} value={hub.id}>
+                      {hub.name} ({hub.region})
+                    </option>
+                  ))}
+                </select>
+                <div className="text-[10px] text-muted-foreground pl-3.5 truncate">
+                  {dropoff.subtitle}
+                </div>
+              </div>
+
+              {/* Quick Route Shortcuts */}
+              <div className="pt-2 border-t border-border/60">
+                <div className="text-[10px] uppercase font-mono text-muted-foreground tracking-wider mb-1.5">
+                  Frequent Corridors:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: "Harare ↔ Bulawayo", orig: "hre-central", dest: "byo-central" },
+                    { label: "Harare ↔ Mutare", orig: "hre-central", dest: "mut-central" },
+                    { label: "Bulawayo ↔ Vic Falls", orig: "byo-central", dest: "vic-central" },
+                    { label: "Gweru ↔ Kwekwe", orig: "gwe-central", dest: "kwe-central" },
+                    { label: "Masvingo ↔ Beitbridge", orig: "mas-central", dest: "bei-central" },
+                  ].map((route) => (
+                    <button
+                      key={route.label}
+                      type="button"
+                      onClick={() => handleSelectQuickRoute(route.orig, route.dest)}
+                      className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-muted text-[11px] font-mono text-muted-foreground hover:text-foreground border border-border/40 transition-colors"
+                    >
+                      {route.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Live Distance & ETA Readout Band */}
+              {distanceKm > 0 && (
+                <div className="pt-2.5 border-t border-border/80 flex items-center justify-between text-xs bg-muted/20 -mx-4 -mb-4 px-4 py-3 rounded-b-xl">
+                  <div className="flex items-center gap-3 font-mono">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block">ROAD DISTANCE</span>
+                      <strong className="text-sm text-foreground">{distanceKm} km</strong>
+                    </div>
+                    <div className="h-6 w-px bg-border" />
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block">EST. DRIVE TIME</span>
+                      <strong className="text-sm text-foreground">{formatDriveDuration(durationMinutes)}</strong>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                      <Sparkles className="h-3 w-3" />
+                      Live Route
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
-            {network && (
-              <div className="tp-dock" aria-live="polite">
-                {focusedRun ? (
-                  <RunReadout
-                    run={focusedRun}
-                    corridor={corridorByRoute.get(focusedRun.route_id)}
-                    stops={stopsByRoute.get(focusedRun.route_id) ?? []}
-                    trail={trailByRun.get(focusedRun.departure_id) ?? []}
-                    choice={choice}
-                    signedIn={user !== null}
-                    onClose={() => setFocusedRunId(null)}
-                    onOpenRow={openRow}
-                    onBook={(run) => {
-                      startBooking(run);
-                      openRow(run);
-                    }}
-                  />
-                ) : (
-                  <div className="tp-legend">
-                    <span className="tp-legend__item">
-                      <span className="tp-legend__swatch is-live" aria-hidden="true" />
-                      will roll
-                    </span>
-                    <span className="tp-legend__item">
-                      <span className="tp-legend__swatch is-arrived" aria-hidden="true" />
-                      arrived
-                    </span>
-                    <span className="tp-legend__item">
-                      <span className="tp-legend__swatch" aria-hidden="true" />
-                      gathering load
-                    </span>
-                    <span className="tp-legend__item">
-                      <span className="tp-legend__swatch is-specimen" aria-hidden="true" />
-                      specimen
-                    </span>
-                    <span className="tp-legend__hint">Press a plate to read the trip</span>
-                  </div>
-                )}
+
+            {/* Vehicle Tier Category Filter Tabs */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase font-mono tracking-wider text-muted-foreground">
+                  Available Fleet Near {pickup.name.split(" ")[0]} ({fleet.length})
+                </span>
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  Rates from $0.55/km
+                </span>
               </div>
-            )}
-          </div>
-        </section>
 
-        <section ref={runsRef} className="border-y border-border/70 bg-card/45">
-          <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
-            <h2 className="market-section-title text-balance text-foreground">
-              {query ? `Runs for “${query}”` : "Every open run, soonest roll first"}
-            </h2>
-
-            {!failed && (
-              <p className="tp-list-count" aria-live="polite">
-                {network === null
-                  ? "Reading the network…"
-                  : matchedRuns.length === 0
-                    ? query
-                      ? `Nothing matches “${query}”`
-                      : "Nothing is open to load"
-                    : `Viewing ${firstShown}–${lastShown} of ${matchedRuns.length} run${
-                        matchedRuns.length === 1 ? "" : "s"
-                      }`}
-              </p>
-            )}
-
-            {failed && (
-              <p className="tp-error mt-6" role="alert">
-                The network could not be read. Check the connection and retry.
-              </p>
-            )}
-
-            {network === null && !failed && (
-              <div className="mt-8 flex flex-col gap-4">
-                <span className="sr-only">Loading the corridor network</span>
-                {[0, 1, 2].map((index) => (
-                  <div key={index} className="tp-run">
-                    <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-                    <div className="h-16 animate-pulse rounded bg-muted/60" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {network !== null && matchedRuns.length === 0 && (
-              <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
-                <p className="text-sm font-medium">
-                  {query
-                    ? "No run reaches that town or code on the network yet."
-                    : "No run is open on the network right now."}
-                </p>
-                {query && (
-                  <button type="button" className="tp-ghost" onClick={() => runSearch("")}>
-                    Show every destination
-                  </button>
-                )}
-              </div>
-            )}
-
-            {network !== null && pageRuns.length > 0 && (
-              <div className="mt-8 flex flex-col gap-4">
-                {pageRuns.map((run) => {
-                  const isOpen = bookingRunId === run.departure_id;
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTier("all")}
+                  className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                    selectedTier === "all"
+                      ? "bg-foreground text-background font-semibold shadow-sm"
+                      : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  All Vehicles
+                </button>
+                {(Object.keys(VEHICLE_TIERS) as VehicleTierId[]).map((tierId) => {
+                  const t = VEHICLE_TIERS[tierId];
+                  const isCurSelected = selectedTier === tierId;
                   return (
-                    <div key={run.departure_id} id={`tp-run-${run.departure_id}`}>
-                      <RunManifest
-                        run={run}
-                        corridor={corridorByRoute.get(run.route_id)}
-                        stops={stopsByRoute.get(run.route_id) ?? []}
-                        trail={trailByRun.get(run.departure_id) ?? []}
-                        choice={choice}
-                        isOpen={isOpen}
-                        focused={focusedRunId === run.departure_id}
-                        signedIn={user !== null}
-                        onFocus={focusRun}
-                        onBook={startBooking}
-                      />
-                      {isOpen && user && (
-                        <div className="mt-3">
-                          <BookingSlip
-                            run={run}
-                            corridor={corridorByRoute.get(run.route_id)}
-                            stops={network.stops}
-                            choice={choice}
-                            workspaceId={user.workspaceId}
-                            recipientName={user.name}
-                            onBooked={(booking) => {
-                              setHeld(booking);
-                              setBookingRunId(null);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      key={tierId}
+                      type="button"
+                      onClick={() => setSelectedTier(tierId)}
+                      className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                        isCurSelected
+                          ? "bg-foreground text-background font-semibold shadow-sm"
+                          : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {t.shortName}
+                    </button>
                   );
                 })}
               </div>
-            )}
+            </div>
 
-            {network !== null && pageCount > 1 && (
-              <div className="tp-pager">
-                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
-                  <PaginationContent className="flex-wrap gap-1">
-                    <PaginationItem>
-                      <PaginationPrevious
-                        className={
-                          currentPage === 1 ? "pointer-events-none opacity-50" : undefined
-                        }
-                        href="#"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          gotoPage(currentPage - 1);
-                        }}
-                      />
-                    </PaginationItem>
-                    {pageNumbers.map((pageNumber, index) =>
-                      pageNumber === "..." ? (
-                        <PaginationItem key={`gap-${index}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={`page-${pageNumber}`}>
-                          <PaginationLink
-                            href="#"
-                            isActive={pageNumber === currentPage}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              gotoPage(pageNumber);
-                            }}
-                          >
-                            {pageNumber}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ),
-                    )}
-                    <PaginationItem>
-                      <PaginationNext
-                        className={
-                          currentPage === pageCount ? "pointer-events-none opacity-50" : undefined
-                        }
-                        href="#"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          gotoPage(currentPage + 1);
-                        }}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            )}
+            {/* Fleet List */}
+            <div className="space-y-3">
+              {fleet.length === 0 ? (
+                <div className="p-8 text-center rounded-xl border border-dashed border-border text-muted-foreground">
+                  <Truck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <div className="text-sm font-semibold">No vehicles in this category</div>
+                  <div className="text-xs mt-1">Try selecting "All Vehicles" to see the full fleet</div>
+                </div>
+              ) : (
+                fleet.map((vehicle) => {
+                  const fare = calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm);
+                  const isSelected = activeVehicle?.id === vehicle.id;
+                  return (
+                    <VehicleHireCard
+                      key={vehicle.id}
+                      vehicle={vehicle}
+                      fareBreakdown={fare}
+                      isSelected={isSelected}
+                      onSelect={handleSelectVehicle}
+                    />
+                  );
+                })
+              )}
+            </div>
 
-            {held && (
-              <div className="tp-slip mt-10" role="status" aria-live="polite">
-                <div className="tp-slip__receipt">
-                  <span className="tp-slip__code">{held.tracking_code}</span>
-                  <span>
-                    {loadWords(held.slots, held.weight_kg)} held on{" "}
-                    {heldRun ? `${heldRun.origin_city} → ${heldRun.destination_city}` : "that run"}{" "}
-                    — {money(held.fee, held.currency)} outstanding.
-                  </span>
+            {/* Bottom Book Vehicle CTA Bar */}
+            {activeVehicle && (
+              <div className="sticky bottom-4 z-20 p-4 rounded-xl border border-rose-500/40 bg-card/95 backdrop-blur-md shadow-xl flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground font-mono">
+                    Selected: <strong className="text-foreground">{activeVehicle.model}</strong>
+                  </div>
+                  <div className="text-lg font-mono font-bold text-foreground">
+                    ${calculateHireFare(VEHICLE_TIERS[activeVehicle.tierId], distanceKm).totalFare.toFixed(2)}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      ({distanceKm} km total)
+                    </span>
+                  </div>
                 </div>
-                <p className="tp-slip__note">
-                  Nothing charged yet — the run will not roll until the fee is settled.
-                </p>
-                <div className="tp-run__actions">
-                  <button type="button" className="tp-ghost" onClick={() => setHeld(null)}>
-                    Dismiss
-                  </button>
-                </div>
+
+                <Button
+                  type="button"
+                  onClick={() => setIsBookingOpen(true)}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-6 shadow-md"
+                >
+                  <span>Book Vehicle</span>
+                  <ArrowRight className="h-4 w-4 ml-1.5" />
+                </Button>
               </div>
             )}
           </div>
-        </section>
+
+          {/* Right Column: Interactive Leaflet Map */}
+          <div
+            className={`md:col-span-6 lg:col-span-7 h-[500px] md:h-[calc(100vh-140px)] sticky top-20 ${
+              mobileTab === "map" ? "block" : "hidden md:block"
+            }`}
+          >
+            <TransportMap
+              ref={mapRef}
+              pickup={pickup}
+              dropoff={dropoff}
+              vehicles={fleet}
+              selectedVehicleId={activeVehicle?.id || null}
+              onSelectVehicle={handleSelectVehicle}
+              onMapClickCoordinate={handleMapClickCoordinate}
+              className="h-full shadow-md"
+            />
+          </div>
+        </div>
       </main>
+
+      {/* Booking Slip Modal */}
+      {activeVehicle && (
+        <BookingSlip
+          vehicle={activeVehicle}
+          pickup={pickup}
+          dropoff={dropoff}
+          fareBreakdown={calculateHireFare(VEHICLE_TIERS[activeVehicle.tierId], distanceKm)}
+          durationMinutes={durationMinutes}
+          isOpen={isBookingOpen}
+          onClose={() => setIsBookingOpen(false)}
+          onBookingConfirmed={handleBookingConfirmed}
+        />
+      )}
+
+      {/* Trip History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in-50">
+          <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-2 pb-4 border-b border-border">
+              <History className="h-5 w-5 text-rose-600" />
+              <h2 className="text-lg font-bold text-foreground">Recent Vehicle Hires</h2>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {recentBookings.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-xs">
+                  No vehicle hire trips recorded yet.
+                </div>
+              ) : (
+                recentBookings.map((b) => (
+                  <div key={b.bookingRef} className="p-3.5 rounded-xl border border-border bg-muted/20 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-foreground">{b.bookingRef}</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-mono text-[10px] font-semibold">
+                        {b.status.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="text-muted-foreground">
+                      <span className="font-medium text-foreground">{b.vehicle.model}</span> • {b.vehicle.licensePlate} • Driver: {b.vehicle.driverName}
+                    </div>
+
+                    <div className="flex items-center justify-between text-muted-foreground font-mono text-[11px] pt-1 border-t border-border/40">
+                      <span>{b.pickup.name.split(" ")[0]} → {b.dropoff.name.split(" ")[0]} ({b.fareBreakdown.distanceKm} km)</span>
+                      <strong className="text-foreground">${b.fareBreakdown.totalFare.toFixed(2)}</strong>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
