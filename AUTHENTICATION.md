@@ -230,3 +230,17 @@ npm run typecheck && npm test              # repo-wide
 
 Auth coverage lives in `src/lib/auth/*.test.ts` (provisioning, method list),
 `src/components/auth/AuthShell.test.tsx` and `src/pages/auth/*.test.tsx`.
+
+---
+
+## 10. Satellite Survey Engine Authentication
+
+The Python engine (`apps/engine`) runs as a **background worker** with no user-facing authentication. It uses:
+
+| Credential | Purpose | Scope |
+| --- | --- | --- |
+| `SUPABASE_SERVICE_ROLE_KEY` | Claims `survey_runs`, writes deliverables, updates job status | Full admin access to `survey_runs`, `survey_deliverables`, `jobs` (restricted by migration grants) |
+| `DE_AFRICA_TOKEN` | Accesses DE Africa WCS 2.1.0 endpoints for satellite rasters | Read-only external API |
+| `SITESURVEYOR_STATE_DIR` | Local disk for cached rasters and outputs | Local filesystem |
+
+The worker runs `FOR UPDATE SKIP LOCKED` on `survey_runs` to claim jobs, processes them, and publishes results back. It does not interact with Supabase Auth, user sessions, or wallet identities. The MCP server (`python -m src.mcp_server`) exposes the same tools over stdio/SSE for AI agents and uses the same `SUPABASE_SERVICE_ROLE_KEY` + `DE_AFRICA_TOKEN` configuration.

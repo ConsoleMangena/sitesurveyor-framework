@@ -92,6 +92,7 @@ export async function quoteSatelliteSurvey(
     longitude: number;
     half_deg?: number;
     client_name?: string;
+    notes?: string;
   },
 ): Promise<string> {
   const owner = scopeWrite(opts.workspaceId);
@@ -212,6 +213,7 @@ export async function quoteSatelliteSurvey(
     balance_after: balanceAfter,
     credits_deficit: balanceSufficient ? 0 : creditsRequired - currentBalance,
     estimated_minutes: 4,
+    notes: args.notes || null,
     quote_breakdown: quote.lines,
   });
 }
@@ -234,6 +236,8 @@ export async function launchSatelliteSurvey(
     longitude: number;
     half_deg?: number;
     client_name?: string;
+    notes?: string;
+    address?: string;
     projectId?: string;
     confirmed: boolean;
   },
@@ -341,6 +345,7 @@ export async function launchSatelliteSurvey(
       half_deg: halfDeg,
       categories: [category],
       client_name: clientName,
+      address: (args.notes || args.address || "").trim() || null,
       estimated_minutes: 4,
       quoted_credits: creditsCharged,
       surface_area_km2: quote?.surface_area_km2 ?? null,

@@ -32,6 +32,12 @@ Platform targets:
 | Desktop | .NET | Target platform; `apps/desktop` is currently a placeholder |
 | Mobile | Java Android SDK | Target platform; `apps/mobile` is currently a placeholder |
 
+Backend services:
+
+| Service | Technology | Repository status |
+| --- | --- | --- |
+| Satellite Survey Engine | Python | Implemented in `apps/engine` (worker + MCP server + CLI) |
+
 No .NET desktop or Java Android shell is implemented in the repository yet.
 
 ## Users

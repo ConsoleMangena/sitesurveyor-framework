@@ -62,6 +62,8 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+The engine also runs deterministic AI consistency checks and exposes an MCP server for AI agent integration.
+
 ## Database changes
 
 - Add a new timestamped migration under `supabase/migrations/`; never edit an

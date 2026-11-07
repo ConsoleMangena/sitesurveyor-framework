@@ -106,6 +106,8 @@ This mode has a fundamentally different privacy and cost profile from hash-only 
 
 **Current status:** the repository implements hash-only anchoring. Chunked full-file storage is a product direction and is not available in the current web client, so the steps above are design guidance rather than an operating procedure for a shipped feature.
 
+> **Note:** The **satellite survey engine** (Python worker at `apps/engine`) is a separate, implemented component that runs the actual multi-sensor raster analysis (water, minerals, soil, hazard) on DE Africa satellite data. It is **not** the same as the full-file blockchain storage model above. The engine runs as a background worker, polls `survey_runs` from Supabase, processes the job, and publishes deliverables (GeoTIFF, PNG maps, GeoJSON, KMZ, HTML reports) to Supabase Storage. It exposes an MCP server for AI agent integration.
+
 ### Step 5: Invoice and settle
 
 1. Confirm delivered work, time, expenses, and quote details.

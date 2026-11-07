@@ -28,6 +28,8 @@ This document describes implemented controls, planned storage behaviour, and imp
 | Solana wallet address and transaction signature | Wallet, chain, and selected metadata | **Yes when used on-chain** | Address/linkability and cluster correctness |
 | Solana USDC payment | Solana | **Yes** | Recipient, mint, amount, finality, and key security |
 | PesePay payment data | PesePay and off-chain records | **No** | Server secrets, provider status, reconciliation |
+| Satellite survey deliverables (GeoTIFF, PNG, GeoJSON, KMZ, HTML) | Supabase Storage `survey-deliverables` bucket; metadata in `survey_runs` / `survey_deliverables` | **No** | Bucket/object authorization, workspace scoping via RLS |
+| Satellite survey job specification (category, lat/lon, extent) | `jobs.description` (JSON) | **No** | Workspace isolation, pricing integrity |
 
 ### File-anchor privacy
 
