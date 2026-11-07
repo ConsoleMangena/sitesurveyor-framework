@@ -1,6 +1,7 @@
 {
   "name": "sitesurveyorsdk",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "npm --prefix apps/web run dev",
     "dev:web": "npm --prefix apps/web run dev",
@@ -8,6 +9,7 @@
     "lint": "npm --prefix apps/web run lint",
     "typecheck": "npm --prefix apps/web run typecheck",
     "test": "npm --prefix apps/web run test",
+    "test:coverage": "npm --prefix apps/web run test:coverage",
     "supabase": "npx supabase",
     "db:push": "npx supabase db push",
     "db:reset": "npx supabase db reset",

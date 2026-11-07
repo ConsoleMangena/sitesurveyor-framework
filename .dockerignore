@@ -5,6 +5,7 @@
 **/target
 **/dist
 apps/web/.vite
+apps/web/coverage
 templates
 supabase/.temp
 *.log

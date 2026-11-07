@@ -70,4 +70,8 @@ shadcn-admin/
 __pycache__/
 *.py[cod]
 .venv/
+apps/engine/worker.lock
+
+# Test coverage output
+apps/web/coverage/
 

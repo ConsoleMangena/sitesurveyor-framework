@@ -26,15 +26,16 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Write apps/web/.env from secrets
+      - name: Write apps/web/.env
+        # Real secrets are used when present. On forks they fall back to inert
+        # placeholders so lint/typecheck/test/build still run; the bundle built
+        # here is a CI artifact, not a deployment.
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://test.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'test-anon-key' }}
         shell: bash
         run: |
           set -euo pipefail
-          : "${VITE_SUPABASE_URL:?VITE_SUPABASE_URL secret is not set}"
-          : "${VITE_SUPABASE_ANON_KEY:?VITE_SUPABASE_ANON_KEY secret is not set}"
           {
             printf 'VITE_SUPABASE_URL=%s\n' "$VITE_SUPABASE_URL"
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_ANON_KEY"
@@ -46,11 +47,117 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm run test
+      - name: Test (with coverage thresholds)
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: apps/web/coverage
+          if-no-files-found: ignore
 
       - name: Build
         run: npm run build
+
+  engine:
+    name: Engine tests (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/engine
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            apps/engine/requirements.txt
+            apps/engine/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest -q
+
+  mcp:
+    name: MCP server tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-gateway/sitesurveyor-mcp
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ai-gateway/sitesurveyor-mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  functions:
+    name: Edge Function tests (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Test
+        run: deno test --allow-env --allow-net supabase/functions/_shared/
+
+  ai-eval:
+    name: AI deterministic checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # These four harnesses are deterministic and never call the model, so
+      # they run without an NVIDIA key. `npm run ai:eval` is intentionally
+      # excluded: it calls the real model and needs NVIDIA_API_KEY.
+      - name: Skills
+        run: npm run ai:skills-check
+
+      - name: Memory
+        run: npm run ai:memory-check
+
+      - name: Models
+        run: npm run ai:models-check
+
+      - name: Tool rounds
+        run: npm run ai:rounds-check
 
   # ── Render deploy ──────────────────────────────────────────────────────────
   # Triggers both services (web static site + engine worker) only after all
@@ -64,18 +171,19 @@ jobs:
   # stays green on forks and during initial setup.
   deploy:
     name: Deploy to Render
-    needs: web
+    needs: [web, engine, mcp, functions, ai-eval]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Set at job level so the step `if` conditions below can read them through
+    # the `env` context (a step's own `env` is not visible to its `if`).
+    env:
+      RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+      RENDER_DEPLOY_HOOK_ENGINE: ${{ secrets.RENDER_DEPLOY_HOOK_ENGINE }}
     steps:
       - name: Deploy web static site
         if: env.RENDER_DEPLOY_HOOK_WEB != ''
-        env:
-          RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
-        run: curl -sS "$RENDER_DEPLOY_HOOK_WEB"
+        run: curl -fsS "$RENDER_DEPLOY_HOOK_WEB"
 
       - name: Deploy engine worker
         if: env.RENDER_DEPLOY_HOOK_ENGINE != ''
-        env:
-          RENDER_DEPLOY_HOOK_ENGINE: ${{ secrets.RENDER_DEPLOY_HOOK_ENGINE }}
-        run: curl -sS "$RENDER_DEPLOY_HOOK_ENGINE"
+        run: curl -fsS "$RENDER_DEPLOY_HOOK_ENGINE"

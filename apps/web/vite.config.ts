@@ -131,12 +131,44 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
-    // Under Vite 8 (rolldown-vite) + Vitest 4 the default `forks`/`threads`
-    // pool fails to initialise the worker runner state before test
-    // collection, so every `describe()` throws "Cannot read properties of
-    // undefined (reading 'config')" and zero tests run. The `vmThreads`
-    // pool sets up the runner correctly. Revisit once Vitest fully supports
-    // the Vite 8 module runner in the default pool.
+    // Component suites can exceed 5s on a cold CI runner while jsdom and
+    // Leaflet/Router modules compile; 10s keeps slow machines honest without
+    // hiding a genuinely stuck test.
+    testTimeout: 10000,
+    // Tests must run on a fresh clone without a .env file. The Supabase client
+    // throws at module load when these are absent, so suites that import it
+    // would otherwise fail before running. Values are inert placeholders —
+    // no test should reach the network.
+    env: {
+      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? 'https://test.supabase.co',
+      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY ?? 'test-anon-key',
+      VITE_SOLANA_CLUSTER: process.env.VITE_SOLANA_CLUSTER ?? 'devnet',
+    },
+    // `vmThreads` shares one realm between the jsdom globals and Node's
+    // `TextEncoder`. The `forks` pool gives them different `Uint8Array`
+    // constructors, and `tweetnacl` then rejects encoded input as
+    // "unexpected type, use Uint8Array".
     pool: 'vmThreads',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'html', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test-setup.ts',
+        'src/test-shims/**',
+        'src/lib/supabase/types.ts',
+        'src/**/*.d.ts',
+      ],
+      // Floors only, set just under today's suite so they catch a real
+      // regression without failing on normal churn. Raise them as the untested
+      // page components gain tests.
+      thresholds: {
+        statements: 20,
+        branches: 18,
+        functions: 16,
+        lines: 20,
+      },
+    },
   },
 })

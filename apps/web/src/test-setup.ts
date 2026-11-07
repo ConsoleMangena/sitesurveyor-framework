@@ -35,8 +35,9 @@ if (!globalThis.crypto?.subtle) {
 
 // jsdom exposes no matchMedia, and media-gated effects (the plat's hover row
 // aim, Radix's responsive parts) call it on mount. Report "no fine pointer" so
-// hover-only behaviour stays inert under test.
-if (!window.matchMedia) {
+// hover-only behaviour stays inert under test. Guarded because suites that opt
+// into `@vitest-environment node` run this setup without a DOM.
+if (typeof window !== "undefined" && !window.matchMedia) {
   window.matchMedia = ((media: string) => ({
     media,
     matches: false,
