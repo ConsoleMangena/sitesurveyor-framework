@@ -59,10 +59,8 @@ import {
 import { MarketReviews } from "./MarketReviews.tsx";
 import { ListingRequestPanel } from "./ListingRequestPanel.tsx";
 import { MarketInquiryPanel } from "./MarketInquiryPanel.tsx";
-import {
-  MarketDetailAttributes,
-  formatDate,
-} from "./MarketDetailAttributes.tsx";
+import { MarketDetailAttributes } from "./MarketDetailAttributes.tsx";
+import { formatDate } from "./marketDetailFormat.ts";
 import {
   CloseAction,
   DialogActionRow,
