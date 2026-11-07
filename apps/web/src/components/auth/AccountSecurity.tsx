@@ -301,32 +301,19 @@ export default function AccountSecurity({
               Link GitHub
             </Button>
           ) : null}
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={busy !== null}
-            onClick={() => {
-              setError(null);
-              setWalletAction({ mode: "link" });
-            }}
-          >
-            <Wallet className="size-3.5" />
-            Link a wallet
-          </Button>
         </div>
       </div>
 
-      <p className="flex items-start gap-2 text-xs text-muted-foreground">
-        <ShieldCheck className="mt-px size-3.5 shrink-0 text-primary" />
-        <span>
-          SiteSurveyor never stores your keys or seed phrase. Removing a wallet
-          asks you to sign once more so a stolen session can&apos;t drop your
-          credentials.
-        </span>
-      </p>
+      {list.methods.some((m) => m.kind === "wallet") ? (
+        <p className="flex items-start gap-2 text-xs text-muted-foreground">
+          <ShieldCheck className="mt-px size-3.5 shrink-0 text-primary" />
+          <span>
+            SiteSurveyor never stores your keys or seed phrase. Removing a wallet
+            asks you to sign once more so a stolen session can&apos;t drop your
+            credentials.
+          </span>
+        </p>
+      ) : null}
 
       <AddEmailDialog
         open={addEmailOpen}

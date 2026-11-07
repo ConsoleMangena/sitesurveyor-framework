@@ -316,17 +316,6 @@ export default function SignUpPage() {
         <div className="grid gap-2">
           <GitHubButton disabled={submitting} />
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          Already use a wallet?{" "}
-          <Link
-            to="/auth/wallet"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Create an account with your wallet
-          </Link>
-          .
-        </p>
       </div>
     </AuthShell>
   );

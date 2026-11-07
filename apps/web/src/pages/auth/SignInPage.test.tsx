@@ -45,7 +45,7 @@ describe("SignInPage", () => {
     mockEnsureAccountProvisioned.mockResolvedValue(undefined);
   });
 
-  it("renders the email form plus GitHub and wallet options", () => {
+  it("renders the email form plus GitHub option and no wallet option", () => {
     renderPage();
 
     expect(
@@ -58,8 +58,8 @@ describe("SignInPage", () => {
       screen.getByRole("button", { name: /^github$/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /continue with wallet/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /continue with wallet/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /forgot password/i }),
     ).toHaveAttribute("href", "/forgot-password");

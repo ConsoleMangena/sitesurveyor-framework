@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, LogIn, Wallet } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import AuthShell, { AuthRule } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -170,17 +170,6 @@ export default function SignInPage() {
 
         <div className="grid gap-2">
           <GitHubButton disabled={submitting} />
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full"
-            disabled={submitting}
-            onClick={() => navigate("/auth/wallet")}
-          >
-            <Wallet className="size-4" aria-hidden="true" />
-            <span>Continue with wallet</span>
-          </Button>
         </div>
       </div>
     </AuthShell>

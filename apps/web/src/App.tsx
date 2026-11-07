@@ -9,7 +9,6 @@ import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
 import OfflineStatusBanner from "./components/OfflineStatusBanner";
 import { Toaster } from "./components/ui/sonner";
-import WalletLoginPage from "./pages/auth/WalletLoginPage";
 import SignInPage from "./pages/auth/SignInPage";
 import SignUpPage from "./pages/auth/SignUpPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
@@ -17,7 +16,6 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import AuthCallbackPage from "./pages/auth/AuthCallbackPage";
 import AccountSecurityPage from "./pages/auth/AccountSecurityPage";
-import { shouldResumeSolflareAuth } from "./lib/auth/solflare-mobile.ts";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 const PublicTransportPage = lazy(() => import("./pages/public/PublicTransportPage"));
@@ -257,13 +255,7 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route
             path="/auth/wallet"
-            element={
-              user ? (
-                <Navigate to="/" replace />
-              ) : (
-                <WalletLoginPage />
-              )
-            }
+            element={<Navigate to="/login" replace />}
           />
           <Route element={<ProtectedRoute />}>
             <Route path="/account/security" element={<AccountSecurityPage />} />
@@ -289,9 +281,6 @@ export default function App() {
             element={
               user ? (
                 <WorkspaceRouter />
-              ) : typeof window !== "undefined" &&
-                shouldResumeSolflareAuth(window.location.href) ? (
-                <WalletLoginPage />
               ) : (
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <PublicMarketPage />
@@ -307,14 +296,7 @@ export default function App() {
           </Route>
           <Route
             path="*"
-            element={
-              typeof window !== "undefined" &&
-              shouldResumeSolflareAuth(window.location.href) ? (
-                <WalletLoginPage />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
+            element={<Navigate to="/" replace />}
           />
         </Routes>
       </BrowserRouter>
