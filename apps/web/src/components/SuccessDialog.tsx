@@ -29,7 +29,7 @@ export function SuccessDialog({
       }
     >
       <div className="flex justify-center py-4">
-        <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+        <CheckCircle2 className="h-12 w-12 text-success" />
       </div>
     </DialogTemplate>
   );

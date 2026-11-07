@@ -131,10 +131,10 @@ const ResourceAvatar = ({
       className={cn(
         "inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold shrink-0",
         kind === "crew"
-          ? "bg-blue-100 text-blue-700"
+          ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
           : kind === "vehicle"
-            ? "bg-orange-100 text-orange-700"
-            : "bg-emerald-100 text-emerald-700",
+            ? "bg-orange-500/15 text-orange-700 dark:text-orange-400"
+            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
       )}
     >
       {kind === "crew" ? initial : kind === "vehicle" ? <Truck size={12} /> : <Package size={12} />}
@@ -554,7 +554,7 @@ export default function DispatchPage({ workspaceId }: DispatchPageProps) {
                         "w-full text-left rounded-lg border p-2.5 text-xs shadow-sm transition-all hover:shadow",
                         effectiveSelectedAssignmentId === assignment.id && "ring-2 ring-primary",
                         draggingAssignmentId === assignment.id && "opacity-50",
-                        hasConflict && "border-red-300",
+                        hasConflict && "border-destructive",
                       )}
                       style={{
                         background: COLORS[assignments.indexOf(assignment) % COLORS.length],

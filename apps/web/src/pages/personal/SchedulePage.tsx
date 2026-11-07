@@ -98,11 +98,11 @@ const typeVariant: Record<string, "default" | "secondary" | "destructive" | "out
 };
 
 const typeBgClass: Record<string, string> = {
-  boundary: "bg-violet-100 text-violet-800 border-violet-200",
-  topo: "bg-blue-100 text-blue-800 border-blue-200",
-  construction: "bg-amber-100 text-amber-800 border-amber-200",
-  pegging: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  other: "bg-slate-100 text-slate-800 border-slate-200",
+  boundary: "bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/30",
+  topo: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  construction: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  pegging: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  other: "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30",
 };
 
 const typeDotClass: Record<string, string> = {

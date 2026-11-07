@@ -23,9 +23,9 @@ function daysUntil(dateStr?: string | null): number {
 
 function calClasses(days: number): string {
   if (days < 0) return "bg-destructive/10 text-destructive border-destructive/20";
-  if (days <= 30) return "bg-amber-100 text-amber-800 border-amber-200";
-  if (days <= 60) return "bg-yellow-100 text-yellow-800 border-yellow-200";
-  return "bg-emerald-100 text-emerald-800 border-emerald-200";
+  if (days <= 30) return "bg-warning/15 text-warning border-warning/30";
+  if (days <= 60) return "bg-warning/10 text-warning border-warning/20";
+  return "bg-success/15 text-success border-success/30";
 }
 
 function calLabel(days: number): string {

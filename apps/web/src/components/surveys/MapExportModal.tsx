@@ -208,7 +208,7 @@ export default function MapExportModal({
               </>
             ) : success ? (
               <>
-                <Check className="size-3.5 text-green-500" />
+                <Check className="size-3.5 text-success" />
                 <span>Downloaded!</span>
               </>
             ) : (

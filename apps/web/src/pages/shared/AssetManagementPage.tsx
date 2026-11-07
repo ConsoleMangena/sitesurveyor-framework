@@ -88,16 +88,14 @@ function daysUntil(dateStr: string): number {
 
 function calDaysClass(days: number): string {
   if (days < 0) return "text-destructive";
-  if (days <= 30) return "text-amber-600";
-  if (days <= 60) return "text-yellow-600";
-  return "text-emerald-600";
+  if (days <= 60) return "text-warning";
+  return "text-success";
 }
 
 function calBgClass(days: number): string {
   if (days < 0) return "bg-destructive/10 text-destructive border-destructive/20";
-  if (days <= 30) return "bg-amber-100 text-amber-800 border-amber-200";
-  if (days <= 60) return "bg-yellow-100 text-yellow-800 border-yellow-200";
-  return "bg-emerald-100 text-emerald-800 border-emerald-200";
+  if (days <= 60) return "bg-warning/15 text-warning border-warning/30";
+  return "bg-success/15 text-success border-success/30";
 }
 
 function calLabel(days: number): string {
@@ -114,13 +112,13 @@ const statusVariant: Record<string, BadgeProps["variant"]> = {
 };
 
 const typeBgClass: Record<string, string> = {
-  "Total Station": "bg-violet-100 text-violet-800 border-violet-200",
-  "GNSS Receiver": "bg-blue-100 text-blue-800 border-blue-200",
-  "Digital Level": "bg-sky-100 text-sky-800 border-sky-200",
-  "UAV / Drone": "bg-amber-100 text-amber-800 border-amber-200",
-  Controller: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  "Calibration Service": "bg-rose-100 text-rose-800 border-rose-200",
-  Other: "bg-slate-100 text-slate-800 border-slate-200",
+  "Total Station": "bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/30",
+  "GNSS Receiver": "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  "Digital Level": "bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30",
+  "UAV / Drone": "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  Controller: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  "Calibration Service": "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30",
+  Other: "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30",
 };
 
 type Tab = "register" | "calibration" | "deployments" | "maintenance";
@@ -1139,8 +1137,8 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
                             </p>
                           </div>
                         ) : (
-                          <div className="rounded-none border border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20 px-3 py-2">
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                          <div className="rounded-none border border-warning/30 bg-warning/10 px-3 py-2">
+                            <p className="text-xs text-warning">
                               No marketplace wallet selected. Buyers will see
                               "Seller has no wallet." Set one in Billing.
                             </p>
@@ -1700,7 +1698,7 @@ export default function AssetManagementPage({ workspaceId }: AssetManagementPage
         }
       >
         <div className="flex justify-center py-4">
-          <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+          <CheckCircle2 className="h-12 w-12 text-success" />
         </div>
       </DialogTemplate>
     </DashboardShell>

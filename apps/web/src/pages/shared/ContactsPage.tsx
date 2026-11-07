@@ -28,6 +28,8 @@ import {
   CardDescription,
   CardContent,
 } from "../../components/ui/card.tsx";
+import { MetricStrip } from "../../components/dashboard/MetricStrip.tsx";
+import { DashboardHeader } from "../../components/dashboard/DashboardShell.tsx";
 import { ComboboxField } from "../../components/templates/ComboboxField.tsx";
 import { DialogTemplate } from "../../components/templates/DialogTemplate.tsx";
 import { PageForm } from "../../components/templates/PageForm.tsx";
@@ -171,21 +173,19 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
   const stats = [
     {
       label: "Total Contacts",
-      value: totalContacts,
-      icon: Users,
-      iconClassName: "h-5 w-5 text-primary",
+      value: String(totalContacts),
+      tone: "primary" as const,
+      icon: <Users />,
     },
     {
       label: "Active Clients",
-      value: activeClients,
-      icon: Building2,
-      iconClassName: "h-5 w-5 text-muted-foreground",
+      value: String(activeClients),
+      icon: <Building2 />,
     },
     {
       label: "Network Partners",
-      value: networkPartners,
-      icon: Handshake,
-      iconClassName: "h-5 w-5 text-muted-foreground",
+      value: String(networkPartners),
+      icon: <Handshake />,
     },
   ];
 
@@ -447,42 +447,24 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
         </Alert>
       )}
 
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            Contacts
-            <Badge variant="secondary">Directory</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Manage clients, subcontractors, and authorities
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {totalContacts} {totalContacts === 1 ? "contact" : "contacts"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
-          <Button size="sm" onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4" /> Add Contact
-          </Button>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Contacts"
+        badge={<Badge variant="secondary">Directory</Badge>}
+        subtitle="Manage clients, subcontractors, and authorities"
+        meta={`${totalContacts} ${totalContacts === 1 ? "contact" : "contacts"}`}
+        actions={
+          <>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+            <Button size="sm" onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4" /> Add Contact
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
-              <stat.icon className={stat.iconClassName} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <MetricStrip metrics={stats} />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Tabs

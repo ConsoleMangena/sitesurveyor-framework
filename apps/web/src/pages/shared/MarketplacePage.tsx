@@ -642,8 +642,8 @@ export default function MarketplacePage({
                           </p>
                         </div>
                       ) : (
-                        <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2">
-                          <p className="text-xs text-amber-700">
+                        <div className="rounded-none border border-warning/30 bg-warning/10 px-3 py-2">
+                          <p className="text-xs text-warning">
                             No marketplace wallet selected. Buyers will see
                             "Seller has no wallet." Set one in Billing.
                           </p>

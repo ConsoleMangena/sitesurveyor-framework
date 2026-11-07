@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { DashboardHeader } from "@/components/dashboard/DashboardShell.tsx";
 import {
   Card,
   CardContent,
@@ -1293,43 +1294,43 @@ export default function BillingPage({
   return (
     <div className="space-y-4">
       {/* ── Page header ──────────────────────────────────── */}
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
-          <p className="text-sm text-muted-foreground">
-            AI credits, workspace storage and invoice payments, with the ledger behind all of them.
-          </p>
-          <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <DashboardHeader
+        title="Billing"
+        subtitle="AI credits, workspace storage and invoice payments, with the ledger behind all of them."
+        meta={
+          <span className="inline-flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-0.5 font-medium text-foreground">
               <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
               {activeSectionMeta.label}
             </span>
             <span>{activeSectionMeta.description}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadStatementCsv}
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-          {canManageBilling && (
+          </span>
+        }
+        actions={
+          <>
             <Button
+              variant="outline"
               size="sm"
-              onClick={openPaymentComposer}
-              disabled={invoicesLoading || payableInvoices.length === 0}
+              onClick={downloadStatementCsv}
               className="gap-2"
             >
-              <Plus className="h-4 w-4" />
-              Make a payment
+              <Download className="h-4 w-4" />
+              Export
             </Button>
-          )}
-        </div>
-      </div>
+            {canManageBilling && (
+              <Button
+                size="sm"
+                onClick={openPaymentComposer}
+                disabled={invoicesLoading || payableInvoices.length === 0}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Make a payment
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* ── Sections ─────────────────────────────────────── */}
       <nav className="flex flex-wrap items-center gap-2" aria-label="Billing sections">

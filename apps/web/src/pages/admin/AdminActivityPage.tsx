@@ -5,6 +5,7 @@ import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DashboardHeader } from "@/components/dashboard/DashboardShell.tsx";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
@@ -100,20 +101,12 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
 
   return (
     <div className="space-y-4">
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            Platform activity
-            <Badge variant="secondary">Platform admin</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Recent administrative activity across workspaces
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {entries.length} {entries.length === 1 ? "entry" : "entries"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <DashboardHeader
+        title="Platform activity"
+        badge={<Badge variant="secondary">Platform admin</Badge>}
+        subtitle="Recent administrative activity across workspaces"
+        meta={`${entries.length} ${entries.length === 1 ? "entry" : "entries"}`}
+        actions={
           <Button
             variant="outline"
             size="sm"
@@ -128,8 +121,8 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
             )}
             Refresh
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {error ? (
         <ErrorNotice tone="danger">

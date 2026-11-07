@@ -1498,8 +1498,8 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
                   <span
                     className={cn(
                       "font-semibold",
-                      inv.status === "Paid" && "text-emerald-600",
-                      inv.status === "Overdue" && "text-red-600",
+                      inv.status === "Paid" && "text-success",
+                      inv.status === "Overdue" && "text-destructive",
                     )}
                   >
                     {formatCurrency(sum)}

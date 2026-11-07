@@ -549,7 +549,7 @@ export default function WorkspaceSettingsPage({
                         isAtLimit
                           ? "font-medium text-destructive"
                           : isNearLimit
-                            ? "font-medium text-amber-500"
+                            ? "font-medium text-warning"
                             : "font-medium text-foreground"
                       }
                     >
@@ -569,7 +569,7 @@ export default function WorkspaceSettingsPage({
                         isAtLimit
                           ? "bg-destructive"
                           : isNearLimit
-                            ? "bg-amber-500"
+                            ? "bg-warning"
                             : "bg-primary"
                       }`}
                       style={{ width: `${Math.min(percent, 100)}%` }}
@@ -586,7 +586,7 @@ export default function WorkspaceSettingsPage({
                     className={
                       overQuota
                         ? "flex items-start gap-3 rounded-none border border-destructive/20 bg-destructive/10 p-4"
-                        : "flex items-start gap-3 rounded-none border border-amber-500/20 bg-amber-500/10 p-4"
+                        : "flex items-start gap-3 rounded-none border border-warning/20 bg-warning/10 p-4"
                     }
                   >
                     <HardDrive
@@ -594,7 +594,7 @@ export default function WorkspaceSettingsPage({
                       className={
                         overQuota
                           ? "mt-0.5 shrink-0 text-destructive"
-                          : "mt-0.5 shrink-0 text-amber-500"
+                          : "mt-0.5 shrink-0 text-warning"
                       }
                     />
                     <div className="min-w-0">

@@ -28,6 +28,7 @@ import { DataTableColumnHeader } from "@/components/data-table/column-header";
 import { DataTablePagination } from "@/components/data-table/pagination";
 import { DataTableToolbar } from "@/components/data-table/toolbar";
 import { Badge } from "@/components/ui/badge";
+import { DashboardHeader } from "@/components/dashboard/DashboardShell.tsx";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -318,20 +319,12 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
 
   return (
     <div className="space-y-4">
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            User management
-            <Badge variant="secondary">Platform admin</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            View registered users and manage platform admin access
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {filteredCount} {filteredCount === 1 ? "user" : "users"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <DashboardHeader
+        title="User management"
+        badge={<Badge variant="secondary">Platform admin</Badge>}
+        subtitle="View registered users and manage platform admin access"
+        meta={`${filteredCount} ${filteredCount === 1 ? "user" : "users"}`}
+        actions={
           <Button
             variant="outline"
             size="sm"
@@ -346,8 +339,8 @@ export default function AdminUsersPage({ isPlatformAdmin }: AdminUsersPageProps)
             )}
             Refresh
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 

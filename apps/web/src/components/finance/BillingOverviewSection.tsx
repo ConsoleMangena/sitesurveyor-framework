@@ -16,9 +16,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { DashboardSection } from "@/components/dashboard/DashboardShell.tsx";
+import { MetricStrip } from "@/components/dashboard/MetricStrip.tsx";
 import { getWorkspaceBillingOverview } from "../../lib/repositories/pesepay.ts";
 import type { WorkspaceBillingOverview } from "../../lib/repositories/pesepay.ts";
 import { formatCurrency, formatDate } from "./FinanceUtils.ts";
@@ -57,13 +57,7 @@ export default function BillingOverviewSection({
   }, [load, refreshKey]);
 
   if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-32 w-full" />
-        ))}
-      </div>
-    );
+    return <MetricStrip metrics={[]} loading />;
   }
 
   if (error) {
@@ -86,60 +80,41 @@ export default function BillingOverviewSection({
   }
 
   const storage = overview.storage;
-  const tiles = [
-    {
-      key: "credits",
-      label: "AI credits available",
-      value: Number(overview.ai_credit_balance).toLocaleString(),
-      caption: `${Number(overview.ai_credits_used).toLocaleString()} used across AI calls`,
-      icon: Sparkles,
-    },
-    {
-      key: "balance",
-      label: "SiteSurveyor balance",
-      value: formatCurrency(Number(overview.wallet_balance)),
-      caption: "Prepaid from PesePay, usable for credits and storage",
-      icon: Wallet,
-    },
-    {
-      key: "storage",
-      label: "Storage used",
-      value: storage ? `${storage.used_mb.toFixed(0)} MB` : "—",
-      caption: storage
-        ? `of ${storage.limit_mb.toFixed(0)} MB · ${storage.file_count.toLocaleString()} files`
-        : "No quota data",
-      icon: HardDrive,
-    },
-    {
-      key: "spent",
-      label: "Total spent",
-      value: formatCurrency(Number(overview.total_spent)),
-      caption: `${overview.successful_purchases} completed purchase${
-        overview.successful_purchases === 1 ? "" : "s"
-      }`,
-      icon: Coins,
-    },
-  ];
 
   return (
     <DashboardSection title="Overview">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list" aria-label="Billing totals">
-        {tiles.map((tile) => {
-          const Icon = tile.icon;
-          return (
-            <Card key={tile.key} role="listitem" className="gap-4 border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{tile.label}</CardTitle>
-                <Icon className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold tabular-nums">{tile.value}</div>
-                <p className="text-xs text-muted-foreground">{tile.caption}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <MetricStrip
+        metrics={[
+          {
+            label: "AI credits available",
+            value: Number(overview.ai_credit_balance).toLocaleString(),
+            subtext: `${Number(overview.ai_credits_used).toLocaleString()} used`,
+            tone: "primary",
+            icon: <Sparkles />,
+          },
+          {
+            label: "SiteSurveyor balance",
+            value: formatCurrency(Number(overview.wallet_balance)),
+            subtext: "Prepaid via PesePay",
+            icon: <Wallet />,
+          },
+          {
+            label: "Storage used",
+            value: storage ? `${storage.used_mb.toFixed(0)} MB` : "—",
+            subtext: storage ? `of ${storage.limit_mb.toFixed(0)} MB` : "No quota data",
+            tone: "info",
+            icon: <HardDrive />,
+          },
+          {
+            label: "Total spent",
+            value: formatCurrency(Number(overview.total_spent)),
+            subtext: `${overview.successful_purchases} completed purchase${
+              overview.successful_purchases === 1 ? "" : "s"
+            }`,
+            icon: <Coins />,
+          },
+        ]}
+      />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="gap-4 border-border">

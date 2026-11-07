@@ -34,6 +34,8 @@ import { listAllJobs, listAllProjects } from "../../lib/repositories/adminPlatfo
 import { mapStatus } from "../../lib/mappers.ts";
 import type { Database } from "../../lib/supabase/types.ts";
 import { EntityFilesCard } from "../../components/files/EntityFilesCard";
+import { MetricStrip } from "../../components/dashboard/MetricStrip.tsx";
+import { DashboardHeader } from "../../components/dashboard/DashboardShell.tsx";
 import {
   Empty,
   EmptyDescription,
@@ -611,72 +613,51 @@ export default function JobsPage({
         </Alert>
       )}
 
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            Jobs
-            <Badge variant="secondary">Field jobs</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            View field jobs, site visits, and survey assignments
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {!isPlatformAdmin
-              ? "Maintained by platform administrators"
-              : `${jobStats.total} ${jobStats.total === 1 ? "job" : "jobs"}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {isPlatformAdmin ? (
+      <DashboardHeader
+        title="Jobs"
+        badge={<Badge variant="secondary">Field jobs</Badge>}
+        subtitle="View field jobs, site visits, and survey assignments"
+        meta={
+          !isPlatformAdmin
+            ? "Maintained by platform administrators"
+            : `${jobStats.total} ${jobStats.total === 1 ? "job" : "jobs"}`
+        }
+        actions={
+          isPlatformAdmin ? (
             <Button onClick={openCreateEditor}>
               <Plus className="h-4 w-4" /> Add job
             </Button>
-          ) : undefined}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-            <Briefcase className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{String(jobStats.total)}</div>
-            <p className="text-xs text-muted-foreground">All survey jobs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Planned</CardTitle>
-            <Clock className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{String(jobStats.planned)}</div>
-            <p className="text-xs text-muted-foreground">Yet to start</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <PlayCircle className="h-5 w-5 text-warning" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{String(jobStats.inProgress)}</div>
-            <p className="text-xs text-muted-foreground">Active field work</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle2 className="h-5 w-5 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{String(jobStats.completed)}</div>
-            <p className="text-xs text-muted-foreground">Finished jobs</p>
-          </CardContent>
-        </Card>
-      </div>
+      <MetricStrip
+        metrics={[
+          {
+            label: "Total Jobs",
+            value: String(jobStats.total),
+            tone: "primary",
+            icon: <Briefcase />,
+          },
+          {
+            label: "Planned",
+            value: String(jobStats.planned),
+            icon: <Clock />,
+          },
+          {
+            label: "In Progress",
+            value: String(jobStats.inProgress),
+            tone: "warning",
+            icon: <PlayCircle />,
+          },
+          {
+            label: "Completed",
+            value: String(jobStats.completed),
+            tone: "success",
+            icon: <CheckCircle2 />,
+          },
+        ]}
+      />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={typeFilter} onValueChange={(value) => setTypeFilter(value as JobFilter)}>

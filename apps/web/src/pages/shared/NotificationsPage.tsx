@@ -10,9 +10,9 @@ import { Badge } from "../../components/ui/badge.tsx";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "../../components/ui/card.tsx";
+import { MetricStrip } from "../../components/dashboard/MetricStrip.tsx";
+import { DashboardHeader } from "../../components/dashboard/DashboardShell.tsx";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { ScrollArea } from "../../components/ui/scroll-area.tsx";
@@ -96,78 +96,58 @@ export default function NotificationsPage({
   const summary = [
     {
       label: "Total",
-      value: notifications.length,
-      icon: Bell,
-      iconClassName: "h-5 w-5 text-muted-foreground",
+      value: String(notifications.length),
+      icon: <Bell />,
     },
     {
       label: "Unread",
-      value: unreadCount,
-      icon: Bell,
-      iconClassName: "h-5 w-5 text-primary",
+      value: String(unreadCount),
+      tone: "primary" as const,
+      icon: <Bell />,
     },
     {
       label: "Read",
-      value: readCount,
-      icon: Check,
-      iconClassName: "h-5 w-5 text-muted-foreground",
+      value: String(readCount),
+      icon: <Check />,
     },
   ];
 
   return (
     <div className="space-y-4">
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            Notifications
-            <Badge variant="secondary">Signal feed</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Review workspace updates, assignments, invitations, and quote activity.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={refreshing}
-            onClick={() => void handleRefresh()}
-          >
-            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-            {refreshing ? "Refreshing" : "Refresh"}
-          </Button>
-          <Button
-            size="sm"
-            disabled={unreadCount === 0 || markingAllRead}
-            onClick={() => void handleMarkAllRead()}
-          >
-            <Check className="h-4 w-4" />
-            {markingAllRead ? "Updating" : "Mark all as read"}
-            {unreadCount > 0 && !markingAllRead && (
-              <Badge variant="secondary" className="ml-2">
-                {unreadCount}
-              </Badge>
-            )}
-          </Button>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Notifications"
+        badge={<Badge variant="secondary">Signal feed</Badge>}
+        subtitle="Review workspace updates, assignments, invitations, and quote activity."
+        meta={unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={refreshing}
+              onClick={() => void handleRefresh()}
+            >
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              {refreshing ? "Refreshing" : "Refresh"}
+            </Button>
+            <Button
+              size="sm"
+              disabled={unreadCount === 0 || markingAllRead}
+              onClick={() => void handleMarkAllRead()}
+            >
+              <Check className="h-4 w-4" />
+              {markingAllRead ? "Updating" : "Mark all as read"}
+              {unreadCount > 0 && !markingAllRead && (
+                <Badge variant="secondary" className="ml-2">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {summary.map((item) => (
-          <Card key={item.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
-              <item.icon className={item.iconClassName} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{item.value}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <MetricStrip metrics={summary} />
 
       {error && (
         <Alert variant="destructive">

@@ -25,6 +25,7 @@ import { DataTableColumnHeader } from "@/components/data-table/column-header";
 import { DataTablePagination } from "@/components/data-table/pagination";
 import { DataTableToolbar } from "@/components/data-table/toolbar";
 import { Badge } from "@/components/ui/badge";
+import { DashboardHeader } from "@/components/dashboard/DashboardShell.tsx";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -303,20 +304,12 @@ export default function AdminWorkspacesPage({
 
   return (
     <div className="space-y-4">
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            Workspaces
-            <Badge variant="secondary">Platform admin</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Inspect any workspace — members, entity counts, archive status
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {filteredCount} {filteredCount === 1 ? "workspace" : "workspaces"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <DashboardHeader
+        title="Workspaces"
+        badge={<Badge variant="secondary">Platform admin</Badge>}
+        subtitle="Inspect any workspace — members, entity counts, archive status"
+        meta={`${filteredCount} ${filteredCount === 1 ? "workspace" : "workspaces"}`}
+        actions={
           <Button
             variant="outline"
             size="sm"
@@ -331,8 +324,8 @@ export default function AdminWorkspacesPage({
             )}
             Refresh
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {error ? <ErrorNotice tone="danger">{error}</ErrorNotice> : null}
 

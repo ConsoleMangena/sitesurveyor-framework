@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Coins, Loader2, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -21,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { DashboardSection } from "@/components/dashboard/DashboardShell.tsx";
+import { KpiCard, KpiGrid } from "@/components/dashboard/KpiCard.tsx";
 import {
   getAiCreditBalance,
   listAiCreditTransactions,
@@ -122,41 +116,25 @@ export default function AiCreditsSection({
 
   return (
     <DashboardSection title="AI credits">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="gap-4 border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available credits</CardTitle>
-            <Sparkles className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {loading ? <Skeleton className="h-8 w-24" /> : (balance ?? 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Spent on AI chat and analysis, one entry per call
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="gap-4 border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Credits purchased</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">{purchased.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">{used.toLocaleString()} used so far</p>
-          </CardContent>
-        </Card>
-        <Card className="gap-4 border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">How credits are added</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs leading-relaxed text-muted-foreground">
-            Credits appear only after PesePay confirms the payment. A declined or
-            cancelled checkout never changes your balance, and a failed AI call is
-            refunded to the same ledger.
-          </CardContent>
-        </Card>
-      </div>
+      <KpiGrid>
+        <KpiCard
+          title="Available credits"
+          value={loading ? "…" : (balance ?? 0).toLocaleString()}
+          subtext={`${used.toLocaleString()} used`}
+          tone="primary"
+          icon={<Sparkles />}
+        />
+        <KpiCard
+          title="Credits purchased"
+          value={purchased.toLocaleString()}
+          icon={<Coins />}
+        />
+      </KpiGrid>
+      <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
+        Credits appear only after PesePay confirms the payment. A declined or
+        cancelled checkout never changes your balance, and a failed AI call is
+        refunded to the same ledger.
+      </p>
 
       <PackageCatalog
         workspaceId={workspaceId}

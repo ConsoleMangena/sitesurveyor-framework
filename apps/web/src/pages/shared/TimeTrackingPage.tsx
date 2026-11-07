@@ -23,6 +23,8 @@ import {
   CardTitle,
   CardDescription,
 } from "../../components/ui/card.tsx";
+import { MetricStrip } from "../../components/dashboard/MetricStrip.tsx";
+import { DashboardHeader } from "../../components/dashboard/DashboardShell.tsx";
 import {
   Select,
   SelectContent,
@@ -669,31 +671,31 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
   const stats = [
     {
       label: "Total Hours",
-      sub: `${billableHours.toFixed(2)}h billable`,
+      subtext: `${billableHours.toFixed(2)}h billable`,
       value: `${totalHours.toFixed(2)}h`,
-      icon: Clock,
-      iconClassName: "h-5 w-5 text-success",
+      tone: "success" as const,
+      icon: <Clock />,
     },
     {
       label: "This Week",
-      sub: "Mon–Sun",
+      subtext: "Mon–Sun",
       value: `${thisWeekHours.toFixed(2)}h`,
-      icon: Clock,
-      iconClassName: "h-5 w-5 text-success",
+      tone: "success" as const,
+      icon: <Clock />,
     },
     {
       label: "Total Expenses",
-      sub: `$${reimbursableExpenses.toLocaleString()} reimbursable`,
+      subtext: `$${reimbursableExpenses.toLocaleString()} reimbursable`,
       value: `$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-      icon: DollarSign,
-      iconClassName: "h-5 w-5 text-warning",
+      tone: "warning" as const,
+      icon: <DollarSign />,
     },
     {
       label: "Entries",
-      sub: activeTab,
+      subtext: activeTab,
       value: entryCount.toString(),
-      icon: Clock,
-      iconClassName: "h-5 w-5 text-primary",
+      tone: "primary" as const,
+      icon: <Clock />,
     },
   ];
 
@@ -723,26 +725,18 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
 
   return (
     <div className="space-y-4">
-      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            Time &amp; Expenses
-            <Badge variant="secondary">Field log</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Log your hours and site costs against real projects
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {entryCount} {entryCount === 1 ? "entry" : "entries"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <DashboardHeader
+        title="Time & Expenses"
+        badge={<Badge variant="secondary">Field log</Badge>}
+        subtitle="Log your hours and site costs against real projects"
+        meta={`${entryCount} ${entryCount === 1 ? "entry" : "entries"}`}
+        actions={
           <Button size="sm" className="gap-2" onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4" />
             {activeTab === "time" ? "Log Time" : "Log Expense"}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -750,20 +744,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
         </Alert>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
-              <stat.icon className={stat.iconClassName} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.sub}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <MetricStrip metrics={stats} />
 
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
