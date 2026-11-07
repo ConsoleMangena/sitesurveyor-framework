@@ -79,8 +79,24 @@ def robust_norm(a: np.ndarray, lo: float = 2, hi: float = 98) -> np.ndarray:
     return np.clip((a - p_lo) / (p_hi - p_lo + 1e-9), 0, 1)
 
 
+def _hex_rgba(value: str) -> tuple[int, int, int, int]:
+    """Turn '#rrggbb' or '#rrggbbaa' into the RGBA tuple a colour table needs."""
+    clean = value.lstrip("#")
+    if len(clean) == 6:
+        clean += "ff"
+    if len(clean) != 8:
+        raise ValueError(f"colour must be #rrggbb or #rrggbbaa, got {value!r}")
+    return (
+        int(clean[0:2], 16),
+        int(clean[2:4], 16),
+        int(clean[4:6], 16),
+        int(clean[6:8], 16),
+    )
+
+
 def write_raster(path: Path, data: np.ndarray, dtype: str = "float32",
-                 nodata: float | None = None, count: int = 1) -> None:
+                 nodata: float | None = None, count: int = 1,
+                 colors: list[str] | None = None) -> None:
     """
     Write a 2D or 3D array to a GeoTIFF on the common grid.
 
@@ -90,9 +106,14 @@ def write_raster(path: Path, data: np.ndarray, dtype: str = "float32",
         dtype: Output data type string
         nodata: Nodata value
         count: Number of bands (auto-detected from 3D arrays)
+        colors: Optional class palette for a 2D uint8 raster. Written as the
+            GeoTIFF colour table so desktop GIS software and the web map can
+            colourise the classes directly from the file.
     """
     if data.ndim == 3:
         count = data.shape[0]
+    if colors is not None and (data.ndim != 2 or dtype != "uint8"):
+        raise ValueError("colors are only supported for 2D uint8 class rasters")
 
     with rasterio.open(
         path, "w", driver="GTiff",
@@ -105,6 +126,12 @@ def write_raster(path: Path, data: np.ndarray, dtype: str = "float32",
         else:
             for i in range(count):
                 dst.write(data[i].astype(dtype), i + 1)
+
+        if colors is not None:
+            table = {code: _hex_rgba(hex_color) for code, hex_color in enumerate(colors)}
+            if nodata is not None and np.isfinite(nodata) and 0 <= int(nodata) <= 255:
+                table[int(nodata)] = (0, 0, 0, 0)
+            dst.write_colormap(1, table)
 
 
 def pixel_to_lonlat(row: int, col: int) -> tuple[float, float]:

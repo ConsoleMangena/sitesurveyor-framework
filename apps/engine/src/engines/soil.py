@@ -47,7 +47,10 @@ from src.utils.classification import (
     CLASS_NAMES,
     NODATA_CLASS,
     NODATA_HEX,
+    ZONE_PALETTES,
     classify_zones,
+    export_classified_overlay,
+    export_zone_polygons,
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
@@ -287,7 +290,19 @@ def run_soil_survey(
     # ------------------------------------------------------------------
     print("[6/6] Exporting rasters, maps, and deliverables...")
     write_raster(cfg.OUT / "soil_capability_index.tif", sci, dtype="float32", nodata=np.nan)
-    write_raster(cfg.OUT / "soil_capability_zones.tif", zones, dtype="uint8", nodata=255)
+    write_raster(cfg.OUT / "soil_capability_zones.tif", zones, dtype="uint8",
+                 nodata=255, colors=ZONE_PALETTES["soil"])
+    export_classified_overlay(
+        zones,
+        cfg.OUT / "soil_overlay.png",
+        colors=ZONE_PALETTES["soil"],
+    )
+    export_zone_polygons(
+        zones,
+        cfg.OUT / "soil_zones.geojson",
+        colors=ZONE_PALETTES["soil"],
+        category="soil",
+    )
 
     # CSV
     if candidates:

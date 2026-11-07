@@ -6,10 +6,18 @@ and distance-constrained local peak picking for candidate borehole/target sites.
 """
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Import config FIRST before rasterio to ensure PROJ paths are initialized
+import src.config as cfg
+
 import numpy as np
+from rasterio import features as rio_features
+from rasterio import warp as rio_warp
 from scipy.ndimage import maximum_filter
 
-import src.config as cfg
 from src.utils.raster import pixel_to_lonlat
 
 # Zone raster class domain. 255 is reserved for pixels with no usable satellite
@@ -114,6 +122,58 @@ CLASS_NAMES = {
 # cannot read as either the best or the worst class.
 NODATA_HEX = "#b8b8b8"
 NODATA_RGB = tuple(184 / 255 for _ in range(3))
+
+# Ranked class colours, indexed by zone code 0-6. One table serves the GeoTIFF
+# colour table, the PNG overlay, and the web fallback, so a class painted in the
+# browser is the same class a desktop GIS paints from the file itself.
+ZONE_PALETTES: dict[str, list[str]] = {
+    "water": ["#1f77b4", "#d73027", "#f46d43", "#fdae61", "#a6d96a", "#1a9850", "#7f7f7f"],
+    "minerals": ["#1f77b4", "#4575b4", "#74add1", "#fee090", "#f46d43", "#d73027", "#7f7f7f"],
+    "soil": ["#2166ac", "#d73027", "#fc8d59", "#fee08b", "#91cf60", "#1a9850", "#808080"],
+    "hazard": ["#2166ac", "#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027", "#808080"],
+}
+
+# The words each category puts on its classes. One table per category because "Low" is
+# a different promise in each: low prospectivity is worth a trench, low capability is
+# worth a soil test, low hazard is worth nothing at all.
+ZONE_LABELS: dict[str, dict[int, str]] = {
+    "water": {
+        0: "Water body",
+        1: "Very low potential",
+        2: "Low potential",
+        3: "Moderate potential",
+        4: "High potential",
+        5: "Very high potential",
+        6: "Built-up (excluded)",
+    },
+    "minerals": {
+        0: "Water body",
+        1: "Very low prospectivity",
+        2: "Low prospectivity",
+        3: "Moderate prospectivity",
+        4: "High prospectivity",
+        5: "Very high prospectivity",
+        6: "Built-up (excluded)",
+    },
+    "soil": {
+        0: "Water body",
+        1: "Very low capability",
+        2: "Low capability",
+        3: "Moderate capability",
+        4: "High capability",
+        5: "Very high capability",
+        6: "Built-up (excluded)",
+    },
+    "hazard": {
+        0: "Water body",
+        1: "Very low hazard (safe)",
+        2: "Low hazard",
+        3: "Moderate hazard",
+        4: "High hazard",
+        5: "Very high hazard",
+        6: "Built-up (excluded)",
+    },
+}
 
 
 def zone_class(score: float, breaks: np.ndarray) -> int:
@@ -274,3 +334,263 @@ def find_candidate_sites(
             break
 
     return candidates
+
+
+def export_classified_overlay(
+    classes: np.ndarray,
+    path: Path,
+    colors: list[str] | None = None,
+) -> None:
+    """Export a clean RGBA PNG overlay with 100% transparent nodata.
+
+    No axes, no borders, no text labels -- pure pixel classification ready for web map draping.
+    """
+    from PIL import Image
+
+    if colors is None:
+        colors = ZONE_PALETTES["water"]
+
+    def hex_to_rgb(h: str) -> tuple[int, int, int]:
+        clean = h.lstrip("#")
+        return tuple(int(clean[i : i + 2], 16) for i in (0, 2, 4))
+
+    rgba = np.zeros((classes.shape[0], classes.shape[1], 4), dtype=np.uint8)
+    for code, hex_c in enumerate(colors):
+        rgb = hex_to_rgb(hex_c)
+        rgba[classes == code] = (rgb[0], rgb[1], rgb[2], 215)
+
+    # Nodata class is completely transparent
+    rgba[classes == NODATA_CLASS] = (0, 0, 0, 0)
+
+    Image.fromarray(rgba, mode="RGBA").save(path, optimize=True)
+
+
+def _shoelace(ring: list[tuple[float, float]]) -> float:
+    """Signed area of a closed ring, in the units it was given."""
+    total = 0.0
+    for i in range(len(ring) - 1):
+        x1, y1 = ring[i]
+        x2, y2 = ring[i + 1]
+        total += x1 * y2 - x2 * y1
+    return total / 2.0
+
+
+def _orient_rings(rings: list[list[list[float]]]) -> list[list[list[float]]]:
+    """Put the rings in the order RFC 7946 asks for: exterior anticlockwise, holes clockwise.
+
+    The file is read by other people's tools, and a strict parser is entitled to reject a
+    polygon whose rings wind the wrong way.
+    """
+    oriented: list[list[list[float]]] = []
+    for index, ring in enumerate(rings):
+        points = [(x, y) for x, y in ring]
+        signed = _shoelace(points)
+        wants_positive = index == 0
+        if (signed > 0) != wants_positive:
+            points.reverse()
+        oriented.append([[x, y] for x, y in points])
+    return oriented
+
+
+def _simplify_ring(
+    ring: list[tuple[float, float]], tolerance: float
+) -> list[tuple[float, float]]:
+    """Douglas-Peucker on a closed ring, in the units it was given.
+
+    The ring is cut at the point farthest from its start, which turns the closed curve
+    into two open polylines -- the only shape the algorithm actually solves.
+    """
+    points = list(ring[:-1]) if len(ring) > 1 and ring[0] == ring[-1] else list(ring)
+    count = len(points)
+    if count < 4 or tolerance <= 0:
+        return list(ring)
+
+    def douglas_peucker(open_ring: list[tuple[float, float]]) -> list[tuple[float, float]]:
+        size = len(open_ring)
+        if size < 3:
+            return list(open_ring)
+        keep = [False] * size
+        keep[0] = keep[size - 1] = True
+        stack = [(0, size - 1)]
+        while stack:
+            first, last = stack.pop()
+            if last <= first + 1:
+                continue
+            ax, ay = open_ring[first]
+            bx, by = open_ring[last]
+            dx, dy = bx - ax, by - ay
+            span = dx * dx + dy * dy
+            worst = -1.0
+            worst_at = -1
+            for i in range(first + 1, last):
+                px, py = open_ring[i]
+                if span == 0:
+                    distance = (px - ax) ** 2 + (py - ay) ** 2
+                else:
+                    ratio = ((px - ax) * dx + (py - ay) * dy) / span
+                    ratio = 0.0 if ratio < 0 else (1.0 if ratio > 1 else ratio)
+                    distance = (px - (ax + ratio * dx)) ** 2 + (py - (ay + ratio * dy)) ** 2
+                if distance > worst:
+                    worst = distance
+                    worst_at = i
+            if worst > tolerance * tolerance and worst_at > 0:
+                keep[worst_at] = True
+                stack.append((first, worst_at))
+                stack.append((worst_at, last))
+        return [open_ring[i] for i in range(size) if keep[i]]
+
+    origin = points[0]
+    anchor = max(
+        range(count), key=lambda i: (points[i][0] - origin[0]) ** 2 + (points[i][1] - origin[1]) ** 2
+    )
+    head = douglas_peucker(points[: anchor + 1])
+    tail = douglas_peucker(points[anchor:] + [origin])
+    simplified = head[:-1] + tail[:-1]
+    if len(simplified) < 3:
+        return list(ring)
+    simplified.append(simplified[0])
+    return simplified
+
+
+def export_zone_polygons(
+    classes: np.ndarray,
+    path: Path,
+    colors: list[str] | None = None,
+    labels: dict[int, str] | None = None,
+    category: str = "water",
+    min_region_cells: int = 12,
+    max_regions: int = 1200,
+    simplify_tolerance_m: float | None = None,
+) -> dict:
+    """Publish the classified zones as RFC 7946 GeoJSON polygons in WGS84.
+
+    A classification raster is the right answer for a GIS and the wrong answer for a map:
+    draping it as an image gives the reader a picture of the zones. These polygons are the
+    same cells with their boundaries turned into real vector geometry, so the map can draw
+    them as layers, style them per class, and stay crisp at any zoom.
+
+    The geometry is generalised on the way out, and honestly about it. A natural-breaks map
+    of a continuous index is speckled -- single cells and two-cell islands are noise, not
+    zones -- and every cell boundary it draws is a 30 m step. Sieving merges the speckle
+    into the neighbour that dominates it, and Douglas-Peucker smooths the staircase by at
+    most one cell, which is the resolution of the source data itself. The survey-grade
+    raster is still published beside this file, so nothing is lost.
+
+    Each region is one feature: Leaflet renders a MultiPolygon by flattening its rings into
+    a single polygon, which turns the second region of a class into a hole in the first.
+    """
+    if cfg.LOCAL_CRS is None or cfg.TRANSFORM is None:
+        raise RuntimeError(
+            "no analysis grid is configured; call src.config.set_target_site() before "
+            "exporting zone polygons"
+        )
+
+    if colors is None:
+        colors = ZONE_PALETTES.get(category, ZONE_PALETTES["water"])
+    if labels is None:
+        labels = ZONE_LABELS.get(category, ZONE_LABELS["water"])
+    tolerance = cfg.CELL if simplify_tolerance_m is None else float(simplify_tolerance_m)
+
+    valid = classes != NODATA_CLASS
+    if not np.any(valid):
+        payload = {
+            "type": "FeatureCollection",
+            "name": f"{category}_classification_zones",
+            "metadata": {
+                "category": category,
+                "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "cell_m": cfg.CELL,
+                "crs": "EPSG:4326",
+                "source_crs": cfg.LOCAL_CRS.to_string(),
+                "regions": 0,
+                "simplify_tolerance_m": tolerance,
+                "legend": [],
+            },
+            "features": [],
+        }
+        path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        return payload
+
+    # Sieve hard enough that the map shows zones rather than a stipple, and hard enough
+    # again on a wide survey that the file stays a map-sized file.
+    size = max(1, min_region_cells)
+    shapes: list[tuple[dict, int]] = []
+    while True:
+        work = rio_features.sieve(classes, size=size, mask=valid)
+        shapes = list(
+            rio_features.shapes(
+                work, mask=(work != NODATA_CLASS), transform=cfg.TRANSFORM, connectivity=4
+            )
+        )
+        if len(shapes) <= max_regions or size >= 512:
+            break
+        size *= 2
+
+    zone_features = []
+    for geom, value in shapes:
+        code = int(value)
+        source_rings = geom["coordinates"]
+        # The area is measured before the rings are smoothed: the drawn outline is a
+        # generalisation of the zone, but the ground it covers is not.
+        area_m2 = abs(_shoelace(source_rings[0]))
+        for hole in source_rings[1:]:
+            area_m2 -= abs(_shoelace(hole))
+        rings = [_simplify_ring(ring, tolerance) for ring in source_rings]
+        projected = rio_warp.transform_geom(
+            cfg.LOCAL_CRS,
+            "EPSG:4326",
+            {"type": "Polygon", "coordinates": [[list(point) for point in ring] for ring in rings]},
+        )
+        zone_features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": _orient_rings(
+                        [[[round(x, 6), round(y, 6)] for x, y in ring] for ring in projected["coordinates"]]
+                    ),
+                },
+                "properties": {
+                    "class_code": code,
+                    "class_label": labels.get(code, CLASS_NAMES.get(code, "Unknown")),
+                    "color": colors[code] if 0 <= code < len(colors) else NODATA_HEX,
+                    "area_ha": round(max(area_m2, 0.0) / 10000.0, 2),
+                },
+            }
+        )
+
+    present = sorted({int(value) for _, value in shapes})
+    payload = {
+        "type": "FeatureCollection",
+        "name": f"{category}_classification_zones",
+        "metadata": {
+            "category": category,
+            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "cell_m": cfg.CELL,
+            "crs": "EPSG:4326",
+            "source_crs": cfg.LOCAL_CRS.to_string(),
+            "regions": len(zone_features),
+            "min_region_cells": size,
+            "simplify_tolerance_m": tolerance,
+            "legend": [
+                {
+                    "class_code": code,
+                    "class_label": labels.get(code, CLASS_NAMES.get(code, "Unknown")),
+                    "color": colors[code] if 0 <= code < len(colors) else NODATA_HEX,
+                    "area_ha": round(
+                        sum(f["properties"]["area_ha"] for f in zone_features
+                            if f["properties"]["class_code"] == code),
+                        2,
+                    ),
+                    "region_count": sum(
+                        1 for f in zone_features if f["properties"]["class_code"] == code
+                    ),
+                }
+                for code in present
+            ],
+        },
+        "features": zone_features,
+    }
+
+    path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    return payload

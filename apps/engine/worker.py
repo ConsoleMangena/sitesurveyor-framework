@@ -72,6 +72,23 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     "minerals_geojson": "candidate_mineral_targets.geojson",
     "soil_geojson": "candidate_land_zones.geojson",
     "safest_sites_geojson": "safest_buildable_sites.geojson",
+    "groundwater_tif": "groundwater_potential_zones.tif",
+    "minerals_tif": "mineral_prospectivity_zones.tif",
+    "soil_tif": "soil_capability_zones.tif",
+    "hazard_tif": "hazard_risk_zones.tif",
+    "groundwater_index_tif": "gwpz_index.tif",
+    "minerals_index_tif": "mineral_prospectivity_index.tif",
+    "soil_index_tif": "soil_capability_index.tif",
+    "hazard_index_tif": "hazard_composite_index.tif",
+    "groundwater_overlay": "groundwater_overlay.png",
+    "minerals_overlay": "minerals_overlay.png",
+    "soil_overlay": "soil_overlay.png",
+    "hazard_overlay": "hazard_overlay.png",
+    # The classified zones as vector geometry: one feature per region, in WGS84.
+    "groundwater_zones_geojson": "groundwater_zones.geojson",
+    "minerals_zones_geojson": "minerals_zones.geojson",
+    "soil_zones_geojson": "soil_zones.geojson",
+    "hazard_zones_geojson": "hazard_zones.geojson",
 }
 
 CONTENT_TYPES = {
@@ -402,12 +419,51 @@ def _stop(signum: int, _frame: object) -> None:
     logger.info("signal %s received; finishing the current survey before exit", signum)
 
 
+def _acquire_single_instance_lock():
+    """Refuse to start a second worker.
+
+    The engines keep the active AOI in module globals (`src.config`), so two
+    workers sharing a state directory would analyse each other's area. Render is
+    configured for one instance, but a manual `docker run` (or a mis-scaled
+    service) must fail fast rather than corrupt results. Returns the open lock
+    handle on success, or None when another worker holds it.
+    """
+    lock_path = cfg.STATE_DIR / "worker.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = open(lock_path, "a+", encoding="utf-8")
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return None
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"{WORKER_ID}\n")
+    handle.flush()
+    return handle
+
+
 def main() -> int:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         stream=sys.stdout,
     )
+    lock = _acquire_single_instance_lock()
+    if lock is None:
+        logger.error(
+            "another worker already holds %s; refusing to start a second instance",
+            cfg.STATE_DIR / "worker.lock",
+        )
+        return 1
     platform = Platform(
         first_env("SUPABASE_URL"),
         first_env("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"),

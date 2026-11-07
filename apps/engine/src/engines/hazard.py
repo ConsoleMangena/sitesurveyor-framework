@@ -46,7 +46,10 @@ from rasterio.warp import Resampling
 from src.utils.classification import (
     NODATA_CLASS,
     NODATA_HEX,
+    ZONE_PALETTES,
     classify_zones,
+    export_classified_overlay,
+    export_zone_polygons,
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
@@ -257,8 +260,20 @@ def run_hazard_survey(
     # ------------------------------------------------------------------
     print("[6/6] Exporting GeoTIFFs, maps, and deliverables...")
     write_raster(cfg.OUT / "hazard_composite_index.tif", hazard_index, dtype="float32", nodata=np.nan)
-    write_raster(cfg.OUT / "hazard_risk_zones.tif", hazard_zones, dtype="uint8", nodata=255)
+    write_raster(cfg.OUT / "hazard_risk_zones.tif", hazard_zones, dtype="uint8",
+                 nodata=255, colors=ZONE_PALETTES["hazard"])
     write_raster(cfg.OUT / "site_safety_index.tif", safety_index, dtype="float32", nodata=np.nan)
+    export_classified_overlay(
+        hazard_zones,
+        cfg.OUT / "hazard_overlay.png",
+        colors=ZONE_PALETTES["hazard"],
+    )
+    export_zone_polygons(
+        hazard_zones,
+        cfg.OUT / "hazard_zones.geojson",
+        colors=ZONE_PALETTES["hazard"],
+        category="hazard",
+    )
 
     # Candidate Safe Sites CSV & GeoJSON
     if safest_sites:

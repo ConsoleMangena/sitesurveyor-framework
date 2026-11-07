@@ -40,7 +40,10 @@ from src.utils.classification import (
     CLASS_NAMES,
     NODATA_CLASS,
     NODATA_RGB,
+    ZONE_PALETTES,
     classify_zones,
+    export_classified_overlay,
+    export_zone_polygons,
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
@@ -239,8 +242,20 @@ def run_minerals_survey(
 
     # 6. Export outputs
     print("[6/6] Exporting GeoTIFFs, vectors, maps, and JSON summary...")
-    write_raster(cfg.OUT / "mineral_prospectivity_zones.tif", classes, dtype="uint8", nodata=255)
+    write_raster(cfg.OUT / "mineral_prospectivity_zones.tif", classes, dtype="uint8",
+                 nodata=255, colors=ZONE_PALETTES["minerals"])
     write_raster(cfg.OUT / "mineral_prospectivity_index.tif", gold_index, dtype="float32", nodata=np.nan)
+    export_classified_overlay(
+        classes,
+        cfg.OUT / "minerals_overlay.png",
+        colors=ZONE_PALETTES["minerals"],
+    )
+    export_zone_polygons(
+        classes,
+        cfg.OUT / "minerals_zones.geojson",
+        colors=ZONE_PALETTES["minerals"],
+        category="minerals",
+    )
 
     # Candidate CSV
     candidate_fields = [
