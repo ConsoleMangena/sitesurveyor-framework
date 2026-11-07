@@ -5,6 +5,7 @@ import { getLocalDatabase, isUuid, type LocalDb } from "../localDb/db.ts";
 import { startWorkspaceSync } from "../localDb/sync.ts";
 import { generateLocalId, nowIso, omitNullish } from "../localDb/utils.ts";
 import type { JobDocType } from "../localDb/schemas.ts";
+import { deleteSurveyRunsForJob } from "./satelliteSurveys.ts";
 
 export type JobRow = Tables<"jobs">;
 export type JobInsert = TablesInsert<"jobs">;
@@ -183,14 +184,63 @@ export async function deleteJob(id: string): Promise<void> {
   const session = await getCurrentSession();
   if (!session?.user) throw new Error("You must be signed in to delete a job.");
 
+  let jobTitle: string | null = null;
+  let workspaceId: string | null = null;
+
   const db = await getLocalDb();
   try {
     const doc = await db.jobs.findOne(id).exec();
     if (doc) {
+      const row = toJobRow(doc.toMutableJSON());
+      jobTitle = row.title;
+      workspaceId = row.workspace_id;
       await doc.remove();
     }
   } catch (err) {
     console.warn("Could not remove local job doc:", err);
+  }
+
+  // Also query Supabase if we did not get workspaceId or title
+  if (!workspaceId || !jobTitle) {
+    try {
+      const { data } = await (supabase as any)
+        .from("jobs")
+        .select("workspace_id, title")
+        .eq("id", id)
+        .maybeSingle();
+      if (data) {
+        if (!workspaceId) workspaceId = data.workspace_id;
+        if (!jobTitle) jobTitle = data.title;
+      }
+    } catch (err) {
+      console.warn("Could not query job before deletion:", err);
+    }
+  }
+
+  // In case workspace_id was not on jobs, check survey_runs
+  if (!workspaceId) {
+    try {
+      const { data: runDoc } = await (supabase as any)
+        .from("survey_runs")
+        .select("workspace_id")
+        .or(`job_id.eq.${id},project_id.eq.${id}`)
+        .limit(1)
+        .maybeSingle();
+      if (runDoc?.workspace_id) {
+        workspaceId = runDoc.workspace_id;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Delete all associated Earth Observation data (storage files, deliverables, targets, and survey runs)
+  if (workspaceId) {
+    try {
+      await deleteSurveyRunsForJob(workspaceId, id, jobTitle);
+    } catch (err) {
+      console.warn("Could not delete Earth Observation survey data for job:", err);
+    }
   }
 
   // Delete directly from Supabase

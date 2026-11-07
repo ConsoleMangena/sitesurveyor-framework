@@ -113,6 +113,7 @@ export function validateForm(form: SurveyFormValues): {
 
   return {
     draft: {
+      jobId: form.jobId || null,
       latitude: latitude as number,
       longitude: longitude as number,
       categories: form.categories,

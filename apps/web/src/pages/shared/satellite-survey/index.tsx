@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Briefcase, ChevronLeft } from "lucide-react";
+import { Briefcase, ChevronLeft, Coins } from "lucide-react";
 import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -11,6 +11,7 @@ import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 
 import CandidateTable from "@/components/surveys/CandidateTable.tsx";
 import ContentsPanel, { type SurveySnapshot } from "@/components/surveys/ContentsPanel.tsx";
+import CreditCostPanel from "@/components/surveys/CreditCostPanel.tsx";
 import ExportsPanel from "@/components/surveys/ExportsPanel.tsx";
 import IndicatorsPanel from "@/components/surveys/IndicatorsPanel.tsx";
 import SurveyMap, { type MapViewInfo } from "@/components/surveys/SurveyMap.tsx";
@@ -21,9 +22,11 @@ import {
   InsufficientCreditsError,
   cancelSurveyRun,
   deliverableUrl,
+  quoteSurvey,
   startSurvey,
   type SurveyProvenance,
 } from "../../../lib/repositories/satelliteSurveys.ts";
+import { getAiCreditBalance } from "../../../lib/repositories/pesepay.ts";
 import { listJobs, deleteJob, type JobWithProject } from "../../../lib/repositories/jobs.ts";
 import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteSurveys.ts";
 import {
@@ -34,6 +37,7 @@ import {
   getJobCategory,
   toDossierCategory,
 } from "../../../lib/surveys/labels.ts";
+import { canAfford, type SurveyQuote } from "../../../lib/surveys/pricing.ts";
 import { parseZoneCollection, zoneLegend, type ZoneCollection } from "../../../lib/surveys/zoneLayers.ts";
 import {
   aoiBounds,
@@ -103,6 +107,21 @@ export default function SatelliteSurveyPage({
   const [rasterOverride, setRasterOverride] = useState<boolean | null>(null);
   const [rasterOpacity, setRasterOpacity] = useState(0.65);
 
+  /**
+   * The price of the job as it stands, and the balance it would be taken from.
+   *
+   * The quote is keyed by what it was priced for, so changing the extent or the survey
+   * type cannot leave the previous price on screen for a frame -- and a quote that
+   * failed to load is not shown as a price of zero.
+   */
+  const [quoteState, setQuoteState] = useState<{
+    key: string;
+    quote: SurveyQuote | null;
+  } | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  /** What the last queued survey was charged, and what was left afterwards. */
+  const [charged, setCharged] = useState<{ credits: number; remaining: number | null } | null>(null);
+
   const fetchJobs = useCallback(async () => {
     setJobsLoading(true);
     try {
@@ -124,10 +143,12 @@ export default function SatelliteSurveyPage({
         setValues((prev) => ({ ...prev, jobId: "", clientName: "", address: "" }));
       }
       await fetchJobs();
+      setSelectedId(null);
+      void refresh();
     } catch (err) {
       console.error("Failed to delete job:", err);
     }
-  }, [openedJob, fetchJobs]);
+  }, [openedJob, fetchJobs, refresh]);
 
   function applyAndOpenJob(job: JobWithProject) {
     const cat = getJobCategory(job);
@@ -209,6 +230,61 @@ export default function SatelliteSurveyPage({
 
   const jobCategory = openedJob ? getJobCategory(openedJob) : (values.categories[0] ?? "water");
   const jobDossierCategory = toDossierCategory(jobCategory);
+
+  /**
+   * The price of the job the form currently describes.
+   *
+   * Asked of the platform rather than worked out here: the platform is what charges, so
+   * the number on screen and the number on the ledger are the same computation. The
+   * request is keyed by what it was priced for, so a quote for a different extent is
+   * never mistaken for this one.
+   */
+  const quoteKey =
+    typedLat !== null && values.categories.length
+      ? `${values.categories.join(",")}:${values.halfDeg}:${values.latitude}`
+      : null;
+  const quote = quoteState !== null && quoteState.key === quoteKey ? quoteState.quote : null;
+  const quoteLoading = quoteKey !== null && quoteState?.key !== quoteKey;
+
+  useEffect(() => {
+    if (quoteKey === null || typedLat === null) return;
+    let active = true;
+    // Debounced: the extent and the coordinates are typed, and each keystroke would
+    // otherwise be a pricing request.
+    const timer = window.setTimeout(() => {
+      void quoteSurvey({
+        categories: values.categories,
+        halfDeg: values.halfDeg,
+        latitude: typedLat,
+      })
+        .then((next) => {
+          if (active) setQuoteState({ key: quoteKey, quote: next });
+        })
+        .catch(() => {
+          if (active) setQuoteState({ key: quoteKey, quote: null });
+        });
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [quoteKey, typedLat, values.categories, values.halfDeg]);
+
+  useEffect(() => {
+    let active = true;
+    void getAiCreditBalance(workspaceId)
+      .then((next) => {
+        if (active) setBalance(next);
+      })
+      .catch(() => {
+        // An unreadable balance is not a balance of zero: the form then says it does
+        // not know the balance rather than refusing a survey the workspace can afford.
+        if (active) setBalance(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [workspaceId]);
 
   const candidates = useMemo(
     () => mapCandidates(detail?.targets ?? [], undefined, [jobDossierCategory]),
@@ -400,13 +476,31 @@ export default function SatelliteSurveyPage({
     setProblems(checked.problems);
     if (!checked.draft) return;
 
+    // The platform refuses a survey the workspace cannot pay for, but a refusal after
+    // the click is a worse experience than saying so before it. The balance on screen
+    // may be stale, so this is a courtesy, not the rule -- the platform is the rule.
+    if (quote && !canAfford(quote, balance)) {
+      setRefused(
+        `This workspace has ${balance?.toLocaleString()} AI credits and this survey costs ` +
+          `${quote.credits}. Buy more credits before running it.`,
+      );
+      return;
+    }
+
     setQueueing(true);
     setRefused(null);
     try {
-      const outcome = await startSurvey({ ...checked.draft, workspaceId });
+      const outcome = await startSurvey({
+        ...checked.draft,
+        workspaceId,
+        jobId: values.jobId || openedJob?.id || null,
+        projectId: values.jobId || openedJob?.id || null,
+      });
       adopt(outcome.run);
       selectRun(outcome.run.id);
       setQueuedThisSession(outcome.run.id);
+      setCharged({ credits: outcome.creditsCharged, remaining: outcome.remainingBalance });
+      if (outcome.remainingBalance !== null) setBalance(outcome.remainingBalance);
     } catch (err) {
       setRefused(
         err instanceof InsufficientCreditsError
@@ -466,6 +560,10 @@ export default function SatelliteSurveyPage({
           onRefreshJobs={fetchJobs}
           busy={running !== null}
           queueing={queueing}
+          quote={quote}
+          quoteLoading={quoteLoading}
+          balance={balance}
+          onNavigateBilling={() => onNavigate?.("billing")}
         />
       </DashboardShell>
     );
@@ -542,6 +640,24 @@ export default function SatelliteSurveyPage({
         >
           {refused}
         </ErrorNotice>
+      ) : null}
+
+      {charged ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/35 bg-primary/8 px-3 py-2 text-xs"
+        >
+          <Coins className="size-3.5 text-primary" aria-hidden="true" />
+          <span className="text-foreground">
+            {charged.credits.toLocaleString()} credit{charged.credits === 1 ? "" : "s"} charged
+            for this survey
+          </span>
+          {charged.remaining !== null ? (
+            <span className="text-muted-foreground">
+              · {charged.remaining.toLocaleString()} remaining
+            </span>
+          ) : null}
+        </div>
       ) : null}
 
       <div
@@ -664,6 +780,10 @@ export default function SatelliteSurveyPage({
               problems={problems}
               refused={!outOfCredits ? refused : null}
               onSubmit={() => void submit()}
+              quote={quote}
+              quoteLoading={quoteLoading}
+              balance={balance}
+              onNavigateBilling={() => onNavigate?.("billing")}
             />
 
             {detailError ? (

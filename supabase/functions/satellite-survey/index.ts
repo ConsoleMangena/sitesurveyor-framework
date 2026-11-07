@@ -19,7 +19,6 @@ import {
   json,
 } from "../_shared/supabase.ts";
 
-const SURVEY_OPERATION = "satellite.survey";
 const CATEGORY_IDS = ["water", "minerals", "soil", "hazard"] as const;
 
 // The Digital Earth Africa envelope. Outside it the honest answer is "no coverage", not
@@ -33,6 +32,7 @@ const MAX_HALF_DEG = 0.5;
 interface StartInput {
   workspaceId: string;
   projectId?: string | null;
+  jobId?: string | null;
   latitude: number;
   longitude: number;
   halfDeg: number;
@@ -97,11 +97,14 @@ function validate(body: Record<string, unknown>): { input?: StartInput; problems
 
   if (problems.length) return { problems };
 
+  const validJobId = isUuid(body.jobId) ? (body.jobId as string) : isUuid(projectId) ? (projectId as string) : null;
+
   return {
     problems,
     input: {
       workspaceId: workspaceId as string,
-      projectId: isUuid(projectId) ? projectId : null,
+      projectId: isUuid(projectId) ? (projectId as string) : validJobId,
+      jobId: validJobId,
       latitude: lat,
       longitude: lon,
       halfDeg: size,
@@ -156,19 +159,27 @@ async function getMembership(
  * ledger finds refunds by operation id -- so the run's id is generated here and becomes
  * that operation id, and the insert that follows either completes the pair or gives the
  * credits back.
+ *
+ * The amount is the platform's, not the request's. The job's own specification -- what
+ * it surveys and how much ground it covers -- is priced inside the charge, so a
+ * hand-edited request buys the survey it asked for and is billed for it rather than
+ * naming its own price.
  */
 async function chargeSurvey(
   admin: ReturnType<typeof adminClient>,
   workspaceId: string,
   userId: string,
   runId: string,
+  input: StartInput,
 ) {
-  const { data, error } = await admin.rpc("spend_workspace_ai_credits", {
+  const { data, error } = await admin.rpc("charge_satellite_survey", {
     p_workspace_id: workspaceId,
     p_user_id: userId,
     p_operation_id: runId,
-    p_operation: SURVEY_OPERATION,
     p_description: "Satellite survey",
+    p_categories: input.categories,
+    p_half_deg: input.halfDeg,
+    p_latitude: input.latitude,
   });
 
   if (error) {
@@ -185,13 +196,27 @@ async function chargeSurvey(
       return { ok: false as const, status: 403, error:
         "Only an active member of this workspace can run a satellite survey." };
     }
+    if (message.includes("Unknown survey category")) {
+      return { ok: false as const, status: 400, error:
+        `This survey cannot be priced: ${message}` };
+    }
     return { ok: false as const, status: 503, error: "Could not charge for the survey." };
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { transaction_id: string; remaining_balance: number; credits_charged: number }
+    | {
+        transaction_id: string;
+        remaining_balance: number;
+        credits_charged: number;
+        quote: Record<string, unknown> | null;
+      }
     | undefined;
-  return { ok: true as const, charged: row?.credits_charged ?? 0, balance: row?.remaining_balance ?? null };
+  return {
+    ok: true as const,
+    charged: row?.credits_charged ?? 0,
+    balance: row?.remaining_balance ?? null,
+    quote: row?.quote ?? null,
+  };
 }
 
 async function refundQuietly(
@@ -233,8 +258,12 @@ async function start(req: Request): Promise<Response> {
   }
 
   const runId = crypto.randomUUID();
-  const charge = await chargeSurvey(admin, input.workspaceId, caller.id, runId);
+  const charge = await chargeSurvey(admin, input.workspaceId, caller.id, runId, input);
   if (!charge.ok) return json({ error: charge.error }, charge.status);
+
+  // The quote travels with the run: what the survey covered and what it cost are
+  // facts about the survey, not about the moment it was queued.
+  const quote = charge.quote as { credits?: number; surface_area_km2?: number } | null;
 
   const { data, error } = await admin
     .from("survey_runs")
@@ -243,6 +272,7 @@ async function start(req: Request): Promise<Response> {
       workspace_id: input.workspaceId,
       created_by: caller.id,
       project_id: input.projectId,
+      job_id: input.jobId,
       status: "queued",
       stage: "Queued for a survey worker",
       latitude: input.latitude,
@@ -254,6 +284,9 @@ async function start(req: Request): Promise<Response> {
       data_sources: input.dataSources,
       composite: input.composite,
       estimated_minutes: estimatedMinutes(input.categories),
+      quoted_credits: charge.charged,
+      surface_area_km2: quote?.surface_area_km2 ?? null,
+      credit_quote: charge.quote,
     })
     .select("*")
     .single();
@@ -267,7 +300,12 @@ async function start(req: Request): Promise<Response> {
     );
   }
 
-  return json({ run: data, creditsCharged: charge.charged, remainingBalance: charge.balance });
+  return json({
+    run: data,
+    creditsCharged: charge.charged,
+    remainingBalance: charge.balance,
+    quote: charge.quote,
+  });
 }
 
 Deno.serve(async (req) => {

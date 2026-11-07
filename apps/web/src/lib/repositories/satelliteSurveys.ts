@@ -1,5 +1,6 @@
 import { supabase } from "../supabase/client.ts";
 import type { Tables } from "../supabase/types.ts";
+import { parseQuote, type SurveyQuote } from "../surveys/pricing.ts";
 
 export type SurveyRunRow = Tables<"survey_runs">;
 export type SurveyTargetRow = Tables<"survey_targets">;
@@ -99,6 +100,11 @@ export interface SurveyRun {
   clientName: string;
   address: string | null;
   estimatedMinutes: number | null;
+  /** What the run was charged, priced from the survey it ran. Null on runs queued
+   *  before the credit pricing existed. */
+  quotedCredits: number | null;
+  /** The ground the run analysed, in square kilometres. */
+  surfaceAreaKm2: number | null;
   errorMessage: string | null;
   createdAt: string;
   completedAt: string | null;
@@ -137,6 +143,7 @@ export interface SurveyRunDetail {
 export interface StartSurveyInput {
   workspaceId: string;
   projectId?: string | null;
+  jobId?: string | null;
   latitude: number;
   longitude: number;
   halfDeg: number;
@@ -277,6 +284,8 @@ export function toSurveyRun(row: SurveyRunRow): SurveyRun {
     clientName: row.client_name,
     address: row.address,
     estimatedMinutes: row.estimated_minutes,
+    quotedCredits: row.quoted_credits === null ? null : num(row.quoted_credits),
+    surfaceAreaKm2: row.surface_area_km2 === null ? null : num(row.surface_area_km2),
     errorMessage: row.error_message,
     createdAt: row.created_at,
     completedAt: row.completed_at,
@@ -361,6 +370,33 @@ export interface StartSurveyOutcome {
   run: SurveyRun;
   creditsCharged: number;
   remainingBalance: number | null;
+  /** The price the platform charged, broken down. The same quote the form showed. */
+  quote: SurveyQuote | null;
+}
+
+export interface SurveyQuoteRequest {
+  categories: SurveyCategory[];
+  halfDeg: number;
+  latitude: number;
+}
+
+/**
+ * What this job would cost, without queueing it.
+ *
+ * The price is computed by the platform from the survey types and the ground they
+ * cover, so the number shown here is the number that will be charged -- there is no
+ * second, browser-side calculation that could disagree with it. A quote that cannot be
+ * read comes back as null: the form then says it cannot show a price rather than
+ * inventing one.
+ */
+export async function quoteSurvey(request: SurveyQuoteRequest): Promise<SurveyQuote | null> {
+  const { data, error } = await supabase.rpc("price_satellite_survey", {
+    p_categories: request.categories,
+    p_half_deg: request.halfDeg,
+    p_latitude: request.latitude,
+  });
+  if (error) return null;
+  return parseQuote(data);
 }
 
 /** Queue a survey through the platform, never against the engine.
@@ -374,7 +410,8 @@ export async function startSurvey(input: StartSurveyInput): Promise<StartSurveyO
   const { data, error } = await supabase.functions.invoke("satellite-survey", {
     body: {
       workspaceId: input.workspaceId,
-      projectId: input.projectId ?? null,
+      projectId: input.projectId ?? input.jobId ?? null,
+      jobId: input.jobId ?? input.projectId ?? null,
       latitude: input.latitude,
       longitude: input.longitude,
       halfDeg: input.halfDeg,
@@ -398,11 +435,17 @@ export async function startSurvey(input: StartSurveyInput): Promise<StartSurveyO
     throw new Error(payload?.error ?? error.message);
   }
 
-  const outcome = data as { run: SurveyRunRow; creditsCharged: number; remainingBalance: number | null };
+  const outcome = data as {
+    run: SurveyRunRow;
+    creditsCharged: number;
+    remainingBalance: number | null;
+    quote?: unknown;
+  };
   return {
     run: toSurveyRun(outcome.run),
     creditsCharged: outcome.creditsCharged ?? 0,
     remainingBalance: outcome.remainingBalance === null ? null : num(outcome.remainingBalance),
+    quote: parseQuote(outcome.quote ?? null),
   };
 }
 
@@ -434,3 +477,157 @@ export async function deliverableUrl(deliverable: SurveyDeliverable): Promise<st
   if (error) return null;
   return data.signedUrl;
 }
+
+/**
+ * Delete a single survey run, all its database child rows, and all its deliverables from storage.
+ */
+export async function deleteSurveyRun(
+  runId: string,
+  workspaceId?: string,
+): Promise<void> {
+  if (!runId) return;
+
+  try {
+    // 1. First attempt to call the RPC function
+    const { data: rpcPaths, error: rpcErr } = await (supabase as any).rpc(
+      "delete_survey_run",
+      { p_run_id: runId },
+    );
+
+    let storagePaths: string[] = [];
+    if (!rpcErr && Array.isArray(rpcPaths)) {
+      storagePaths = rpcPaths
+        .map((r: any) => (typeof r === "string" ? r : r?.storage_path))
+        .filter(Boolean);
+    } else {
+      // Fallback: query deliverables directly
+      const { data: deliverables } = await supabase
+        .from("survey_deliverables")
+        .select("storage_path")
+        .eq("run_id", runId);
+
+      if (deliverables && deliverables.length > 0) {
+        storagePaths = deliverables.map((d) => d.storage_path).filter(Boolean);
+      }
+
+      // Delete the run from database
+      await supabase.from("survey_runs").delete().eq("id", runId);
+    }
+
+    // 2. Remove files from storage
+    if (storagePaths.length > 0) {
+      await supabase.storage.from(BUCKET).remove(storagePaths);
+    }
+
+    // 3. Clean up the folder in case any unindexed files were uploaded
+    if (workspaceId) {
+      try {
+        const folderPrefix = `${workspaceId}/${runId}`;
+        const { data: files } = await supabase.storage.from(BUCKET).list(folderPrefix);
+        if (files && files.length > 0) {
+          const filePaths = files
+            .filter((f) => f.name && f.id !== null)
+            .map((f) => `${folderPrefix}/${f.name}`);
+          if (filePaths.length > 0) {
+            await supabase.storage.from(BUCKET).remove(filePaths);
+          }
+        }
+      } catch {
+        // Ignore folder listing errors
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to delete survey run and files:", err);
+  }
+}
+
+/**
+ * Delete all survey runs, targets, deliverables, and storage files associated with a job.
+ */
+export async function deleteSurveyRunsForJob(
+  workspaceId: string,
+  jobId: string,
+  jobTitle?: string | null,
+): Promise<void> {
+  if (!workspaceId || !jobId) return;
+
+  try {
+    // 1. Call RPC function delete_survey_runs_for_job
+    const { data: rpcPaths, error: rpcErr } = await (supabase as any).rpc(
+      "delete_survey_runs_for_job",
+      {
+        p_workspace_id: workspaceId,
+        p_job_id: jobId,
+        p_client_name: jobTitle?.trim() || null,
+      },
+    );
+
+    let storagePaths: string[] = [];
+    let runIds: string[] = [];
+
+    if (!rpcErr && Array.isArray(rpcPaths)) {
+      storagePaths = rpcPaths
+        .map((r: any) => (typeof r === "string" ? r : r?.storage_path))
+        .filter(Boolean);
+    } else {
+      // Fallback: directly find runs matching job_id, project_id, or client_name
+      let query = supabase
+        .from("survey_runs")
+        .select("id")
+        .eq("workspace_id", workspaceId);
+
+      if (jobTitle && jobTitle.trim()) {
+        query = query.or(
+          `job_id.eq.${jobId},project_id.eq.${jobId},client_name.eq.${jobTitle.trim()}`,
+        );
+      } else {
+        query = query.or(`job_id.eq.${jobId},project_id.eq.${jobId}`);
+      }
+
+      const { data: matchedRuns } = await query;
+      if (matchedRuns && matchedRuns.length > 0) {
+        runIds = matchedRuns.map((r) => r.id);
+
+        const { data: deliverables } = await supabase
+          .from("survey_deliverables")
+          .select("storage_path")
+          .in("run_id", runIds);
+
+        if (deliverables) {
+          storagePaths = deliverables
+            .map((d) => d.storage_path)
+            .filter(Boolean);
+        }
+
+        // Delete survey runs
+        await supabase.from("survey_runs").delete().in("id", runIds);
+      }
+    }
+
+    // 2. Remove deliverables files from bucket
+    if (storagePaths.length > 0) {
+      await supabase.storage.from(BUCKET).remove(storagePaths);
+    }
+
+    // 3. For any matched runs, ensure their folder is completely empty
+    for (const runId of runIds) {
+      try {
+        const folderPrefix = `${workspaceId}/${runId}`;
+        const { data: extraFiles } = await supabase.storage.from(BUCKET).list(folderPrefix);
+        if (extraFiles && extraFiles.length > 0) {
+          const extraPaths = extraFiles
+            .filter((f) => f.name && f.id !== null)
+            .map((f) => `${folderPrefix}/${f.name}`);
+          if (extraPaths.length > 0) {
+            await supabase.storage.from(BUCKET).remove(extraPaths);
+          }
+        }
+      } catch {
+        // Ignore folder listing errors
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to delete survey runs for job:", err);
+  }
+}
+

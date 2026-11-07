@@ -3268,6 +3268,39 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_credit_rates: {
+        Row: {
+          active: boolean
+          base_credits: number
+          category: string
+          estimated_cost: number
+          label: string
+          minimum_credits: number
+          per_hectare_credits: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_credits: number
+          category: string
+          estimated_cost?: number
+          label: string
+          minimum_credits: number
+          per_hectare_credits?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_credits?: number
+          category?: string
+          estimated_cost?: number
+          label?: string
+          minimum_credits?: number
+          per_hectare_credits?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       survey_deliverables: {
         Row: {
           content_type: string
@@ -3326,6 +3359,7 @@ export type Database = {
           composite: Json | null
           created_at: string
           created_by: string | null
+          credit_quote: Json | null
           data_sources: Json | null
           estimated_minutes: number | null
           error_message: string | null
@@ -3335,9 +3369,11 @@ export type Database = {
           longitude: number
           progress: number
           project_id: string | null
+          quoted_credits: number | null
           result: Json | null
           stage: string | null
           status: string
+          surface_area_km2: number | null
           updated_at: string
           worker_id: string | null
           workspace_id: string
@@ -3351,6 +3387,7 @@ export type Database = {
           composite?: Json | null
           created_at?: string
           created_by?: string | null
+          credit_quote?: Json | null
           data_sources?: Json | null
           estimated_minutes?: number | null
           error_message?: string | null
@@ -3360,9 +3397,11 @@ export type Database = {
           longitude: number
           progress?: number
           project_id?: string | null
+          quoted_credits?: number | null
           result?: Json | null
           stage?: string | null
           status?: string
+          surface_area_km2?: number | null
           updated_at?: string
           worker_id?: string | null
           workspace_id: string
@@ -3376,6 +3415,7 @@ export type Database = {
           composite?: Json | null
           created_at?: string
           created_by?: string | null
+          credit_quote?: Json | null
           data_sources?: Json | null
           estimated_minutes?: number | null
           error_message?: string | null
@@ -3385,9 +3425,11 @@ export type Database = {
           longitude?: number
           progress?: number
           project_id?: string | null
+          quoted_credits?: number | null
           result?: Json | null
           stage?: string | null
           status?: string
+          surface_area_km2?: number | null
           updated_at?: string
           worker_id?: string | null
           workspace_id?: string
@@ -5270,6 +5312,23 @@ export type Database = {
         Returns: boolean
       }
       cancel_survey_run: { Args: { p_run_id: string }; Returns: undefined }
+      charge_satellite_survey: {
+        Args: {
+          p_categories: string[]
+          p_description: string
+          p_half_deg: number
+          p_latitude: number
+          p_operation_id: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          credits_charged: number
+          quote: Json
+          remaining_balance: number
+          transaction_id: string
+        }[]
+      }
       claim_next_survey_run: {
         Args: { p_worker_id: string }
         Returns: Json
@@ -5277,6 +5336,18 @@ export type Database = {
       create_business_workspace: {
         Args: { workspace_name: string; workspace_slug?: string }
         Returns: string
+      }
+      delete_survey_run: {
+        Args: { p_run_id: string }
+        Returns: { storage_path: string }[]
+      }
+      delete_survey_runs_for_job: {
+        Args: {
+          p_client_name?: string | null
+          p_job_id: string
+          p_workspace_id: string
+        }
+        Returns: { storage_path: string }[]
       }
       fail_survey_run: {
         Args: { p_error: string; p_run_id: string }
@@ -5400,6 +5471,14 @@ export type Database = {
         }[]
       }
       prune_auth_nonces: { Args: never; Returns: undefined }
+      price_satellite_survey: {
+        Args: {
+          p_categories: string[]
+          p_half_deg: number
+          p_latitude: number
+        }
+        Returns: Json
+      }
       publish_survey_run: {
         Args: {
           p_deliverables: Json
@@ -5470,6 +5549,21 @@ export type Database = {
       slugify: { Args: { value: string }; Returns: string }
       spend_workspace_ai_credits: {
         Args: {
+          p_description: string
+          p_operation: string
+          p_operation_id: string
+          p_user_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          credits_charged: number
+          remaining_balance: number
+          transaction_id: string
+        }[]
+      }
+      spend_workspace_ai_credits_with_amount: {
+        Args: {
+          p_credits: number
           p_description: string
           p_operation: string
           p_operation_id: string

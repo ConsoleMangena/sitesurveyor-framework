@@ -38,6 +38,8 @@ import {
   windowOptions,
   yearOptions,
 } from "../../../lib/surveys/sources.ts";
+import { canAfford, areaText, type SurveyQuote } from "../../../lib/surveys/pricing.ts";
+import CreditCostPanel from "../../../components/surveys/CreditCostPanel.tsx";
 import type { SurveyFormValues } from "./model.ts";
 
 const fieldClass =
@@ -61,6 +63,12 @@ interface TargetFormProps {
   problems: string[];
   refused: string | null;
   onSubmit: () => void;
+  /** What the platform prices this job at, from its survey type and its ground. */
+  quote: SurveyQuote | null;
+  quoteLoading: boolean;
+  /** The workspace's credit balance, or null when it has not been reported. */
+  balance: number | null;
+  onNavigateBilling?: () => void;
 }
 
 export default function TargetForm({
@@ -76,6 +84,10 @@ export default function TargetForm({
   problems,
   refused,
   onSubmit,
+  quote,
+  quoteLoading,
+  balance,
+  onNavigateBilling,
 }: TargetFormProps) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
 
@@ -185,6 +197,9 @@ export default function TargetForm({
   }
 
   const currentJob = jobs.find((j) => j.id === values.jobId) ?? null;
+
+  /** Whether the workspace can pay for the job as it is currently specified. */
+  const affordable = canAfford(quote, balance);
 
   return (
     <form
@@ -588,17 +603,40 @@ export default function TargetForm({
               </option>
             ))}
           </select>
+          {quote ? (
+            <p className="text-[10.5px] text-muted-foreground">
+              Ground covered:{" "}
+              <span className="font-medium text-foreground">{areaText(quote)}</span>
+            </p>
+          ) : null}
         </div>
       </section>
+
+      {/* ── STEP 5: Credit cost ─────────────────────────────────────────── */}
+      <CreditCostPanel
+        quote={quote}
+        loading={quoteLoading}
+        balance={balance}
+        onNavigateBilling={onNavigateBilling}
+      />
 
       {/* ── Submit Action ────────────────────────────────────────────────── */}
       <Button
         type="submit"
         className="mt-2 h-9 w-full justify-center gap-2 text-[12.5px] font-semibold"
-        disabled={queueing || busy}
+        disabled={queueing || busy || !affordable}
+        title={
+          affordable
+            ? undefined
+            : "This workspace does not have enough credits for this survey."
+        }
       >
         {queueing || busy ? <Loader className="size-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="size-3.5" />}
-        {busy ? "Observation in progress…" : "Run Earth Observation Screening"}
+        {busy
+          ? "Observation in progress…"
+          : quote
+            ? `Run Earth Observation Screening · ${quote.credits} credit${quote.credits === 1 ? "" : "s"}`
+            : "Run Earth Observation Screening"}
       </Button>
 
       {progress !== null ? (

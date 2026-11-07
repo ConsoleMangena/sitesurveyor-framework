@@ -51,6 +51,8 @@ import {
   windowOptions,
   yearOptions,
 } from "../../../lib/surveys/sources.ts";
+import { canAfford, areaText, type SurveyQuote } from "../../../lib/surveys/pricing.ts";
+import CreditCostPanel from "../../../components/surveys/CreditCostPanel.tsx";
 import { validateForm, type SurveyFormValues } from "./model.ts";
 
 const fieldClass =
@@ -72,6 +74,12 @@ interface EarthObservationSetupFormProps {
   onRefreshJobs?: () => Promise<JobWithProject[]>;
   busy: boolean;
   queueing: boolean;
+  /** What the platform prices this job at, from its survey type and its ground. */
+  quote: SurveyQuote | null;
+  quoteLoading: boolean;
+  /** The workspace's credit balance, or null when it has not been reported. */
+  balance: number | null;
+  onNavigateBilling?: () => void;
 }
 
 export default function EarthObservationSetupForm({
@@ -87,6 +95,10 @@ export default function EarthObservationSetupForm({
   onRefreshJobs,
   busy,
   queueing,
+  quote,
+  quoteLoading,
+  balance,
+  onNavigateBilling,
 }: EarthObservationSetupFormProps) {
   // Job creation state
   const [creatingJob, setCreatingJob] = useState(false);
@@ -102,7 +114,7 @@ export default function EarthObservationSetupForm({
 
   async function handleDeleteJob(e: React.MouseEvent, job: JobWithProject) {
     e.stopPropagation();
-    if (!window.confirm(`Permanently delete job "${job.title}"? This cannot be undone.`)) {
+    if (!window.confirm(`Permanently delete job "${job.title}" and all its Earth Observation data? This cannot be undone.`)) {
       return;
     }
     setDeletingJobId(job.id);
@@ -199,6 +211,9 @@ export default function EarthObservationSetupForm({
 
   const activeCategory = values.categories[0] ?? "water";
 
+  /** Whether the workspace can pay for the job as it is currently specified. */
+  const affordable = canAfford(quote, balance);
+
   function selectCategory(id: SurveyCategory) {
     onChange({ categories: [id] });
   }
@@ -220,6 +235,13 @@ export default function EarthObservationSetupForm({
   function handleLaunch() {
     if (!currentJob) {
       setValidationProblems(["A job must be opened before launching Earth Observation screening."]);
+      return;
+    }
+    if (!affordable) {
+      setValidationProblems([
+        `This workspace has ${balance?.toLocaleString()} AI credits and this survey costs ` +
+          `${quote?.credits}. Buy more credits from Billing before running it.`,
+      ]);
       return;
     }
     const check = validateForm(values);
@@ -857,7 +879,39 @@ export default function EarthObservationSetupForm({
                     </option>
                   ))}
                 </select>
+                {quote ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Ground covered:{" "}
+                    <span className="font-medium text-foreground">{areaText(quote)}</span>
+                  </p>
+                ) : null}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Credit cost ───────────────────────────────────────────────── */}
+          <Card className="border-border/70 shadow-xs">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                  4
+                </span>
+                <div>
+                  <CardTitle className="text-base">Credit cost</CardTitle>
+                  <CardDescription className="text-xs">
+                    The survey type and the ground it covers set what this job costs.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="pt-0">
+              <CreditCostPanel
+                quote={quote}
+                loading={quoteLoading}
+                balance={balance}
+                onNavigateBilling={onNavigateBilling}
+              />
             </CardContent>
           </Card>
 
@@ -883,11 +937,20 @@ export default function EarthObservationSetupForm({
                 type="button"
                 variant="default"
                 className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold"
-                disabled={busy || queueing}
+                disabled={busy || queueing || !affordable}
+                title={
+                  affordable
+                    ? undefined
+                    : "This workspace does not have enough credits for this survey."
+                }
                 onClick={handleLaunch}
               >
                 {queueing || busy ? <Loader className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-                {busy ? "Screening in progress…" : "Launch & Run Screening"}
+                {busy
+                  ? "Screening in progress…"
+                  : quote
+                    ? `Launch & Run Screening · ${quote.credits} credit${quote.credits === 1 ? "" : "s"}`
+                    : "Launch & Run Screening"}
               </Button>
             </div>
           </div>
