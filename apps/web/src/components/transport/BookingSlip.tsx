@@ -38,6 +38,7 @@ import {
 } from "@tabler/icons-react";
 import { cn } from "../../lib/utils.ts";
 import { VEHICLE_TIER_THEME } from "./vehicleTierTheme.ts";
+import { getVehiclePlaceholder } from "./transportPlaceholders.ts";
 
 type PaymentMethod = "ecocash" | "card" | "cash_on_site" | "corporate_invoice";
 
@@ -144,14 +145,19 @@ export function BookingSlip({
           )}
         >
           <div className="flex items-start gap-3 pr-10">
-            <span
-              className={cn(
-                "flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/85 shadow-sm",
-                theme.badgeText,
-              )}
-            >
-              <TierIcon className="size-5" aria-hidden="true" />
-            </span>
+            <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted">
+              <img
+                src={vehicle.photoUrl || getVehiclePlaceholder(vehicle.tierId, vehicle.model)}
+                alt={vehicle.model}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  const fallback = getVehiclePlaceholder(vehicle.tierId, vehicle.model);
+                  if (e.currentTarget.src !== fallback) {
+                    e.currentTarget.src = fallback;
+                  }
+                }}
+              />
+            </div>
             <DialogHeader className="min-w-0 gap-1 text-left">
               <DialogTitle className="market-dialog-title text-balance text-foreground">
                 {confirmedBooking ? "Vehicle dispatched" : "Confirm dispatch"}

@@ -35,6 +35,7 @@ import {
 } from "@tabler/icons-react";
 import { cn } from "../../lib/utils.ts";
 import { VEHICLE_TIER_THEME } from "./vehicleTierTheme.ts";
+import { getVehiclePlaceholder } from "./transportPlaceholders.ts";
 
 interface VehicleDetailDialogProps {
   vehicle: HireVehicle | null;
@@ -71,42 +72,33 @@ export function VehicleDetailDialog({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
       <DialogContent className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden p-0 sm:max-w-3xl">
-        {/* Banner with Tier Theme */}
-        <div
-          className={cn(
-            "relative flex min-h-[140px] w-full shrink-0 items-end overflow-hidden border-b border-border/70 p-5 sm:min-h-[160px] sm:p-6",
-            theme.bannerBg,
-          )}
-        >
-          <svg
-            className="pointer-events-none absolute inset-0 size-full text-foreground/[0.06]"
-            aria-hidden="true"
-          >
-            <defs>
-              <pattern
-                id={`detail-grid-${vehicle.id}`}
-                width="24"
-                height="24"
-                patternUnits="userSpaceOnUse"
-              >
-                <path d="M24 0H0v24" fill="none" stroke="currentColor" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill={`url(#detail-grid-${vehicle.id})`} />
-          </svg>
+        {/* Banner with Vehicle Photo and Tier Theme */}
+        <div className="relative flex min-h-[160px] w-full shrink-0 items-end overflow-hidden border-b border-border/70 sm:min-h-[190px]">
+          <img
+            src={vehicle.photoUrl || getVehiclePlaceholder(vehicle.tierId, vehicle.model)}
+            alt={vehicle.model}
+            className="absolute inset-0 size-full object-cover"
+            onError={(e) => {
+              const fallback = getVehiclePlaceholder(vehicle.tierId, vehicle.model);
+              if (e.currentTarget.src !== fallback) {
+                e.currentTarget.src = fallback;
+              }
+            }}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/65 to-black/20" />
 
-          <div className="relative z-10 flex w-full flex-wrap items-end justify-between gap-4">
+          <div className="relative z-10 flex w-full flex-wrap items-end justify-between gap-4 p-5 sm:p-6">
             <div className="flex items-center gap-3.5">
               <span
                 className={cn(
-                  "flex size-14 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-background/90 shadow-sm backdrop-blur-xs sm:size-16",
+                  "flex size-14 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-background/90 shadow-sm backdrop-blur-md sm:size-16",
                   theme.badgeText,
                 )}
               >
                 <TierIcon className="size-8 sm:size-9" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/90 px-2.5 py-0.5 text-micro font-semibold text-foreground/80 backdrop-blur-xs">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/90 px-2.5 py-0.5 text-micro font-semibold text-foreground/80 backdrop-blur-md">
                   <span
                     className="size-2 shrink-0 rounded-full"
                     style={{ backgroundColor: theme.dot }}
@@ -125,7 +117,7 @@ export function VehicleDetailDialog({
               </div>
             </div>
 
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/15 px-3 py-1 font-mono text-xs font-semibold tabular-nums text-success backdrop-blur-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-background/90 px-3 py-1 font-mono text-xs font-semibold tabular-nums text-success backdrop-blur-md shadow-xs">
               <IconClock className="size-3.5" aria-hidden="true" />
               {vehicle.etaMinutes}m ETA to pickup
             </span>

@@ -75,3 +75,5 @@ apps/engine/worker.lock
 # Test coverage output
 apps/web/coverage/
 
+ 
+/blobs/

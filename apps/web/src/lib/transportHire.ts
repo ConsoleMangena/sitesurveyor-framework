@@ -54,6 +54,7 @@ export interface HireVehicle {
   status: "available" | "busy";
   color: string;
   features: string[];
+  photoUrl?: string;
 }
 
 export interface FareBreakdown {

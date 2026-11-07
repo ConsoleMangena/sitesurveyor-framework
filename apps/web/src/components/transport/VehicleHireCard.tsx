@@ -9,6 +9,7 @@ import {
 } from "@tabler/icons-react";
 import { cn } from "../../lib/utils.ts";
 import { VEHICLE_TIER_THEME } from "./vehicleTierTheme.ts";
+import { getVehiclePlaceholder } from "./transportPlaceholders.ts";
 
 interface VehicleHireCardProps {
   vehicle: HireVehicle;
@@ -26,7 +27,7 @@ export function VehicleHireCard({
 }: VehicleHireCardProps) {
   const tier: VehicleTier = VEHICLE_TIERS[vehicle.tierId];
   const theme = VEHICLE_TIER_THEME[vehicle.tierId];
-  const TierIcon = theme.icon;
+  const photo = vehicle.photoUrl || getVehiclePlaceholder(vehicle.tierId, vehicle.model);
 
   return (
     <button
@@ -41,43 +42,24 @@ export function VehicleHireCard({
         isSelected && "border-primary ring-2 ring-primary/40",
       )}
     >
-      {/* Compact Top Banner (Market Tile Style) */}
-      <div
-        className={cn(
-          "relative h-32 w-full shrink-0 overflow-hidden border-b border-border/60 bg-gradient-to-br transition-colors",
-          theme.bannerBg,
-        )}
-      >
-        <svg
-          className="pointer-events-none absolute inset-0 size-full text-foreground/[0.07]"
-          aria-hidden="true"
-        >
-          <defs>
-            <pattern
-              id={`fleet-grid-${vehicle.id}`}
-              width="20"
-              height="20"
-              patternUnits="userSpaceOnUse"
-            >
-              <path d="M20 0H0v20" fill="none" stroke="currentColor" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill={`url(#fleet-grid-${vehicle.id})`} />
-        </svg>
-
-        <span className="absolute inset-0 flex items-center justify-center">
-          <span
-            className={cn(
-              "flex size-12 items-center justify-center rounded-xl border border-border/70 bg-background/85 shadow-xs backdrop-blur-xs transition-transform duration-300 group-hover:scale-105 sm:size-14",
-              theme.badgeText,
-            )}
-          >
-            <TierIcon className="size-6 sm:size-7" aria-hidden="true" />
-          </span>
-        </span>
+      {/* Compact Top Banner with Vehicle Photo (Marketplace Style) */}
+      <div className="relative h-36 w-full shrink-0 overflow-hidden border-b border-border/60 bg-muted">
+        <img
+          src={photo}
+          alt={vehicle.model}
+          loading="lazy"
+          onError={(e) => {
+            const fallback = getVehiclePlaceholder(vehicle.tierId, vehicle.model);
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
         {/* Tier Chip */}
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/95 px-2.5 py-0.5 text-micro font-semibold text-foreground/80 backdrop-blur-xs">
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-background/90 px-2.5 py-0.5 text-micro font-semibold text-foreground backdrop-blur-md shadow-xs">
           <span
             className="size-2 shrink-0 rounded-full"
             style={{ backgroundColor: theme.dot }}
@@ -88,11 +70,11 @@ export function VehicleHireCard({
 
         {/* Selected or ETA Badge */}
         {isSelected ? (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-micro font-semibold text-primary-foreground shadow-xs">
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-micro font-semibold text-primary-foreground shadow-sm">
             Selected
           </span>
         ) : (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-success/20 bg-success/10 px-2.5 py-0.5 font-mono text-micro font-semibold tabular-nums text-success backdrop-blur-xs">
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-success/30 bg-background/90 px-2.5 py-0.5 font-mono text-micro font-semibold tabular-nums text-success backdrop-blur-md shadow-xs">
             <IconClock className="size-3" aria-hidden="true" />
             {vehicle.etaMinutes}m ETA
           </span>
