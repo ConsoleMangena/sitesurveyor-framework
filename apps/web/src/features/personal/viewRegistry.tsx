@@ -56,7 +56,7 @@ export function renderPersonalView(
     case "assistant":
       return (
         <Suspense fallback={<PageLoader />}>
-          <AssistantPage />
+          <AssistantPage onNavigate={onNavigate} />
         </Suspense>
       );
 

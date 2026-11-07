@@ -19,6 +19,11 @@ import {
   scheduleJob,
 } from "./workflows.ts";
 import {
+  quoteSatelliteSurvey,
+  launchSatelliteSurvey,
+  getSatelliteSurveyStatus,
+} from "./satellite-survey-workflow.ts";
+import {
   formatSkillContext,
   loadSkills,
   promoteExample,
@@ -558,7 +563,102 @@ const TOOLS: ToolSchema[] = [
         additionalProperties: false,
       },
     },
+  },  {
+    type: "function",
+    function: {
+      name: "quote_satellite_survey",
+      description:
+        "Check pricing, area, coverage and credit balance for an Earth Observation satellite survey. Enforces ONE category at a time (water, minerals, soil, or hazard) and checks that no other survey is currently in progress for the workspace.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["water", "minerals", "soil", "hazard"],
+            description:
+              "Exactly ONE survey category: 'water' (groundwater/boreholes), 'minerals' (gold/alteration), 'soil' (land capability), or 'hazard' (flood/safety).",
+          },
+          latitude: {
+            type: "number",
+            description: "GPS latitude (-56 to 41).",
+          },
+          longitude: {
+            type: "number",
+            description: "GPS longitude (-30 to 66).",
+          },
+          half_deg: {
+            type: "number",
+            description: "Study area half-degree radius (default 0.06 = ~13km box).",
+          },
+          client_name: {
+            type: "string",
+            description: "Optional client or site name.",
+          },
+        },
+        required: ["category", "latitude", "longitude"],
+        additionalProperties: false,
+      },
+    },
   },
+  {
+    type: "function",
+    function: {
+      name: "launch_satellite_survey",
+      description:
+        "Deduct workspace credits and launch an Earth Observation satellite survey. Exactly ONE category at a time. Only call AFTER the user explicitly confirmed the credit cost.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["water", "minerals", "soil", "hazard"],
+            description: "The confirmed single survey category.",
+          },
+          latitude: {
+            type: "number",
+            description: "GPS latitude.",
+          },
+          longitude: {
+            type: "number",
+            description: "GPS longitude.",
+          },
+          half_deg: {
+            type: "number",
+            description: "Study area half-degree radius (default 0.06).",
+          },
+          client_name: {
+            type: "string",
+            description: "Client or site name.",
+          },
+          confirmed: {
+            type: "boolean",
+            description: "Must be true. Only call with true after user confirmed credit deduction.",
+          },
+        },
+        required: ["category", "latitude", "longitude", "confirmed"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_satellite_survey_status",
+      description:
+        "Check the progress or retrieve the latest results (targets, scores) of a satellite survey run in this workspace.",
+      parameters: {
+        type: "object",
+        properties: {
+          run_id: {
+            type: "string",
+            description: "Optional UUID of the survey run. If omitted, checks the latest survey run in the workspace.",
+          },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+
 ];
 
 function systemPrompt(supabaseUrl: string): string {
@@ -660,6 +760,22 @@ function systemPrompt(supabaseUrl: string): string {
     "Keep answers compact: headline first, then a small table or bullets;",
     "no restating the question, no filler.",
     "",
+    "",
+    "EARTH OBSERVATION & SATELLITE SURVEYS:",
+    "- When a user asks for satellite surveying, earth observation, or sends a command like /borehole, /water, /minerals, /prospect, /hazard, /flood, /soil, /agri, or /eo:",
+    "- SINGLE SURVEY AT A TIME: A user may only run ONE survey category at a time ('water', 'minerals', 'soil', or 'hazard'). Never bundle multiple categories into one run.",
+    "- ALWAYS QUOTE FIRST: Use quote_satellite_survey to verify that no survey is currently in progress, validate coordinates, compute the exact credit cost, and check workspace credit balance.",
+    "- CONCURRENCY LOCK: If quote_satellite_survey returns SURVEY_IN_PROGRESS, tell the user an active survey is already running and state its status. Do not launch another survey.",
+    "- INSUFFICIENT BALANCE: If balance_sufficient is false, state the required credits and the deficit plainly. Suggest topping up in Billing.",
+    "- CONFIRMATION MANDATORY: Never run launch_satellite_survey without explicit user approval. Always show the quote breakdown and ask for confirmation using an [ASK] block:",
+    "  [ASK]",
+    "  Confirm launching [Category Label] Survey for [Lat], [Lon]?",
+    "  This will deduct [N] credits from your workspace balance ([Current] -> [After] credits).",
+    "  - Confirm & Start [Category Label] ([N] credits)",
+    "  - Cancel",
+    "  [/ASK]",
+    "- EXECUTION: Call launch_satellite_survey with confirmed=true ONLY after the user explicitly confirms or taps the confirmation button.",
+    "- STATUS & RESULTS: Use get_satellite_survey_status to check ongoing progress or fetch completed targets and recommendations.",
     "CAD WORKFLOW:",
     "Before drawing onto an existing drawing, read it first (list_cad_layers)",
     "and reuse its layer names exactly. Group ONE logical action per [CAD]",
@@ -1199,6 +1315,43 @@ export async function executeTool(
       key,
     );
     return JSON.stringify({ forgotten: ok, key });
+  }
+
+  if (name === "quote_satellite_survey") {
+    return quoteSatelliteSurvey(
+      { supabaseFetch },
+      { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey, workspaceId: ctx.workspaceId },
+      args as {
+        category: string;
+        latitude: number;
+        longitude: number;
+        half_deg?: number;
+        client_name?: string;
+      },
+    );
+  }
+  if (name === "launch_satellite_survey") {
+    return launchSatelliteSurvey(
+      { supabaseFetch },
+      { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey, workspaceId: ctx.workspaceId },
+      ctx.userId,
+      args as {
+        category: string;
+        latitude: number;
+        longitude: number;
+        half_deg?: number;
+        client_name?: string;
+        projectId?: string;
+        confirmed: boolean;
+      },
+    );
+  }
+  if (name === "get_satellite_survey_status") {
+    return getSatelliteSurveyStatus(
+      { supabaseFetch },
+      { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey, workspaceId: ctx.workspaceId },
+      args as { run_id?: string },
+    );
   }
 
   const table = str(args.table);

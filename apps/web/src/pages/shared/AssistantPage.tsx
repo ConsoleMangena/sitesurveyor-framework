@@ -3,6 +3,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Globe,
   Loader2,
   MessageSquarePlus,
   PanelLeft,
@@ -38,6 +39,69 @@ import {
 } from "../../lib/repositories/aiChats.ts";
 import { streamAiReply } from "../../lib/repositories/aiChatApi.ts";
 
+
+export interface SlashCommand {
+  name: string;
+  alias?: string;
+  title: string;
+  category: "water" | "minerals" | "hazard" | "soil" | "eo";
+  description: string;
+  example: string;
+  template: string;
+}
+
+export const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    name: "/borehole",
+    alias: "/water",
+    title: "Groundwater & Boreholes",
+    category: "water",
+    description: "Site precision borehole drilling coordinates & aquifer potential (1 survey)",
+    example: "/borehole -19.5048, 29.8459",
+    template: "/borehole ",
+  },
+  {
+    name: "/minerals",
+    alias: "/prospect",
+    title: "Mineral Exploration",
+    category: "minerals",
+    description: "Screen hydrothermal alteration zones, gossans & gold shear lineaments (1 survey)",
+    example: "/minerals -19.5048, 29.8459",
+    template: "/minerals ",
+  },
+  {
+    name: "/hazard",
+    alias: "/flood",
+    title: "Natural Hazards & Safety",
+    category: "hazard",
+    description: "Screen 40-year flood history, slope failure risk & safest buildable sites (1 survey)",
+    example: "/hazard -19.5048, 29.8459",
+    template: "/hazard ",
+  },
+  {
+    name: "/soil",
+    alias: "/agri",
+    title: "Soil & Land Capability",
+    category: "soil",
+    description: "Screen agricultural land suitability, vegetation health & erosion risk (1 survey)",
+    example: "/soil -19.5048, 29.8459",
+    template: "/soil ",
+  },
+  {
+    name: "/eo",
+    alias: "/sat",
+    title: "Earth Observation Survey",
+    category: "eo",
+    description: "Run single-category survey: /eo <lat, lon> <water|minerals|soil|hazard>",
+    example: "/eo -19.5048, 29.8459 water",
+    template: "/eo ",
+  },
+];
+
+export interface AssistantPageProps {
+  onNavigate?: (view: string) => void;
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -57,6 +121,7 @@ interface AgentStep {
 const SUGGESTIONS = [
   "Summarise overdue invoices across workspaces",
   "Which asset calibrations are due within the next 14 days?",
+  "/borehole -19.5048, 29.8459",
   "How many active projects do we have, by status?",
   "Create a project for a boundary survey and tell me what you set",
 ];
@@ -65,6 +130,12 @@ const SUGGESTIONS = [
  *  ai-chat runtime actually exposes, so nothing here promises a tool that
  *  is not wired. */
 const ASSISTANT_CAPABILITIES = [
+  {
+    label: "Earth Observation",
+    detail:
+      "Runs single-domain satellite surveys (groundwater & boreholes, minerals, hazard risk, or soil capability) with upfront credit quotes and active job locks.",
+  },
+
   {
     label: "Query",
     detail:
@@ -99,6 +170,10 @@ const ENGINE_LABEL = "Nemotron 3 Ultra";
 /** One line per tool the agent can call, keyed by the name the runtime puts
  *  on its `tool` events. */
 const TOOL_LABELS: Record<string, string> = {
+  quote_satellite_survey: "Calculating survey quote & coverage",
+  launch_satellite_survey: "Deducting credits & launching survey",
+  get_satellite_survey_status: "Checking survey progress",
+
   query_site_data: "Querying workspace data",
   count_site_data: "Counting records",
   inspect_columns: "Checking the table structure",
@@ -133,7 +208,7 @@ const BUBBLE_BASE = "max-w-full px-3.5 py-2 text-sm leading-relaxed shadow-sm";
 const BUBBLE_USER = `${BUBBLE_BASE} whitespace-pre-wrap rounded-[16px_16px_0_16px] bg-primary text-primary-foreground`;
 const BUBBLE_AGENT = `${BUBBLE_BASE} rounded-[16px_16px_16px_0] border border-border/60 bg-muted text-card-foreground`;
 
-export default function AssistantPage() {
+export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [conversations, setConversations] = useState<AiConversation[]>([]);
@@ -151,6 +226,21 @@ export default function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
+
+  const query = draft.trim().toLowerCase();
+  const isSlash = draft.startsWith("/") && !draft.includes(" ");
+  const matchingSlashCommands = isSlash
+    ? SLASH_COMMANDS.filter(
+        (c) =>
+          c.name.toLowerCase().startsWith(query) ||
+          (c.alias && c.alias.toLowerCase().startsWith(query)) ||
+          c.category.toLowerCase().startsWith(query.slice(1))
+      )
+    : [];
+  const showSlashMenu = isSlash && matchingSlashCommands.length > 0;
+
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -726,6 +816,27 @@ export default function AssistantPage() {
                           </div>
                         )}
 
+                        
+                        {message.role === "assistant" &&
+                          !message.streaming &&
+                          (message.text.includes("survey successfully launched") ||
+                            message.text.includes("Survey complete for") ||
+                            message.text.includes("Open in Satellite Workbench")) &&
+                          onNavigate && (
+                            <div className="mt-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                                onClick={() => onNavigate("satellite")}
+                              >
+                                <Globe className="size-3.5" />
+                                <span>Open in Satellite Workbench</span>
+                              </Button>
+                            </div>
+                          )}
+
                         {message.steps && message.steps.length > 0 ? (
                           <StepsDisclosure steps={message.steps} />
                         ) : (
@@ -759,35 +870,114 @@ export default function AssistantPage() {
           )}
         </div>
 
-        <form
-          className="flex shrink-0 items-center gap-2 rounded-xl border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send();
-          }}
-        >
-          <Input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={
-              streaming
-                ? "SiteSurveyor is working…"
-                : "Ask SiteSurveyor to query or change your workspace…"
-            }
-            disabled={streaming}
-            className="h-9 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
-            aria-label="Message SiteSurveyor"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            className="size-9 shrink-0"
-            disabled={!draft.trim() || streaming}
-            aria-label="Send message"
+        <div className="relative">
+          {showSlashMenu && (
+            <div
+              className="absolute bottom-full left-0 z-30 mb-2 w-full max-w-lg rounded-xl border border-border/80 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md"
+              role="listbox"
+              aria-label="Earth Observation Commands"
+            >
+              <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase border-b border-border/40 pb-1 mb-1">
+                <span>Earth Observation (1 survey at a time)</span>
+                <span>Select with ↑↓ + Enter</span>
+              </div>
+              <div className="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
+                {matchingSlashCommands.map((cmd, idx) => {
+                  const isSelected = idx === selectedSlashIndex;
+                  return (
+                    <button
+                      key={cmd.name}
+                      type="button"
+                      className={cn(
+                        "flex flex-col items-start rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+                        isSelected
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                      onMouseEnter={() => setSelectedSlashIndex(idx)}
+                      onClick={() => {
+                        setDraft(cmd.template);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      <div className="flex w-full items-center justify-between">
+                        <span className="font-mono font-semibold text-foreground">
+                          {cmd.name}
+                          {cmd.alias ? (
+                            <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                              (or {cmd.alias})
+                            </span>
+                          ) : null}
+                          <span className="ml-2 font-sans font-medium text-xs text-foreground/80">
+                            — {cmd.title}
+                          </span>
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {cmd.example}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                        {cmd.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <form
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void send();
+            }}
           >
-            <SendHorizontal className="size-4" />
-          </Button>
-        </form>
+            <Input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setSelectedSlashIndex(0);
+              }}
+              onKeyDown={(e) => {
+                if (showSlashMenu && matchingSlashCommands.length > 0) {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setSelectedSlashIndex((prev) => (prev + 1) % matchingSlashCommands.length);
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSelectedSlashIndex(
+                      (prev) => (prev - 1 + matchingSlashCommands.length) % matchingSlashCommands.length
+                    );
+                  } else if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey && !draft.includes(" "))) {
+                    e.preventDefault();
+                    const chosen = matchingSlashCommands[selectedSlashIndex] || matchingSlashCommands[0];
+                    setDraft(chosen.template);
+                    inputRef.current?.focus();
+                  }
+                }
+              }}
+              placeholder={
+                streaming
+                  ? "SiteSurveyor is working…"
+                  : "Ask SiteSurveyor or type /borehole, /minerals, /hazard, /soil…"
+              }
+              disabled={streaming}
+              className="h-9 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+              aria-label="Message SiteSurveyor"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="size-9 shrink-0"
+              disabled={!draft.trim() || streaming}
+              aria-label="Send message"
+            >
+              <SendHorizontal className="size-4" />
+            </Button>
+          </form>
+        </div>
       </section>
     </div>
   );
