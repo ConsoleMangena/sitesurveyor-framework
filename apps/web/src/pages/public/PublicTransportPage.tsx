@@ -39,6 +39,7 @@ import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { cn } from "../../lib/utils.ts";
 import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
 import { VehicleHireCard } from "../../components/transport/VehicleHireCard.tsx";
+import { VehicleDetailDialog } from "../../components/transport/VehicleDetailDialog.tsx";
 import { BookingSlip } from "../../components/transport/BookingSlip.tsx";
 import { VEHICLE_TIER_THEME } from "../../components/transport/vehicleTierTheme.ts";
 import {
@@ -117,6 +118,8 @@ export default function PublicTransportPage() {
   const [isLocating, setIsLocating] = useState(false);
   const [geoNotice, setGeoNotice] = useState<string | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [detailVehicle, setDetailVehicle] = useState<HireVehicle | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [recentBookings, setRecentBookings] = useState<HireBooking[]>(() => loadSavedBookings());
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -256,6 +259,26 @@ export default function PublicTransportPage() {
   const handleSelectVehicle = useCallback((vehicle: HireVehicle) => {
     setSelectedVehicleId(vehicle.id);
     mapRef.current?.focusVehicle(vehicle);
+  }, []);
+
+  const handleOpenVehicleDetail = useCallback((vehicle: HireVehicle) => {
+    setSelectedVehicleId(vehicle.id);
+    setDetailVehicle(vehicle);
+    setIsDetailOpen(true);
+    mapRef.current?.focusVehicle(vehicle);
+  }, []);
+
+  const handleShowVehicleOnMap = useCallback((vehicle: HireVehicle) => {
+    setSelectedVehicleId(vehicle.id);
+    setIsDetailOpen(false);
+    mapRef.current?.focusVehicle(vehicle);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const handleBookFromDetail = useCallback((vehicle: HireVehicle) => {
+    setSelectedVehicleId(vehicle.id);
+    setIsDetailOpen(false);
+    setIsBookingOpen(true);
   }, []);
 
   const handleBookVehicleNow = useCallback((vehicle: HireVehicle) => {
@@ -832,14 +855,14 @@ export default function PublicTransportPage() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {filteredFleet.map((vehicle) => (
                   <VehicleHireCard
                     key={vehicle.id}
                     vehicle={vehicle}
                     fareBreakdown={calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm)}
                     isSelected={activeVehicle?.id === vehicle.id}
-                    onSelect={handleSelectVehicle}
+                    onSelect={handleOpenVehicleDetail}
                     onBookNow={handleBookVehicleNow}
                   />
                 ))}
@@ -866,6 +889,20 @@ export default function PublicTransportPage() {
           </div>
         </div>
       </footer>
+
+      {detailVehicle ? (
+        <VehicleDetailDialog
+          vehicle={detailVehicle}
+          fareBreakdown={calculateHireFare(VEHICLE_TIERS[detailVehicle.tierId], distanceKm)}
+          pickup={pickup}
+          dropoff={dropoff}
+          durationMinutes={durationMinutes}
+          isOpen={isDetailOpen}
+          onClose={() => setIsDetailOpen(false)}
+          onBookNow={handleBookFromDetail}
+          onShowOnMap={handleShowVehicleOnMap}
+        />
+      ) : null}
 
       {activeVehicle ? (
         <BookingSlip
