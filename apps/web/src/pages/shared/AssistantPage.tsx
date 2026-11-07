@@ -56,45 +56,45 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     alias: "/water",
     title: "Groundwater & Boreholes",
     category: "water",
-    description: "Site precision borehole drilling coordinates & aquifer potential (1 survey)",
-    example: "/borehole -19.5048, 29.8459",
-    template: "/borehole ",
+    description: "AI Questionnaire: borehole siting, aquifer potential & precision drill targets",
+    example: "/borehole",
+    template: "/borehole",
   },
   {
     name: "/minerals",
     alias: "/prospect",
     title: "Mineral Exploration",
     category: "minerals",
-    description: "Screen hydrothermal alteration zones, gossans & gold shear lineaments (1 survey)",
-    example: "/minerals -19.5048, 29.8459",
-    template: "/minerals ",
+    description: "AI Questionnaire: hydrothermal alteration, gossans & gold shear lineaments",
+    example: "/minerals",
+    template: "/minerals",
   },
   {
     name: "/hazard",
     alias: "/flood",
     title: "Natural Hazards & Safety",
     category: "hazard",
-    description: "Screen 40-year flood history, slope failure risk & safest buildable sites (1 survey)",
-    example: "/hazard -19.5048, 29.8459",
-    template: "/hazard ",
+    description: "AI Questionnaire: 40-yr flood screening, slope failure risk & buildable sites",
+    example: "/hazard",
+    template: "/hazard",
   },
   {
     name: "/soil",
     alias: "/agri",
     title: "Soil & Land Capability",
     category: "soil",
-    description: "Screen agricultural land suitability, vegetation health & erosion risk (1 survey)",
-    example: "/soil -19.5048, 29.8459",
-    template: "/soil ",
+    description: "AI Questionnaire: agricultural land suitability, crop health & erosion risk",
+    example: "/soil",
+    template: "/soil",
   },
   {
     name: "/eo",
     alias: "/sat",
     title: "Earth Observation Survey",
     category: "eo",
-    description: "Run single-category survey: /eo <lat, lon> <water|minerals|soil|hazard>",
-    example: "/eo -19.5048, 29.8459 water",
-    template: "/eo ",
+    description: "AI Questionnaire: interactive guide for any single-domain satellite survey",
+    example: "/eo",
+    template: "/eo",
   },
 ];
 
@@ -119,11 +119,11 @@ interface AgentStep {
 }
 
 const SUGGESTIONS = [
+  "/borehole",
   "Summarise overdue invoices across workspaces",
+  "/minerals",
   "Which asset calibrations are due within the next 14 days?",
-  "/borehole -19.5048, 29.8459",
-  "How many active projects do we have, by status?",
-  "Create a project for a boundary survey and tell me what you set",
+  "/hazard",
 ];
 
 /** What the assistant claims about itself — one line per tool group the
@@ -878,8 +878,8 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
               aria-label="Earth Observation Commands"
             >
               <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase border-b border-border/40 pb-1 mb-1">
-                <span>Earth Observation (1 survey at a time)</span>
-                <span>Select with ↑↓ + Enter</span>
+                <span>Earth Observation Questionnaire</span>
+                <span>Click or Enter to Start</span>
               </div>
               <div className="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
                 {matchingSlashCommands.map((cmd, idx) => {
@@ -896,8 +896,8 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
                       )}
                       onMouseEnter={() => setSelectedSlashIndex(idx)}
                       onClick={() => {
-                        setDraft(cmd.template);
-                        inputRef.current?.focus();
+                        setDraft("");
+                        void send(cmd.template);
                       }}
                     >
                       <div className="flex w-full items-center justify-between">
@@ -950,11 +950,16 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
                     setSelectedSlashIndex(
                       (prev) => (prev - 1 + matchingSlashCommands.length) % matchingSlashCommands.length
                     );
-                  } else if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey && !draft.includes(" "))) {
+                  } else if (e.key === "Tab") {
                     e.preventDefault();
                     const chosen = matchingSlashCommands[selectedSlashIndex] || matchingSlashCommands[0];
-                    setDraft(chosen.template);
+                    setDraft(chosen.template + " ");
                     inputRef.current?.focus();
+                  } else if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    const chosen = matchingSlashCommands[selectedSlashIndex] || matchingSlashCommands[0];
+                    setDraft("");
+                    void send(chosen.template);
                   }
                 }
               }}
