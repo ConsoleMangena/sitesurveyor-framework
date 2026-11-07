@@ -2,12 +2,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   IconArrowsExchange,
-  IconBolt,
   IconBuildingStore,
-  IconBus,
-  IconCarSuv,
   IconChevronDown,
-  IconClock,
   IconCrosshair,
   IconCurrentLocation,
   IconHistory,
@@ -15,15 +11,14 @@ import {
   IconRoute,
   IconSearch,
   IconSettings,
+  IconSliders,
   IconSparkles,
   IconSteeringWheel,
   IconTruck,
-  IconTruckDelivery,
   IconX,
 } from "@tabler/icons-react";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
-import { Badge } from "../../components/ui/badge.tsx";
 import {
   Select,
   SelectContent,
@@ -31,12 +26,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select.tsx";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../../components/ui/sheet.tsx";
 import { AccountMenu, AccountMenuAvatar, AccountMenuItem } from "../../components/account-menu.tsx";
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
+import { cn } from "../../lib/utils.ts";
 import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
 import { VehicleHireCard } from "../../components/transport/VehicleHireCard.tsx";
 import { BookingSlip } from "../../components/transport/BookingSlip.tsx";
+import { VEHICLE_TIER_THEME } from "../../components/transport/vehicleTierTheme.ts";
 import {
   calculateHireFare,
   calculateRoadDistanceKm,
@@ -56,18 +60,38 @@ type SortKey = "eta" | "price-asc" | "price-desc" | "rating" | "payload";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "eta", label: "Fastest ETA" },
-  { value: "price-asc", label: "Price: Low to High" },
-  { value: "price-desc", label: "Price: High to Low" },
-  { value: "rating", label: "Highest Rated Driver" },
-  { value: "payload", label: "Largest Payload" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+  { value: "rating", label: "Highest rated driver" },
+  { value: "payload", label: "Largest payload" },
 ];
+
+const SEAT_OPTIONS = [
+  { value: 0, label: "Any" },
+  { value: 2, label: "2+" },
+  { value: 5, label: "5+" },
+  { value: 7, label: "7+" },
+  { value: 14, label: "14+" },
+];
+
+const PAYLOAD_OPTIONS = [
+  { value: 0, label: "Any" },
+  { value: 500, label: "500 kg+" },
+  { value: 1000, label: "1 t+" },
+  { value: 5000, label: "5 t+" },
+];
+
+const TIER_IDS = Object.keys(VEHICLE_TIERS) as VehicleTierId[];
+
+function payloadLabel(kg: number): string {
+  return kg >= 1000 ? `${kg / 1000} t` : `${kg} kg`;
+}
 
 export default function PublicTransportPage() {
   const { user } = useAuthStore();
   const mapRef = useRef<TransportMapHandle>(null);
   const fleetRef = useRef<HTMLDivElement>(null);
 
-  // Exact Coordinates State (Default: Harare Core -> Bulawayo Base)
   const [pickup, setPickup] = useState<LocationCoordinate>({
     id: "hre-core",
     label: "Harare Core Depot",
@@ -78,53 +102,55 @@ export default function PublicTransportPage() {
   const [dropoff, setDropoff] = useState<LocationCoordinate>({
     id: "byo-base",
     label: "Bulawayo Hub Station",
-    lat: -20.1500,
+    lat: -20.15,
     lng: 28.5833,
   });
 
-  // Pin placement mode: null | "pickup" | "dropoff"
   const [activePinMode, setActivePinMode] = useState<"pickup" | "dropoff" | null>(null);
-
-  // Filters & Search
   const [search, setSearch] = useState("");
   const [selectedTier, setSelectedTier] = useState<VehicleTierId | "all">("all");
+  const [minSeats, setMinSeats] = useState(0);
+  const [minPayload, setMinPayload] = useState(0);
   const [sort, setSort] = useState<SortKey>("eta");
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
-
-  // Geolocation Loading
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
-
-  // Booking Modal & History
+  const [geoNotice, setGeoNotice] = useState<string | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [recentBookings, setRecentBookings] = useState<HireBooking[]>(() => loadSavedBookings());
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
-  // Dynamic Distance & Duration
-  const distanceKm = useMemo(() => {
-    return calculateRoadDistanceKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng);
-  }, [pickup, dropoff]);
+  const distanceKm = useMemo(
+    () => calculateRoadDistanceKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng),
+    [pickup, dropoff],
+  );
 
-  const durationMinutes = useMemo(() => {
-    return estimateDriveDurationMinutes(distanceKm);
-  }, [distanceKm]);
+  const durationMinutes = useMemo(() => estimateDriveDurationMinutes(distanceKm), [distanceKm]);
 
-  // Generate Fleet stationed around current pickup coordinate
-  const baseFleet = useMemo(() => {
-    return generateFleetForCoordinates(pickup, "all");
-  }, [pickup]);
+  const baseFleet = useMemo(() => generateFleetForCoordinates(pickup, "all"), [pickup]);
 
-  // Filtered and Sorted Fleet
+  const tierCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: baseFleet.length };
+    for (const tierId of TIER_IDS) {
+      counts[tierId] = baseFleet.filter((vehicle) => vehicle.tierId === tierId).length;
+    }
+    return counts;
+  }, [baseFleet]);
+
   const filteredFleet = useMemo(() => {
+    const query = search.trim().toLowerCase();
     return baseFleet
-      .filter((v) => selectedTier === "all" || v.tierId === selectedTier)
-      .filter((v) => {
-        if (!search.trim()) return true;
-        const q = search.trim().toLowerCase();
+      .filter((vehicle) => selectedTier === "all" || vehicle.tierId === selectedTier)
+      .filter((vehicle) => VEHICLE_TIERS[vehicle.tierId].seats >= minSeats)
+      .filter((vehicle) => VEHICLE_TIERS[vehicle.tierId].payloadKg >= minPayload)
+      .filter((vehicle) => {
+        if (!query) return true;
         return (
-          v.model.toLowerCase().includes(q) ||
-          v.licensePlate.toLowerCase().includes(q) ||
-          v.driverName.toLowerCase().includes(q) ||
-          v.color.toLowerCase().includes(q)
+          vehicle.model.toLowerCase().includes(query) ||
+          vehicle.licensePlate.toLowerCase().includes(query) ||
+          vehicle.driverName.toLowerCase().includes(query) ||
+          vehicle.color.toLowerCase().includes(query) ||
+          VEHICLE_TIERS[vehicle.tierId].name.toLowerCase().includes(query)
         );
       })
       .sort((a, b) => {
@@ -135,65 +161,92 @@ export default function PublicTransportPage() {
         }
         const fareA = calculateHireFare(VEHICLE_TIERS[a.tierId], distanceKm).totalFare;
         const fareB = calculateHireFare(VEHICLE_TIERS[b.tierId], distanceKm).totalFare;
-        if (sort === "price-asc") return fareA - fareB;
-        if (sort === "price-desc") return fareB - fareA;
-        return 0;
+        return sort === "price-asc" ? fareA - fareB : fareB - fareA;
       });
-  }, [baseFleet, selectedTier, search, sort, distanceKm]);
+  }, [baseFleet, selectedTier, minSeats, minPayload, search, sort, distanceKm]);
 
   const activeVehicle = useMemo(() => {
     if (selectedVehicleId) {
-      const found = filteredFleet.find((v) => v.id === selectedVehicleId);
+      const found = filteredFleet.find((vehicle) => vehicle.id === selectedVehicleId);
       if (found) return found;
     }
-    return filteredFleet[0] || null;
+    return filteredFleet[0] ?? null;
   }, [filteredFleet, selectedVehicleId]);
 
-  // Swap pickup & dropoff coordinates
+  const resetFilters = useCallback(() => {
+    setSearch("");
+    setSelectedTier("all");
+    setMinSeats(0);
+    setMinPayload(0);
+  }, []);
+
+  const activeFilters = useMemo(() => {
+    const filters: { key: string; label: string; value: string; clear: () => void }[] = [];
+    if (search.trim()) {
+      filters.push({ key: "search", label: "Search", value: search.trim(), clear: () => setSearch("") });
+    }
+    if (selectedTier !== "all") {
+      filters.push({
+        key: "tier",
+        label: "Class",
+        value: VEHICLE_TIERS[selectedTier].shortName,
+        clear: () => setSelectedTier("all"),
+      });
+    }
+    if (minSeats > 0) {
+      filters.push({ key: "seats", label: "Seats", value: `${minSeats}+`, clear: () => setMinSeats(0) });
+    }
+    if (minPayload > 0) {
+      filters.push({
+        key: "payload",
+        label: "Payload",
+        value: `${payloadLabel(minPayload)}+`,
+        clear: () => setMinPayload(0),
+      });
+    }
+    return filters;
+  }, [search, selectedTier, minSeats, minPayload]);
+
   const handleSwapCoordinates = useCallback(() => {
     setPickup(dropoff);
     setDropoff(pickup);
   }, [pickup, dropoff]);
 
-  // Request browser geolocation for current device GPS
   const handleUseCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      setGeoNotice("This browser cannot share a GPS fix. Type the coordinates or drop a pin instead.");
       return;
     }
 
     setIsLocating(true);
+    setGeoNotice(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      (position) => {
         setIsLocating(false);
-        const userLat = Math.round(pos.coords.latitude * 100000) / 100000;
-        const userLng = Math.round(pos.coords.longitude * 100000) / 100000;
-        const newPickup: LocationCoordinate = {
-          lat: userLat,
-          lng: userLng,
-          label: `My GPS Location (${userLat.toFixed(3)}, ${userLng.toFixed(3)})`,
+        const lat = Math.round(position.coords.latitude * 100000) / 100000;
+        const lng = Math.round(position.coords.longitude * 100000) / 100000;
+        setPickup({
+          lat,
+          lng,
+          label: `My GPS location (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
           isCustom: true,
-        };
-        setPickup(newPickup);
-        if (mapRef.current) {
-          mapRef.current.centerCoordinate(userLat, userLng);
-        }
+        });
+        mapRef.current?.centerCoordinate(lat, lng);
       },
-      (err) => {
+      (error) => {
         setIsLocating(false);
-        alert(`Could not fetch GPS location: ${err.message}`);
+        setGeoNotice(`Could not read your GPS: ${error.message}. Drop a pin on the map instead.`);
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }, []);
 
-  // Update coordinates from map drag or click
   const handleCoordinatesChange = useCallback(
-    (type: "pickup" | "dropoff", newCoords: LocationCoordinate) => {
+    (type: "pickup" | "dropoff", coordinates: LocationCoordinate) => {
       if (type === "pickup") {
-        setPickup(newCoords);
+        setPickup(coordinates);
       } else {
-        setDropoff(newCoords);
+        setDropoff(coordinates);
       }
       setActivePinMode(null);
     },
@@ -202,9 +255,7 @@ export default function PublicTransportPage() {
 
   const handleSelectVehicle = useCallback((vehicle: HireVehicle) => {
     setSelectedVehicleId(vehicle.id);
-    if (mapRef.current) {
-      mapRef.current.focusVehicle(vehicle);
-    }
+    mapRef.current?.focusVehicle(vehicle);
   }, []);
 
   const handleBookVehicleNow = useCallback((vehicle: HireVehicle) => {
@@ -213,54 +264,54 @@ export default function PublicTransportPage() {
   }, []);
 
   const handleBookingConfirmed = useCallback((booking: HireBooking) => {
-    setRecentBookings((prev) => [booking, ...prev.slice(0, 19)]);
+    setRecentBookings((previous) => [booking, ...previous.slice(0, 19)]);
   }, []);
 
   const scrollToFleet = () => {
     fleetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const applyPreset = (preset: LocationCoordinate) => {
+    setDropoff(preset);
+    mapRef.current?.centerCoordinate(preset.lat, preset.lng);
+  };
+
   return (
-    <div className="web3-surface min-h-screen bg-background text-foreground antialiased selection:bg-rose-500/20 selection:text-rose-600">
-      {/* Marketplace-Style Header */}
+    <div className="web3-surface">
       <header className="web3-header">
         <div className="web3-header-inner">
           <span className="flex min-w-0 items-baseline gap-2">
             <Link to="/" aria-label="SiteSurveyor home" className="web3-brand">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-600 text-white font-mono text-sm font-extrabold shadow-sm">
-                S
-              </span>
+              <img src="/logo.svg" alt="" className="web3-brand-logo" aria-hidden="true" />
               <span className="web3-brand-name">SiteSurveyor</span>
             </Link>
-            <span className="web3-brand-sub hidden truncate sm:inline">
-              / Field Vehicle Hire
-            </span>
+            <span className="web3-brand-sub hidden truncate sm:inline">/ Field Vehicle Hire</span>
           </span>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Link
               to="/market"
               className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
-              title="Browse the marketplace"
+              title="Instruments, people, jobs and training from the market"
             >
               <IconBuildingStore className="size-4 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">Marketplace</span>
             </Link>
 
-            {recentBookings.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowHistoryModal(true)}
-                className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
-                aria-label="View recent bookings"
-              >
-                <IconHistory className="size-4 shrink-0" />
-                <span className="hidden sm:inline">Trips</span>
-                <span className="flex size-5 items-center justify-center rounded-full bg-rose-600 font-mono text-[11px] font-semibold text-white">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
+              aria-label={`Open your trips, ${recentBookings.length} recorded`}
+            >
+              <IconHistory className="size-4 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">Trips</span>
+              {recentBookings.length > 0 ? (
+                <span className="flex size-5 items-center justify-center rounded-full bg-primary font-mono text-[11px] font-semibold tabular-nums text-primary-foreground">
                   {recentBookings.length}
                 </span>
-              </button>
-            )}
+              ) : null}
+            </button>
 
             <ThemeToggle />
 
@@ -289,7 +340,7 @@ export default function PublicTransportPage() {
             ) : (
               <Link
                 to="/login"
-                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4"
+                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap px-3 text-xs sm:px-4 sm:text-sm"
               >
                 Sign in
               </Link>
@@ -300,15 +351,27 @@ export default function PublicTransportPage() {
 
       <main>
         {/* Hero Section: Route Planner Deck & Live Map Frame */}
-        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-12 lg:py-16">
+        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
           {/* Left Column: Headline & Coordinate Dispatch Deck */}
           <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
-            <div className="max-w-xl">
+            <div className="max-w-xl space-y-5">
+              <div>
+                <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-rose-600 dark:text-rose-400">
+                  <IconSteeringWheel className="size-4" aria-hidden="true" />
+                  Field transport network
+                </p>
+                <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.35rem] lg:leading-[1.08]">
+                  Move your fieldwork forward.
+                </h1>
+                <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+                  Find the right vehicle for your route, compare live fleet availability, and book field transport with clear distance-based fares.
+                </p>
+              </div>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={scrollToFleet}
-                  className="web3-btn gap-1.5 text-xs font-semibold"
+                  className="web3-btn gap-1.5"
                 >
                   Browse available fleet
                   <IconChevronDown className="size-4" aria-hidden="true" />
@@ -321,22 +384,27 @@ export default function PublicTransportPage() {
             </div>
 
             {/* Coordinate Dispatch Deck */}
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                <div className="flex items-center gap-2">
-                  <IconSteeringWheel className="h-4 w-4 text-rose-600" />
-                  <span className="text-xs font-bold uppercase font-mono tracking-wider text-foreground">
-                    Route Planner (GPS Coordinates)
-                  </span>
+            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+              <div className="space-y-4 p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <IconRoute className="size-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 className="text-sm font-semibold text-foreground">Plan your route</h2>
+                      <p className="text-xs text-muted-foreground">Set pickup and destination coordinates</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSwapCoordinates}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
+                  >
+                    <IconArrowsExchange className="h-3.5 w-3.5" />
+                    <span>Swap</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSwapCoordinates}
-                  className="inline-flex items-center gap-1 text-xs font-mono text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold transition-colors"
-                >
-                  <IconArrowsExchange className="h-3.5 w-3.5" />
-                  <span>Swap</span>
-                </button>
               </div>
 
               {/* Connected Track: Pickup -> Destination */}
@@ -557,11 +625,11 @@ export default function PublicTransportPage() {
         <section ref={fleetRef} className="market-registry mt-10 scroll-mt-16 sm:mt-12">
           <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-11 sm:px-6 sm:py-14">
             <div className="max-w-2xl">
-              <h2 className="market-section-title text-balance text-foreground text-2xl font-bold tracking-tight">
-                Available Vehicles for Hire
+              <h2 className="market-section-title text-balance text-foreground">
+                Hire a vehicle for your next field trip
               </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-                Real-time fleet availability with distance pricing. Filter by category, seats, or payload capacity.
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Compare nearby vehicles, driver ratings, capacity, and a route-based fare before booking.
               </p>
             </div>
 
@@ -650,7 +718,7 @@ export default function PublicTransportPage() {
             </div>
 
             {/* 3-Column Marketplace-Style Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
               {filteredFleet.length === 0 ? (
                 <div className="col-span-full py-16 text-center rounded-2xl border border-dashed border-border bg-card/50">
                   <IconTruck className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
