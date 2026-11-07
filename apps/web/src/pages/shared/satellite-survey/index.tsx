@@ -47,7 +47,6 @@ import {
   parseJobSpec,
   serializeJobSpec,
 } from "../../../lib/surveys/jobSpec.ts";
-import { parseZoneCollection, zoneLegend, type ZoneCollection } from "../../../lib/surveys/zoneLayers.ts";
 import {
   aoiBounds,
   basisText,
@@ -108,10 +107,10 @@ export default function SatelliteSurveyPage({
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
-  const [layers, setLayers] = useState({ aoi: true, candidates: true, raster: true, zones: true });
+  const [layers, setLayers] = useState({ aoi: true, candidates: true, raster: true });
   /**
-   * Whether the reader asked for the drape on or off. Left null, the drape stands in
-   * only for a survey that published no vector geometry -- the zones are the map now.
+   * Whether the reader asked for the drape on or off. Left null, the classified raster
+   * is the map layer whenever the survey published one.
    */
   const [rasterOverride, setRasterOverride] = useState<boolean | null>(null);
   const [rasterOpacity, setRasterOpacity] = useState(0.65);
@@ -297,29 +296,8 @@ export default function SatelliteSurveyPage({
     return (detail?.deliverables ?? []).find((d) => d.kind === kinds.tif) ?? null;
   }, [detail?.deliverables, jobDossierCategory]);
 
-  const zonesDeliverable = useMemo(() => {
-    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
-    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.zones) ?? null;
-  }, [detail?.deliverables, jobDossierCategory]);
-
   const [rasterUrl, setRasterUrl] = useState<string | null>(null);
   const [geoTiffUrl, setGeoTiffUrl] = useState<string | null>(null);
-  /**
-   * The zones file, tagged with the deliverable it came from.
-   *
-   * Keying it means switching surveys cannot leave the previous survey's zones on the
-   * map for a frame, and it removes the reset that would otherwise blank the map.
-   */
-  const [zonesResult, setZonesResult] = useState<{
-    key: string | null;
-    collection: ZoneCollection | null;
-  }>({ key: null, collection: null });
-
-  const zonesKey = zonesDeliverable?.id ?? null;
-  const zones =
-    zonesResult.key !== null && zonesResult.key === zonesKey ? zonesResult.collection : null;
-  /** True once we know whether this survey published vector geometry at all. */
-  const zonesResolved = zonesKey === null || zonesResult.key === zonesKey;
 
   useEffect(() => {
     let active = true;
@@ -345,34 +323,8 @@ export default function SatelliteSurveyPage({
     };
   }, [tifDeliverable]);
 
-  useEffect(() => {
-    const deliverable = zonesDeliverable;
-    if (!deliverable) return;
-    const key = deliverable.id;
-    let active = true;
-    void (async () => {
-      let collection: ZoneCollection | null = null;
-      try {
-        const url = await deliverableUrl(deliverable);
-        if (url) {
-          const response = await fetch(url);
-          if (!response.ok) throw new Error(String(response.status));
-          collection = parseZoneCollection(await response.json());
-        }
-      } catch {
-        // A missing or malformed zones file leaves the map on the drape rather than blank.
-      }
-      if (active) setZonesResult({ key, collection });
-    })();
-    return () => {
-      active = false;
-    };
-  }, [zonesDeliverable]);
-
-  const hasZones = zones !== null;
   const hasRaster = Boolean(overlayDeliverable || tifDeliverable);
-  const rasterOn = rasterOverride ?? (!hasZones && zonesResolved && hasRaster);
-  const legend = useMemo(() => zoneLegend(zones), [zones]);
+  const rasterOn = rasterOverride ?? hasRaster;
 
   const handleDownloadKmz = useCallback(async () => {
     if (!kmzDeliverable) return;
@@ -419,9 +371,9 @@ export default function SatelliteSurveyPage({
     setResizeToken((token) => token + 1);
   }
 
-  /** The drape is the fallback for a survey with no vector geometry, so its switch is
-   *  remembered separately: unchecking it once must not uncheck it for every survey. */
-  function setLayer(id: "aoi" | "candidates" | "raster" | "zones", value: boolean) {
+  /** The drape is the classified map layer, so its switch is remembered separately:
+   *  unchecking it once must not uncheck it for every survey. */
+  function setLayer(id: "aoi" | "candidates" | "raster", value: boolean) {
     if (id === "raster") {
       setRasterOverride(value);
       return;
@@ -697,8 +649,6 @@ export default function SatelliteSurveyPage({
           rasterOpacity={rasterOpacity}
           onRasterOpacityChange={setRasterOpacity}
           hasRaster={hasRaster}
-          hasZones={hasZones}
-          zoneLegend={legend}
           basemap={basemap}
           onBasemap={setBasemap}
           snapshot={snapshot}
@@ -749,7 +699,6 @@ export default function SatelliteSurveyPage({
             bounds={aoiBounds(target.latitude, target.longitude, values.halfDeg)}
             candidates={candidates}
             layers={{ ...layers, raster: rasterOn }}
-            zones={zones}
             classifiedImageUrl={rasterUrl}
             classifiedTiffUrl={geoTiffUrl}
             rasterPalette={CATEGORY_RASTER_PALETTE[jobDossierCategory]}

@@ -3,7 +3,6 @@ import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { Camera } from "lucide-react";
-import ClassifiedVectorLayer from "./ClassifiedVectorLayer.tsx";
 import GeoTiffOverlay from "./GeoTiffOverlay.tsx";
 import { candidateIcon, targetIcon } from "./mapIcons.ts";
 import {
@@ -15,7 +14,6 @@ import {
   type MapCandidate,
 } from "../../lib/surveys/workbench.ts";
 import { coordText, distanceText, scoreText } from "../../lib/surveys/labels.ts";
-import type { ZoneCollection } from "../../lib/surveys/zoneLayers.ts";
 
 const BRAND = "#D14141";
 const OUTSIDE = "#f59e0b";
@@ -31,12 +29,10 @@ interface SurveyMapProps {
   target: { latitude: number; longitude: number };
   bounds: [LatLngTuple, LatLngTuple];
   candidates: MapCandidate[];
-  layers: { aoi: boolean; candidates: boolean; raster?: boolean; zones?: boolean };
+  layers: { aoi: boolean; candidates: boolean; raster?: boolean };
   classifiedImageUrl?: string | null;
   /** Georeferenced zone GeoTIFF preferred over the flattened PNG. */
   classifiedTiffUrl?: string | null;
-  /** The classified zones as vector geometry: the map layer that replaces the drape. */
-  zones?: ZoneCollection | null;
   /** Class colours used when the GeoTIFF has no embedded colour table. */
   rasterPalette?: readonly string[];
   classifiedOpacity?: number;
@@ -143,7 +139,6 @@ export default function SurveyMap({
   layers,
   classifiedImageUrl,
   classifiedTiffUrl,
-  zones,
   rasterPalette,
   classifiedOpacity = 0.65,
   basemap,
@@ -188,10 +183,6 @@ export default function SurveyMap({
             fillOpacity: 0.05,
           }}
         />
-      ) : null}
-
-      {layers.zones !== false && zones ? (
-        <ClassifiedVectorLayer data={zones} opacity={classifiedOpacity} />
       ) : null}
 
       {layers.raster !== false && (classifiedTiffUrl || classifiedImageUrl) ? (

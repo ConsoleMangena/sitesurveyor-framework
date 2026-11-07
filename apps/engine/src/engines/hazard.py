@@ -49,7 +49,6 @@ from src.utils.classification import (
     ZONE_PALETTES,
     classify_zones,
     export_classified_overlay,
-    export_zone_polygons,
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
@@ -267,12 +266,6 @@ def run_hazard_survey(
         hazard_zones,
         cfg.OUT / "hazard_overlay.png",
         colors=ZONE_PALETTES["hazard"],
-    )
-    export_zone_polygons(
-        hazard_zones,
-        cfg.OUT / "hazard_zones.geojson",
-        colors=ZONE_PALETTES["hazard"],
-        category="hazard",
     )
 
     # Candidate Safe Sites CSV & GeoJSON

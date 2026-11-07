@@ -50,7 +50,6 @@ from src.utils.classification import (
     ZONE_PALETTES,
     classify_zones,
     export_classified_overlay,
-    export_zone_polygons,
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
@@ -296,12 +295,6 @@ def run_soil_survey(
         zones,
         cfg.OUT / "soil_overlay.png",
         colors=ZONE_PALETTES["soil"],
-    )
-    export_zone_polygons(
-        zones,
-        cfg.OUT / "soil_zones.geojson",
-        colors=ZONE_PALETTES["soil"],
-        category="soil",
     )
 
     # CSV

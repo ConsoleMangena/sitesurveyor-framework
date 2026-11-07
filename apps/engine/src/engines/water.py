@@ -44,7 +44,6 @@ from src.utils.classification import (
     ZONE_PALETTES,
     classify_zones,
     export_classified_overlay,
-    export_zone_polygons,
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
@@ -253,12 +252,6 @@ def run_water_survey(
                  nodata=255, colors=palette)
     write_raster(cfg.OUT / "gwpz_index.tif", gwpz_index, dtype="float32", nodata=np.nan)
     export_classified_overlay(classes, cfg.OUT / "groundwater_overlay.png", colors=palette)
-    export_zone_polygons(
-        classes,
-        cfg.OUT / "groundwater_zones.geojson",
-        colors=palette,
-        category="water",
-    )
 
     # B. Write Candidate CSV
     candidate_fields = [

@@ -54,7 +54,7 @@ export const AOI_CHOICES = [
  */
 export const CATEGORY_EXPORTS: Record<
   DossierCategory,
-  { map: string; kmz: string; geojson: string; tif: string; overlay: string; zones: string }
+  { map: string; kmz: string; geojson: string; tif: string; overlay: string }
 > = {
   water: {
     map: "groundwater_map",
@@ -62,7 +62,6 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "boreholes_geojson",
     tif: "groundwater_tif",
     overlay: "groundwater_overlay",
-    zones: "groundwater_zones_geojson",
   },
   minerals: {
     map: "minerals_map",
@@ -70,7 +69,6 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "minerals_geojson",
     tif: "minerals_tif",
     overlay: "minerals_overlay",
-    zones: "minerals_zones_geojson",
   },
   soil_land: {
     map: "soil_map",
@@ -78,7 +76,6 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "soil_geojson",
     tif: "soil_tif",
     overlay: "soil_overlay",
-    zones: "soil_zones_geojson",
   },
   hazard_safety: {
     map: "hazard_map",
@@ -86,7 +83,6 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "safest_sites_geojson",
     tif: "hazard_tif",
     overlay: "hazard_overlay",
-    zones: "hazard_zones_geojson",
   },
 };
 
@@ -107,9 +103,8 @@ export const CATEGORY_RASTER_PALETTE: Record<DossierCategory, readonly string[]>
 /**
  * The class names each category puts on its zones, in zone-code order.
  *
- * Mirrors `ZONE_LABELS` in `apps/engine/src/utils/classification.py`. The vector layer
- * carries these names itself, so this copy is only what the legend falls back to for a
- * survey whose vector zones are missing.
+ * Mirrors `ZONE_LABELS` in `apps/engine/src/utils/classification.py`. This is the source
+ * of the class names the map legend prints beside the classified raster drape.
  */
 export const CATEGORY_ZONE_LABELS: Record<DossierCategory, readonly string[]> = {
   water: [

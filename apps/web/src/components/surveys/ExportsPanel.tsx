@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileDown, FileText, Image, Layers, Loader, MapPin } from "lucide-react";
+import { FileDown, FileText, Image, Loader, MapPin } from "lucide-react";
 
 import type { SurveyDeliverable } from "../../lib/repositories/satelliteSurveys.ts";
 import { deliverableUrl } from "../../lib/repositories/satelliteSurveys.ts";
@@ -56,7 +56,6 @@ export default function ExportsPanel({
           const map = byKind.get(kinds.map) ?? null;
           const kmz = byKind.get(kinds.kmz) ?? null;
           const tif = byKind.get(kinds.tif) ?? null;
-          const zones = byKind.get(kinds.zones) ?? null;
           return (
             <div
               key={category}
@@ -74,15 +73,6 @@ export default function ExportsPanel({
                   disabled={opening !== null}
                   onOpen={() => void open(map, `${CATEGORY_LABELS[category].name} map`)}
                   title={map ? "Open the classified preview map" : "No preview map for this category yet"}
-                />
-                <ExportButton
-                  label="Zones"
-                  icon="zones"
-                  file={zones}
-                  opening={opening}
-                  disabled={opening !== null}
-                  onOpen={() => void open(zones, `${CATEGORY_LABELS[category].name} classification zones`)}
-                  title={zones ? "Download the classification zones as GeoJSON" : "No zone geometry for this category yet"}
                 />
                 <ExportButton
                   label="GeoTIFF"
@@ -149,7 +139,7 @@ function ExportButton({
   onOpen,
 }: {
   label: string;
-  icon: "image" | "gps" | "tif" | "zones";
+  icon: "image" | "gps" | "tif";
   file: SurveyDeliverable | null;
   opening: string | null;
   disabled: boolean;
@@ -173,8 +163,6 @@ function ExportButton({
         <Loader className="size-3 animate-spin" aria-hidden="true" />
       ) : icon === "image" ? (
         <Image className="size-3" aria-hidden="true" />
-      ) : icon === "zones" ? (
-        <Layers className="size-3" aria-hidden="true" />
       ) : icon === "tif" ? (
         <FileDown className="size-3" aria-hidden="true" />
       ) : (

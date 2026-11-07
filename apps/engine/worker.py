@@ -84,11 +84,6 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     "minerals_overlay": "minerals_overlay.png",
     "soil_overlay": "soil_overlay.png",
     "hazard_overlay": "hazard_overlay.png",
-    # The classified zones as vector geometry: one feature per region, in WGS84.
-    "groundwater_zones_geojson": "groundwater_zones.geojson",
-    "minerals_zones_geojson": "minerals_zones.geojson",
-    "soil_zones_geojson": "soil_zones.geojson",
-    "hazard_zones_geojson": "hazard_zones.geojson",
 }
 
 CONTENT_TYPES = {
