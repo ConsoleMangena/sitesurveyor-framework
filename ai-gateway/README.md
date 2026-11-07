@@ -63,6 +63,10 @@ SUPABASE_SERVICE_ROLE_KEY=your-server-side-service-role-key
 PORT=8787
 HOST=127.0.0.1
 
+# Optional comma-separated browser origins allowed to call /api/market-chat
+# cross-origin. Leave empty for same-origin only.
+# ALLOWED_ORIGINS=https://app.example.com
+
 # Optional buffered OpenClaw path; disabled by default
 # USE_OPENCLAW=1
 ```
@@ -74,6 +78,7 @@ HOST=127.0.0.1
 | `SUPABASE_SERVICE_ROLE_KEY` | For chat | Privileged server-side persistence and tool access |
 | `PORT` | No | HTTP port; defaults to `8787` |
 | `HOST` | No | Bind address; defaults to `0.0.0.0` in code, so use a restricted address for local-only work |
+| `ALLOWED_ORIGINS` | No | Comma-separated origins allowed to call `/api/market-chat` cross-origin; empty means same-origin only |
 | `USE_OPENCLAW` | No | Set to `1` to use the optional buffered OpenClaw runtime |
 
 Never copy these values into `apps/web/.env`, a `VITE_*` variable, the frontend bundle, logs, screenshots, or documentation containing real credentials.

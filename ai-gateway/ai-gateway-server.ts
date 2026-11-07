@@ -16,6 +16,9 @@
 //   NVIDIA_API_KEY=nvapi-...                  provider key (from build.nvidia.com)
 //   SUPABASE_URL=https://<project>.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY=<service role key>
+//   ALLOWED_ORIGINS=https://app.example.com   optional comma-separated CORS
+//                                             allowlist for /api/market-chat;
+//                                             empty = same-origin only
 //
 // The USE_OPENCLAW path requires the ambient openclaw config (~/.openclaw/
 // openclaw.json) to register:
@@ -47,6 +50,26 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? "0.0.0.0";
+
+// Browser origins allowed to call the cross-origin chat endpoints. Empty means
+// same-origin only: no `Access-Control-Allow-Origin` header is emitted, so a
+// browser blocks cross-site calls. Never fall back to "*" — this process holds
+// the service-role key.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function corsHeaders(req: http.IncomingMessage): Record<string, string> {
+  const headers: Record<string, string> = { Vary: "Origin" };
+  const origin = req.headers.origin;
+  if (!origin || !ALLOWED_ORIGINS.includes(origin)) return headers;
+  headers["Access-Control-Allow-Origin"] = origin;
+  headers["Access-Control-Allow-Headers"] =
+    "authorization, x-client-info, apikey, content-type";
+  headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
+  return headers;
+}
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(here, "../apps/web/dist");
@@ -98,8 +121,13 @@ const streamRunAgent = fs.existsSync(AGENT_CORE)
     ) as typeof import("../supabase/functions/_shared/ai-agent.ts")
   : null;
 
-function json(res: http.ServerResponse, status: number, body: unknown) {
-  res.writeHead(status, { "Content-Type": "application/json" });
+function json(
+  res: http.ServerResponse,
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+) {
+  res.writeHead(status, { "Content-Type": "application/json", ...headers });
   res.end(JSON.stringify(body));
 }
 
@@ -512,13 +540,13 @@ function sanitizeMarketHistory(raw: unknown): { role: "user" | "assistant"; cont
 
 async function handleMarketChat(req: http.IncomingMessage, res: http.ServerResponse) {
   if (!NVIDIA_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return json(res, 503, { error: "The market concierge is not configured on this host." });
+    return json(res, 503, { error: "The market concierge is not configured on this host." }, corsHeaders(req));
   }
   if (!streamRunAgent) {
-    return json(res, 503, { error: "No agent engine available on this host." });
+    return json(res, 503, { error: "No agent engine available on this host." }, corsHeaders(req));
   }
   if (!marketChatAllowed(requestIp(req))) {
-    return json(res, 429, { error: "Too many messages — wait a minute and try again." });
+    return json(res, 429, { error: "Too many messages — wait a minute and try again." }, corsHeaders(req));
   }
 
   let payload: { message?: unknown; history?: unknown; model?: unknown };
@@ -530,15 +558,15 @@ async function handleMarketChat(req: http.IncomingMessage, res: http.ServerRespo
     });
     payload = JSON.parse(raw || "{}");
   } catch {
-    return json(res, 400, { error: "Invalid JSON body." });
+    return json(res, 400, { error: "Invalid JSON body." }, corsHeaders(req));
   }
 
   const message = typeof payload.message === "string" ? payload.message.trim() : "";
-  if (!message) return json(res, 400, { error: "message is required." });
+  if (!message) return json(res, 400, { error: "message is required." }, corsHeaders(req));
   if (message.length > MARKET_MAX_MESSAGE_CHARS) {
     return json(res, 400, {
       error: `Keep the message under ${MARKET_MAX_MESSAGE_CHARS} characters.`,
-    });
+    }, corsHeaders(req));
   }
 
   const history = sanitizeMarketHistory(payload.history);
@@ -548,6 +576,7 @@ async function handleMarketChat(req: http.IncomingMessage, res: http.ServerRespo
   res.writeHead(200, {
     "Content-Type": "application/x-ndjson; charset=utf-8",
     "Cache-Control": "no-cache, no-transform",
+    ...corsHeaders(req),
   });
   const send = (event: Record<string, unknown>) =>
     res.write(JSON.stringify(event) + "\n");
@@ -619,11 +648,7 @@ const server = http.createServer((req, res) => {
       return res.end(JSON.stringify({ error: "Method not allowed. Use POST." }));
     }
     if (req.method === "OPTIONS") {
-      res.writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-      });
+      res.writeHead(204, corsHeaders(req));
       return res.end();
     }
     void handleMarketChat(req, res);
