@@ -1,5 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { webcrypto } from "node:crypto";
+import { vi } from "vitest";
+
+// The auth plat column shows a large decorative SVG animation. Tests exercise
+// the forms, not the artwork, and parsing the full SVG in jsdom on every auth
+// render slows the suite into waitFor timeouts. Stand in with nothing.
+vi.mock("@/components/auth/BlocksAnimation", () => ({
+  default: () => null,
+}));
 
 class ResizeObserverMock {
   observe() {}

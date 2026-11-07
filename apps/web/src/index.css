@@ -2,6 +2,7 @@
 @import './styles/theme.css';
 @import './styles/auth-background.css';
 @import './styles/auth-plat.css';
+@import './styles/auth-blocks.css';
 @import './styles/transport-plat.css';
 @import './styles/web3.css';
 @import './styles/survey-workbench.css';

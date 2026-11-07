@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Store } from "lucide-react";
 import AuthBackground from "../AuthBackground";
-import AnchorPlat from "./AnchorPlat";
+import BlocksAnimation from "./BlocksAnimation";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +26,7 @@ export interface AuthShellProps {
 
 /**
  * Shared frame for every authentication screen: the sheet is split like a
- * plan — the plat of record for one anchor run on the left, the working column
+ * plan — a decorative animation on the left, the working column
  * (brand, heading, controls, escape hatch) on the right.
  *
  * Each page supplies its own content so it can own its form state, validation
@@ -48,7 +48,7 @@ export default function AuthShell({
 
       <div className="auth-sheet">
         <aside className="auth-plat" aria-hidden="true">
-          <AnchorPlat />
+          <BlocksAnimation />
         </aside>
 
         <section className="auth-side">

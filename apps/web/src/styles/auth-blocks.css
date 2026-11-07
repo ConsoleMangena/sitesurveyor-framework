@@ -1,0 +1,467 @@
+/* The moving-blocks animation shown in the auth plat column.
+   Selectors are scoped to .auth-blocks and keyframes prefixed ab- so the
+   sheet never leaks into the rest of the app. The column background follows
+   the theme: white in light, the pen's dark in dark. */
+
+.auth-blocks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.dark .auth-blocks,
+[data-theme="dark"] .auth-blocks {
+  background: #0c0019;
+}
+
+.auth-blocks svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+
+
+.auth-blocks #redblocks > * { transform: translate3d(160px, -93px, 0); animation: ab-moveblocks 4s 1s ease infinite; }
+
+.auth-blocks #firstBlock { transform: translate3d(160px, -93px, 0); animation: ab-firstBlock 4s 1s ease infinite; }
+
+.auth-blocks #blockdis { animation: ab-blockdis 4s 1s ease infinite; }
+
+
+
+.auth-blocks #redblocksparticles g:nth-child(1) polygon { opacity: 0.35; animation: ab-glow 4s 1s ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) polygon { opacity: 0.35; animation: ab-glow 4s 1s ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) polygon { opacity: 0.35; animation: ab-glow 4s 1s ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) polygon { opacity: 0.35; animation: ab-glow 4s 1s ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(1) { animation: ab-dots 4s 1050ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(1) { animation: ab-dots 4s 1050ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(1) { animation: ab-dots 4s 1050ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(1) { animation: ab-dots 4s 1050ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(2) { animation: ab-dots 4s 1100ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(2) { animation: ab-dots 4s 1100ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(2) { animation: ab-dots 4s 1100ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(2) { animation: ab-dots 4s 1100ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(3) { animation: ab-dots 4s 1150ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(3) { animation: ab-dots 4s 1150ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(3) { animation: ab-dots 4s 1150ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(3) { animation: ab-dots 4s 1150ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(4) { animation: ab-dots 4s 1200ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(4) { animation: ab-dots 4s 1200ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(4) { animation: ab-dots 4s 1200ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(4) { animation: ab-dots 4s 1200ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(5) { animation: ab-dots 4s 1250ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(5) { animation: ab-dots 4s 1250ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(5) { animation: ab-dots 4s 1250ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(5) { animation: ab-dots 4s 1250ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(6) { animation: ab-dots 4s 1300ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(6) { animation: ab-dots 4s 1300ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(6) { animation: ab-dots 4s 1300ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(6) { animation: ab-dots 4s 1300ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(7) { animation: ab-dots 4s 1350ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(7) { animation: ab-dots 4s 1350ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(7) { animation: ab-dots 4s 1350ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(7) { animation: ab-dots 4s 1350ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(8) { animation: ab-dots 4s 1400ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(8) { animation: ab-dots 4s 1400ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(8) { animation: ab-dots 4s 1400ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(8) { animation: ab-dots 4s 1400ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(9) { animation: ab-dots 4s 1450ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(9) { animation: ab-dots 4s 1450ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(9) { animation: ab-dots 4s 1450ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(9) { animation: ab-dots 4s 1450ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(10) { animation: ab-dots 4s 1500ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(10) { animation: ab-dots 4s 1500ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(10) { animation: ab-dots 4s 1500ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(10) { animation: ab-dots 4s 1500ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(11) { animation: ab-dots 4s 1550ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(11) { animation: ab-dots 4s 1550ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(11) { animation: ab-dots 4s 1550ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(11) { animation: ab-dots 4s 1550ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(12) { animation: ab-dots 4s 1600ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(12) { animation: ab-dots 4s 1600ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(12) { animation: ab-dots 4s 1600ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(12) { animation: ab-dots 4s 1600ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(13) { animation: ab-dots 4s 1650ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(13) { animation: ab-dots 4s 1650ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(13) { animation: ab-dots 4s 1650ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(13) { animation: ab-dots 4s 1650ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(14) { animation: ab-dots 4s 1700ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(14) { animation: ab-dots 4s 1700ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(14) { animation: ab-dots 4s 1700ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(14) { animation: ab-dots 4s 1700ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(15) { animation: ab-dots 4s 1750ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(15) { animation: ab-dots 4s 1750ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(15) { animation: ab-dots 4s 1750ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(15) { animation: ab-dots 4s 1750ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(16) { animation: ab-dots 4s 1800ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(16) { animation: ab-dots 4s 1800ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(16) { animation: ab-dots 4s 1800ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(16) { animation: ab-dots 4s 1800ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(17) { animation: ab-dots 4s 1850ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(17) { animation: ab-dots 4s 1850ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(17) { animation: ab-dots 4s 1850ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(17) { animation: ab-dots 4s 1850ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(18) { animation: ab-dots 4s 1900ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(18) { animation: ab-dots 4s 1900ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(18) { animation: ab-dots 4s 1900ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(18) { animation: ab-dots 4s 1900ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(1) g circle:nth-child(19) { animation: ab-dots 4s 1950ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(2) g circle:nth-child(19) { animation: ab-dots 4s 1950ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(3) g circle:nth-child(19) { animation: ab-dots 4s 1950ms ease infinite; }
+
+.auth-blocks #redblocksparticles g:nth-child(4) g circle:nth-child(19) { animation: ab-dots 4s 1950ms ease infinite; }
+
+.auth-blocks #purplebg > :nth-child(1) { animation: ab-up 2s 500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(2) { animation: ab-up 2s 1000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(3) { animation: ab-up 2s 1500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(4) { animation: ab-up 2s 2000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(5) { animation: ab-up 2s 2500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(6) { animation: ab-up 2s 3000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(7) { animation: ab-up 2s 3500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(8) { animation: ab-up 2s 4000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(9) { animation: ab-up 2s 4500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(10) { animation: ab-up 2s 5000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(11) { animation: ab-up 2s 5500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(12) { animation: ab-up 2s 6000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(13) { animation: ab-up 2s 6500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(14) { animation: ab-up 2s 7000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(15) { animation: ab-up 2s 7500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(16) { animation: ab-up 2s 8000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(17) { animation: ab-up 2s 8500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(18) { animation: ab-up 2s 9000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(19) { animation: ab-up 2s 9500ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(20) { animation: ab-up 2s 10000ms ease infinite alternate; }
+
+.auth-blocks #purplebg > :nth-child(21) { animation: ab-up 2s 10500ms ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(1) { animation: ab-particles 4s 300ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(1) { animation: ab-particles 4s 300ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(1) { animation: ab-particles 4s 300ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(2) { animation: ab-particles 4s 600ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(2) { animation: ab-particles 4s 600ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(2) { animation: ab-particles 4s 600ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(3) { animation: ab-particles 4s 900ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(3) { animation: ab-particles 4s 900ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(3) { animation: ab-particles 4s 900ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(4) { animation: ab-particles 4s 1200ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(4) { animation: ab-particles 4s 1200ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(4) { animation: ab-particles 4s 1200ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(5) { animation: ab-particles 4s 1500ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(5) { animation: ab-particles 4s 1500ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(5) { animation: ab-particles 4s 1500ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(6) { animation: ab-particles 4s 1800ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(6) { animation: ab-particles 4s 1800ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(6) { animation: ab-particles 4s 1800ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(7) { animation: ab-particles 4s 2100ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(7) { animation: ab-particles 4s 2100ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(7) { animation: ab-particles 4s 2100ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(8) { animation: ab-particles 4s 2400ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(8) { animation: ab-particles 4s 2400ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(8) { animation: ab-particles 4s 2400ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(9) { animation: ab-particles 4s 2700ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(9) { animation: ab-particles 4s 2700ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(9) { animation: ab-particles 4s 2700ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(10) { animation: ab-particles 4s 3000ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(10) { animation: ab-particles 4s 3000ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(10) { animation: ab-particles 4s 3000ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(11) { animation: ab-particles 4s 3300ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(11) { animation: ab-particles 4s 3300ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(11) { animation: ab-particles 4s 3300ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles > :nth-child(12) { animation: ab-particles 4s 3600ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #bottomparticles2 > :nth-child(12) { animation: ab-particles 4s 3600ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #redglowparticles > :nth-child(12) { animation: ab-particles 4s 3600ms ease infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks .particlespoly { animation: ab-p 2s ease infinite alternate; }
+
+.auth-blocks #d-app g:nth-child(1) { animation: ab-updown 2s 200ms ease-in-out infinite alternate; }
+
+.auth-blocks #d-apps2 g:nth-child(1) { animation: ab-updown 2s 200ms ease-in-out infinite alternate; }
+
+.auth-blocks #d-app g:nth-child(2) { animation: ab-updown 2s 400ms ease-in-out infinite alternate; }
+
+.auth-blocks #d-apps2 g:nth-child(2) { animation: ab-updown 2s 400ms ease-in-out infinite alternate; }
+
+.auth-blocks #d-app g:nth-child(3) { animation: ab-updown 2s 600ms ease-in-out infinite alternate; }
+
+.auth-blocks #d-apps2 g:nth-child(3) { animation: ab-updown 2s 600ms ease-in-out infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(1) { animation: ab-updown 2s 50ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(1) { animation: ab-updown 2s 50ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(2) { animation: ab-updown 2s 100ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(2) { animation: ab-updown 2s 100ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(3) { animation: ab-updown 2s 150ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(3) { animation: ab-updown 2s 150ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(4) { animation: ab-updown 2s 200ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(4) { animation: ab-updown 2s 200ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(5) { animation: ab-updown 2s 250ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(5) { animation: ab-updown 2s 250ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(6) { animation: ab-updown 2s 300ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(6) { animation: ab-updown 2s 300ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(7) { animation: ab-updown 2s 350ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(7) { animation: ab-updown 2s 350ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(8) { animation: ab-updown 2s 400ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(8) { animation: ab-updown 2s 400ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(9) { animation: ab-updown 2s 450ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(9) { animation: ab-updown 2s 450ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(10) { animation: ab-updown 2s 500ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(10) { animation: ab-updown 2s 500ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(11) { animation: ab-updown 2s 550ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(11) { animation: ab-updown 2s 550ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(12) { animation: ab-updown 2s 600ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(12) { animation: ab-updown 2s 600ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(13) { animation: ab-updown 2s 650ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(13) { animation: ab-updown 2s 650ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(14) { animation: ab-updown 2s 700ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(14) { animation: ab-updown 2s 700ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(15) { animation: ab-updown 2s 750ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(15) { animation: ab-updown 2s 750ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(16) { animation: ab-updown 2s 800ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(16) { animation: ab-updown 2s 800ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(17) { animation: ab-updown 2s 850ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(17) { animation: ab-updown 2s 850ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(18) { animation: ab-updown 2s 900ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(18) { animation: ab-updown 2s 900ms ease infinite alternate; }
+
+.auth-blocks #d-apps2wrapper g:nth-child(3) g > circle:nth-child(19) { animation: ab-updown 2s 950ms ease infinite alternate; }
+
+.auth-blocks #d-appswrapper g:nth-child(2) g > circle:nth-child(19) { animation: ab-updown 2s 950ms ease infinite alternate; }
+
+.auth-blocks #Layer_1 > g:nth-child(2) > g:nth-child(18) > g:nth-child(12) { animation: ab-arrows 1s ease-in-out infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #Layer_1 > g:nth-child(2) > g:nth-child(17) > g:nth-child(13) { animation: ab-arrows2 1s ease-in-out infinite alternate, ab-p 2s ease infinite alternate; }
+
+.auth-blocks #Layer_1 > g:nth-child(2) > g:nth-child(17) > g:nth-child(12) { animation: ab-arrows 1s ease-in-out infinite alternate, ab-p 2s ease infinite alternate; }
+
+
+
+@keyframes ab-moveblocks {
+  0% { transform: translate3d(160px, -93px, 0); }
+  50%, 100% { transform: translate(0); }
+}
+
+@keyframes ab-blockdis {
+  30% { opacity: 1; }
+  40%, 100% { opacity: 0; transform: translate3d(-160px, 93px, 0); }
+}
+
+@keyframes ab-firstBlock {
+  0%, 15% { opacity: 0; }
+  40%, 100% { opacity: 1; }
+}
+
+@keyframes ab-glow {
+  0%, 45% { opacity: 0; }
+  60%, 100% { opacity: 0.35; }
+}
+
+@keyframes ab-dots {
+  0%, 35% { transform: translate(0); opacity: 0; }
+  60%, 80% { transform: translate(55px, -35px); opacity: 1; }
+  100% { transform: translate(55px, -35px); opacity: 0; }
+}
+
+@keyframes ab-up {
+  to { transform: translate(0, -25px); }
+}
+
+@keyframes ab-p {
+  85%, 100% { opacity: 0; }
+}
+
+@keyframes ab-particles {
+  0%, 100% { transform: translate(0); }
+  50% { transform: translate(10px, 15px); }
+}
+
+@keyframes ab-updown {
+  100% { transform: translate(0, -20px); }
+}
+
+@keyframes ab-arrows {
+  to { transform: translate(25px, 25px); }
+}
+
+@keyframes ab-arrows2 {
+  to { transform: translate(-25px, -25px); }
+}
+
+
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-blocks * { animation: none !important; }
+  .auth-blocks #redblocks > *,
+  .auth-blocks #firstBlock { transform: none; }
+  .auth-blocks #blockdis { opacity: 1; }
+}
