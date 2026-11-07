@@ -59,74 +59,80 @@ export function WorkbenchBar({
         <Button
           type="button"
           size="sm"
-          className="h-7 gap-1.5 text-[11.5px]"
+          className="h-7 gap-1.5 text-[11.5px] shrink-0"
           disabled={running}
           onClick={onRun}
         >
-          <Play className="size-3.5" aria-hidden="true" />
-          Run survey
+          <Play className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>Run survey</span>
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 gap-1.5 text-[11.5px]"
+          className="h-7 gap-1.5 text-[11.5px] shrink-0"
           onClick={onResetView}
           title="Frame the study area again"
         >
-          <RotateCcw className="size-3.5" aria-hidden="true" />
-          Reset view
+          <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Reset view</span>
+          <span className="sm:hidden">Reset</span>
         </Button>
         {onExportView ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 gap-1.5 text-[11.5px]"
+            className="h-7 gap-1.5 text-[11.5px] shrink-0"
             onClick={onExportView}
             title="Export current framed view as high-res PNG or PDF"
           >
-            <Camera className="size-3.5" aria-hidden="true" />
-            Export view
+            <Camera className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Export view</span>
+            <span className="sm:hidden">Export</span>
           </Button>
         ) : null}
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 gap-1.5 text-[11.5px]"
+          className="h-7 gap-1.5 text-[11.5px] shrink-0"
           onClick={onReload}
           title="Ask the platform for the queue again"
         >
-          <RefreshCw className="size-3.5" aria-hidden="true" />
-          Reload results
+          <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Reload results</span>
+          <span className="sm:hidden">Reload</span>
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 gap-1.5 text-[11.5px]"
+          className="h-7 gap-1.5 text-[11.5px] shrink-0"
           onClick={onClear}
           title="Take this survey off the workbench. Nothing is deleted."
         >
-          <Eraser className="size-3.5" aria-hidden="true" />
-          Clear board
+          <Eraser className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Clear board</span>
+          <span className="sm:hidden">Clear</span>
         </Button>
 
-        <span className="sw-toolbar__divider" aria-hidden="true" />
+        <div className="hidden min-[981px]:flex items-center gap-1.5">
+          <span className="sw-toolbar__divider" aria-hidden="true" />
 
-        <PanelToggle
-          side="left"
-          open={leftOpen}
-          onClick={onToggleLeft}
-          label="Contents"
-        />
-        <PanelToggle
-          side="right"
-          open={rightOpen}
-          onClick={onToggleRight}
-          label="Analysis"
-        />
+          <PanelToggle
+            side="left"
+            open={leftOpen}
+            onClick={onToggleLeft}
+            label="Contents"
+          />
+          <PanelToggle
+            side="right"
+            open={rightOpen}
+            onClick={onToggleRight}
+            label="Analysis"
+          />
+        </div>
       </div>
 
       <span className="sw-pill" data-state={pill.state}>

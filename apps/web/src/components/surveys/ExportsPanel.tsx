@@ -59,12 +59,12 @@ export default function ExportsPanel({
           return (
             <div
               key={category}
-              className="flex items-center justify-between gap-2 rounded-md border border-input px-2.5 py-1.5"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-input p-2 sm:px-2.5 sm:py-1.5"
             >
-              <span className="min-w-0 truncate text-[11.5px] font-medium">
+              <span className="text-[11.5px] font-medium leading-tight">
                 {CATEGORY_LABELS[category].name}
               </span>
-              <span className="flex shrink-0 gap-1.5">
+              <span className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
                 <ExportButton
                   label="Map"
                   icon="image"
@@ -155,7 +155,7 @@ function ExportButton({
       onClick={onOpen}
       disabled={disabled || !isAvailable}
       title={title}
-      className={`sw-btn sw-btn--xs gap-1 ${
+      className={`inline-flex items-center gap-1 rounded border border-border/80 bg-background px-2 py-1 text-[10.5px] font-medium transition-colors ${
         isAvailable ? "hover:bg-accent hover:text-accent-foreground" : "opacity-40 cursor-not-allowed"
       }`}
     >

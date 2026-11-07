@@ -305,7 +305,7 @@ export default function ContentsPanel({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="size-6 shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                          className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
                           title="Delete job"
                           onClick={(e) => {
                             e.stopPropagation();

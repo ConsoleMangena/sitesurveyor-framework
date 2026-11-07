@@ -831,8 +831,9 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
                                 className="h-7 gap-1.5 text-xs text-primary hover:text-primary hover:bg-primary/10"
                                 onClick={() => onNavigate("satellite")}
                               >
-                                <Globe className="size-3.5" />
-                                <span>Open in Satellite Workbench</span>
+                                <Globe className="size-3.5 shrink-0" />
+                                <span className="hidden sm:inline">Open in Satellite Workbench</span>
+                                <span className="sm:hidden">Open Workbench</span>
                               </Button>
                             </div>
                           )}
@@ -878,8 +879,8 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
               aria-label="Earth Observation Commands"
             >
               <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase border-b border-border/40 pb-1 mb-1">
-                <span>Earth Observation Questionnaire</span>
-                <span>Click or Enter to Start</span>
+                <span className="truncate">EO Questionnaire</span>
+                <span className="shrink-0 text-[9px] sm:text-[10px]">Click or Enter</span>
               </div>
               <div className="flex flex-col gap-0.5 max-h-56 overflow-y-auto">
                 {matchingSlashCommands.map((cmd, idx) => {
@@ -912,7 +913,7 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
                             — {cmd.title}
                           </span>
                         </span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
+                        <span className="font-mono text-[10px] text-muted-foreground hidden sm:inline">
                           {cmd.example}
                         </span>
                       </div>

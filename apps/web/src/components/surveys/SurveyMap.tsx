@@ -284,10 +284,10 @@ export default function SurveyMap({
         <span className="sw-chip sw-chip--accent">
           AOI <b>{dmsText(target.latitude, target.longitude)}</b>
         </span>
-        <span className="sw-chip">
+        <span className="sw-chip hidden sm:inline-flex">
           CRS <b>{crs ?? "WGS 84"}</b>
         </span>
-        <span className="sw-chip">
+        <span className="sw-chip hidden md:inline-flex">
           Imagery <b>{imagery ?? "Not yet surveyed"}</b>
         </span>
         {onOpenExportView ? (
@@ -298,7 +298,8 @@ export default function SurveyMap({
             title="Export the currently framed map extent as PNG or PDF"
           >
             <Camera className="size-3" aria-hidden="true" />
-            <span>Export View</span>
+            <span className="hidden sm:inline">Export View</span>
+            <span className="sm:hidden">Export</span>
           </button>
         ) : null}
       </div>

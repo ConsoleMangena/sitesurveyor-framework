@@ -108,6 +108,46 @@
   }
 }
 
+@media (max-width: 640px) {
+  .sw-workspace .sw-map {
+    height: 42vh;
+    min-height: 260px;
+  }
+
+  .sw-chips {
+    top: 8px;
+    left: 48px;
+    right: 8px;
+    gap: 4px;
+  }
+
+  .sw-chip {
+    font-size: 10px;
+    padding: 2px 7px;
+  }
+
+  .sw-hint {
+    bottom: 8px;
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .sw-toolbar {
+    gap: 4px;
+  }
+
+  .sw-toolbar button {
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: 11px;
+  }
+
+  .sw-block {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
 .sw-panel {
   background: var(--card);
   border: 1px solid var(--border);
@@ -217,6 +257,11 @@
   pointer-events: none;
 }
 
+.sw-chips button,
+.sw-chips a {
+  pointer-events: auto;
+}
+
 .sw-chip {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 11px;
@@ -289,6 +334,8 @@
 .sw-attr-scroll {
   max-height: 236px;
   overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 

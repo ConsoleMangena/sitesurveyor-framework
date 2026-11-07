@@ -676,37 +676,39 @@ export default function EarthObservationSetupForm({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 shrink-0">
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider shrink-0">
                         {job.status}
                       </Badge>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={isSelected ? "default" : "outline"}
-                        className="h-8 gap-1.5 text-xs font-semibold"
-                        onClick={() => {
-                          onSelectJob(job);
-                        }}
-                      >
-                        <span>{isSelected ? "Open in EO UI" : "Select Job"}</span>
-                        <ArrowRight className="size-3.5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                        title="Delete job"
-                        disabled={deletingJobId === job.id}
-                        onClick={(e) => void handleDeleteJob(e, job)}
-                      >
-                        {deletingJobId === job.id ? (
-                          <Loader className="size-3.5 animate-spin text-destructive" />
-                        ) : (
-                          <Trash2 className="size-3.5" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isSelected ? "default" : "outline"}
+                          className="h-8 gap-1.5 text-xs font-semibold"
+                          onClick={() => {
+                            onSelectJob(job);
+                          }}
+                        >
+                          <span>{isSelected ? "Open in EO UI" : "Select Job"}</span>
+                          <ArrowRight className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                          title="Delete job"
+                          disabled={deletingJobId === job.id}
+                          onClick={(e) => void handleDeleteJob(e, job)}
+                        >
+                          {deletingJobId === job.id ? (
+                            <Loader className="size-3.5 animate-spin text-destructive" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1081,22 +1083,23 @@ export default function EarthObservationSetupForm({
               <span>Opened Job: <strong className="text-foreground">{currentJob.title}</strong></span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold"
+                className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold justify-center"
                 disabled={busy || queueing}
                 onClick={handleProceed}
               >
-                <span>Open Earth Observation Workbench</span>
-                <ArrowRight className="size-4" />
+                <span className="hidden sm:inline">Open Earth Observation Workbench</span>
+                <span className="sm:hidden">Open Workbench</span>
+                <ArrowRight className="size-4 shrink-0" />
               </Button>
 
               <Button
                 type="button"
                 variant="default"
-                className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold"
+                className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold justify-center"
                 disabled={busy || queueing || !affordable}
                 title={
                   affordable
@@ -1105,12 +1108,21 @@ export default function EarthObservationSetupForm({
                 }
                 onClick={handleLaunch}
               >
-                {queueing || busy ? <Loader className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-                {busy
-                  ? "Screening in progress…"
-                  : quote
-                    ? `Launch & Run Screening · ${quote.credits} credit${quote.credits === 1 ? "" : "s"}`
-                    : "Launch & Run Screening"}
+                {queueing || busy ? <Loader className="size-3.5 animate-spin shrink-0" /> : <Sparkles className="size-3.5 shrink-0" />}
+                {busy ? (
+                  "Screening in progress…"
+                ) : quote ? (
+                  <>
+                    <span className="hidden sm:inline">Launch & Run Screening</span>
+                    <span className="sm:hidden">Launch Screening</span>
+                    <span>· {quote.credits} credit{quote.credits === 1 ? "" : "s"}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Launch & Run Screening</span>
+                    <span className="sm:hidden">Launch Screening</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

@@ -631,12 +631,21 @@ export default function TargetForm({
             : "This workspace does not have enough credits for this survey."
         }
       >
-        {queueing || busy ? <Loader className="size-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="size-3.5" />}
-        {busy
-          ? "Observation in progress…"
-          : quote
-            ? `Run Earth Observation Screening · ${quote.credits} credit${quote.credits === 1 ? "" : "s"}`
-            : "Run Earth Observation Screening"}
+        {queueing || busy ? <Loader className="size-3.5 animate-spin shrink-0" aria-hidden="true" /> : <Sparkles className="size-3.5 shrink-0" />}
+        {busy ? (
+          "Observation in progress…"
+        ) : quote ? (
+          <>
+            <span className="hidden sm:inline">Run Earth Observation Screening</span>
+            <span className="sm:hidden">Run Screening</span>
+            <span>· {quote.credits} credit{quote.credits === 1 ? "" : "s"}</span>
+          </>
+        ) : (
+          <>
+            <span className="hidden sm:inline">Run Earth Observation Screening</span>
+            <span className="sm:hidden">Run Screening</span>
+          </>
+        )}
       </Button>
 
       {progress !== null ? (
