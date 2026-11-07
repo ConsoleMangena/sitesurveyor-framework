@@ -389,12 +389,12 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
     return (
       <div
-        className={`relative w-full h-full min-h-[380px] overflow-hidden rounded-2xl border border-border bg-muted/20 ${
+        className={`relative w-full h-full overflow-hidden ${
           activePinMode ? "cursor-crosshair" : ""
         } ${className ?? ""}`}
       >
         {/* Leaflet Canvas */}
-        <div ref={containerRef} className="w-full h-full min-h-[380px] z-0" />
+        <div ref={containerRef} className="w-full h-full min-h-[360px] z-0" />
 
         {/* Floating Route Overview HUD (Top Center) */}
         {routeDistance > 0 && (
