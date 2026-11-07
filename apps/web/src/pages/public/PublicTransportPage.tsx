@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  IconAdjustmentsHorizontal,
   IconArrowsExchange,
   IconBuildingStore,
   IconChevronDown,
@@ -11,7 +12,6 @@ import {
   IconRoute,
   IconSearch,
   IconSettings,
-  IconSliders,
   IconSparkles,
   IconSteeringWheel,
   IconTruck,
@@ -350,30 +350,12 @@ export default function PublicTransportPage() {
       </header>
 
       <main>
-        {/* Hero Section: Route Planner Deck & Live Map Frame */}
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
-          {/* Left Column: Headline & Coordinate Dispatch Deck */}
           <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
-            <div className="max-w-xl space-y-5">
-              <div>
-                <p className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-rose-600 dark:text-rose-400">
-                  <IconSteeringWheel className="size-4" aria-hidden="true" />
-                  Field transport network
-                </p>
-                <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.35rem] lg:leading-[1.08]">
-                  Move your fieldwork forward.
-                </h1>
-                <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-                  Find the right vehicle for your route, compare live fleet availability, and book field transport with clear distance-based fares.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={scrollToFleet}
-                  className="web3-btn gap-1.5"
-                >
-                  Browse available fleet
+            <div className="max-w-xl">
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <button type="button" onClick={scrollToFleet} className="web3-btn gap-1.5">
+                  Browse the fleet
                   <IconChevronDown className="size-4" aria-hidden="true" />
                 </button>
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
@@ -381,220 +363,223 @@ export default function PublicTransportPage() {
                   Live vehicle dispatch
                 </span>
               </div>
+              <p className="mt-4 text-sm font-medium text-success">
+                {baseFleet.length} vehicles staged within 5 km of your pickup
+              </p>
             </div>
 
-            {/* Coordinate Dispatch Deck */}
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
-              <div className="space-y-4 p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                      <IconRoute className="size-4" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0">
-                      <h2 className="text-sm font-semibold text-foreground">Plan your route</h2>
-                      <p className="text-xs text-muted-foreground">Set pickup and destination coordinates</p>
-                    </div>
+            <section
+              aria-label="Route planner"
+              className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card lg:flex-1"
+            >
+              <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <IconSteeringWheel className="size-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="market-map-title text-foreground">Plan the route</h2>
+                    <p className="text-micro text-muted-foreground">
+                      Exact GPS coordinates, priced by road distance
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleSwapCoordinates}
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
-                  >
-                    <IconArrowsExchange className="h-3.5 w-3.5" />
-                    <span>Swap</span>
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleSwapCoordinates}
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                >
+                  <IconArrowsExchange className="size-3.5" aria-hidden="true" />
+                  Swap
+                </button>
               </div>
 
-              {/* Connected Track: Pickup -> Destination */}
-              <div className="flex items-start gap-3">
-                <div className="flex flex-col items-center mt-1.5">
-                  <span className="h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
-                  <span className="w-0.5 h-12 bg-border/80 my-1 border-dashed" />
-                  <span className="h-3 w-3 rounded-sm bg-rose-500 ring-4 ring-rose-500/20" />
-                </div>
+              <div className="flex-1 space-y-4 px-4 py-4 sm:px-5">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1.5 flex shrink-0 flex-col items-center">
+                    <span className="size-2.5 rounded-full bg-success ring-4 ring-success/15" aria-hidden="true" />
+                    <span className="my-1 h-16 w-px border-l border-dashed border-border" aria-hidden="true" />
+                    <span className="size-2.5 rounded-xs bg-primary ring-4 ring-primary/15" aria-hidden="true" />
+                  </div>
 
-                <div className="min-w-0 flex-1 space-y-3.5">
-                  {/* Pickup Coordinate Row */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10.5px] font-mono uppercase font-bold text-emerald-600 dark:text-emerald-400">
-                        Pickup GPS
-                      </span>
-                      <div className="flex items-center gap-1.5">
+                  <div className="min-w-0 flex-1 space-y-4">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="text-xs font-semibold text-foreground">Pickup</span>
+                        <span className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={handleUseCurrentLocation}
+                            disabled={isLocating}
+                            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border/80 bg-background px-2.5 text-micro font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
+                          >
+                            <IconCurrentLocation className="size-3" aria-hidden="true" />
+                            {isLocating ? "Locating…" : "My GPS"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setActivePinMode(activePinMode === "pickup" ? null : "pickup")
+                            }
+                            aria-pressed={activePinMode === "pickup"}
+                            className={cn(
+                              "inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-micro font-semibold transition-colors",
+                              activePinMode === "pickup"
+                                ? "border-success bg-success text-success-foreground"
+                                : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                            )}
+                          >
+                            <IconMapPin className="size-3" aria-hidden="true" />
+                            {activePinMode === "pickup" ? "Click the map…" : "Drop pin"}
+                          </button>
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          aria-label="Pickup latitude"
+                          value={pickup.lat}
+                          onChange={(event) => {
+                            const value = Number.parseFloat(event.target.value);
+                            if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lat: value }));
+                          }}
+                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
+                        />
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          aria-label="Pickup longitude"
+                          value={pickup.lng}
+                          onChange={(event) => {
+                            const value = Number.parseFloat(event.target.value);
+                            if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lng: value }));
+                          }}
+                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
+                        />
+                      </div>
+                      <p className="truncate text-micro text-muted-foreground">{pickup.label}</p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="text-xs font-semibold text-foreground">Destination</span>
                         <button
                           type="button"
-                          onClick={handleUseCurrentLocation}
-                          disabled={isLocating}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-semibold transition-colors"
+                          onClick={() =>
+                            setActivePinMode(activePinMode === "dropoff" ? null : "dropoff")
+                          }
+                          aria-pressed={activePinMode === "dropoff"}
+                          className={cn(
+                            "inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-micro font-semibold transition-colors",
+                            activePinMode === "dropoff"
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
                         >
-                          <IconCurrentLocation className="h-3 w-3" />
-                          <span>{isLocating ? "Locating..." : "My GPS"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActivePinMode(activePinMode === "pickup" ? null : "pickup")}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-semibold transition-colors ${
-                            activePinMode === "pickup"
-                              ? "bg-emerald-600 text-white"
-                              : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                          }`}
-                        >
-                          <IconMapPin className="h-3 w-3" />
-                          <span>{activePinMode === "pickup" ? "Click Map..." : "Pin"}</span>
+                          <IconCrosshair className="size-3" aria-hidden="true" />
+                          {activePinMode === "dropoff" ? "Click the map…" : "Drop pin"}
                         </button>
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        value={pickup.lat}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val)) setPickup((p) => ({ ...p, lat: val }));
-                        }}
-                        className="h-9 font-mono text-xs font-semibold rounded-xl bg-background"
-                        placeholder="Latitude"
-                      />
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        value={pickup.lng}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val)) setPickup((p) => ({ ...p, lng: val }));
-                        }}
-                        className="h-9 font-mono text-xs font-semibold rounded-xl bg-background"
-                        placeholder="Longitude"
-                      />
-                    </div>
-                    <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">
-                      {pickup.label}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          aria-label="Destination latitude"
+                          value={dropoff.lat}
+                          onChange={(event) => {
+                            const value = Number.parseFloat(event.target.value);
+                            if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lat: value }));
+                          }}
+                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
+                        />
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          aria-label="Destination longitude"
+                          value={dropoff.lng}
+                          onChange={(event) => {
+                            const value = Number.parseFloat(event.target.value);
+                            if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lng: value }));
+                          }}
+                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
+                        />
+                      </div>
+                      <p className="truncate text-micro text-muted-foreground">{dropoff.label}</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Dropoff Coordinate Row */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10.5px] font-mono uppercase font-bold text-rose-600 dark:text-rose-400">
-                        Destination GPS
-                      </span>
+                {geoNotice ? (
+                  <p
+                    role="status"
+                    className="rounded-xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs leading-5 text-warning"
+                  >
+                    {geoNotice}
+                  </p>
+                ) : null}
+
+                <div className="space-y-2 border-t border-border/70 pt-3">
+                  <p className="text-xs font-semibold text-foreground">Survey baselines</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SURVEY_GPS_PRESETS.slice(0, 6).map((preset) => (
                       <button
+                        key={preset.id}
                         type="button"
-                        onClick={() => setActivePinMode(activePinMode === "dropoff" ? null : "dropoff")}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-semibold transition-colors ${
-                          activePinMode === "dropoff"
-                            ? "bg-rose-600 text-white"
-                            : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                        }`}
+                        onClick={() => applyPreset(preset)}
+                        aria-pressed={dropoff.id === preset.id}
+                        className={cn(
+                          "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                          dropoff.id === preset.id
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
                       >
-                        <IconCrosshair className="h-3 w-3" />
-                        <span>{activePinMode === "dropoff" ? "Click Map..." : "Pin"}</span>
+                        {preset.label.replace(/ (Depot|Station|Yard|Hub|Base|Post|Terminal|Outpost|Belt)$/, "")}
                       </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        value={dropoff.lat}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val)) setDropoff((p) => ({ ...p, lat: val }));
-                        }}
-                        className="h-9 font-mono text-xs font-semibold rounded-xl bg-background"
-                        placeholder="Latitude"
-                      />
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        value={dropoff.lng}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val)) setDropoff((p) => ({ ...p, lng: val }));
-                        }}
-                        className="h-9 font-mono text-xs font-semibold rounded-xl bg-background"
-                        placeholder="Longitude"
-                      />
-                    </div>
-                    <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">
-                      {dropoff.label}
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Quick Survey Station Presets */}
-              <div className="pt-2 border-t border-border/60">
-                <div className="text-[10px] uppercase font-mono text-muted-foreground tracking-wider mb-1.5">
-                  Preset Baseline Coordinates:
+              <div className="web3-ticker shrink-0 border-t border-border/80">
+                <div className="web3-ticker-cell">
+                  <span className="web3-ticker-label">Road distance</span>
+                  <span className="web3-ticker-value">{distanceKm.toLocaleString()} km</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {SURVEY_GPS_PRESETS.slice(0, 5).map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        setDropoff(preset);
-                        if (mapRef.current) {
-                          mapRef.current.centerCoordinate(preset.lat, preset.lng);
-                        }
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-muted/60 hover:bg-muted text-[11px] font-mono text-muted-foreground hover:text-foreground border border-border/50 transition-colors"
-                    >
-                      {preset.label.split(" ")[0]} ({preset.lat.toFixed(1)}, {preset.lng.toFixed(1)})
-                    </button>
-                  ))}
+                <div className="web3-ticker-cell">
+                  <span className="web3-ticker-label">Drive time</span>
+                  <span className="web3-ticker-value">{formatDriveDuration(durationMinutes)}</span>
+                </div>
+                <div className="web3-ticker-cell">
+                  <span className="web3-ticker-label">Dispatch</span>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-success">
+                    <IconSparkles className="size-3.5" aria-hidden="true" />
+                    Fleet ready
+                  </span>
                 </div>
               </div>
-
-              {/* Highway Distance & Duration Readout */}
-              <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono bg-muted/20 -mx-5 -mb-5 px-5 py-3 rounded-b-2xl">
-                <div>
-                  <span className="text-[10px] text-muted-foreground block">ROAD DISTANCE</span>
-                  <strong className="text-sm font-bold text-foreground">{distanceKm} km</strong>
-                </div>
-                <div className="h-6 w-px bg-border" />
-                <div>
-                  <span className="text-[10px] text-muted-foreground block">EST. DRIVE TIME</span>
-                  <strong className="text-sm font-bold text-foreground">{formatDriveDuration(durationMinutes)}</strong>
-                </div>
-                <div className="h-6 w-px bg-border" />
-                <div className="text-right">
-                  <span className="text-[10px] text-muted-foreground block">DISPATCH STATUS</span>
-                  <strong className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs inline-flex items-center gap-1">
-                    <IconSparkles className="h-3 w-3" />
-                    Fleet Ready
-                  </strong>
-                </div>
-              </div>
-            </div>
+            </section>
           </div>
 
-          {/* Right Column: Interactive Map Frame (Matching PublicMarketPage market-map-frame) */}
           <div
             aria-label="Interactive dispatch map"
-            className="market-map-frame flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm"
+            className="market-map-frame flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card"
           >
             <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <IconRoute className="size-4" aria-hidden="true" />
                 </span>
                 <div>
-                  <h2 className="market-map-title text-foreground font-bold text-sm">
-                    Live Route & Nearby Fleet
-                  </h2>
-                  <p className="text-[11px] text-muted-foreground">
-                    Drag markers or click map to update GPS coordinates
+                  <h2 className="market-map-title text-foreground">Live route and nearby fleet</h2>
+                  <p className="text-micro text-muted-foreground">
+                    Drag a marker or click the map to move the route
                   </p>
                 </div>
               </div>
               <span className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
-                {filteredFleet.length} vehicles available
+                {filteredFleet.length} vehicles mapped
               </span>
             </div>
 
@@ -604,7 +589,7 @@ export default function PublicTransportPage() {
                 pickup={pickup}
                 dropoff={dropoff}
                 vehicles={filteredFleet}
-                selectedVehicleId={activeVehicle?.id || null}
+                selectedVehicleId={activeVehicle?.id ?? null}
                 activePinMode={activePinMode}
                 onSelectVehicle={handleSelectVehicle}
                 onCoordinatesChange={handleCoordinatesChange}
@@ -612,34 +597,30 @@ export default function PublicTransportPage() {
               />
             </div>
 
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-xs text-muted-foreground sm:px-5 font-mono">
-              <span>Direct highway routing calculation</span>
-              <span className="shrink-0 font-bold text-foreground">
-                {distanceKm} km route • {formatDriveDuration(durationMinutes)}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground sm:px-5">
+              <span>Two-way map and fleet discovery</span>
+              <span className="shrink-0 font-mono tabular-nums">
+                {distanceKm.toLocaleString()} km · {formatDriveDuration(durationMinutes)}
               </span>
             </div>
           </div>
         </section>
 
-        {/* Bottom Fleet Registry Section (Matching PublicMarketPage market-registry) */}
         <section ref={fleetRef} className="market-registry mt-10 scroll-mt-16 sm:mt-12">
           <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-11 sm:px-6 sm:py-14">
             <div className="max-w-2xl">
-              <h2 className="market-section-title text-balance text-foreground">
-                Hire a vehicle for your next field trip
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                Compare nearby vehicles, driver ratings, capacity, and a route-based fare before booking.
+              <h2 className="market-section-title text-balance text-foreground">Browse the fleet</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+                Every fare is recalculated for your route. Pick a class, or search to see every match in one list.
               </p>
             </div>
 
-            {/* Search & Filter Toolbar (Matching Market Search Deck) */}
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-background shadow-[0_1px_2px_rgba(15,23,20,0.05)]">
-              <div className="space-y-3 p-3 sm:p-4">
+              <div className="space-y-2.5 p-2.5 sm:p-3">
                 <div className="flex gap-2.5">
                   <div className="relative min-w-0 flex-1">
                     <label htmlFor="fleet-search" className="sr-only">
-                      Search fleet
+                      Search the fleet
                     </label>
                     <IconSearch
                       className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -647,9 +628,9 @@ export default function PublicTransportPage() {
                     />
                     <Input
                       id="fleet-search"
-                      placeholder="Search vehicle model, driver name, license plate..."
+                      placeholder="Search models, drivers, plates…"
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={(event) => setSearch(event.target.value)}
                       className="h-11 rounded-xl border-border/80 bg-background pl-11 pr-11 text-sm shadow-none"
                     />
                     {search ? (
@@ -664,92 +645,229 @@ export default function PublicTransportPage() {
                     ) : null}
                   </div>
 
-                  <Select
-                    value={sort}
-                    onValueChange={(val) => setSort(val as SortKey)}
-                  >
-                    <SelectTrigger className="hidden h-11 w-[200px] shrink-0 rounded-xl bg-background text-sm sm:flex">
+                  <Select value={sort} onValueChange={(value) => setSort(value as SortKey)}>
+                    <SelectTrigger
+                      aria-label="Sort vehicles"
+                      className="hidden h-11 w-[190px] shrink-0 rounded-xl bg-background text-sm sm:flex"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent align="end">
-                      {SORT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
+                      {SORT_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+
+                  <Button
+                    type="button"
+                    variant={activeFilters.length > 0 ? "default" : "outline"}
+                    size="icon"
+                    className="size-11 shrink-0 rounded-xl sm:hidden"
+                    onClick={() => setMobileFiltersOpen(true)}
+                    aria-expanded={mobileFiltersOpen}
+                    aria-label={
+                      activeFilters.length > 0 ? `Filters, ${activeFilters.length} applied` : "Filters"
+                    }
+                  >
+                    <IconAdjustmentsHorizontal className="size-4" aria-hidden="true" />
+                  </Button>
                 </div>
 
-                {/* Scope Category Filter Tabs */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTier("all")}
-                    className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all ${
-                      selectedTier === "all"
-                        ? "bg-foreground text-background font-bold shadow-sm"
-                        : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    Everything ({baseFleet.length})
-                  </button>
-                  {(Object.keys(VEHICLE_TIERS) as VehicleTierId[]).map((tierId) => {
-                    const t = VEHICLE_TIERS[tierId];
-                    const isCur = selectedTier === tierId;
-                    const count = baseFleet.filter((v) => v.tierId === tierId).length;
-                    return (
-                      <button
-                        key={tierId}
-                        type="button"
-                        onClick={() => setSelectedTier(tierId)}
-                        className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all ${
-                          isCur
-                            ? "bg-foreground text-background font-bold shadow-sm"
-                            : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {t.shortName} ({count})
-                      </button>
-                    );
-                  })}
+                <div className="hidden flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/70 pt-2.5 sm:flex">
+                  <div role="group" aria-label="Filter by seats" className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">Seats</span>
+                    <span className="inline-flex items-center gap-1 rounded-xl bg-muted/70 p-1">
+                      {SEAT_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={minSeats === option.value}
+                          onClick={() => setMinSeats(option.value)}
+                          className={cn(
+                            "min-h-9 rounded-lg px-3 text-xs font-medium transition-colors",
+                            minSeats === option.value
+                              ? "bg-background text-foreground shadow-[0_1px_2px_rgba(15,23,20,0.10)]"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+
+                  <span className="h-6 w-px shrink-0 bg-border" aria-hidden="true" />
+
+                  <div role="group" aria-label="Filter by payload" className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">Payload</span>
+                    <span className="inline-flex items-center gap-1 rounded-xl bg-muted/70 p-1">
+                      {PAYLOAD_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={minPayload === option.value}
+                          onClick={() => setMinPayload(option.value)}
+                          className={cn(
+                            "min-h-9 rounded-lg px-3 text-xs font-medium transition-colors",
+                            minPayload === option.value
+                              ? "bg-background text-foreground shadow-[0_1px_2px_rgba(15,23,20,0.10)]"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
                 </div>
+
+                {activeFilters.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 pt-2.5">
+                    <span className="text-xs font-medium text-muted-foreground">Filtered by</span>
+                    {activeFilters.map((filter) => (
+                      <button
+                        key={filter.key}
+                        type="button"
+                        onClick={filter.clear}
+                        aria-label={`Clear ${filter.label.toLowerCase()} filter: ${filter.value}`}
+                        className="inline-flex min-h-9 max-w-[16rem] items-center gap-1.5 rounded-lg bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted/70"
+                      >
+                        <span className="shrink-0 text-muted-foreground">{filter.label}:</span>
+                        <span className="truncate">{filter.value}</span>
+                        <IconX className="size-3.5 shrink-0" aria-hidden="true" />
+                      </button>
+                    ))}
+                    {activeFilters.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="ml-auto min-h-9 text-xs font-semibold text-primary underline-offset-4 hover:underline"
+                      >
+                        Clear all
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+
+              <div
+                role="group"
+                aria-label="Filter by vehicle class"
+                className="scrollbar-none flex items-center gap-0.5 overflow-x-auto border-t border-border/80 px-1.5 sm:px-2.5"
+              >
+                <button
+                  type="button"
+                  aria-pressed={selectedTier === "all"}
+                  onClick={() => setSelectedTier("all")}
+                  className={cn(
+                    "shrink-0 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm font-medium transition-colors sm:px-4",
+                    selectedTier === "all"
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Everything
+                  <span className="ml-1.5 font-mono text-micro tabular-nums text-muted-foreground">
+                    {tierCounts.all}
+                  </span>
+                </button>
+                {TIER_IDS.map((tierId) => (
+                  <button
+                    key={tierId}
+                    type="button"
+                    aria-pressed={selectedTier === tierId}
+                    onClick={() => setSelectedTier(tierId)}
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm font-medium transition-colors sm:px-4",
+                      selectedTier === tierId
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
+                      aria-hidden="true"
+                    />
+                    {VEHICLE_TIERS[tierId].shortName}
+                    <span className="font-mono text-micro tabular-nums text-muted-foreground">
+                      {tierCounts[tierId]}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* 3-Column Marketplace-Style Grid */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-              {filteredFleet.length === 0 ? (
-                <div className="col-span-full py-16 text-center rounded-2xl border border-dashed border-border bg-card/50">
-                  <IconTruck className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                  <h3 className="text-base font-bold text-foreground">No vehicles found</h3>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                    Try adjusting your search query or selecting a different vehicle category.
-                  </p>
-                </div>
-              ) : (
-                filteredFleet.map((vehicle) => {
-                  const fare = calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm);
-                  const isSelected = activeVehicle?.id === vehicle.id;
-                  return (
-                    <VehicleHireCard
-                      key={vehicle.id}
-                      vehicle={vehicle}
-                      fareBreakdown={fare}
-                      isSelected={isSelected}
-                      onSelect={handleSelectVehicle}
-                      onBookNow={handleBookVehicleNow}
-                    />
-                  );
-                })
-              )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground" aria-live="polite">
+                {filteredFleet.length === 0
+                  ? "No vehicles match your filters."
+                  : `Showing ${filteredFleet.length} of ${baseFleet.length} vehicles for ${distanceKm.toLocaleString()} km`}
+              </p>
+              {activeFilters.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="min-h-11 px-4 text-sm"
+                >
+                  Reset filters
+                </Button>
+              ) : null}
             </div>
+
+            {filteredFleet.length === 0 ? (
+              <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+                <IconTruck className="size-8 text-muted-foreground/60" aria-hidden="true" />
+                <h3 className="mt-4 text-base font-semibold text-foreground">No vehicles in this section</h3>
+                <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                  Try another class, widen the capacity filters, or reset to see the whole fleet.
+                </p>
+                <Button type="button" variant="outline" className="mt-5 min-h-11" onClick={resetFilters}>
+                  Reset filters
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredFleet.map((vehicle) => (
+                  <VehicleHireCard
+                    key={vehicle.id}
+                    vehicle={vehicle}
+                    fareBreakdown={calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm)}
+                    isSelected={activeVehicle?.id === vehicle.id}
+                    onSelect={handleSelectVehicle}
+                    onBookNow={handleBookVehicleNow}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>
 
-      {/* Booking Confirmation Dialog Modal */}
-      {activeVehicle && (
+      <footer className="border-t border-border/60 py-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>Fares follow the route · base fee + road distance + tolls</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {TIER_IDS.map((tierId) => (
+              <span key={tierId} className="inline-flex items-center gap-1.5">
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
+                  aria-hidden="true"
+                />
+                {VEHICLE_TIERS[tierId].shortName}
+              </span>
+            ))}
+          </div>
+        </div>
+      </footer>
+
+      {activeVehicle ? (
         <BookingSlip
           vehicle={activeVehicle}
           pickup={pickup}
@@ -760,60 +878,185 @@ export default function PublicTransportPage() {
           onClose={() => setIsBookingOpen(false)}
           onBookingConfirmed={handleBookingConfirmed}
         />
-      )}
+      ) : null}
 
-      {/* Trip History Dialog Modal */}
-      {showHistoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in-50">
-          <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl">
-            <button
-              type="button"
-              onClick={() => setShowHistoryModal(false)}
-              className="absolute top-5 right-5 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <IconX className="h-5 w-5" />
-            </button>
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetContent
+          side="right"
+          className="web3-theme flex w-[min(92vw,30rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+        >
+          <SheetHeader className="shrink-0 border-b border-border/80 px-5 py-5 text-left">
+            <SheetTitle className="market-sheet-title text-foreground">Your trips</SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground">
+              Dispatched hires keep their reference and fare on this device.
+            </SheetDescription>
+          </SheetHeader>
 
-            <div className="flex items-center gap-2 pb-4 border-b border-border">
-              <IconHistory className="h-5 w-5 text-rose-600" />
-              <h2 className="text-lg font-bold text-foreground">Recent Vehicle Hires</h2>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {recentBookings.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-xs">
-                  No vehicle hire trips recorded yet.
-                </div>
-              ) : (
-                recentBookings.map((b) => (
-                  <div
-                    key={b.bookingRef}
-                    className="p-4 rounded-2xl border border-border bg-muted/20 text-xs space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-foreground">{b.bookingRef}</span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-mono text-[10px] font-semibold">
-                        {b.status.toUpperCase()}
-                      </span>
-                    </div>
-
-                    <div className="text-muted-foreground">
-                      <strong className="text-foreground">{b.vehicle.model}</strong> • {b.vehicle.licensePlate} • Driver: {b.vehicle.driverName}
-                    </div>
-
-                    <div className="flex items-center justify-between text-muted-foreground font-mono text-[11px] pt-1.5 border-t border-border/40">
-                      <span>
-                        [{b.pickup.lat.toFixed(2)}, {b.pickup.lng.toFixed(2)}] → [{b.dropoff.lat.toFixed(2)}, {b.dropoff.lng.toFixed(2)}] ({b.fareBreakdown.distanceKm} km)
-                      </span>
-                      <strong className="text-foreground">${b.fareBreakdown.totalFare.toFixed(2)}</strong>
-                    </div>
+          <div className="market-detail-scroll flex-1 space-y-3 overflow-y-auto px-5 py-5">
+            {recentBookings.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+                <IconHistory className="size-7 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-semibold text-foreground">No trips yet</p>
+                <p className="max-w-xs text-xs leading-5 text-muted-foreground">
+                  Hire a vehicle and its dispatch reference, route and fare will be listed here.
+                </p>
+              </div>
+            ) : (
+              recentBookings.map((booking) => (
+                <article
+                  key={booking.bookingRef}
+                  className="space-y-2 rounded-2xl border border-border/80 bg-card p-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+                      {booking.bookingRef}
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-success/10 px-2.5 py-1 text-micro font-semibold capitalize text-success">
+                      {booking.status.replace("_", " ")}
+                    </span>
                   </div>
-                ))
-              )}
+                  <p className="text-sm font-semibold text-foreground">{booking.vehicle.model}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {booking.vehicle.licensePlate} · Driver {booking.vehicle.driverName}
+                  </p>
+                  <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-2 font-mono text-micro tabular-nums text-muted-foreground">
+                    <span className="truncate">
+                      {booking.pickup.lat.toFixed(2)}, {booking.pickup.lng.toFixed(2)} →{" "}
+                      {booking.dropoff.lat.toFixed(2)}, {booking.dropoff.lng.toFixed(2)} ·{" "}
+                      {booking.fareBreakdown.distanceKm} km
+                    </span>
+                    <span className="shrink-0 font-semibold text-foreground">
+                      ${booking.fareBreakdown.totalFare.toFixed(2)}
+                    </span>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <SheetContent
+          side="bottom"
+          className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-3xl p-0"
+        >
+          <SheetHeader className="shrink-0 border-b border-border/80 px-5 py-4 text-left">
+            <SheetTitle className="market-sheet-title text-foreground">Filter the fleet</SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground">
+              Narrow the vehicles staged near your pickup.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="market-detail-scroll flex-1 space-y-6 overflow-y-auto px-5 py-5">
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold text-foreground">Vehicle class</legend>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={selectedTier === "all" ? "default" : "outline"}
+                  className="h-10 justify-start gap-2 rounded-xl px-3 text-xs"
+                  onClick={() => setSelectedTier("all")}
+                >
+                  Everything
+                  <span className="ml-auto font-mono text-micro tabular-nums opacity-70">
+                    {tierCounts.all}
+                  </span>
+                </Button>
+                {TIER_IDS.map((tierId) => (
+                  <Button
+                    key={tierId}
+                    type="button"
+                    variant={selectedTier === tierId ? "default" : "outline"}
+                    className="h-10 justify-start gap-2 rounded-xl px-3 text-xs"
+                    onClick={() => setSelectedTier(tierId)}
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
+                      aria-hidden="true"
+                    />
+                    <span className="truncate">{VEHICLE_TIERS[tierId].shortName}</span>
+                    <span className="ml-auto font-mono text-micro tabular-nums opacity-70">
+                      {tierCounts[tierId]}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold text-foreground">Minimum seats</legend>
+              <div className="grid grid-cols-5 gap-1.5">
+                {SEAT_OPTIONS.map((option) => (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    variant={minSeats === option.value ? "default" : "outline"}
+                    className="h-10 rounded-xl px-1 text-xs"
+                    onClick={() => setMinSeats(option.value)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold text-foreground">Minimum payload</legend>
+              <div className="grid grid-cols-4 gap-1.5">
+                {PAYLOAD_OPTIONS.map((option) => (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    variant={minPayload === option.value ? "default" : "outline"}
+                    className="h-10 rounded-xl px-1 text-xs"
+                    onClick={() => setMinPayload(option.value)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground" htmlFor="mobile-sort">
+                Order
+              </label>
+              <Select value={sort} onValueChange={(value) => setSort(value as SortKey)}>
+                <SelectTrigger id="mobile-sort" className="h-11 w-full rounded-xl bg-background text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="flex shrink-0 items-center gap-2 border-t border-border/80 px-5 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 flex-1 rounded-xl text-sm"
+              onClick={resetFilters}
+            >
+              Reset
+            </Button>
+            <Button
+              type="button"
+              className="h-11 flex-[2] rounded-xl text-sm font-semibold"
+              onClick={() => setMobileFiltersOpen(false)}
+            >
+              Show {filteredFleet.length} vehicles
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

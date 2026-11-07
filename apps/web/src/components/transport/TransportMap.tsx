@@ -1,19 +1,28 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import {
+  IconArrowsMaximize,
+  IconCrosshair,
+  IconMapPin,
+  IconRotate,
+} from "@tabler/icons-react";
 import {
   BASEMAP_ATTRIBUTION,
   BASEMAP_BASE_URL,
   BASEMAP_LABELS_URL,
   BASEMAP_MAX_NATIVE_ZOOM,
 } from "../map/basemap.ts";
-import type { HireVehicle, LocationCoordinate } from "../../lib/transportHire.ts";
+import type { HireVehicle, LocationCoordinate, VehicleTierId } from "../../lib/transportHire.ts";
 import {
   calculateRoadDistanceKm,
   estimateDriveDurationMinutes,
   formatCoordinates,
   formatDriveDuration,
+  VEHICLE_TIERS,
 } from "../../lib/transportHire.ts";
+import { cn } from "../../lib/utils.ts";
+import { VEHICLE_TIER_THEME } from "./vehicleTierTheme.ts";
 
 export interface TransportMapHandle {
   fitRoute: () => void;
@@ -36,6 +45,13 @@ interface TransportMapProps {
 const DEFAULT_CENTER: L.LatLngTuple = [-18.5, 29.8];
 const DEFAULT_ZOOM = 6.8;
 
+/* Pins float over basemap imagery, so their ink stays fixed — a themed
+   bubble would vanish against a light basemap in dark mode. */
+const PIN_INK = "oklch(0.21 0.03 260 / 0.92)";
+const PICKUP_INK = "#059669";
+const DROPOFF_INK = "#d92d20";
+const PIN_EDGE = "oklch(1 0 0 / 0.9)";
+
 export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
   function TransportMap(
     {
@@ -52,6 +68,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
+    const didFitRef = useRef(false);
     const layersRef = useRef<{
       baseLayer?: L.TileLayer;
       labelsLayer?: L.TileLayer;
@@ -69,7 +86,16 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
     );
     const routeDuration = estimateDriveDurationMinutes(routeDistance);
 
-    // Zoom & Fit bounds helper
+    const tierCounts = useMemo(() => {
+      const counts = new Map<VehicleTierId, number>();
+      for (const vehicle of vehicles) {
+        counts.set(vehicle.tierId, (counts.get(vehicle.tierId) ?? 0) + 1);
+      }
+      return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    }, [vehicles]);
+
+    // Zoom & Fit bounds helper. Padding keeps the pins clear of the route HUD
+    // (top-left) and the helper chip / zoom control (bottom).
     const fitRoute = useCallback(() => {
       const map = mapRef.current;
       if (!map) return;
@@ -80,7 +106,8 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
           [dropoff.lat, dropoff.lng],
         ]);
         map.fitBounds(bounds, {
-          padding: [70, 70],
+          paddingTopLeft: [20, 120],
+          paddingBottomRight: [20, 56],
           maxZoom: 12,
           animate: true,
         });
@@ -207,13 +234,13 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
       // Pickup Draggable Marker
       const pickupHtml = `
-        <div class="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
-          <span class="absolute w-8 h-8 rounded-full bg-emerald-500/30 animate-ping"></span>
-          <div class="relative flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white rounded-full shadow-xl border-2 border-white dark:border-zinc-900 text-xs font-semibold whitespace-nowrap">
-            <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            <span>PICKUP</span>
+        <div class="relative flex cursor-grab flex-col items-center active:cursor-grabbing">
+          <span class="absolute size-8 rounded-full" style="background:${PICKUP_INK};opacity:0.28"></span>
+          <div class="relative flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" style="background:${PICKUP_INK};color:#fff;border:2px solid ${PIN_EDGE};box-shadow:0 4px 14px rgb(15 23 42 / 0.24)">
+            <span class="size-1.5 rounded-full" style="background:#fff"></span>
+            <span>Pickup</span>
           </div>
-          <div class="mt-1 px-1.5 py-0.5 rounded bg-zinc-950/80 text-[10px] text-zinc-100 font-mono shadow">
+          <div class="mt-1 rounded px-1.5 py-0.5 font-mono text-[10px] tabular-nums" style="background:${PIN_INK};color:oklch(0.99 0 0);box-shadow:0 2px 8px rgb(15 23 42 / 0.2)">
             ${pickup.lat.toFixed(4)}, ${pickup.lng.toFixed(4)}
           </div>
         </div>
@@ -243,10 +270,10 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       });
 
       pMarker.bindPopup(`
-        <div class="p-2 text-xs font-sans">
-          <div class="font-bold text-emerald-600">Pickup Location</div>
-          <div class="font-mono text-zinc-800 dark:text-zinc-200">${formatCoordinates(pickup.lat, pickup.lng)}</div>
-          <div class="text-[11px] text-zinc-500 mt-1">Drag marker anywhere to adjust pickup</div>
+        <div class="p-1 font-sans text-xs">
+          <div class="font-semibold text-success">Pickup location</div>
+          <div class="font-mono tabular-nums text-foreground">${formatCoordinates(pickup.lat, pickup.lng)}</div>
+          <div class="mt-1 text-micro text-muted-foreground">Drag the marker to move your pickup</div>
         </div>
       `);
 
@@ -254,12 +281,12 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
       // Dropoff Draggable Marker
       const dropoffHtml = `
-        <div class="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
-          <div class="relative flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 text-white rounded-full shadow-xl border-2 border-white dark:border-zinc-900 text-xs font-semibold whitespace-nowrap">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
-            <span>DROPOFF</span>
+        <div class="relative flex cursor-grab flex-col items-center active:cursor-grabbing">
+          <div class="relative flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" style="background:${DROPOFF_INK};color:#fff;border:2px solid ${PIN_EDGE};box-shadow:0 4px 14px rgb(15 23 42 / 0.24)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+            <span>Destination</span>
           </div>
-          <div class="mt-1 px-1.5 py-0.5 rounded bg-zinc-950/80 text-[10px] text-zinc-100 font-mono shadow">
+          <div class="mt-1 rounded px-1.5 py-0.5 font-mono text-[10px] tabular-nums" style="background:${PIN_INK};color:oklch(0.99 0 0);box-shadow:0 2px 8px rgb(15 23 42 / 0.2)">
             ${dropoff.lat.toFixed(4)}, ${dropoff.lng.toFixed(4)}
           </div>
         </div>
@@ -289,10 +316,10 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       });
 
       dMarker.bindPopup(`
-        <div class="p-2 text-xs font-sans">
-          <div class="font-bold text-rose-600">Destination Location</div>
-          <div class="font-mono text-zinc-800 dark:text-zinc-200">${formatCoordinates(dropoff.lat, dropoff.lng)}</div>
-          <div class="text-[11px] text-zinc-500 mt-1">Drag marker anywhere to adjust destination</div>
+        <div class="p-1 font-sans text-xs">
+          <div class="font-semibold text-primary">Destination location</div>
+          <div class="font-mono tabular-nums text-foreground">${formatCoordinates(dropoff.lat, dropoff.lng)}</div>
+          <div class="mt-1 text-micro text-muted-foreground">Drag the marker to move your destination</div>
         </div>
       `);
 
@@ -305,7 +332,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       ];
 
       const routeLine = L.polyline(polylineCoords, {
-        color: "#e11d48",
+        color: DROPOFF_INK,
         weight: 4,
         opacity: 0.9,
         dashArray: "1, 9",
@@ -314,6 +341,16 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       }).addTo(map);
 
       layersRef.current.routeLayer = routeLine;
+
+      if (!didFitRef.current) {
+        didFitRef.current = true;
+        map.fitBounds(routeLine.getBounds(), {
+          paddingTopLeft: [20, 120],
+          paddingBottomRight: [20, 56],
+          maxZoom: 12,
+          animate: false,
+        });
+      }
     }, [pickup, dropoff, onCoordinatesChange]);
 
     // Update Fleet Vehicle Markers
@@ -326,30 +363,16 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
       vehicles.forEach((vehicle) => {
         const isSelected = selectedVehicleId === vehicle.id;
+        const theme = VEHICLE_TIER_THEME[vehicle.tierId];
+        const bubbleInk = isSelected ? DROPOFF_INK : PIN_INK;
 
         const vehicleHtml = `
-          <div class="cursor-pointer transition-all duration-200 hover:scale-110 ${
-            isSelected ? "scale-125 z-50" : ""
+          <div class="relative flex cursor-pointer items-center justify-center transition-transform duration-150 hover:scale-110 ${
+            isSelected ? "scale-110" : ""
           }">
-            <div class="relative flex items-center justify-center">
-              ${
-                isSelected
-                  ? '<span class="absolute -inset-2 rounded-full bg-rose-500/40 animate-ping"></span>'
-                  : ""
-              }
-              <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full shadow-lg border ${
-                isSelected
-                  ? "bg-rose-600 text-white border-rose-400 font-bold"
-                  : "bg-background/95 text-foreground border-border font-medium hover:border-primary"
-              } text-[11px] whitespace-nowrap">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.7 2 11 2 11.3V16c0 .6.4 1 1 1h2"/>
-                  <circle cx="7" cy="17" r="2"/>
-                  <path d="M9 17h6"/>
-                  <circle cx="17" cy="17" r="2"/>
-                </svg>
-                <span class="font-mono">${vehicle.etaMinutes}m</span>
-              </div>
+            <div class="flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 font-mono text-xs font-semibold tabular-nums" style="background:${bubbleInk};color:oklch(0.99 0 0);border:2px solid ${PIN_EDGE};box-shadow:0 4px 14px rgb(15 23 42 / 0.24)">
+              <span class="size-2 shrink-0 rounded-full" style="background:${theme.dot}"></span>
+              <span>${vehicle.etaMinutes}m</span>
             </div>
           </div>
         `;
@@ -367,17 +390,15 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
         });
 
         vMarker.on("click", () => {
-          if (onSelectVehicle) {
-            onSelectVehicle(vehicle);
-          }
+          onSelectVehicle?.(vehicle);
         });
 
         vMarker.bindTooltip(
           `
-          <div class="font-sans text-xs p-1.5">
-            <div class="font-bold text-foreground">${vehicle.model}</div>
-            <div class="text-muted-foreground text-[10px] font-mono">${vehicle.licensePlate} • Driver: ${vehicle.driverName} (${vehicle.driverRating}★)</div>
-            <div class="text-rose-500 font-semibold text-[11px] mt-0.5 font-mono">ETA to pickup: ${vehicle.etaMinutes} mins</div>
+          <div class="p-1 font-sans text-xs">
+            <div class="font-semibold text-foreground">${vehicle.model}</div>
+            <div class="font-mono text-micro tabular-nums text-muted-foreground">${vehicle.licensePlate} · ${vehicle.driverName} · ${vehicle.driverRating.toFixed(2)}★</div>
+            <div class="mt-0.5 font-mono text-micro font-semibold tabular-nums text-primary">${vehicle.etaMinutes} min to pickup · ${VEHICLE_TIERS[vehicle.tierId].shortName}</div>
           </div>
         `,
           { direction: "top", offset: [0, -10] },
@@ -389,84 +410,116 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
     return (
       <div
-        className={`relative w-full h-full overflow-hidden ${
-          activePinMode ? "cursor-crosshair" : ""
-        } ${className ?? ""}`}
+        className={cn(
+          "relative h-full w-full overflow-hidden bg-muted/20",
+          activePinMode && "cursor-crosshair",
+          className,
+        )}
       >
-        {/* Leaflet Canvas */}
-        <div ref={containerRef} className="w-full h-full min-h-[360px] z-0" />
+        <p className="sr-only">
+          Interactive dispatch map. Drag the pickup and destination markers, or click the map to
+          place them. Nearby vehicles appear as numbered bubbles showing their arrival time; choose
+          one to highlight it in the fleet below.
+        </p>
 
-        {/* Floating Route Overview HUD (Top Center) */}
-        {routeDistance > 0 && (
-          <div className="absolute top-4 left-4 right-4 sm:left-6 sm:right-auto z-[400] max-w-sm bg-background/95 backdrop-blur-md border border-border/80 shadow-2xl rounded-2xl p-3 text-xs pointer-events-auto">
-            <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/60">
-              <div className="flex items-center gap-1.5">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-mono text-muted-foreground text-[11px]">
+        <div ref={containerRef} className="absolute inset-0 z-0 min-h-[360px]" />
+
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <div className="pointer-events-auto absolute left-3 top-3 max-w-[calc(100%-7.5rem)] sm:left-6 sm:top-6">
+            <div className="rounded-xl border border-border/80 bg-background/92 px-3 py-2 shadow-sm backdrop-blur-md">
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-micro tabular-nums text-muted-foreground">
+                <span className="inline-flex items-center gap-1 text-success">
+                  <IconMapPin className="size-3" aria-hidden="true" />
                   {pickup.lat.toFixed(3)}, {pickup.lng.toFixed(3)}
                 </span>
-                <span className="text-muted-foreground font-mono">→</span>
-                <span className="font-mono text-muted-foreground text-[11px]">
+                <span aria-hidden="true">→</span>
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <IconCrosshair className="size-3" aria-hidden="true" />
                   {dropoff.lat.toFixed(3)}, {dropoff.lng.toFixed(3)}
                 </span>
-              </div>
-              <button
-                type="button"
-                onClick={fitRoute}
-                title="Fit route in view"
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-              </button>
-            </div>
+              </p>
 
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center gap-3">
-                <div>
-                  <span className="text-muted-foreground text-[10px] uppercase font-mono tracking-wider block">
-                    Calculated Distance
-                  </span>
-                  <span className="font-mono text-sm font-bold text-foreground">
+              <div className="mt-1.5 flex items-center gap-3 border-t border-border/60 pt-1.5">
+                <span className="flex flex-col">
+                  <span className="text-micro text-muted-foreground">Road distance</span>
+                  <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
                     {routeDistance.toLocaleString()} km
                   </span>
-                </div>
-                <div className="h-6 w-px bg-border/60" />
-                <div>
-                  <span className="text-muted-foreground text-[10px] uppercase font-mono tracking-wider block">
-                    Estimated Time
-                  </span>
-                  <span className="font-mono text-sm font-bold text-foreground">
+                </span>
+                <span className="h-6 w-px shrink-0 bg-border/70" aria-hidden="true" />
+                <span className="flex flex-col">
+                  <span className="text-micro text-muted-foreground">Drive time</span>
+                  <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
                     {formatDriveDuration(routeDuration)}
                   </span>
-                </div>
+                </span>
               </div>
 
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-[10px] font-semibold">
-                Direct Route
-              </span>
+              {tierCounts.length > 0 ? (
+                <div className="mt-1.5 hidden flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/60 pt-1.5 sm:flex">
+                  {tierCounts.map(([tierId, count]) => (
+                    <span
+                      key={tierId}
+                      className="inline-flex items-center gap-1.5 text-micro font-medium text-foreground"
+                    >
+                      <span
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
+                        aria-hidden="true"
+                      />
+                      {count} {VEHICLE_TIERS[tierId].shortName}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1.5 border-t border-border/60 pt-1.5 font-mono text-micro text-muted-foreground">
+                  No vehicles match the current filters
+                </p>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Active Pin Placement Banner */}
-        {activePinMode && (
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[400] px-4 py-2 rounded-full bg-zinc-950 text-white font-medium text-xs shadow-2xl border border-zinc-700 flex items-center gap-2 animate-bounce">
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                activePinMode === "pickup" ? "bg-emerald-400" : "bg-rose-400"
-              }`}
-            />
-            <span>
-              Click map to set {activePinMode === "pickup" ? "Pickup" : "Destination"} GPS coordinates
-            </span>
+          <div className="pointer-events-auto absolute right-3 top-3 flex flex-col items-end gap-1.5 sm:right-6 sm:top-6">
+            <button
+              type="button"
+              onClick={fitRoute}
+              title="Fit the map to the route"
+              className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/92 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:bg-background hover:shadow"
+            >
+              <IconArrowsMaximize className="size-3 text-muted-foreground" aria-hidden="true" />
+              Fit route
+            </button>
+            <button
+              type="button"
+              onClick={resetView}
+              title="Reset the map to the national view"
+              className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/92 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:bg-background hover:shadow"
+            >
+              <IconRotate className="size-3 text-muted-foreground" aria-hidden="true" />
+              Reset
+            </button>
           </div>
-        )}
 
-        {/* Drag Helper Tooltip */}
-        <div className="absolute bottom-3 left-3 z-[400] pointer-events-none hidden sm:block">
-          <div className="px-3 py-1 rounded-lg bg-background/90 backdrop-blur-sm border border-border/70 text-[10px] text-muted-foreground font-mono shadow-sm">
-            Drag markers or click anywhere on the map to place GPS pins
-          </div>
+          {activePinMode ? (
+            <div className="pointer-events-auto absolute bottom-5 left-1/2 z-10 -translate-x-1/2">
+              <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-border/80 bg-background/95 px-4 py-2 text-xs font-semibold text-foreground shadow-lg backdrop-blur-md">
+                <span
+                  className={cn(
+                    "size-2 shrink-0 rounded-full",
+                    activePinMode === "pickup" ? "bg-success" : "bg-primary",
+                  )}
+                  aria-hidden="true"
+                />
+                Click the map to set your {activePinMode === "pickup" ? "pickup" : "destination"}
+              </div>
+            </div>
+          ) : (
+            <div className="absolute bottom-3 left-3 hidden sm:block">
+              <span className="rounded-none border border-border/60 bg-background/85 px-2.5 py-1 text-micro font-medium tracking-wide text-muted-foreground shadow-sm backdrop-blur-sm">
+                Drag a marker or click the map to move the route
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );

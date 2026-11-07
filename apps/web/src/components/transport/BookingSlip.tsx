@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   FareBreakdown,
   HireBooking,
@@ -8,12 +8,21 @@ import type {
 } from "../../lib/transportHire.ts";
 import {
   formatCoordinates,
+  formatDriveDuration,
   generateBookingReference,
   saveBookingToStorage,
   VEHICLE_TIERS,
 } from "../../lib/transportHire.ts";
 import { Button } from "../ui/button.tsx";
-import { Badge } from "../ui/badge.tsx";
+import { Input } from "../ui/input.tsx";
+import { Label } from "../ui/label.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog.tsx";
 import {
   IconAlertCircle,
   IconBuilding,
@@ -24,12 +33,20 @@ import {
   IconCrosshair,
   IconCurrentLocation,
   IconDeviceMobile,
-  IconMapPinFilled,
   IconPhoneCall,
   IconStarFilled,
-  IconTruck,
-  IconX,
 } from "@tabler/icons-react";
+import { cn } from "../../lib/utils.ts";
+import { VEHICLE_TIER_THEME } from "./vehicleTierTheme.ts";
+
+type PaymentMethod = "ecocash" | "card" | "cash_on_site" | "corporate_invoice";
+
+const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; icon: typeof IconCash }[] = [
+  { id: "ecocash", label: "EcoCash", icon: IconDeviceMobile },
+  { id: "card", label: "Card / POS", icon: IconCreditCard },
+  { id: "cash_on_site", label: "Cash on site", icon: IconCash },
+  { id: "corporate_invoice", label: "Corporate", icon: IconBuilding },
+];
 
 interface BookingSlipProps {
   vehicle: HireVehicle;
@@ -53,10 +70,11 @@ export function BookingSlip({
   onBookingConfirmed,
 }: BookingSlipProps) {
   const tier: VehicleTier = VEHICLE_TIERS[vehicle.tierId];
+  const theme = VEHICLE_TIER_THEME[vehicle.tierId];
+  const TierIcon = theme.icon;
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const [paymentMethod, setPaymentMethod] = useState<
-    "ecocash" | "card" | "cash_on_site" | "corporate_invoice"
-  >("ecocash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("ecocash");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [specialNotes, setSpecialNotes] = useState("");
@@ -64,22 +82,27 @@ export function BookingSlip({
   const [confirmedBooking, setConfirmedBooking] = useState<HireBooking | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    setConfirmedBooking(null);
+    setFormError(null);
+    setIsSubmitting(false);
+  }, [isOpen, vehicle.id]);
 
   const handleConfirm = () => {
     if (!contactName.trim()) {
-      setFormError("Please enter the contact / field surveyor name");
+      setFormError("Enter the contact or field surveyor name.");
       return;
     }
     if (!contactPhone.trim()) {
-      setFormError("Please enter a valid contact phone number");
+      setFormError("Enter a contact phone number the driver can reach.");
       return;
     }
 
     setFormError(null);
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       const booking: HireBooking = {
         bookingRef: generateBookingReference(),
         vehicle,
@@ -104,318 +127,349 @@ export function BookingSlip({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in-50">
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl p-6 sm:p-7">
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+    <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
+      <DialogContent
+        ref={contentRef}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          contentRef.current?.focus({ preventScroll: true });
+        }}
+        className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-2xl border border-border/80 bg-background p-0 shadow-2xl sm:max-w-lg sm:gap-0 sm:p-0"
+      >
+        <div
+          className={cn(
+            "relative shrink-0 border-b bg-gradient-to-br px-5 py-5 sm:px-6",
+            theme.bannerBg,
+            theme.border,
+          )}
         >
-          <IconX className="h-5 w-5" />
-        </button>
+          <div className="flex items-start gap-3 pr-10">
+            <span
+              className={cn(
+                "flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background/85 shadow-sm",
+                theme.badgeText,
+              )}
+            >
+              <TierIcon className="size-5" aria-hidden="true" />
+            </span>
+            <DialogHeader className="min-w-0 gap-1 text-left">
+              <DialogTitle className="market-dialog-title text-balance text-foreground">
+                {confirmedBooking ? "Vehicle dispatched" : "Confirm dispatch"}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {confirmedBooking
+                  ? "The driver has your pickup coordinates and is on the way."
+                  : `${tier.name} · priced for ${fareBreakdown.distanceKm} km of road`}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+        </div>
 
-        {!confirmedBooking ? (
-          <div>
-            {/* Header */}
-            <div className="flex items-center gap-3 pb-4 border-b border-border/80">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-600">
-                <IconTruck className="h-6 w-6" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-foreground">Confirm Dispatch</h2>
-                <p className="text-xs text-muted-foreground">
-                  Coordinate-routed vehicle dispatch with dynamic distance pricing
-                </p>
-              </div>
-            </div>
-
-            {/* Vehicle & Fare Overview Card */}
-            <div className="mt-4 p-4 rounded-2xl bg-muted/40 border border-border/70">
-              <div className="flex items-start justify-between gap-3">
+        {confirmedBooking ? (
+          <>
+            <div className="market-detail-scroll flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-border/80 bg-card px-5 py-6 text-center">
+                <span className="flex size-14 items-center justify-center rounded-2xl bg-success/10 text-success">
+                  <IconCircleCheckFilled className="size-8" aria-hidden="true" />
+                </span>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground text-sm">{vehicle.model}</span>
-                    <Badge variant="secondary" className="font-mono text-[9.5px] uppercase">
-                      {tier.shortName}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                    Registration: <strong className="text-foreground">{vehicle.licensePlate}</strong> • {vehicle.color}
-                  </div>
+                  <p className="text-micro font-medium text-muted-foreground">Booking reference</p>
+                  <p className="mt-0.5 font-mono text-xl font-bold tabular-nums tracking-tight text-foreground">
+                    {confirmedBooking.bookingRef}
+                  </p>
                 </div>
-
-                <div className="text-right">
-                  <div className="text-xl font-mono font-extrabold text-foreground">
-                    ${fareBreakdown.totalFare.toFixed(2)}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground font-mono">
-                    Total Estimated Fare
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">Driver: {vehicle.driverName}</span>
-                  <span className="flex items-center gap-0.5 text-amber-500 font-semibold text-[11px]">
-                    <IconStarFilled className="h-3 w-3" />
-                    {vehicle.driverRating.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground font-mono text-[11px]">
-                  <span>{tier.seats} seats</span>
-                  <span>•</span>
-                  <span>{tier.payloadKg} kg payload</span>
-                  <span>•</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                    {vehicle.etaMinutes}m ETA
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Route GPS Coordinates Card */}
-            <div className="mt-4 p-4 rounded-2xl border border-border/60 bg-card space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 shrink-0 mt-0.5">
-                  <IconCurrentLocation className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                    Pickup GPS Coordinates
-                  </div>
-                  <div className="text-xs font-mono font-semibold text-foreground">
-                    {formatCoordinates(pickup.lat, pickup.lng)}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">{pickup.label}</div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 pl-0.5">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/15 text-rose-600 shrink-0 mt-0.5">
-                  <IconCrosshair className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                    Destination GPS Coordinates
-                  </div>
-                  <div className="text-xs font-mono font-semibold text-foreground">
-                    {formatCoordinates(dropoff.lat, dropoff.lng)}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">{dropoff.label}</div>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs font-mono text-muted-foreground">
-                <span>Distance: <strong className="text-foreground">{fareBreakdown.distanceKm} km</strong></span>
-                <span>Drive Time: <strong className="text-foreground">{durationMinutes > 0 ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m` : "Local"}</strong></span>
-              </div>
-            </div>
-
-            {/* Fare Breakdown Sheet */}
-            <div className="mt-4 p-3.5 rounded-2xl border border-dashed border-border bg-muted/20 text-xs font-mono">
-              <div className="font-semibold text-foreground pb-2 border-b border-border/60 flex items-center justify-between font-sans">
-                <span>Dynamic Fare Calculation</span>
-                <span className="text-muted-foreground text-[10.5px]">
-                  Uber-style distance model
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+                  <IconClock className="size-3.5" aria-hidden="true" />
+                  Driver arriving in ~{vehicle.etaMinutes} min
                 </span>
               </div>
 
-              <div className="mt-2 space-y-1.5 text-[11px]">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Base Pickup Fee</span>
-                  <span className="text-foreground">${fareBreakdown.baseFare.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>
-                    Distance ({fareBreakdown.distanceKm} km @ ${fareBreakdown.ratePerKm.toFixed(2)}/km)
-                  </span>
-                  <span className="text-foreground">${fareBreakdown.distanceCost.toFixed(2)}</span>
-                </div>
-                {fareBreakdown.tollAndRoadFee > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Highway Transit & Tolls</span>
-                    <span className="text-foreground">${fareBreakdown.tollAndRoadFee.toFixed(2)}</span>
+              <div className="space-y-3 rounded-2xl border border-border/80 bg-card p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                      {vehicle.driverName.charAt(0)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {vehicle.driverName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {vehicle.model} ·{" "}
+                        <span className="font-mono font-semibold text-foreground">
+                          {vehicle.licensePlate}
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                )}
-                <div className="pt-2 border-t border-border/60 flex justify-between font-bold text-xs text-foreground font-sans">
-                  <span>Total Due</span>
-                  <span className="text-rose-600 text-sm font-extrabold font-mono">
-                    ${fareBreakdown.totalFare.toFixed(2)}
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-9 shrink-0 gap-1.5 rounded-xl px-3.5 text-xs font-semibold"
+                  >
+                    <a href={`tel:${vehicle.driverPhone}`}>
+                      <IconPhoneCall className="size-3.5" aria-hidden="true" />
+                      Call
+                    </a>
+                  </Button>
+                </div>
+
+                <dl className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3 text-xs">
+                  <div className="min-w-0">
+                    <dt className="text-micro text-muted-foreground">Driver contact</dt>
+                    <dd className="mt-0.5 truncate font-mono font-semibold tabular-nums text-foreground">
+                      {vehicle.driverPhone}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-micro text-muted-foreground">Payment</dt>
+                    <dd className="mt-0.5 truncate font-semibold text-foreground">
+                      {PAYMENT_OPTIONS.find((option) => option.id === paymentMethod)?.label}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-micro text-muted-foreground">Total fare</dt>
+                    <dd className="mt-0.5 font-mono font-semibold tabular-nums text-foreground">
+                      ${confirmedBooking.fareBreakdown.totalFare.toFixed(2)}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-micro text-muted-foreground">Contact</dt>
+                    <dd className="mt-0.5 truncate font-semibold text-foreground">
+                      {confirmedBooking.contactName}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-background px-5 py-4 sm:px-6">
+              <Button
+                type="button"
+                className="h-11 rounded-xl px-5 text-sm font-semibold"
+                onClick={onClose}
+              >
+                Back to the fleet
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="market-detail-scroll flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="rounded-2xl border border-border/80 bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{vehicle.model}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      <span className="font-mono font-semibold text-foreground">
+                        {vehicle.licensePlate}
+                      </span>{" "}
+                      · {vehicle.color}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-mono text-lg font-bold tabular-nums tracking-tight text-foreground">
+                      ${fareBreakdown.totalFare.toFixed(2)}
+                    </p>
+                    <p className="text-micro text-muted-foreground">Estimated total</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3 text-xs">
+                  <span className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                    <span className="truncate font-medium text-foreground">{vehicle.driverName}</span>
+                    <span className="inline-flex shrink-0 items-center gap-0.5 font-semibold tabular-nums text-warning">
+                      <IconStarFilled className="size-3" aria-hidden="true" />
+                      {vehicle.driverRating.toFixed(2)}
+                    </span>
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-2 font-mono text-micro tabular-nums text-muted-foreground">
+                    {tier.seats} seats · {tier.payloadKg.toLocaleString()} kg ·{" "}
+                    <span className="font-semibold text-success">{vehicle.etaMinutes}m ETA</span>
                   </span>
                 </div>
               </div>
-            </div>
 
-            {/* Contact Details */}
-            <div className="mt-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10.5px] font-medium text-muted-foreground uppercase font-mono tracking-wider mb-1">
-                    Contact / Surveyor Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="e.g. Tendai Chikore"
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-background focus:ring-1 focus:ring-rose-500 focus:outline-none"
+              <div className="space-y-3 rounded-2xl border border-border/80 bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+                    <IconCurrentLocation className="size-3.5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-foreground">Pickup</p>
+                    <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {formatCoordinates(pickup.lat, pickup.lng)}
+                    </p>
+                    <p className="truncate text-micro text-muted-foreground">{pickup.label}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <IconCrosshair className="size-3.5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-foreground">Destination</p>
+                    <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {formatCoordinates(dropoff.lat, dropoff.lng)}
+                    </p>
+                    <p className="truncate text-micro text-muted-foreground">{dropoff.label}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-3 font-mono text-micro tabular-nums text-muted-foreground">
+                  <span>
+                    Distance{" "}
+                    <span className="font-semibold text-foreground">{fareBreakdown.distanceKm} km</span>
+                  </span>
+                  <span>
+                    Drive time{" "}
+                    <span className="font-semibold text-foreground">
+                      {formatDriveDuration(durationMinutes)}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-4">
+                <p className="text-xs font-semibold text-foreground">Fare breakdown</p>
+                <dl className="mt-2 space-y-1.5 font-mono text-xs tabular-nums">
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">Base pickup fee</dt>
+                    <dd className="shrink-0 text-foreground">${fareBreakdown.baseFare.toFixed(2)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">
+                      {fareBreakdown.distanceKm} km @ ${fareBreakdown.ratePerKm.toFixed(2)}/km
+                    </dt>
+                    <dd className="shrink-0 text-foreground">
+                      ${fareBreakdown.distanceCost.toFixed(2)}
+                    </dd>
+                  </div>
+                  {fareBreakdown.tollAndRoadFee > 0 ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-muted-foreground">Highway transit and tolls</dt>
+                      <dd className="shrink-0 text-foreground">
+                        ${fareBreakdown.tollAndRoadFee.toFixed(2)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-2">
+                    <dt className="font-sans text-xs font-semibold text-foreground">Total due</dt>
+                    <dd className="shrink-0 text-sm font-bold text-primary">
+                      ${fareBreakdown.totalFare.toFixed(2)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="hire-contact-name" className="text-xs font-semibold">
+                      Contact / surveyor name
+                    </Label>
+                    <Input
+                      id="hire-contact-name"
+                      value={contactName}
+                      onChange={(event) => setContactName(event.target.value)}
+                      placeholder="e.g. Tendai Chikore"
+                      autoComplete="name"
+                      className="h-11 rounded-xl border-border/80 bg-background text-sm shadow-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="hire-contact-phone" className="text-xs font-semibold">
+                      Contact phone
+                    </Label>
+                    <Input
+                      id="hire-contact-phone"
+                      type="tel"
+                      value={contactPhone}
+                      onChange={(event) => setContactPhone(event.target.value)}
+                      placeholder="+263 77 123 4567"
+                      autoComplete="tel"
+                      className="h-11 rounded-xl border-border/80 bg-background text-sm shadow-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="hire-notes" className="text-xs font-semibold">
+                    Site notes <span className="font-normal text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Input
+                    id="hire-notes"
+                    value={specialNotes}
+                    onChange={(event) => setSpecialNotes(event.target.value)}
+                    placeholder="Gate access, equipment to carry, rendezvous point…"
+                    className="h-11 rounded-xl border-border/80 bg-background text-sm shadow-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-[10.5px] font-medium text-muted-foreground uppercase font-mono tracking-wider mb-1">
-                    Contact Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="+263 77 123 4567"
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-background focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                  />
+              </div>
+
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-semibold text-foreground">Payment method</legend>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {PAYMENT_OPTIONS.map((option) => {
+                    const OptionIcon = option.icon;
+                    const selected = paymentMethod === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setPaymentMethod(option.id)}
+                        className={cn(
+                          "flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors",
+                          selected
+                            ? "border-primary bg-primary/10 font-semibold text-primary ring-1 ring-primary/30"
+                            : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        <OptionIcon className="size-4" aria-hidden="true" />
+                        <span className="text-center leading-tight">{option.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="block text-[10.5px] font-medium text-muted-foreground uppercase font-mono tracking-wider mb-1">
-                  Site Notes / Field Access Instructions (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={specialNotes}
-                  onChange={(e) => setSpecialNotes(e.target.value)}
-                  placeholder="e.g. Mining claim security gate, bring survey peg ropes"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-background focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                />
-              </div>
+              {formError ? (
+                <p
+                  role="alert"
+                  className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-xs leading-5 text-destructive"
+                >
+                  <IconAlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  {formError}
+                </p>
+              ) : null}
             </div>
 
-            {/* Payment Options */}
-            <div className="mt-4">
-              <label className="block text-[10.5px] font-medium text-muted-foreground uppercase font-mono tracking-wider mb-2">
-                Select Payment Rail
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: "ecocash", label: "EcoCash", icon: IconDeviceMobile },
-                  { id: "card", label: "Card / POS", icon: IconCreditCard },
-                  { id: "cash_on_site", label: "Cash on Site", icon: IconCash },
-                  { id: "corporate_invoice", label: "Corporate A/C", icon: IconBuilding },
-                ].map((opt) => {
-                  const Icon = opt.icon;
-                  const isOptSelected = paymentMethod === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(opt.id as typeof paymentMethod)}
-                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-medium transition-all ${
-                        isOptSelected
-                          ? "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold ring-1 ring-rose-500/30"
-                          : "border-border bg-background hover:bg-muted/50 text-muted-foreground"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 mb-1" />
-                      <span>{opt.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Error Message */}
-            {formError && (
-              <div className="mt-3 flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs">
-                <IconAlertCircle className="h-4 w-4 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            {/* Submit Action */}
-            <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-border">
-              <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-background px-5 py-4 sm:px-6">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-xl px-4 text-sm"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
               <Button
                 type="button"
-                size="sm"
+                className="h-11 rounded-xl px-5 text-sm font-semibold"
                 onClick={handleConfirm}
                 disabled={isSubmitting}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 rounded-xl"
               >
-                {isSubmitting ? "Dispatching..." : `Confirm Hire ($${fareBreakdown.totalFare.toFixed(2)})`}
+                {isSubmitting
+                  ? "Dispatching…"
+                  : `Confirm hire · $${fareBreakdown.totalFare.toFixed(2)}`}
               </Button>
             </div>
-          </div>
-        ) : (
-          /* Confirmation Screen */
-          <div className="text-center py-4">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 mb-4 animate-in zoom-in-75">
-              <IconCircleCheckFilled className="h-10 w-10 text-emerald-600" />
-            </div>
-
-            <h3 className="text-xl font-bold text-foreground">Vehicle Dispatched!</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Driver has been notified with your GPS pickup coordinates.
-            </p>
-
-            <div className="mt-5 p-4 rounded-2xl bg-muted/60 border border-border inline-block min-w-[280px]">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                Booking Reference
-              </div>
-              <div className="text-2xl font-mono font-extrabold text-foreground tracking-wider mt-0.5">
-                {confirmedBooking.bookingRef}
-              </div>
-              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-mono text-[11px] font-semibold">
-                <IconClock className="h-3 w-3" />
-                Driver arriving in ~{vehicle.etaMinutes} mins
-              </div>
-            </div>
-
-            <div className="mt-5 text-left p-4 rounded-2xl border border-border/80 bg-card space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
-                    {vehicle.driverName.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm text-foreground">{vehicle.driverName}</div>
-                    <div className="text-xs text-muted-foreground font-mono">
-                      {vehicle.model} • <strong className="text-foreground">{vehicle.licensePlate}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <a
-                  href={`tel:${vehicle.driverPhone}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm transition-colors"
-                >
-                  <IconPhoneCall className="h-4 w-4" />
-                  <span>Call</span>
-                </a>
-              </div>
-
-              <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground font-mono">
-                <span>Driver Contact: <strong className="text-foreground">{vehicle.driverPhone}</strong></span>
-                <span>Payment: <strong className="uppercase text-foreground">{paymentMethod.replace("_", " ")}</strong></span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-center">
-              <Button
-                type="button"
-                onClick={onClose}
-                className="w-full sm:w-auto px-8 bg-foreground text-background hover:bg-foreground/90 font-semibold rounded-xl"
-              >
-                Back to Fleet
-              </Button>
-            </div>
-          </div>
+          </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
