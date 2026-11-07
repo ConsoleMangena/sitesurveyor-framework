@@ -67,6 +67,7 @@ flowchart TB
 | Component | Responsibility |
 | --- | --- |
 | `apps/web` | Implemented React SPA/PWA, wallet flows, workspaces, project/CAD UI, file manager, market, and finance screens |
+| `apps/engine` | **Python satellite survey engine** — worker polls `survey_runs`, runs multi-sensor raster pipelines (water/minerals/soil/hazard), publishes deliverables to Supabase Storage, exposes MCP server for AI agents |
 | `supabase/functions/ai-chat` | Authenticated primary AI endpoint; streams NDJSON events and invokes the shared agent core |
 | `supabase/functions/_shared` | Model routing, agent tools, memory, skills, workflows, and shared AI behaviour |
 | `supabase/functions/solana-data` | Public Solana RPC proxy and cached market snapshots |
@@ -75,7 +76,7 @@ flowchart TB
 | `ai-gateway` | Optional Node static host and self-hosted `/api/chat` fallback using the same agent contract |
 | `ai-gateway/sitesurveyor-mcp` | MCP server exposing equivalent data, CAD, memory, and workflow tools over stdio |
 | `scripts/ai-eval` | Evaluation and consistency checks for models, memory, skills, and tool rounds |
-| `apps/desktop`, `apps/mobile`, `apps/live` | Reserved directories for the .NET desktop and Java Android SDK targets plus a live shell; none is implemented, so the web client is the only shipped surface |
+| `apps/desktop`, `apps/mobile`, `apps/live` | Reserved directories for the .NET desktop and Java Android SDK targets plus a live shell; none is implemented, so the web client is the only shipped **user-facing** surface. The Python engine at `apps/engine` is a **backend worker**, not a user-facing client. |
 
 ## 4. Frontend architecture
 

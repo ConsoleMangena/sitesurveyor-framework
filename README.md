@@ -168,7 +168,8 @@ sitesurveyor-framework/
 │   ├── web/                 # Implemented responsive React application
 │   ├── desktop/             # .NET desktop target; source placeholder
 │   ├── mobile/              # Java Android SDK target; source placeholder
-│   └── live/                # Reserved placeholder
+│   ├── live/                # Reserved placeholder
+│   └── engine/              # Python satellite survey engine (worker + MCP + CLI)
 ├── ai-gateway/              # Optional Node host and AI fallback
 │   └── sitesurveyor-mcp/    # MCP exposure of AI data, CAD, memory, and workflow tools
 ├── supabase/

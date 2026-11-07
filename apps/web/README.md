@@ -95,7 +95,7 @@ src/
 └── main.tsx                # Browser bootstrap and polyfills
 ```
 
-The `apps/desktop`, `apps/mobile`, and `apps/live` directories elsewhere in the repository are placeholders. This package is the implemented application. The native targets are **.NET desktop** in `apps/desktop` and **Java Android SDK** in `apps/mobile`; no native shell is currently implemented.
+The `apps/desktop`, `apps/mobile`, and `apps/live` directories elsewhere in the repository are placeholders. This package is the implemented application. The native targets are **.NET desktop** in `apps/desktop` and **Java Android SDK** in `apps/mobile`; no native shell is currently implemented. The Python satellite survey engine at `apps/engine` is a backend worker service (see its [README](../engine/README.md)).
 
 ## Key implementation contracts
 
