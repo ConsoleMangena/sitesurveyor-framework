@@ -65,10 +65,10 @@ export function WorkspaceNotifications({
           type="button"
           variant="ghost"
           size="icon"
-          className="relative rounded-full"
+          className="relative size-8 rounded-full shrink-0"
           aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         >
-          <Bell aria-hidden="true" />
+          <Bell className="size-4" aria-hidden="true" />
           {unreadCount > 0 ? (
             <span className="absolute end-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
               {unreadCount > 9 ? "9+" : unreadCount}

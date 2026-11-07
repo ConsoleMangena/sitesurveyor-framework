@@ -63,7 +63,7 @@ export function AccountMenuItem({
   if (to) {
     return (
       <DropdownMenuItem asChild>
-        <Link to={to}>
+        <Link to={to} onClick={onClick}>
           <Icon />
           {label}
         </Link>
@@ -117,7 +117,7 @@ export function AccountMenu({
 
   return (
     <>
-      <DropdownMenu modal={false}>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" side={side}>
           <DropdownMenuLabel className="font-normal">

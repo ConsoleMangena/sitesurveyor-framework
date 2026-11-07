@@ -96,7 +96,7 @@ export default function WorkspaceShell({
             {shouldHideGlobalChrome ? null : (
               <Header fixed>
                 <Search />
-                <div className="ms-auto flex items-center gap-1.5">
+                <div className="ms-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <ThemeToggle />
                   <WorkspaceNotifications
                     workspaceId={user.workspaceId}

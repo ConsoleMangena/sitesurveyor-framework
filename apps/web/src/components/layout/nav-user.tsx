@@ -23,8 +23,17 @@ type NavUserProps = {
 };
 
 export function NavUser({ user, onProfile, onLogout }: NavUserProps) {
-  const { isMobile } = useSidebar();
+  const { isMobile, state, setOpenMobile } = useSidebar();
   const [showAbout, setShowAbout] = useState(false);
+
+  const handleProfile = () => {
+    setOpenMobile(false);
+    onProfile();
+  };
+
+  const handleMarket = () => {
+    setOpenMobile(false);
+  };
 
   return (
     <>
@@ -33,10 +42,11 @@ export function NavUser({ user, onProfile, onLogout }: NavUserProps) {
           <AccountMenu
             user={user}
             onLogout={onLogout}
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? "top" : state === "collapsed" ? "right" : "top"}
             trigger={
               <SidebarMenuButton
                 size="lg"
+                aria-label={`User account menu for ${user.name}`}
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <AccountMenuAvatar user={user} />
@@ -51,9 +61,14 @@ export function NavUser({ user, onProfile, onLogout }: NavUserProps) {
             <AccountMenuItem
               icon={BadgeCheck}
               label="Edit profile"
-              onClick={onProfile}
+              onClick={handleProfile}
             />
-            <AccountMenuItem icon={Store} label="Public market" to="/market" />
+            <AccountMenuItem
+              icon={Store}
+              label="Public market"
+              to="/market"
+              onClick={handleMarket}
+            />
             <AccountMenuItem
               icon={Info}
               label="About"

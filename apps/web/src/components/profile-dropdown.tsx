@@ -29,7 +29,7 @@ export function ProfileDropdown({
         <Button
           variant="ghost"
           size="icon"
-          className="relative size-8 rounded-full border border-border/60 hover:bg-accent"
+          className="relative size-8 rounded-full border border-border/60 hover:bg-accent shrink-0"
           aria-label="User account menu"
         >
           <AccountMenuAvatar user={user} />

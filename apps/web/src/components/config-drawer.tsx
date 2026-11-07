@@ -145,9 +145,9 @@ export function ConfigDrawer() {
           size="icon"
           variant="ghost"
           aria-label="Open layout settings"
-          className="rounded-full"
+          className="size-8 rounded-full shrink-0"
         >
-          <Settings aria-hidden="true" />
+          <Settings className="size-4" aria-hidden="true" />
         </Button>
       </SheetTrigger>
       <SheetContent className="flex flex-col">
