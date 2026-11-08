@@ -5526,6 +5526,10 @@ export type Database = {
           transaction_id: string
         }[]
       }
+      sample_market_item_keys: {
+        Args: never
+        Returns: string[]
+      }
       set_default_payment_method: {
         Args: { p_method_id: string; p_workspace_id: string }
         Returns: undefined

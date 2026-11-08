@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { supabase } from "../../lib/supabase/client.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
@@ -240,8 +240,7 @@ export async function fetchMarketData(): Promise<MarketData> {
   }
 }
 
-export function classifyFailure(error: unknown): LoadFailure {
-  const aborted = error instanceof Error && error.name === "AbortError";
+export function classifyFailure(error: unknown): LoadFailure {  const aborted = error instanceof Error && error.name === "AbortError";
   const postgrestError = error as { code?: string; message?: string };
   return {
     reason: aborted ? "timeout" : "error",
@@ -255,6 +254,42 @@ export function classifyFailure(error: unknown): LoadFailure {
           postgrestError.message ?? "",
         )),
   };
+}
+
+/**
+ * "kind:id" keys for rows published by the seeded demo/sample workspaces.
+ *
+ * A fresh database ships demo inventory so /market is never empty, and those
+ * rows are indistinguishable from real supply: same card, same price, same
+ * request button. The marker lets the UI say so. Failing to fetch is not fatal -
+ * an empty set simply means nothing is badged.
+ */
+export async function fetchSampleMarketItemKeys(): Promise<Set<string>> {
+  const { data, error } = await supabase.rpc("sample_market_item_keys");
+  if (error) throw error;
+  const keys = Array.isArray(data) ? data : [];
+  return new Set(keys.filter((key): key is string => typeof key === "string"));
+}
+
+/** Sample-content marker for the public market; empty until loaded or on error. */
+export function useSampleMarketItemKeys(): Set<string> {
+  const [keys, setKeys] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    let active = true;
+    void fetchSampleMarketItemKeys()
+      .then((next) => {
+        if (active) setKeys(next);
+      })
+      .catch(() => {
+        /* Badging is advisory; a failure must not break the market. */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return keys;
 }
 
 /** Live public-market feed with retry; safe to mount in several surfaces. */

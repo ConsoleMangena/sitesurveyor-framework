@@ -78,6 +78,13 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const stickToBottomRef = useRef(true);
+  /**
+   * On phones the concierge is a single input bar until it is used. At 390 px
+   * the full card (intro, chips, 420 px minimum) filled the entire first screen
+   * and pushed the registry - the thing the page exists to show - below two
+   * panels. `lg` always shows the full card, so the desktop hero is unchanged.
+   */
+  const [expanded, setExpanded] = useState(false);
   const idRef = useRef(0);
 
   const [messages, setMessages] = useState<MarketMessage[]>([]);
@@ -187,7 +194,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
     <section
       aria-label="SiteSurveyor AI market chat"
       className={cn(
-        "flex min-h-[420px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card sm:min-h-[460px] lg:min-h-[400px]",
+        "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card lg:min-h-[400px]",
         className,
       )}
     >
@@ -226,7 +233,12 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
         className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
       >
         {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-1 text-center">
+          <div
+            className={cn(
+              "h-full flex-col items-center justify-center gap-4 px-1 text-center",
+              expanded ? "flex" : "hidden lg:flex",
+            )}
+          >
             <span
               className="flex size-10 items-center justify-center rounded-xl border border-border/80 bg-background text-[var(--web3-brand)]"
               aria-hidden="true"
@@ -312,6 +324,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => setExpanded(true)}
             rows={1}
             maxLength={MARKET_MAX_MESSAGE_CHARS}
             placeholder="Ask the concierge…"

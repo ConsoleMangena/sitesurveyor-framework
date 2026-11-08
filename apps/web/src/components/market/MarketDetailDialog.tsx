@@ -167,6 +167,7 @@ export function MarketDetailDialog({
   onOpenInApp,
   fullScreen = false,
   allowRequest = false,
+  isSample = false,
 }: {
   dot: MarketDot | null;
   listing: ListingRow | null;
@@ -178,6 +179,8 @@ export function MarketDetailDialog({
   onOpenInApp?: (view: string, id?: string) => void;
   fullScreen?: boolean;
   allowRequest?: boolean;
+  /** Seeded demo row: shown clearly so nobody waits on a reply. */
+  isSample?: boolean;
 }) {
   const [showcase, setShowcase] = useState<ShowcaseItemRow[]>([]);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
@@ -297,6 +300,12 @@ export function MarketDetailDialog({
               <DialogDescription className="text-sm text-muted-foreground">
                 Explore the details and take the next step.
               </DialogDescription>
+              {isSample ? (
+                <p className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs leading-5 text-warning">
+                  Sample content: this row belongs to a demo workspace, so
+                  requests and orders are not answered.
+                </p>
+              ) : null}
             </DialogHeader>
             {user ? (
               <Button

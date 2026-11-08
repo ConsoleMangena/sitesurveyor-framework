@@ -4,6 +4,7 @@ import {
   Bookmark,
   ChevronDown,
   Globe2,
+  Info,
   LayoutGrid,
   PackageSearch,
   RefreshCw,
@@ -16,6 +17,7 @@ import {
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
 import { cn } from "../../lib/utils.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { signOut } from "../../lib/auth/session.ts";
 import {
@@ -50,6 +52,7 @@ const PublicMarketGlobe = lazy(
 import {
   fetchMarketData,
   classifyFailure,
+  useSampleMarketItemKeys,
 } from "../../components/market/marketFeed.ts";
 import type {
   EventRow,
@@ -154,6 +157,23 @@ export default function PublicMarketPage() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const market = useSolanaMarketFeed();
+  useDocumentTitle(
+    "Surveyor's Market — instruments, surveyors, jobs and training | SiteSurveyor",
+  );
+  // Demo rows seeded by the sample workspace look exactly like real supply;
+  // they are badged here so a visitor never waits on a demo seller.
+  const sampleKeys = useSampleMarketItemKeys();
+  const markSample = useCallback(
+    (items: RailItem[]) =>
+      sampleKeys.size === 0
+        ? items
+        : items.map((item) =>
+            sampleKeys.has(`${item.kind}:${item.id}`)
+              ? { ...item, isSample: true }
+              : item,
+          ),
+    [sampleKeys],
+  );
   const [data, setData] = useState<MarketData | null>(null);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -466,8 +486,14 @@ export default function PublicMarketPage() {
   ]);
 
   const rails = useMemo(
-    () => (railSource ? buildRails(railSource, listingCategory, scope) : []),
-    [railSource, listingCategory, scope],
+    () =>
+      railSource
+        ? buildRails(railSource, listingCategory, scope).map((rail) => ({
+            ...rail,
+            items: markSample(rail.items),
+          }))
+        : [],
+    [railSource, listingCategory, scope, markSample],
   );
   const visibleRails = rails.filter(
     (rail) => scope === "all" || rail.kinds.includes(scope as MarketDotKind),
@@ -494,11 +520,19 @@ export default function PublicMarketPage() {
     // Re-sort chronologically only for "newest"; price sorts keep the stable
     // per-kind group order (cross-kind price comparators are meaningless).
     return sort === "newest"
-      ? merged.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      : merged;
-  }, [data, seeAll, scope, sort, sortedListings, sortedProfessionals, sortedJobs, sortedFirms, sortedEvents]);
+      ? markSample(merged.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)))
+      : markSample(merged);
+  }, [data, seeAll, scope, sort, sortedListings, sortedProfessionals, sortedJobs, sortedFirms, sortedEvents, markSample]);
 
   const visibleFlatItems = flatItems.slice(0, flatLimit);
+
+  // How many of the items on screen are demo rows, for the notice above them.
+  const sampleInView = useMemo(() => {
+    const items = flatMode
+      ? flatItems
+      : visibleRails.flatMap((rail) => rail.items);
+    return items.filter((item) => item.isSample).length;
+  }, [flatMode, flatItems, visibleRails]);
 
   // ── Derived: globe dots (scope + location; search stays a registry tool) ──
 
@@ -836,6 +870,7 @@ export default function PublicMarketPage() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Link
               to="/transport"
+              aria-label="Transport: runs and routes for what you hire or buy"
               className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
               title="Runs and routes that can carry what you hire or buy"
             >
@@ -905,7 +940,57 @@ export default function PublicMarketPage() {
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
           <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
             <div className="max-w-xl">
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
+                Equipment, people and work for surveying teams
+              </h1>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+                Instruments, professionals, jobs, firms and training, published by
+                working survey firms. Search the registry for a named item, or ask
+                the concierge when you only know what the job needs.
+              </p>
+
+              {/* The first screen has to hold a way into the inventory: on a
+                  phone the registry itself is a scroll away, so the same search
+                  state is editable here and reports its match count. */}
+              <div className="mt-6 lg:hidden">
+                <label htmlFor="market-search-hero" className="sr-only">
+                  Search the market
+                </label>
+                <div className="relative">
+                  <Search
+                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    id="market-search-hero"
+                    type="search"
+                    value={search}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setFlatLimit(FLAT_PAGE_SIZE);
+                    }}
+                    placeholder="Search instruments, people, places…"
+                    className="h-12 rounded-xl border-border/80 bg-background pl-11 pr-4 text-sm shadow-none"
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+                  <span className="text-muted-foreground" aria-live="polite">
+                    {liveTotals
+                      ? `${liveTotals.items} live ${liveTotals.items === 1 ? "item" : "items"} · ${liveTotals.countries} ${liveTotals.countries === 1 ? "country" : "countries"}`
+                      : "Loading activity"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={scrollToRegistry}
+                    className="inline-flex items-center gap-1 font-semibold text-primary"
+                  >
+                    See results
+                    <ChevronDown className="size-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 hidden flex-wrap items-center gap-3 lg:flex">
                 <button
                   type="button"
                   onClick={scrollToRegistry}
@@ -973,7 +1058,9 @@ export default function PublicMarketPage() {
                 Browse the market
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-                Pick a section, or search to see every match in one list.
+                Pick a section, or search to see every match in one list. Search
+                filters exact records; the concierge is for when you do not know
+                what the listing is called.
               </p>
             </div>
 
@@ -1195,6 +1282,22 @@ export default function PublicMarketPage() {
               <RateBenchmarks benchmarks={benchmarks} />
             ) : null}
 
+            {sampleInView > 0 ? (
+              <div
+                role="note"
+                className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-2.5 text-xs leading-5 text-warning"
+              >
+                <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  {sampleInView === 1
+                    ? "1 item here is sample content"
+                    : `${sampleInView} items here are sample content`}{" "}
+                  published by a demo workspace to show how the market works. It
+                  cannot accept requests or orders.
+                </span>
+              </div>
+            ) : null}
+
             {failed ? (
               <LoadErrorPanel failure={failure} onRetry={retry} />
             ) : loading ? (
@@ -1288,6 +1391,7 @@ export default function PublicMarketPage() {
             loading={market.loading}
             error={market.error}
             onRefresh={market.refresh}
+            defaultExpanded={false}
           />
         </section>
       </main>
@@ -1417,6 +1521,9 @@ export default function PublicMarketPage() {
         event={selectedEvent}
         onClose={handleDialogClose}
         allowRequest
+        isSample={
+          selectedDot ? sampleKeys.has(`${selectedDot.kind}:${selectedDot.id}`) : false
+        }
         onOpenInApp={
           user
             ? (view, id) => {

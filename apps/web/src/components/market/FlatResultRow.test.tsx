@@ -81,4 +81,29 @@ describe("FlatResultRow", () => {
     expect(screen.getByText("New")).toBeTruthy();
     expect(screen.getByTestId("market-row-p1").getAttribute("data-highlighted")).toBe("true");
   });
+
+  it("marks demo rows as sample content in the badge and the accessible name", () => {
+    render(
+      <ul>
+        <FlatResultRow
+          item={{ ...item, isSample: true }}
+          highlighted={false}
+          onOpen={() => {}}
+        />
+      </ul>,
+    );
+    expect(screen.getByText("Sample")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Amara Ochieng.*sample content/i }),
+    ).toBeTruthy();
+  });
+
+  it("leaves real supply unbadged", () => {
+    render(
+      <ul>
+        <FlatResultRow item={item} highlighted={false} onOpen={() => {}} />
+      </ul>,
+    );
+    expect(screen.queryByText("Sample")).toBeNull();
+  });
 });

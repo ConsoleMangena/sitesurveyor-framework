@@ -3,7 +3,7 @@ import { cn } from "../../lib/utils.ts";
 import { MARKET_DOT_COLORS } from "./marketDots";
 import { isNew, type RailItem } from "./marketItems";
 import { getKindPlaceholder } from "./marketPlaceholders";
-import { KindIcon, NewBadge } from "./MarketRail.tsx";
+import { KindIcon, NewBadge, SampleBadge } from "./MarketRail.tsx";
 
 export default function FlatResultRow({
   item,
@@ -24,7 +24,7 @@ export default function FlatResultRow({
         data-testid={`market-row-${item.id}`}
         data-highlighted={highlighted ? "true" : undefined}
         onClick={onOpen}
-        aria-label={`${item.title}, ${item.priceLabel}, ${item.location}`}
+        aria-label={`${item.title}, ${item.priceLabel}, ${item.location}${item.isSample ? ", sample content" : ""}`}
         className={cn(
           "group grid w-full grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-3 border-l bg-card p-3 text-left transition-[background,border-color] hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:p-4",
           highlighted && "ring-2 ring-inset ring-warning/70",
@@ -51,6 +51,7 @@ export default function FlatResultRow({
               {item.title}
             </span>
             {isNew(item.createdAt) ? <NewBadge /> : null}
+            {item.isSample ? <SampleBadge /> : null}
           </span>
           {item.meta ? <span className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted-foreground sm:truncate">{item.meta}</span> : null}
           <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -57,6 +57,17 @@ const KIND_LABELS: Record<MarketDotKind, string> = {
   event: "Training",
 };
 
+export function SampleBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2 py-0.5 text-micro font-semibold text-muted-foreground"
+      title="Sample content from a demo workspace — it cannot accept requests or orders"
+    >
+      Sample
+    </span>
+  );
+}
+
 function RailTile({
   item,
   highlighted,
@@ -100,7 +111,12 @@ function RailTile({
           <KindIcon kind={item.kind} className="size-3" />
           {KIND_LABELS[item.kind]}
         </span>
-        {isNew(item.createdAt) ? <span className="absolute right-3 top-3"><NewBadge /></span> : null}
+        {isNew(item.createdAt) || item.isSample ? (
+          <span className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+            {item.isSample ? <SampleBadge /> : null}
+            {isNew(item.createdAt) ? <NewBadge /> : null}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">

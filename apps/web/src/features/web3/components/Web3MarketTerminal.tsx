@@ -25,6 +25,13 @@ interface Web3MarketTerminalProps {
   error: string | null;
   onRefresh: () => void;
   defaultToken?: MarketToken;
+  /**
+   * Whether the chart, tiles and telemetry start open. The public market passes
+   * `false`: a surveyor looking for a total station should not have to scroll a
+   * crypto dashboard to reach the footer, while the one-line ticker keeps the
+   * settlement context on the page.
+   */
+  defaultExpanded?: boolean;
 }
 
 /** Mini Sparkline for sidebar tile */
@@ -67,9 +74,10 @@ export function Web3MarketTerminal({
   error,
   onRefresh,
   defaultToken = "SOL",
+  defaultExpanded = true,
 }: Web3MarketTerminalProps) {
   const [activeToken, setActiveToken] = useState<MarketToken>(defaultToken);
-  const [isChartExpanded, setIsChartExpanded] = useState<boolean>(true);
+  const [isChartExpanded, setIsChartExpanded] = useState<boolean>(defaultExpanded);
 
   const isUsdc = activeToken === "USDC";
 

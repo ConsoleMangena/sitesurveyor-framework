@@ -62,6 +62,8 @@ export interface RailItem {
   remote: boolean;
   /** How many signed-in visitors saved this item. */
   saves: number;
+  /** True when the row comes from a seeded demo workspace; never real supply. */
+  isSample?: boolean;
 }
 
 export interface MarketRailData {
