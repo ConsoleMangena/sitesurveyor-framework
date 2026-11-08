@@ -46,6 +46,64 @@ function runRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+describe("parseSurveyResult commodity screen", () => {
+  it("reads the minerals the engine screened, in the order it ranked them", () => {
+    const parsed = parseSurveyResult({
+      categories: {
+        minerals: {
+          mineral_commodities: [
+            {
+              key: "iron_ore", name: "Iron ore", group: "Ferro-alloy", indicated: true,
+              confidence: "High", area_top_decile: 88.2, area_band: "High", target_score: 74.1,
+            },
+            {
+              key: "lithium", name: "Lithium (pegmatite)", group: "Battery", indicated: false,
+              confidence: "Low", area_top_decile: 41, area_band: "Low", target_score: null,
+            },
+          ],
+          unscreenable_commodities: [
+            { name: "Diamonds (kimberlite)", reason: "Too small to see", needs: "Airborne magnetics" },
+          ],
+        },
+      },
+    });
+
+    expect(parsed?.commodities).toHaveLength(2);
+    expect(parsed?.commodities[0]).toMatchObject({
+      key: "iron_ore", indicated: true, areaTopDecile: 88.2, confidence: "High",
+    });
+    expect(parsed?.commodities[1]).toMatchObject({ key: "lithium", indicated: false });
+    expect(parsed?.unscreenableCommodities[0]).toMatchObject({
+      name: "Diamonds (kimberlite)", needs: "Airborne magnetics",
+    });
+  });
+
+  it("costs a missing screen one empty list, not the whole result", () => {
+    // Runs published before the commodity screen existed, and non-mineral runs.
+    const parsed = parseSurveyResult({ scores: { minerals: { cell_score: 55 } } });
+    expect(parsed?.commodities).toEqual([]);
+    expect(parsed?.unscreenableCommodities).toEqual([]);
+    expect(parsed?.scores[1]?.score).toBe(55);
+  });
+
+  it("drops malformed commodity entries instead of inventing them", () => {
+    const parsed = parseSurveyResult({
+      categories: {
+        minerals: {
+          mineral_commodities: [
+            { key: "iron_ore", name: "Iron ore", indicated: true, area_top_decile: 70 },
+            { key: "", name: "no key" },
+            { name: "no key at all" },
+            null,
+            "not an object",
+          ],
+        },
+      },
+    });
+    expect(parsed?.commodities.map((item) => item.key)).toEqual(["iron_ore"]);
+  });
+});
+
 describe("parseSurveyResult", () => {
   it("reads the four dossier categories in order", () => {
     const parsed = parseSurveyResult({

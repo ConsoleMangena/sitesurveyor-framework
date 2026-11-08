@@ -119,6 +119,15 @@ What you must understand before choosing it:
 
 An Earth Observation session is tied to a workspace job. Enter the target coordinate and the **observation extent (AOI)** once — those two inputs are what the credit quote is priced on — pick the survey type, then launch the run. The engine classifies the imagery and the workbench drapes the result over the basemap.
 
+A mineral run answers two questions, not one. The gold index and its ranked targets are unchanged, and alongside them the **Minerals indicated** panel (and the report's matching section) screens six deposit styles — gold, iron ore, nickel and PGM, chromium, copper-zinc-lead, lithium pegmatite — by re-weighting the same alteration, structure, terrain and endowment evidence for each style.
+
+Read that list as *which mineral systems this ground could support*, with the confidence column saying how well a satellite can see that style at all (high for iron oxide, low for pegmatites). Two honest limits are built in:
+
+- A system is only marked **indicated** when its top decile clears the moderate band *and* the index actually varies across the area — uniform ground has a best cell without having a target.
+- Commodities this dataset cannot screen — kimberlite diamonds, coal, gemstones — are listed separately with the reason and what would be needed. They are not scored, and that is not a statement that they are absent.
+
+Every commodity carries its own verification method in the report; none of them is a grade, a tonnage or an economic assessment.
+
 **Export map sheet** produces an A4 landscape vector PDF. The imagery is fetched at the paper's true resolution (up to 320 DPI, never a screenshot of the screen) and everything that reads as cartography — graticule, frame, ticks, labels, scale bar, north arrow, title block, attribution — is drawn as vector so it stays sharp at any zoom.
 
 - **Sheet extent** frames either the map view or the whole survey area, with a context margin around the AOI when you frame the survey.

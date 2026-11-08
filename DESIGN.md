@@ -67,7 +67,7 @@ flowchart TB
 | Component | Responsibility |
 | --- | --- |
 | `apps/web` | Implemented React SPA/PWA, wallet flows, workspaces, project screens, file manager, market (public market, concierge, cart and checkout), transport preview, and finance screens |
-| `apps/engine` | **Python satellite survey engine** — worker polls `survey_runs`, runs multi-sensor raster pipelines (water/minerals/soil/hazard), publishes deliverables to Supabase Storage, exposes MCP server for AI agents |
+| `apps/engine` | **Python satellite survey engine** — worker polls `survey_runs`, runs multi-sensor raster pipelines (water/minerals/soil/hazard), publishes deliverables to Supabase Storage, exposes MCP server for AI agents. `src/utils/commodities.py` re-weights the mineral evidence per deposit style and names the commodities the sensor set cannot screen |
 | `supabase/functions/ai-chat` | Authenticated primary AI endpoint; streams NDJSON events and invokes the shared agent core |
 | `supabase/functions/_shared` | Model routing, agent tools, memory, skills, workflows, and shared AI behaviour |
 | `supabase/functions/solana-data` | Public Solana RPC proxy and cached market snapshots |

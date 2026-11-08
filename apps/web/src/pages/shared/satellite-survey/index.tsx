@@ -14,6 +14,7 @@ import CandidateTable from "@/components/surveys/CandidateTable.tsx";
 import ContentsPanel, { type SurveySnapshot } from "@/components/surveys/ContentsPanel.tsx";
 import ExportsPanel from "@/components/surveys/ExportsPanel.tsx";
 import IndicatorsPanel from "@/components/surveys/IndicatorsPanel.tsx";
+import MineralsPanel from "@/components/surveys/MineralsPanel.tsx";
 import SurveyMap, { type MapViewInfo } from "@/components/surveys/SurveyMap.tsx";
 import MapExportModal from "@/components/surveys/MapExportModal.tsx";
 import { StatusStrip, WorkbenchBar } from "@/components/surveys/WorkbenchBar.tsx";
@@ -979,6 +980,10 @@ export default function SatelliteSurveyPage({
               scores={detail?.run.result?.scores ?? []}
               note={resultsNote(selected, queuedThisSession)}
               activeDossierCategory={jobDossierCategory}
+            />
+            <MineralsPanel
+              commodities={detail?.run.result?.commodities ?? []}
+              unscreenable={detail?.run.result?.unscreenableCommodities ?? []}
             />
             <CandidateTable
               rows={rows}

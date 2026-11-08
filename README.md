@@ -84,6 +84,7 @@ flowchart LR
 | AI | Streaming chat, conversation history and memory, allowlisted data tools, reporting, record workflows, and CAD tools |
 | Finance | Invoices, billing, payment references, Solana USDC, and separate PesePay fiat flows |
 | Assets | Instruments, asset details, photos, calibration records, and maintenance history |
+| Earth Observation | Job-scoped satellite analysis (water, minerals, soil, hazard) through the Python engine, with client reports, map sheets and a workbench drape; the mineral run screens six deposit styles and names the commodities this sensor set cannot see |
 | Marketplace | Instruments, professionals, jobs, firms, training, map discovery, filters, market detail views, an AI concierge, a shared cart that becomes one request per seller, and on-chain verified payment |
 | Transport (preview) | `/transport` plans a route from coordinates, prices road distance, and shows a sample fleet. Generated vehicles, sample operators, session-only bookings — not a dispatch service |
 | Administration | Personal and business workspaces plus platform-operator views for users, workspaces, activity, and audit |

@@ -88,12 +88,40 @@ export interface SurveyResult {
   /** The engine's depth-to-water at the survey centre, when the run included water.
    *  Null on runs that skipped water or were published by an engine predating the field. */
   waterDepth: SurveyWaterDepth | null;
+  /** Mineral systems the run screened, strongest first. Empty on non-mineral runs and on
+   *  results published before the commodity screen existed. */
+  commodities: SurveyCommodity[];
+  unscreenableCommodities: SurveyUnscreenedCommodity[];
 }
 
 export interface SurveyWaterDepth {
   wetM: number | null;
   dryM: number | null;
   read: string | null;
+}
+
+/** One mineral system the engine screened for, from `categories.minerals.
+ *  mineral_commodities`. A commodity the pipeline cannot see from orbit is not listed here;
+ *  see `unscreenableCommodities`, which exists so absence is never read as "not there". */
+export interface SurveyCommodity {
+  key: string;
+  name: string;
+  group: string;
+  /** True when the top decile cleared the moderate band and the index has real contrast. */
+  indicated: boolean;
+  /** How well Earth Observation can discriminate this deposit style at all. */
+  confidence: string;
+  /** Percentile of evidence strength within this survey area, not a grade. */
+  areaTopDecile: number | null;
+  areaBand: string;
+  targetScore: number | null;
+}
+
+/** A commodity the engine deliberately does not score, and what would be needed. */
+export interface SurveyUnscreenedCommodity {
+  name: string;
+  reason: string;
+  needs: string;
 }
 
 export interface SurveyRun {
@@ -247,12 +275,15 @@ export function parseSurveyResult(raw: unknown): SurveyResult | null {
   const scores = (result.scores ?? {}) as Record<string, unknown>;
   const block = (result.target ?? null) as Record<string, unknown> | null;
   const waterDepth = waterDepthOf(result.categories);
+  const { commodities, unscreenableCommodities } = commoditiesOf(result.categories);
 
   return {
     summary: asText(result.executive_summary),
     claimCeiling: asText(result.claim_ceiling),
     scoreBasis: asText(result.score_basis),
     dataSources: provenanceOf(result.data_sources),
+    commodities,
+    unscreenableCommodities,
     scores: SCORE_KEYS.map(({ category, key, label }) => {
       const entry = (scores[key] ?? {}) as Record<string, unknown>;
       // Hazard is scored the other way round by the engine: a higher index is worse, and
@@ -278,6 +309,52 @@ export function parseSurveyResult(raw: unknown): SurveyResult | null {
       : null,
     waterDepth,
   };
+}
+
+/** The commodity screen, read from `categories.minerals` on a mineral run. */
+function commoditiesOf(categories: unknown): {
+  commodities: SurveyCommodity[];
+  unscreenableCommodities: SurveyUnscreenedCommodity[];
+} {
+  const empty = { commodities: [], unscreenableCommodities: [] };
+  if (!categories || typeof categories !== "object") return empty;
+  const minerals = (categories as Record<string, unknown>).minerals;
+  if (!minerals || typeof minerals !== "object") return empty;
+  const doc = minerals as Record<string, unknown>;
+
+  const commodities = (Array.isArray(doc.mineral_commodities) ? doc.mineral_commodities : [])
+    .map((entry): SurveyCommodity | null => {
+      if (!entry || typeof entry !== "object") return null;
+      const item = entry as Record<string, unknown>;
+      const key = asText(item.key);
+      const name = asText(item.name);
+      if (!key || !name) return null;
+      return {
+        key,
+        name,
+        group: asText(item.group) ?? "",
+        indicated: item.indicated === true,
+        confidence: asText(item.confidence) ?? "",
+        areaTopDecile: item.area_top_decile === undefined ? null : num(item.area_top_decile),
+        areaBand: asText(item.area_band) ?? "Not indicated",
+        targetScore: item.target_score === undefined ? null : num(item.target_score),
+      };
+    })
+    .filter((item): item is SurveyCommodity => item !== null);
+
+  const unscreenableCommodities = (
+    Array.isArray(doc.unscreenable_commodities) ? doc.unscreenable_commodities : []
+  )
+    .map((entry): SurveyUnscreenedCommodity | null => {
+      if (!entry || typeof entry !== "object") return null;
+      const item = entry as Record<string, unknown>;
+      const name = asText(item.name);
+      if (!name) return null;
+      return { name, reason: asText(item.reason) ?? "", needs: asText(item.needs) ?? "" };
+    })
+    .filter((item): item is SurveyUnscreenedCommodity => item !== null);
+
+  return { commodities, unscreenableCommodities };
 }
 
 /**
