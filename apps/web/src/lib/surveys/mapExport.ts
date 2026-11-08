@@ -1578,6 +1578,77 @@ function tickValues(min: number, max: number, step: number): number[] {
   return ticks;
 }
 
+/**
+ * Where a grid line carries its number: the point where the line meets the edge
+ * that is labelled - the top edge for X (easting/longitude) lines, the left
+ * edge for Y (northing/latitude) lines. Ticks and chips are drawn from this
+ * anchor, so they always sit on the line they belong to.
+ */
+export function gridLabelAnchor(
+  axis: "x" | "y",
+  points: ProjectedPoint[],
+): ProjectedPoint {
+  if (points.length === 0) return { x: 0, y: 0 };
+  return points.reduce((a, b) =>
+    axis === "x" ? (b.y < a.y ? b : a) : (b.x < a.x ? b : a),
+  );
+}
+
+/**
+ * Graticule label furniture, in sheet points with y measured down from the top
+ * edge. One function for both axes so a tick, its chip and its text cannot drift
+ * apart: the chip is always centred on the tick that marks the same line.
+ */
+export interface GridLabelPlacement {
+  /** Frame tick, drawn across the labelled edge. */
+  tick: { x0: number; y0: number; x1: number; y1: number };
+  /** Paper chip behind the text. `top` is its top edge, downward. */
+  chip: { x: number; top: number; w: number; h: number };
+  text: { x: number; top: number };
+}
+
+export const GRID_CHIP_HEIGHT_PT = 9.5;
+export const GRID_LABEL_SIZE_PT = 5.2;
+
+export function gridLabelPlacement(params: {
+  axis: "x" | "y";
+  /** Where the line meets the labelled edge, in canvas pixels. */
+  anchorPt: ProjectedPoint;
+  chipW: number;
+  mapRect: { x: number; y: number; w: number; h: number };
+  ptPerPx: number;
+  labelSize?: number;
+}): GridLabelPlacement {
+  const { axis, anchorPt, chipW, mapRect, ptPerPx } = params;
+  const size = params.labelSize ?? GRID_LABEL_SIZE_PT;
+  const h = GRID_CHIP_HEIGHT_PT;
+  const textTop = (top: number) => top + (h - size * 0.7) / 2;
+
+  if (axis === "x") {
+    const xTick = mapRect.x + anchorPt.x * ptPerPx;
+    // Nudged inside the frame so the top edge of the sheet stays readable.
+    const top = mapRect.y + 6;
+    const x = Math.max(
+      mapRect.x + 3,
+      Math.min(mapRect.x + mapRect.w - chipW - 3, xTick - chipW / 2),
+    );
+    return {
+      tick: { x0: xTick, y0: mapRect.y - 4, x1: xTick, y1: mapRect.y + 4 },
+      chip: { x, top, w: chipW, h },
+      text: { x: x + 3.5, top: textTop(top) },
+    };
+  }
+
+  const yTick = mapRect.y + anchorPt.y * ptPerPx;
+  const top = yTick - h / 2;
+  const x = mapRect.x + 5;
+  return {
+    tick: { x0: mapRect.x - 4, y0: yTick, x1: mapRect.x + 4, y1: yTick },
+    chip: { x, top, w: chipW, h },
+    text: { x: x + 3.5, top: textTop(top) },
+  };
+}
+
 /** Liang-Barsky clip of one segment against the canvas rectangle. */
 function clipSegmentToCanvas(
   a: ProjectedPoint,
@@ -1714,7 +1785,11 @@ function drawMapFurniture(
       }
     }
 
-    for (const poly of polys) {
+    // Clip every line to the image once, so the strokes and the labels are
+    // placed from the same geometry.
+    const drawn = polys.map((poly) => {
+      const segs: [ProjectedPoint, ProjectedPoint][] = [];
+      const edgePts: ProjectedPoint[] = [];
       for (let i = 1; i < poly.pts.length; i += 1) {
         const seg = clipSegmentToCanvas(
           poly.pts[i - 1],
@@ -1723,8 +1798,19 @@ function drawMapFurniture(
           canvas.height,
         );
         if (!seg) continue;
-        const [p0, p1] = seg;
-        for (const style of GRID_STROKES) {
+        segs.push(seg);
+        edgePts.push(seg[0], seg[1]);
+      }
+      const anchor = edgePts.length > 0 ? gridLabelAnchor(poly.axis, edgePts) : null;
+      return { axis: poly.axis, label: poly.label, segs, anchor };
+    });
+
+    // Halos first, then the white strokes: drawing halo-then-line per line let
+    // each later halo cut the white of the lines it crossed, so the graticule
+    // broke up at every intersection.
+    for (const style of GRID_STROKES) {
+      for (const line of drawn) {
+        for (const [p0, p1] of line.segs) {
           page.drawLine({
             start: { x: toPtX(p0.x), y: yFlip(toPtY(p0.y)) },
             end: { x: toPtX(p1.x), y: yFlip(toPtY(p1.y)) },
@@ -1734,59 +1820,40 @@ function drawMapFurniture(
           });
         }
       }
+    }
 
-      // Label where the line ends nearest its axis edge; ticks cross the frame there.
-      const anchorPt =
-        poly.axis === "x"
-          ? poly.pts.reduce((a, b) => (b.y > a.y ? b : a))
-          : poly.pts.reduce((a, b) => (b.x < a.x ? b : a));
-      const label = poly.label;
-      const chipW = font.widthOfTextAtSize(label, 5.2) + 7;
-      if (poly.axis === "x") {
-        const xTick = toPtX(anchorPt.x);
-        page.drawLine({
-          start: { x: xTick, y: yFlip(mapRect.y + mapRect.h + 4) },
-          end: { x: xTick, y: yFlip(mapRect.y + mapRect.h - 4) },
-          thickness: 1,
-          color: rgb(1, 1, 1),
-        });
-        const chipX = Math.max(
-          mapRect.x + 3,
-          Math.min(mapRect.x + mapRect.w - chipW - 3, xTick - chipW / 2),
-        );
-        page.drawRectangle({
-          x: chipX,
-          y: yFlip(mapRect.y + 15),
-          width: chipW,
-          height: 9.5,
-          color: PAPER,
-          opacity: 0.94,
-          borderColor: INK,
-          borderWidth: 0.4,
-          borderOpacity: 0.55,
-        });
-        drawTextLine(ctx, label, chipX + 3.5, mapRect.y + 6, 5.2, { color: INK });
-      } else {
-        const yTick = toPtY(anchorPt.y);
-        page.drawLine({
-          start: { x: mapRect.x - 4, y: yFlip(yTick) },
-          end: { x: mapRect.x + 4, y: yFlip(yTick) },
-          thickness: 1,
-          color: rgb(1, 1, 1),
-        });
-        page.drawRectangle({
-          x: mapRect.x + 5,
-          y: yFlip(yTick + 4.75),
-          width: chipW,
-          height: 9.5,
-          color: PAPER,
-          opacity: 0.94,
-          borderColor: INK,
-          borderWidth: 0.4,
-          borderOpacity: 0.55,
-        });
-        drawTextLine(ctx, label, mapRect.x + 8.5, yTick - 4.4, 5.2, { color: INK });
-      }
+    for (const line of drawn) {
+      if (!line.anchor) continue;
+      const { label } = line;
+      const chipW = font.widthOfTextAtSize(label, GRID_LABEL_SIZE_PT) + 7;
+      const place = gridLabelPlacement({
+        axis: line.axis,
+        anchorPt: line.anchor,
+        chipW,
+        mapRect,
+        ptPerPx,
+      });
+
+      page.drawLine({
+        start: { x: place.tick.x0, y: yFlip(place.tick.y0) },
+        end: { x: place.tick.x1, y: yFlip(place.tick.y1) },
+        thickness: 1,
+        color: rgb(1, 1, 1),
+      });
+      page.drawRectangle({
+        x: place.chip.x,
+        y: yFlip(place.chip.top + place.chip.h),
+        width: place.chip.w,
+        height: place.chip.h,
+        color: PAPER,
+        opacity: 0.94,
+        borderColor: INK,
+        borderWidth: 0.4,
+        borderOpacity: 0.55,
+      });
+      drawTextLine(ctx, label, place.text.x, place.text.top, GRID_LABEL_SIZE_PT, {
+        color: INK,
+      });
     }
 
     if (options.aoiBounds) {

@@ -6,6 +6,8 @@ import {
   formatDeg,
   formatMeters,
   forwardUTM,
+  gridLabelAnchor,
+  gridLabelPlacement,
   niceGraticuleStep,
   overzoomQuadrant,
   padBounds,
@@ -259,5 +261,118 @@ describe("overzoomQuadrant", () => {
     expect(q).toEqual({ shift: 2, qx: 0, qy: 2 });
     expect(49304 >> q.shift).toBe(12326);
     expect(31330 >> q.shift).toBe(7832);
+  });
+});
+
+describe("gridLabelAnchor", () => {
+  it("anchors an easting line at the top edge, where its label is printed", () => {
+    // A UTM easting line leans as it crosses the sheet, so the top and bottom
+    // ends sit at different x. The label belongs to the end on the labelled edge.
+    const path = [
+      { x: 40, y: 0 },
+      { x: 46, y: 150 },
+      { x: 52, y: 300 },
+    ];
+    expect(gridLabelAnchor("x", path)).toEqual({ x: 40, y: 0 });
+  });
+
+  it("anchors a northing line at the left edge", () => {
+    const path = [
+      { x: 0, y: 210 },
+      { x: 150, y: 204 },
+      { x: 300, y: 198 },
+    ];
+    expect(gridLabelAnchor("y", path)).toEqual({ x: 0, y: 210 });
+  });
+
+  it("keeps a straight line's anchor on that line", () => {
+    const vertical = [
+      { x: 120, y: 300 },
+      { x: 120, y: 0 },
+    ];
+    const anchor = gridLabelAnchor("x", vertical);
+    expect(anchor.x).toBe(120);
+    expect(anchor.y).toBe(0);
+  });
+
+  it("survives an empty path instead of throwing", () => {
+    expect(gridLabelAnchor("x", [])).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("gridLabelPlacement", () => {
+  const mapRect = { x: 20, y: 20, w: 700, h: 480 };
+  const ptPerPx = 0.72;
+
+  it("centres an easting chip on its own tick", () => {
+    const place = gridLabelPlacement({
+      axis: "x",
+      anchorPt: { x: 300, y: 0 },
+      chipW: 26,
+      mapRect,
+      ptPerPx,
+    });
+    const tickX = place.tick.x0;
+    expect(place.chip.x + place.chip.w / 2).toBeCloseTo(tickX, 6);
+    // The tick crosses the top edge, the same edge the chip sits under.
+    expect(place.tick.y1).toBeGreaterThan(mapRect.y);
+    expect(place.tick.y0).toBeLessThan(mapRect.y);
+    expect(place.chip.top).toBeGreaterThan(mapRect.y);
+  });
+
+  it("centres a northing chip on its own tick", () => {
+    const place = gridLabelPlacement({
+      axis: "y",
+      anchorPt: { x: 0, y: 200 },
+      chipW: 26,
+      mapRect,
+      ptPerPx,
+    });
+    const tickY = place.tick.y0;
+    expect(place.chip.top + place.chip.h / 2).toBeCloseTo(tickY, 6);
+    // The tick crosses the left edge, the same edge the chip sits beside.
+    expect(place.tick.x1).toBeGreaterThan(mapRect.x);
+    expect(place.tick.x0).toBeLessThan(mapRect.x);
+  });
+
+  it("keeps every label's text inside its chip", () => {
+    for (const axis of ["x", "y"] as const) {
+      for (const chipW of [18, 26, 44]) {
+        const place = gridLabelPlacement({
+          axis,
+          anchorPt: { x: 120, y: 90 },
+          chipW,
+          mapRect,
+          ptPerPx,
+        });
+        expect(place.text.top).toBeGreaterThanOrEqual(place.chip.top);
+        expect(place.text.top + 5.2 * 0.7).toBeLessThanOrEqual(
+          place.chip.top + place.chip.h,
+        );
+        expect(place.text.x).toBeGreaterThan(place.chip.x);
+        expect(place.text.x).toBeLessThan(place.chip.x + place.chip.w);
+      }
+    }
+  });
+
+  it("keeps a chip inside the sheet when its line hugs the frame", () => {
+    const atEdge = gridLabelPlacement({
+      axis: "x",
+      anchorPt: { x: 0, y: 0 },
+      chipW: 40,
+      mapRect,
+      ptPerPx,
+    });
+    expect(atEdge.chip.x).toBeGreaterThanOrEqual(mapRect.x);
+    expect(atEdge.chip.x + atEdge.chip.w).toBeLessThanOrEqual(mapRect.x + mapRect.w);
+
+    const atRight = gridLabelPlacement({
+      axis: "x",
+      anchorPt: { x: 700 / ptPerPx, y: 0 },
+      chipW: 40,
+      mapRect,
+      ptPerPx,
+    });
+    expect(atRight.chip.x + atRight.chip.w).toBeLessThanOrEqual(mapRect.x + mapRect.w);
   });
 });
