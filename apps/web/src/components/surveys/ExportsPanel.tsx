@@ -1,174 +1,95 @@
-import { useState } from "react";
-import { FileDown, FileText, Image, Loader, MapPin } from "lucide-react";
+import { useMemo } from "react";
+import { Check, FileText, Sparkles } from "lucide-react";
 
-import type { SurveyDeliverable } from "../../lib/repositories/satelliteSurveys.ts";
-import { deliverableUrl } from "../../lib/repositories/satelliteSurveys.ts";
-import { CATEGORY_EXPORTS, CATEGORY_LABELS } from "../../lib/surveys/labels.ts";
-import type { DossierCategory } from "../../lib/surveys/labels.ts";
-import { DOSSIER_ORDER } from "../../lib/surveys/workbench.ts";
+import { CATEGORY_LABELS, type DossierCategory } from "../../lib/surveys/labels.ts";
+import { detectOptimalQuality } from "../../lib/surveys/mapExport.ts";
 import { BlockTitle } from "./BlockTitle.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
-/** The files a finished survey left behind. Only exports for the job's category are shown. */
-export default function ExportsPanel({
-  deliverables,
-  surveyed,
-  activeDossierCategory,
-}: {
-  deliverables: SurveyDeliverable[];
-  /** False when nothing is on screen, so the note says so instead of blaming the files. */
+interface ExportsPanelProps {
+  deliverables?: unknown[];
+  /** False when nothing is on screen, so the note explains rather than failing silently. */
   surveyed: boolean;
   activeDossierCategory?: DossierCategory;
-}) {
-  const [opening, setOpening] = useState<string | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  clientName?: string;
+  onOpenExportPdf?: () => void;
+}
 
-  const byKind = new Map(deliverables.map((file) => [file.kind, file]));
-  const categoriesToShow: DossierCategory[] = activeDossierCategory
-    ? [activeDossierCategory]
-    : DOSSIER_ORDER;
-
-  const ready = categoriesToShow.filter((category) => {
-    const kinds = CATEGORY_EXPORTS[category];
-    return byKind.has(kinds.map) || byKind.has(kinds.kmz) || byKind.has(kinds.tif) || surveyed;
-  }).length;
-  const dossier = byKind.get("master_json_dossier") ?? null;
-
-  async function open(file: SurveyDeliverable | null, label: string) {
-    if (!file) return;
-    setOpening(file.id);
-    setProblem(null);
-    const url = await deliverableUrl(file);
-    setOpening(null);
-    if (!url) {
-      setProblem(`${label} is listed but its file is not in storage.`);
-      return;
-    }
-    window.open(url, "_blank", "noreferrer");
-  }
+/**
+ * Replaces legacy low-resolution exports (preview PNG, KMZ, GeoTIFF, raw JSON)
+ * with the unified, high-DPI cartographic PDF map sheet deliverable.
+ */
+export default function ExportsPanel({
+  surveyed,
+  activeDossierCategory = "water",
+  clientName = "Site Survey",
+  onOpenExportPdf,
+}: ExportsPanelProps) {
+  const quality = useMemo(() => detectOptimalQuality(), []);
+  const categoryLabel = CATEGORY_LABELS[activeDossierCategory]?.name ?? "Survey";
 
   return (
     <section className="sw-block px-4 py-3.5">
-      <BlockTitle count={`${ready} of ${categoriesToShow.length}`}>Exports</BlockTitle>
+      <BlockTitle count="PDF Only">Official Map Export</BlockTitle>
 
-      <div className="mt-2 space-y-2">
-        {categoriesToShow.map((category) => {
-          const kinds = CATEGORY_EXPORTS[category];
-          const map = byKind.get(kinds.map) ?? null;
-          const kmz = byKind.get(kinds.kmz) ?? null;
-          const tif = byKind.get(kinds.tif) ?? null;
-          return (
-            <div
-              key={category}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-input p-2 sm:px-2.5 sm:py-1.5"
-            >
-              <span className="text-[11.5px] font-medium leading-tight">
-                {CATEGORY_LABELS[category].name}
-              </span>
-              <span className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
-                <ExportButton
-                  label="Map"
-                  icon="image"
-                  file={map}
-                  opening={opening}
-                  disabled={opening !== null}
-                  onOpen={() => void open(map, `${CATEGORY_LABELS[category].name} map`)}
-                  title={map ? "Open the classified preview map" : "No preview map for this category yet"}
-                />
-                <ExportButton
-                  label="GeoTIFF"
-                  icon="tif"
-                  file={tif}
-                  opening={opening}
-                  disabled={opening !== null}
-                  onOpen={() => void open(tif, `${CATEGORY_LABELS[category].name} GeoTIFF`)}
-                  title={tif ? "Download georeferenced GeoTIFF (for QGIS/ArcGIS)" : "No GeoTIFF for this category yet"}
-                />
-                <ExportButton
-                  label="KMZ"
-                  icon="gps"
-                  file={kmz}
-                  opening={opening}
-                  disabled={opening !== null}
-                  onOpen={() => void open(kmz, `${CATEGORY_LABELS[category].name} KMZ`)}
-                  title={kmz ? "Download the Google Earth KMZ" : "No KMZ for this category yet"}
-                />
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      <div className="mt-2.5 rounded-lg border border-border/80 bg-card/60 p-3 text-xs space-y-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+              Cartographic Deliverable
+            </span>
+            <p className="text-xs font-semibold text-foreground mt-0.5">
+              {categoryLabel} Sheet — {clientName || "Survey Area"}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary shrink-0">
+            <Sparkles className="size-2.5" />
+            PDF Only
+          </span>
+        </div>
 
-      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-        Whole workspace
-      </p>
-      <div className="mt-1.5 space-y-1.5">
-        <button
+        {/* Hardware calibration indicator */}
+        <div className="rounded-md border border-border/50 bg-background/80 px-2.5 py-1.5 text-[11px] text-muted-foreground flex items-center justify-between">
+          <span>Resolution:</span>
+          <span className="font-medium text-foreground">{quality.label}</span>
+        </div>
+
+        {/* Standard Surveyor Map Sheet Features */}
+        <div className="text-[11px] text-muted-foreground space-y-1 pt-0.5">
+          <div className="flex items-center gap-1.5">
+            <Check className="size-3 text-emerald-500 shrink-0" />
+            <span>North Arrow & Compass Rose</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Check className="size-3 text-emerald-500 shrink-0" />
+            <span>Segmented Metric Scale Bar</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Check className="size-3 text-emerald-500 shrink-0" />
+            <span>Title Block with WGS84 GPS Coordinates</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Check className="size-3 text-emerald-500 shrink-0" />
+            <span>Classified Potential Legend & Neatline</span>
+          </div>
+        </div>
+
+        <Button
           type="button"
-          onClick={() => void open(dossier, "Master dossier JSON")}
-          disabled={dossier === null || opening !== null}
-          className={`flex w-full items-center justify-between gap-2 rounded-md border border-input px-2.5 py-1.5 text-left text-[11.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            dossier ? "hover:bg-accent/60" : "opacity-45 cursor-not-allowed"
-          }`}
+          onClick={onOpenExportPdf}
+          disabled={!surveyed || !onOpenExportPdf}
+          className="w-full flex items-center justify-center gap-1.5 text-xs h-8 font-medium mt-1"
         >
-          <span className="flex min-w-0 items-center gap-2">
-            <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="truncate">Master dossier (raw scores, candidate geojson)</span>
-          </span>
-          <span className="sw-num shrink-0 text-[10.5px] text-muted-foreground">
-            {dossier ? "JSON" : surveyed ? "writing…" : "not run"}
-          </span>
-        </button>
+          <FileText className="size-3.5" />
+          <span>Export Official PDF Map Sheet</span>
+        </Button>
+
+        {!surveyed ? (
+          <p className="text-[10.5px] text-center text-muted-foreground italic">
+            Run or select a survey to export the official map sheet.
+          </p>
+        ) : null}
       </div>
-
-      {problem ? (
-        <p role="alert" className="mt-2 text-[11px] text-destructive">
-          {problem}
-        </p>
-      ) : null}
     </section>
-  );
-}
-
-function ExportButton({
-  label,
-  icon,
-  file,
-  opening,
-  disabled,
-  title,
-  onOpen,
-}: {
-  label: string;
-  icon: "image" | "gps" | "tif";
-  file: SurveyDeliverable | null;
-  opening: string | null;
-  disabled: boolean;
-  title: string;
-  onOpen: () => void;
-}) {
-  const isOpening = file !== null && opening === file.id;
-  const isAvailable = file !== null;
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      disabled={disabled || !isAvailable}
-      title={title}
-      className={`inline-flex items-center gap-1 rounded border border-border/80 bg-background px-2 py-1 text-[10.5px] font-medium transition-colors ${
-        isAvailable ? "hover:bg-accent hover:text-accent-foreground" : "opacity-40 cursor-not-allowed"
-      }`}
-    >
-      {isOpening ? (
-        <Loader className="size-3 animate-spin" aria-hidden="true" />
-      ) : icon === "image" ? (
-        <Image className="size-3" aria-hidden="true" />
-      ) : icon === "tif" ? (
-        <FileDown className="size-3" aria-hidden="true" />
-      ) : (
-        <MapPin className="size-3" aria-hidden="true" />
-      )}
-      <span>{label}</span>
-    </button>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import { Camera } from "lucide-react";
+import { FileText } from "lucide-react";
 import GeoTiffOverlay from "./GeoTiffOverlay.tsx";
 import { candidateIcon, targetIcon } from "./mapIcons.ts";
 import {
@@ -281,11 +281,11 @@ export default function SurveyMap({
             type="button"
             onClick={onOpenExportView}
             className="sw-chip sw-chip--accent hover:brightness-110 cursor-pointer flex items-center gap-1.5 transition-all text-white bg-primary/80 hover:bg-primary font-medium"
-            title="Export the currently framed map extent as PNG or PDF"
+            title="Export official cartographic map sheet as high-res PDF"
           >
-            <Camera className="size-3" aria-hidden="true" />
-            <span className="hidden sm:inline">Export View</span>
-            <span className="sm:hidden">Export</span>
+            <FileText className="size-3" aria-hidden="true" />
+            <span className="hidden sm:inline">Export PDF Sheet</span>
+            <span className="sm:hidden">PDF Sheet</span>
           </button>
         ) : null}
       </div>

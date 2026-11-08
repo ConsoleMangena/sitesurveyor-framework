@@ -1,5 +1,5 @@
 import {
-  Camera,
+  FileText,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -94,11 +94,11 @@ export function WorkbenchBar({
             size="sm"
             className="h-7 gap-1.5 text-[11.5px] shrink-0"
             onClick={onExportView}
-            title="Export current framed view as high-res PNG or PDF"
+            title="Export official cartographic map sheet as high-res PDF"
           >
-            <Camera className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">Export view</span>
-            <span className="sm:hidden">Export</span>
+            <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">PDF Map Sheet</span>
+            <span className="sm:hidden">PDF</span>
           </Button>
         ) : null}
         <Button

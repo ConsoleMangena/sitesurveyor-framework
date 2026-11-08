@@ -869,6 +869,8 @@ export default function SatelliteSurveyPage({
               deliverables={detail?.deliverables ?? []}
               surveyed={selected !== null && !selected.active}
               activeDossierCategory={jobDossierCategory}
+              clientName={values.clientName}
+              onOpenExportPdf={() => setExportModalOpen(true)}
             />
           </div>
         </div>
