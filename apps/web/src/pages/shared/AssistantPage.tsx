@@ -89,9 +89,9 @@ const ASSISTANT_CAPABILITIES = [
       "Creates and updates records inside this conversation. Every write is read back and verified before it is reported, and a permanent delete waits for your confirmation.",
   },
   {
-    label: "Draft",
+    label: "Inspect drawings",
     detail:
-      "Reads drawings, layers and entities, then issues CAD commands for you to execute in the project workspace — nothing reaches a drawing until you press execute.",
+      "Reads project drawings, lists layers, counts entities and reports an entity's recorded properties. It cannot change a drawing: there is no command executor in this client yet.",
   },
   {
     label: "Remember",

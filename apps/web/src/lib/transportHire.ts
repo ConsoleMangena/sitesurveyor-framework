@@ -392,17 +392,26 @@ function seedRandom(seedStr: string): () => number {
   };
 }
 
+/**
+ * Sample operators for the transport preview. Every phone number here is a
+ * placeholder: the page used to ship ten realistic Zimbabwean mobile numbers
+ * behind a live `tel:` button, so a visitor could dial a stranger who had never
+ * agreed to be listed. Never put a real number in this file - the fleet is
+ * generated, nothing is dispatched, and the operator is not contacted.
+ */
+const SAMPLE_PHONE = "Not shown in preview";
+
 const DRIVER_ROSTER = [
-  { name: "Farai Ndlovu", rating: 4.96, trips: 412, phone: "+263 77 234 8901" },
-  { name: "Blessing Chidavaenzi", rating: 4.92, trips: 285, phone: "+263 71 884 1029" },
-  { name: "Tinashe Dube", rating: 4.89, trips: 198, phone: "+263 78 440 3391" },
-  { name: "Tendai Moyo", rating: 4.98, trips: 530, phone: "+263 77 912 4040" },
-  { name: "Simbarashe Mutasa", rating: 4.91, trips: 310, phone: "+263 73 501 2293" },
-  { name: "Nkosana Ncube", rating: 4.88, trips: 176, phone: "+263 77 629 1148" },
-  { name: "Tafadzwa Gonese", rating: 4.95, trips: 460, phone: "+263 78 771 9022" },
-  { name: "Kudzai Marume", rating: 4.94, trips: 390, phone: "+263 71 309 8451" },
-  { name: "Vusumuzi Sibanda", rating: 4.9, trips: 220, phone: "+263 77 418 5560" },
-  { name: "Chipo Mupfumira", rating: 4.97, trips: 488, phone: "+263 78 620 4419" },
+  { name: "Farai Ndlovu", rating: 4.96, trips: 412, phone: SAMPLE_PHONE },
+  { name: "Blessing Chidavaenzi", rating: 4.92, trips: 285, phone: SAMPLE_PHONE },
+  { name: "Tinashe Dube", rating: 4.89, trips: 198, phone: SAMPLE_PHONE },
+  { name: "Tendai Moyo", rating: 4.98, trips: 530, phone: SAMPLE_PHONE },
+  { name: "Simbarashe Mutasa", rating: 4.91, trips: 310, phone: SAMPLE_PHONE },
+  { name: "Nkosana Ncube", rating: 4.88, trips: 176, phone: SAMPLE_PHONE },
+  { name: "Tafadzwa Gonese", rating: 4.95, trips: 460, phone: SAMPLE_PHONE },
+  { name: "Kudzai Marume", rating: 4.94, trips: 390, phone: SAMPLE_PHONE },
+  { name: "Vusumuzi Sibanda", rating: 4.9, trips: 220, phone: SAMPLE_PHONE },
+  { name: "Chipo Mupfumira", rating: 4.97, trips: 488, phone: SAMPLE_PHONE },
 ];
 
 const FLEET_MODELS: Record<

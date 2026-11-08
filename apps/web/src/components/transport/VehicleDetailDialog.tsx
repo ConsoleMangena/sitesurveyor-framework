@@ -111,7 +111,7 @@ export function VehicleDetailDialog({
                     {vehicle.model}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-muted-foreground sm:text-sm">
-                    {vehicle.licensePlate} · {vehicle.color} · Available for immediate dispatch
+                    {vehicle.licensePlate} · {vehicle.color} · Sample availability, not a live listing
                   </DialogDescription>
                 </DialogHeader>
               </div>

@@ -376,18 +376,27 @@ export default function PublicTransportPage() {
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
           <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
             <div className="max-w-xl">
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
+                Hire a vehicle for a survey run
+              </h1>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+                Enter pickup and destination coordinates and this page prices the
+                road distance against a sample fleet. It is a planning preview: no
+                operator is contacted, nothing is charged, and bookings last only
+                for this tab.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 <button type="button" onClick={scrollToFleet} className="web3-btn gap-1.5">
-                  Browse the fleet
+                  Browse the sample fleet
                   <IconChevronDown className="size-4" aria-hidden="true" />
                 </button>
-                <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
-                  <span className="web3-live-dot" aria-hidden="true" />
-                  Live vehicle dispatch
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  Fares priced by road distance
                 </span>
               </div>
-              <p className="mt-4 text-sm font-medium text-success">
-                {baseFleet.length} vehicles staged within 5 km of your pickup
+              <p className="mt-4 text-sm font-medium text-muted-foreground">
+                {baseFleet.length} sample vehicles around this pickup — illustrative
+                only, not live availability
               </p>
             </div>
 
@@ -595,7 +604,7 @@ export default function PublicTransportPage() {
                   <IconRoute className="size-4" aria-hidden="true" />
                 </span>
                 <div>
-                  <h2 className="market-map-title text-foreground">Live route and nearby fleet</h2>
+                  <h2 className="market-map-title text-foreground">Route and sample fleet</h2>
                   <p className="text-micro text-muted-foreground">
                     Drag a marker or click the map to move the route
                   </p>
@@ -925,7 +934,7 @@ export default function PublicTransportPage() {
           <SheetHeader className="shrink-0 border-b border-border/80 px-5 py-5 text-left">
             <SheetTitle className="market-sheet-title text-foreground">Your trips</SheetTitle>
             <SheetDescription className="text-sm text-muted-foreground">
-              Dispatched hires keep their reference and fare on this device.
+              Hires you confirm keep their reference and fare on this device, for this session only.
             </SheetDescription>
           </SheetHeader>
 
@@ -935,7 +944,7 @@ export default function PublicTransportPage() {
                 <IconHistory className="size-7 text-muted-foreground" aria-hidden="true" />
                 <p className="text-sm font-semibold text-foreground">No trips yet</p>
                 <p className="max-w-xs text-xs leading-5 text-muted-foreground">
-                  Hire a vehicle and its dispatch reference, route and fare will be listed here.
+                  Hire a vehicle and its reference, route and fare will be listed here for this session.
                 </p>
               </div>
             ) : (

@@ -259,8 +259,8 @@ export async function notifyVehicleHireDispatched(params: {
     {
       workspaceId: params.workspaceId,
       userId: params.userId,
-      title: "Field vehicle dispatched",
-      body: `${params.vehicleModel} (${params.driverName}) has been dispatched for booking ${params.bookingRef}.`,
+      title: "Vehicle hire preview saved",
+      body: `${params.vehicleModel} · ${params.bookingRef}. This is a transport preview: no operator was contacted and nothing was charged.`,
       metadata: {
         type: "transport_hire",
         booking_ref: params.bookingRef,

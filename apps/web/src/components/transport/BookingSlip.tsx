@@ -33,7 +33,6 @@ import {
   IconCrosshair,
   IconCurrentLocation,
   IconDeviceMobile,
-  IconPhoneCall,
   IconStarFilled,
 } from "@tabler/icons-react";
 import { cn } from "../../lib/utils.ts";
@@ -174,11 +173,11 @@ export function BookingSlip({
             </div>
             <DialogHeader className="min-w-0 gap-1 text-left">
               <DialogTitle className="market-dialog-title text-balance text-foreground">
-                {confirmedBooking ? "Vehicle dispatched" : "Confirm dispatch"}
+                {confirmedBooking ? "Preview booking created" : "Confirm this hire"}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
                 {confirmedBooking
-                  ? "The driver has your pickup coordinates and is on the way."
+                  ? "No operator was contacted and nothing was charged. This preview keeps the booking in this tab only."
                   : `${tier.name} · priced for ${fareBreakdown.distanceKm} km of road`}
               </DialogDescription>
             </DialogHeader>
@@ -200,7 +199,7 @@ export function BookingSlip({
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">
                   <IconClock className="size-3.5" aria-hidden="true" />
-                  Driver arriving in ~{vehicle.etaMinutes} min
+                  Quoted pickup in ~{vehicle.etaMinutes} min (sample estimate)
                 </span>
               </div>
 
@@ -222,22 +221,15 @@ export function BookingSlip({
                       </p>
                     </div>
                   </div>
-                  <Button
-                    asChild
-                    size="sm"
-                    className="h-9 shrink-0 gap-1.5 rounded-xl px-3.5 text-xs font-semibold"
-                  >
-                    <a href={`tel:${vehicle.driverPhone}`}>
-                      <IconPhoneCall className="size-3.5" aria-hidden="true" />
-                      Call
-                    </a>
-                  </Button>
+                  <p className="text-micro text-muted-foreground">
+                    Sample operator — no real driver is assigned in this preview
+                  </p>
                 </div>
 
                 <dl className="grid grid-cols-2 gap-3 border-t border-border/70 pt-3 text-xs">
                   <div className="min-w-0">
                     <dt className="text-micro text-muted-foreground">Driver contact</dt>
-                    <dd className="mt-0.5 truncate font-mono font-semibold tabular-nums text-foreground">
+                    <dd className="mt-0.5 truncate font-semibold text-foreground">
                       {vehicle.driverPhone}
                     </dd>
                   </div>
