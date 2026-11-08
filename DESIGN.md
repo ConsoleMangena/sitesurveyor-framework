@@ -66,7 +66,7 @@ flowchart TB
 
 | Component | Responsibility |
 | --- | --- |
-| `apps/web` | Implemented React SPA/PWA, wallet flows, workspaces, project/CAD UI, file manager, market, and finance screens |
+| `apps/web` | Implemented React SPA/PWA, wallet flows, workspaces, project screens, file manager, market (public market, concierge, cart and checkout), transport preview, and finance screens |
 | `apps/engine` | **Python satellite survey engine** — worker polls `survey_runs`, runs multi-sensor raster pipelines (water/minerals/soil/hazard), publishes deliverables to Supabase Storage, exposes MCP server for AI agents |
 | `supabase/functions/ai-chat` | Authenticated primary AI endpoint; streams NDJSON events and invokes the shared agent core |
 | `supabase/functions/_shared` | Model routing, agent tools, memory, skills, workflows, and shared AI behaviour |
@@ -206,7 +206,7 @@ The assistant's current product behaviour allows ordinary creates and updates to
 | Operational writes | Insert, update, or explicitly confirmed delete on allowlisted tables |
 | Finance workflows | Create quotes from line items; close eligible overdue invoices |
 | Scheduling | Schedule jobs and produce assignment warnings/results |
-| CAD | Read drawings, list layers, count entities, inspect entities, and generate user-executed command blocks |
+| CAD | Read-only: `get_cad_drawing`, `list_cad_layers`, `count_cad_entities`, `inspect_cad_entity` over `project_cad_drawings`. There is no write tool and no client-side command executor |
 | Memory | Remember or forget structured conversation facts |
 
 The MCP server mirrors this tool surface for compatible hosts. Any change to tool contracts should keep the shared Edge/Node agent and MCP definitions aligned and run the AI consistency checks.

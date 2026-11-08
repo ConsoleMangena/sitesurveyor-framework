@@ -2,7 +2,7 @@
 
 The implemented web client for **SiteSurveyor, an Eineva Labs product and open-source initiative**: a responsive React 19 + TypeScript single-page application and PWA for personal, business, and platform-operator workspaces.
 
-It includes wallet-native authentication, surveying operations, project/CAD workflows, file integrity and Solana anchoring, AI chat, assets, finance, marketplace, and administration surfaces. The broader platform targets .NET for desktop and Java Android SDK for mobile; those native clients are not implemented yet.
+It includes wallet-native authentication, surveying operations, project workflows, file integrity and Solana anchoring, AI chat, assets, finance, the public marketplace (search, AI concierge, cart and checkout, on-chain verified payment), a transport-hire planning preview, and administration surfaces. There is no CAD drawing canvas in this client: drawings are readable through the API and the AI tools, not editable here. The broader platform targets .NET for desktop and Java Android SDK for mobile; those native clients are not implemented yet.
 
 For product workflows see the [Surveyor user guide](../../USER_GUIDE.md). For system boundaries see [Architecture](../../DESIGN.md) and [Security](../../SECURITY.md).
 

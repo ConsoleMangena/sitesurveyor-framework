@@ -51,7 +51,7 @@ Open source makes the framework inspectable, adaptable, and available for survey
 
 **One operational record.** Keep the quote, project, job, crew, files, costs, and invoice connected instead of reconstructing the job across separate tools.
 
-**AI that can use workspace tools.** Ask for operational reporting, create or update allowed records, inspect CAD entities and layers, and prepare CAD commands. Responses stream in real time, and successful record writes are read back for verification.
+**AI that can use workspace tools.** Ask for operational reporting, create or update allowed records, and inspect CAD entities and layers. Responses stream in real time, and successful record writes are read back for verification.
 
 **Proof without public exposure.** Anchor a file's SHA-256 digest on Solana without putting the original plan, point cloud, photo, or coordinates on-chain.
 
@@ -78,13 +78,14 @@ flowchart LR
 | --- | --- |
 | Plan & price | Contacts, quotes and line items, projects, scheduling, crew planning, and operational dashboards |
 | Execute | Jobs, dispatch, assignments, job events, time tracking, expenses, team chat, and notifications |
-| CAD & project work | Project drawings, layers and entities, CAD-aware AI inspection, and user-executed AI drafting commands |
+| CAD & project work | Project drawings and layers are stored per project (`project_cad_drawings`, `project_cad_metrics`) and the AI can read them — layers, entity counts, single entities. The web client has no drawing canvas or command executor yet; user-executed drafting commands are a **platform target** |
 | Evidence | File manager, private/public storage options, folders, versions, soft delete and restore, SHA-256 hashing, and integrity verification |
 | Web3 | Sign In With Solana, Phantom and Solflare hand-offs, an encrypted built-in wallet option, Solana USDC payments, and hash-only or full-file anchoring |
 | AI | Streaming chat, conversation history and memory, allowlisted data tools, reporting, record workflows, and CAD tools |
 | Finance | Invoices, billing, payment references, Solana USDC, and separate PesePay fiat flows |
 | Assets | Instruments, asset details, photos, calibration records, and maintenance history |
-| Marketplace | Instruments, professionals, jobs, firms, training, map discovery, filters, and market detail views |
+| Marketplace | Instruments, professionals, jobs, firms, training, map discovery, filters, market detail views, an AI concierge, a shared cart that becomes one request per seller, and on-chain verified payment |
+| Transport (preview) | `/transport` plans a route from coordinates, prices road distance, and shows a sample fleet. Generated vehicles, sample operators, session-only bookings — not a dispatch service |
 | Administration | Personal and business workspaces plus platform-operator views for users, workspaces, activity, and audit |
 
 Some project-tool cards (currently instrument calibration, field notes, and QA flags) are explicitly marked **coming soon** in the application. They are not presented as working capabilities.
@@ -320,8 +321,10 @@ production configuration. `VITE_SOLANA_CLUSTER`, `VITE_SOLANA_RPC_URL`,
 - Anchoring ships in two modes, chosen per file: **hash-only** (the default) and **full-file**. Both keep file bytes in Supabase Storage; only the file digest, the manifest digest and the chunk count reach Solana.
 - Solana development defaults to **devnet**. A transaction on one cluster cannot be treated as proof on another; preserve the recorded network and signature.
 - The AI gateway still needs network access to NVIDIA and Supabase. “Fallback” means an alternate host, not offline inference.
-- AI output requires professional review. A user must execute CAD command blocks, and destructive operations have confirmation safeguards.
-- Marketplace sample content and synthetic chart/portfolio data are demonstration material, not verified public market evidence.
+- AI output requires professional review; destructive operations have confirmation safeguards. CAD data can be read by the AI today, but no web screen executes drafting commands - that is a platform target.
+- Marketplace sample content and synthetic chart/portfolio data are demonstration material, not verified public market evidence. Seeded rows are labelled **Sample** in the market.
+- `/transport` is a planning preview: the fleet is generated from static constants, bookings are held in memory for the session, and no operator is contacted or charged.
+- Marketplace reviews are open to any signed-in workspace member; they are not restricted to completed work.
 - Blockchain anchoring does not replace access control, encryption, backups, retention policy, professional QA, or legal records management. Full-file storage additionally requires pre-chunk encryption for sensitive content and explicit user consent.
 
 ## Contributing

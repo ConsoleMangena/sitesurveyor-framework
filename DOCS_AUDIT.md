@@ -20,7 +20,9 @@ Sections: [CAD finding](#finding-the-cad-workspace-is-documented-but-not-present
 
 ## Finding: the CAD workspace is documented but not present in this repository
 
-**Status:** open — no code or docs were changed for this finding.
+**Status:** closed — docs and UI copy now match the code.
+
+The underlying data is real: `project_cad_drawings` and `project_cad_metrics` exist, and four read-only AI tools (`get_cad_drawing`, `list_cad_layers`, `count_cad_entities`, `inspect_cad_entity`) work against them. What never existed is the drafting surface: no canvas, no layer manager, no command executor, and no write tool. Every claim now says *read and inspect*, and the drafting workflow is labelled a platform target in `README.md`, `PRODUCT.md`, `USER_GUIDE.md`, `DESIGN.md`, `apps/web/README.md` and the in-app assistant blurb (`AssistantPage.tsx`).
 **Severity:** high for docs trust; a release blocker only if a deployment advertises CAD.
 
 ### What the documentation claims
@@ -151,8 +153,8 @@ claiming confirmation.
 
 ## Related gaps found in the same audit (not fixed)
 
-- **Undocumented, implemented:** transport/vehicle hire (`/transport` route, `components/transport/*`, `lib/transportHire.ts`, `transport_network` migrations) — no mention in any `.md`.
-- **Undocumented:** market concierge AI (`market-chat` edge function, `MarketConcierge.tsx`, `marketChatApi.ts`); marketplace cart/checkout/orders/inquiries/reviews (`features/market/cart.ts`, `checkout.ts`, `repositories/marketplaceOrders.ts`, `marketInquiries.ts`, `marketReviews.ts`).
+- Marketplace request-model overlap: `marketplace_requests` and `market_inquiries` both model "buyer asks seller", and `listInquiriesForItem`/`listMyMarketInquiries` are called from nowhere. Needs a product decision, not a docs fix.
+- No sold / reserved / expired lifecycle on listings, so a listing looks available forever.
 - **Undocumented:** Earth Observation has a nav item and a full workbench but no `README.md` capability row and no `USER_GUIDE.md` operating steps.
 - **Missing from `DESIGN.md` §3:** the `satellite-survey`, `market-chat`, `delete-user` and `backfill-geocode` Edge Functions.
 - **Missing from env tables:** `VITE_MOBILE_BUILD` (`apps/web/src/main.tsx:59`).
@@ -160,3 +162,29 @@ claiming confirmation.
 ## Fixed in the same pass (for reference)
 
 Full-file anchoring wording across `README.md`, `USER_GUIDE.md`, `PRODUCT.md`, `apps/web/README.md`, `DESIGN.md`, `SECURITY.md`; the `/auth/wallet` route row; `AnchorPlat`/`AuthTerms`/`.auth-field-row`/`.auth-group-*`; the "seven auth screens plus `/account/security`" and "two `wide` screens" counts; `[20 credits]` in the engine deployment guide; and single-model routing in `DESIGN.md` §6.
+
+## Transport hire presented live dispatch over invented people
+
+**Status:** fixed in this pass.
+**Severity:** high — the worst defect found, though not a docs defect.
+
+`/transport` read as an operating service while being a static simulation:
+
+| Surface | Claimed | Actually |
+| --- | --- | --- |
+| Hero | "Live vehicle dispatch", pulse dot | nothing is live |
+| Hero | "N vehicles staged within 5 km of your pickup" | `buildFleet()` generates 8 vehicles from `FLEET_MODELS` + `DRIVER_ROSTER`, seeded by the pickup coordinate |
+| Detail dialog | "Available for immediate dispatch" | a generated record |
+| Booking slip | "Vehicle dispatched", "Driver arriving in ~N min" | `setTimeout`, then component state |
+| Booking slip | **`tel:` "Call" button on `driverPhone`** | **ten invented drivers with realistic Zimbabwean mobile numbers** |
+| Notification | "Field vehicle dispatched … has been dispatched" | an in-app row to the user's own workspace |
+
+The phone numbers are the reason this could not wait for a product decision: a visitor could dial a stranger who never agreed to be listed, on the strength of a driver profile that does not exist.
+
+Fixed: roster numbers replaced with a non-dialable placeholder, `tel:` button and success-screen call control removed, hero rewritten with a real `<h1>` and an explicit preview paragraph, "Live vehicle dispatch" and "Available for immediate dispatch" removed, and the booking slip, empty state and notification reworded to say the booking is local to the session and that no operator was contacted. The fleet maths (`calculateRoadDistanceKm`, `estimateDriveDurationMinutes`, fare breakdown) is unchanged — it is honest arithmetic and still useful for planning.
+
+## Documentation added for implemented, undocumented features
+
+`USER_GUIDE.md` §4 rewritten from four bullet points into operating instructions: search vs concierge (with the real limits — no account, 8 messages/minute per IP, 2,000 characters, 8 turns of history, read-only), cart and checkout (browser-local basket, one request per seller, pay only after acceptance), the four-step payment path (pending → sign → attach → server-verified `completed`), reviews (open to any signed-in member, not restricted to completed work), sample-content labelling, and the transport preview.
+
+`README.md` gained the same boundaries in **Current boundaries**; `PRODUCT.md`, `DESIGN.md` and `apps/web/README.md` gained the concierge, cart/checkout, transport preview and CAD corrections.

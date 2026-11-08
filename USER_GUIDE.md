@@ -146,20 +146,20 @@ Open **SiteSurveyor AI** from the workspace navigation. The assistant streams re
 - Count and summarise records using returned tool results rather than inventing numbers.
 - Create and update allowlisted operational records, with read-back verification after writes.
 - Schedule work through job and job-event workflows.
-- Inspect CAD layers and entities and prepare CAD commands for you to execute.
+- Inspect CAD layers and entities in stored project drawings.
 - Retain conversation history, rolling summaries, and selected durable memory.
 
 ### Safety and professional review
 
 - Creates and updates may execute immediately; make the target record and requested change explicit.
 - Permanent deletes require explicit confirmation. Prefer archiving or another reversible action where appropriate.
-- CAD commands appear in a block for you to execute. CAD erase operations require an additional confirmation flow, and batches support undo in the project workspace.
+- CAD drafting commands are not available yet: the assistant can read drawings and report what is in them, but no screen executes commands against a drawing.
 - Always verify coordinates, datums, units, totals, dates, and record IDs. AI output is not a substitute for a licensed surveyor's review or an independent QA check.
 - Prompts and relevant tool context are processed by the configured AI provider. Follow your client contract and organisational policy before submitting restricted information.
 
 ## 4. Marketplace and professional network
 
-The public market and workspace network surfaces support discovery of:
+The public market at `/market` and workspace network surfaces support discovery of:
 
 - Instruments and related products or services.
 - Surveying professionals and firms.
@@ -168,7 +168,36 @@ The public market and workspace network surfaces support discovery of:
 
 Use search, category filters, maps, and listing details to compare options. Workspace data can feed market activity so that supply and demand remain connected to delivery.
 
-Sample or synthetic marketplace, chart, ticker, index, and portfolio content is demonstration material. Verify real counterparties, prices, availability, credentials, and terms independently.
+### 4.1 Search or ask
+
+The registry search matches exact records — names, types, locations — and is the fastest route when you know what the listing is called. The **concierge** panel on the same page is for the other case: you know what the job needs, not what the thing is called. Ask it in plain language ("a total station that can do reflectorless work in Harare").
+
+The concierge is read-only. It answers from the published market and cannot save, request, book, or buy on your behalf. You do not need an account to use it. Limits are per visitor per minute (8 messages), 2,000 characters per message, and it remembers the last 8 turns of the conversation.
+
+### 4.2 Cart and checkout
+
+Add listings to the cart from the market; the cart is kept in this browser, so the public market and the dashboard market share one basket. Checkout sends **one request per listing** to each seller — it does not take payment. Money moves only after a seller accepts your request, from the accepted request's payment panel.
+
+When you pay:
+
+1. The order is recorded as **pending** before your wallet is asked to sign, so a cancelled or dropped transaction always leaves a record.
+2. Your wallet signs and sends the transfer to the seller's workspace wallet — the address in force at that moment, not the one printed when the listing was created.
+3. The signature is attached to the order, which moves it to **submitted**.
+4. SiteSurveyor checks the transaction on chain and only then marks the order **completed**. Until that check succeeds, the panel says it is still confirming — a signature on its own is not proof of payment.
+
+If the wallet declines, the order is marked cancelled and nothing is charged.
+
+### 4.3 Reviews
+
+Professionals and firms carry star ratings and written reviews. Anyone signed in with a workspace can review; reviews are not currently limited to completed work, so weigh them as community input rather than verified delivery history.
+
+### 4.4 Sample content
+
+A freshly created database ships demo inventory so the market is never empty. Those rows carry a **Sample** badge, a notice above the registry, and a warning inside the detail dialog: they belong to a demo workspace and cannot accept requests or orders. Always confirm a counterparty before paying anything.
+
+### 4.5 Transport hire (preview)
+
+`/transport` plans a route from coordinates you enter and prices it against a sample fleet. It is a **planning preview**, not a dispatch service: the vehicles are generated, the operators are samples, no operator is contacted, nothing is charged, and a confirmed hire lasts only for that browser session. Treat the fares as estimates of what such a run would cost, and arrange real transport directly with an operator.
 
 ## 5. Security habits for surveying teams
 

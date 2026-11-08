@@ -65,7 +65,7 @@ open jobs, firms and training, so demand and supply meet in one place.
 
 SiteSurveyor AI turns the workspace into an interactive assistant: it can query
 real operational and CAD data, prepare reports, execute allowlisted record
-workflows and produce user-reviewed CAD commands. Solana adds wallet-native
+workflows and read CAD drawings. Solana adds wallet-native
 identity, USDC settlement and tamper-evident file-hash anchors while sensitive
 survey files remain off-chain by default.
 
@@ -120,8 +120,9 @@ sensitive content.
 - Survey operations: quotes, jobs, dispatch, schedule, time and expenses,
   invoices, billing and payments, projects, assets, files, contacts, team.
 - SiteSurveyor AI: streaming chat, history and memory, allowlisted operational
-  reporting and record tools, quote/scheduling workflows, CAD inspection and
-  user-executed drafting commands, with read-back verification for record writes.
+  reporting and record tools, quote/scheduling workflows and CAD inspection, with
+  read-back verification for record writes. Drafting commands executed in a CAD
+  canvas are a platform target; no web screen offers one today.
 - Evidence integrity: SHA-256 file hashes, integrity verification, version
   history and optional wallet-signed Solana Memo anchors. In the implemented
   hash-only mode, original files stay in Supabase Storage and only the
