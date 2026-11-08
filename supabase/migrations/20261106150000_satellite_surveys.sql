@@ -15,7 +15,7 @@
 -- The job is claimed with `for update skip locked`, so N workers can poll one table
 -- without two of them analysing the same AOI and publishing over each other.
 
-create table public.survey_runs (
+create table if not exists public.survey_runs (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
   created_by uuid references auth.users (id) on delete set null,
@@ -77,7 +77,7 @@ comment on column public.survey_runs.progress is
 -- Ranked field targets, one row each. This is the table that makes a survey native:
 -- a candidate coordinate the engine returned can be joined to a job, priced into a
 -- quote, or exported, none of which a JSON blob in `result` allows.
-create table public.survey_targets (
+create table if not exists public.survey_targets (
   id uuid primary key default gen_random_uuid(),
   run_id uuid not null references public.survey_runs (id) on delete cascade,
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
@@ -108,7 +108,7 @@ comment on column public.survey_targets.score is
   'Percentile rank inside this AOI only. Not comparable across sites and not a yield, grade or buildability claim.';
 
 -- Files the run produced, in our bucket rather than on the engine's disk.
-create table public.survey_deliverables (
+create table if not exists public.survey_deliverables (
   id uuid primary key default gen_random_uuid(),
   run_id uuid not null references public.survey_runs (id) on delete cascade,
   workspace_id uuid not null references public.workspaces (id) on delete cascade,

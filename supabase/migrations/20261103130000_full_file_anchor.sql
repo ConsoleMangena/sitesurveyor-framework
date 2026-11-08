@@ -4,7 +4,7 @@
 -- manifest. The manifest and the encrypted-at-rest chunk objects stay in
 -- Supabase, so the chain proves which bytes existed without storing them.
 
-create table public.file_anchor_operations (
+create table if not exists public.file_anchor_operations (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
   attachment_id uuid not null references public.attachments (id) on delete cascade,
@@ -43,17 +43,17 @@ create table public.file_anchor_operations (
   check (uploaded_chunks <= coalesce(chunk_count, uploaded_chunks))
 );
 
-create index file_anchor_operations_attachment_idx
+create index if not exists file_anchor_operations_attachment_idx
   on public.file_anchor_operations (attachment_id, created_at desc);
 
-create index file_anchor_operations_workspace_created_idx
+create index if not exists file_anchor_operations_workspace_created_idx
   on public.file_anchor_operations (workspace_id, created_at desc);
 
-create unique index file_anchor_operations_signature_idx
+create unique index if not exists file_anchor_operations_signature_idx
   on public.file_anchor_operations (tx_signature)
   where tx_signature is not null;
 
-create table public.file_anchor_chunks (
+create table if not exists public.file_anchor_chunks (
   id uuid primary key default gen_random_uuid(),
   operation_id uuid not null references public.file_anchor_operations (id) on delete cascade,
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
@@ -66,7 +66,7 @@ create table public.file_anchor_chunks (
   unique (operation_id, chunk_index)
 );
 
-create index file_anchor_chunks_operation_idx
+create index if not exists file_anchor_chunks_operation_idx
   on public.file_anchor_chunks (operation_id, chunk_index);
 
 alter table public.attachments

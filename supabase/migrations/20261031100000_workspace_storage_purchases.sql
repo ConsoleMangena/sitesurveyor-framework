@@ -1,4 +1,4 @@
-create table public.workspace_storage_purchases (
+create table if not exists public.workspace_storage_purchases (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
   purchased_by uuid references auth.users (id) on delete set null,
@@ -11,7 +11,7 @@ create table public.workspace_storage_purchases (
   paid_at timestamptz not null default now()
 );
 
-create index workspace_storage_purchases_workspace_created_idx
+create index if not exists workspace_storage_purchases_workspace_created_idx
   on public.workspace_storage_purchases (workspace_id, created_at desc);
 
 alter table public.workspace_storage_purchases enable row level security;

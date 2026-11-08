@@ -78,7 +78,7 @@ flowchart TB
 | `supabase/functions/delete-user` | Account deletion workflow |
 | `supabase/functions/web3-auth` | SIWE/SIWS nonces and wallet link/unlink for signed-in accounts |
 | `supabase/functions/pesepay` | Server-side PesePay payment operations |
-| `supabase/migrations` | Incremental database tables, views, RLS policies, functions, and marketplace seed changes. These are **deltas**: they do not create the base schema (`workspaces`, `projects`, `marketplace_orders`, `project_cad_drawings`, …), which is managed outside this directory — see `SECURITY.md` §7. |
+| `supabase/migrations` | `20260823000000_base_schema.sql` is a schema dump of the deployed project (80 tables, 176 policies); every later file is an incremental change on top of it. Together they rebuild the database from empty — see `README.md` "The database can be rebuilt from empty" |
 | `ai-gateway` | Optional Node static host and self-hosted `/api/chat` fallback using the same agent contract |
 | `ai-gateway/sitesurveyor-mcp` | MCP server exposing equivalent data, CAD, memory, and workflow tools over stdio |
 | `scripts/ai-eval` | Evaluation and consistency checks for models, memory, skills, and tool rounds |

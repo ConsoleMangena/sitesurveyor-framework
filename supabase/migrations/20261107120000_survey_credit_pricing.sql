@@ -21,7 +21,7 @@
 
 -- ── The rate card ──
 
-create table public.survey_credit_rates (
+create table if not exists public.survey_credit_rates (
   -- The queue argument and the `survey_runs.categories` value, not the dossier key:
   -- this is what a request names, and the dossier spelling is the engine's.
   category text primary key check (category in ('water', 'minerals', 'soil', 'hazard')),
@@ -388,9 +388,9 @@ comment on function public.charge_satellite_survey(uuid, uuid, text, text, text[
 -- covered and what it cost, and the number can be reconciled against the ledger entry
 -- that paid for it.
 alter table public.survey_runs
-  add column quoted_credits bigint check (quoted_credits is null or quoted_credits > 0),
-  add column surface_area_km2 numeric(12, 3) check (surface_area_km2 is null or surface_area_km2 > 0),
-  add column credit_quote jsonb;
+  add column if not exists quoted_credits bigint check (quoted_credits is null or quoted_credits > 0),
+  add column if not exists surface_area_km2 numeric(12, 3) check (surface_area_km2 is null or surface_area_km2 > 0),
+  add column if not exists credit_quote jsonb;
 
 comment on column public.survey_runs.quoted_credits is
   'Credits charged for this run, priced from the survey types and the ground they covered.';

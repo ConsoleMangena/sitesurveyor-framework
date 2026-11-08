@@ -4,17 +4,18 @@ A claim-by-claim check of this repository's documents against its code, run on 2
 Everything found has been fixed except the CAD gap below, which needs a product decision.
 
 > **Correction (same day, after the payment work).** Item 1 of the CAD finding below
-> said the CAD tables do not exist. They do exist in deployed projects — what is
-> missing is the *migration*. `apps/web/src/lib/supabase/types.ts` is generated from a
+> said the CAD tables do not exist. They do exist in deployed projects — what was
+> missing was the *migration*. `apps/web/src/lib/supabase/types.ts` is generated from a
 > live database and contains `project_cad_drawings` and `project_cad_metrics`, as well
 > as base tables such as `workspaces`, `projects` and `marketplace_orders` that no file
-> in `supabase/migrations/` creates. The real defect is that this repository cannot
-> rebuild its own database: the 51 migrations are deltas over a base schema that was
-> never committed. See [the baseline schema gap](#finding-the-base-schema-is-not-versioned-here).
+> in `supabase/migrations/` created. The real defect was that this repository could not
+> rebuild its own database: the migrations were deltas over a base schema that had
+> never been committed. That is now fixed — see
+> [the baseline schema finding](#finding-the-base-schema-is-not-versioned-here-fixed).
 > The CAD *UI* claim is still wrong; see the section below.
 
 Sections: [CAD finding](#finding-the-cad-workspace-is-documented-but-not-present-in-this-repository) ·
-[Base schema gap](#finding-the-base-schema-is-not-versioned-here) ·
+[Base schema](#finding-the-base-schema-is-not-versioned-here-fixed) ·
 [Related gaps](#related-gaps-found-in-the-same-audit-not-fixed) · [Fixed in this pass](#fixed-in-the-same-pass-for-reference)
 
 ## Finding: the CAD workspace is documented but not present in this repository
@@ -69,33 +70,59 @@ Sections: [CAD finding](#finding-the-cad-workspace-is-documented-but-not-present
 
 Whichever option is chosen, the fix should land in one change: a doc that promises a screen and a tool that reads a missing table are the same defect.
 
-## Finding: the base schema is not versioned here
+## Finding: the base schema is not versioned here (fixed)
 
-**Status:** open — needs an owner decision, not a code change.
+**Status:** fixed — `supabase/migrations/20260823000000_base_schema.sql`.
 **Severity:** high for reproducibility and for the CAD question above.
 
-`apps/web/src/lib/supabase/types.ts` describes 166 relations. The 51 files in
-`supabase/migrations/` create 42 tables, all of them additions layered on top of
-relations they never define (`workspaces`, `projects`, `marketplace_orders`,
-`workspace_members`, `project_cad_drawings`, and the rest). The earliest migration is
-`20260824120000_public_market_views.sql`, which already `select`s from
-`public.marketplace_listings`.
+`apps/web/src/lib/supabase/types.ts` described 80 tables; the migrations created
+relations they never defined — `workspaces`, `projects`, `assets`,
+`marketplace_listings`, `professionals`, `workspace_members`, `marketplace_orders`,
+`project_cad_drawings` and 31 more. **39 of 80 tables (48%) had no `create table`
+anywhere in this repository**, so `supabase db reset` produced a database most screens
+could not query, and no environment other than the original project could be rebuilt.
 
-Consequences, in order of how soon they bite:
+### What was done
 
-1. `supabase db reset` (or any fresh environment: CI preview, new staging, disaster
-   recovery) produces a database that is missing roughly three quarters of the app's
-   tables. Every screen that is not the public market fails at first query.
-2. The CAD AI tools and the `project_cad_drawings` allowlist work in production and
-   cannot be reproduced anywhere else.
-3. Schema history is unknowable: a column's origin cannot be traced to a change, which
-   is how the `marketplace_orders.payment_status` defect below stayed invisible.
+1. Captured the deployed schema (`npx supabase db dump --schema public`) into
+   `20260823000000_base_schema.sql`: 80 tables, 176 RLS policies, 90 functions,
+   44 triggers, 16 types, 12 views, 289 constraints, 96 indexes.
+2. The dump is the schema *after* every migration, so replaying the deltas on top of it
+   collided. Rather than editing history wholesale, the dump was reduced to the part no
+   migration owns: the 12 views, 72 policies and 16 triggers that the deltas themselves
+   create were removed from it (and their dangling grants/owners with them). Tables and
+   indexes were made `if not exists`.
+3. Nineteen deltas were made replayable, each with a one-line guard rather than a
+   rewrite: `create table if not exists` (18), `create index if not exists` (10),
+   `add column if not exists` (14), and `drop constraint if exists` before 14
+   `add constraint` statements that the baseline already satisfies.
+4. `supabase/config.toml` pointed `db.seed.sql_paths` at `./seed.sql`, which does not
+   exist in this repository; demo data lives in migrations. It is now `[]`.
 
-Suggested fix, in one change: dump the base schema from the reference project
-(`supabase db dump --schema public -f supabase/migrations/20260824000000_base_schema.sql`),
-record the timestamp it represents in the file header, and verify with a scratch project
-that `db reset` produces a database the app can start against. Treat the dump as
-read-only history afterwards; every later change stays an incremental migration.
+### Proof
+
+`npx supabase start` against an empty Docker stack applied all 54 migrations with
+`EXIT=0`. The rebuilt database contains 80 tables, 12 views, 176 policies and 98
+functions; `public_market_listings` returns the 22 seeded listings,
+`sample_market_item_keys()` returns 52 demo keys, and `market_listing_payout()` resolves
+the seller workspace. The payment state machine was exercised on it as well: an
+`authenticated` update to `payment_status = 'completed'` fails with *"Payments are
+confirmed from the transaction, not the browser."*, and `market_order_attach_signature`
+returns `submitted`.
+
+### Found while doing it
+
+`20261103180000_unified_auth_methods.sql` wrote to `auth.users.app_metadata`, which is
+not a column on a standard Supabase `auth.users` (it is `raw_app_meta_data`). That
+migration could not apply to any freshly created project, this one included; it is
+fixed. Anyone applying migrations to a new project before this pass would have hit it.
+
+### Still open
+
+On an **existing** deployment the base schema is already present, so the baseline must
+be marked as applied before `db push` (`npx supabase migration repair --status applied
+20260823000000`). This is documented in `README.md` and in the file header, but it is an
+ops step that has not been performed anywhere yet.
 
 ## Finding: marketplace payments trusted the browser (fixed)
 

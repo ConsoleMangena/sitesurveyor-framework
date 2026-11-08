@@ -13,6 +13,9 @@
 alter table public.file_anchor_operations
   add column if not exists encryption jsonb;
 
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."file_anchor_operations" drop constraint if exists "file_anchor_operations_encryption_shape";
 alter table public.file_anchor_operations
   add constraint file_anchor_operations_encryption_shape
   check (

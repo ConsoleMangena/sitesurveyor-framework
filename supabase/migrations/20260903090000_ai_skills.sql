@@ -3,7 +3,7 @@
 -- the router inlines into the agent's context for relevant tasks. Examples are
 -- auto-promoted from successful runs (bounded + deduped in code).
 
-create table public.ai_skills (
+create table if not exists public.ai_skills (
   id uuid primary key default gen_random_uuid(),
   key text unique not null,
   title text not null,

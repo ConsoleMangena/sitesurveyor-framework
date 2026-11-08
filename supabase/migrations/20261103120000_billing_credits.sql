@@ -1,4 +1,4 @@
-create table public.billing_packages (
+create table if not exists public.billing_packages (
   id text primary key,
   kind text not null check (kind in ('ai_credits', 'storage')),
   label text not null,
@@ -31,7 +31,7 @@ insert into public.billing_packages (
   ('50gb', 'storage', '50 GB for 90 days', 'Additional private workspace storage for 90 days.', null, 51200, 90, 8, 3.75, 0.65, 50),
   ('100gb', 'storage', '100 GB for 90 days', 'Additional private workspace storage for 90 days.', null, 102400, 90, 14, 7.00, 1.00, 60);
 
-create table public.billing_operation_rates (
+create table if not exists public.billing_operation_rates (
   operation text primary key,
   credits bigint not null check (credits > 0),
   estimated_cost numeric(12, 2) not null default 0 check (estimated_cost >= 0),
@@ -59,10 +59,14 @@ alter table public.workspace_storage_purchases
   drop constraint if exists workspace_storage_purchases_plan_id_check,
   drop constraint if exists workspace_storage_purchases_payment_method_check;
 
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."workspace_storage_purchases" drop constraint if exists "workspace_storage_purchases_dates_check";
+alter table public."workspace_storage_purchases" drop constraint if exists "workspace_storage_purchases_payment_method_check";
 alter table public.workspace_storage_purchases
-  add column starts_at timestamptz not null default now(),
-  add column expires_at timestamptz,
-  add column included_in_base_quota boolean not null default false,
+  add column if not exists starts_at timestamptz not null default now(),
+  add column if not exists expires_at timestamptz,
+  add column if not exists included_in_base_quota boolean not null default false,
   add constraint workspace_storage_purchases_dates_check
     check (expires_at is null or expires_at > starts_at),
   add constraint workspace_storage_purchases_payment_method_check
@@ -72,11 +76,14 @@ update public.workspace_storage_purchases
 set included_in_base_quota = true
 where included_in_base_quota = false;
 
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."workspace_storage_purchases" drop constraint if exists "workspace_storage_purchases_plan_id_fkey";
 alter table public.workspace_storage_purchases
   add constraint workspace_storage_purchases_plan_id_fkey
   foreign key (plan_id) references public.billing_packages (id);
 
-create index workspace_storage_purchases_active_idx
+create index if not exists workspace_storage_purchases_active_idx
   on public.workspace_storage_purchases (workspace_id, starts_at, expires_at)
   where included_in_base_quota = false;
 
@@ -85,14 +92,19 @@ alter table public.workspace_pesepay_transactions
   drop constraint if exists workspace_pesepay_transactions_status_check,
   drop constraint if exists workspace_pesepay_transactions_currency_code_check;
 
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."workspace_pesepay_transactions" drop constraint if exists "workspace_pesepay_transactions_kind_check";
+alter table public."workspace_pesepay_transactions" drop constraint if exists "workspace_pesepay_transactions_status_check";
+alter table public."workspace_pesepay_transactions" drop constraint if exists "workspace_pesepay_transactions_currency_code_check";
 alter table public.workspace_pesepay_transactions
-  add column package_id text references public.billing_packages (id),
-  add column credit_amount bigint check (credit_amount is null or credit_amount > 0),
-  add column storage_mb integer check (storage_mb is null or storage_mb > 0),
-  add column duration_days integer check (duration_days is null or duration_days > 0),
-  add column estimated_infrastructure_cost numeric(12, 2) not null default 0,
-  add column estimated_payment_fee numeric(12, 2) not null default 0,
-  add column provider_status text,
+  add column if not exists package_id text references public.billing_packages (id),
+  add column if not exists credit_amount bigint check (credit_amount is null or credit_amount > 0),
+  add column if not exists storage_mb integer check (storage_mb is null or storage_mb > 0),
+  add column if not exists duration_days integer check (duration_days is null or duration_days > 0),
+  add column if not exists estimated_infrastructure_cost numeric(12, 2) not null default 0,
+  add column if not exists estimated_payment_fee numeric(12, 2) not null default 0,
+  add column if not exists provider_status text,
   add constraint workspace_pesepay_transactions_kind_check
     check (kind in ('deposit', 'storage_purchase', 'ai_credit_purchase', 'invoice_payment')),
   add constraint workspace_pesepay_transactions_status_check
@@ -100,16 +112,16 @@ alter table public.workspace_pesepay_transactions
   add constraint workspace_pesepay_transactions_currency_code_check
     check (currency_code in ('USD', 'ZWL'));
 
-create index workspace_pesepay_transactions_created_idx
+create index if not exists workspace_pesepay_transactions_created_idx
   on public.workspace_pesepay_transactions (workspace_id, created_at desc, id);
 
-create table public.workspace_ai_credit_accounts (
+create table if not exists public.workspace_ai_credit_accounts (
   workspace_id uuid primary key references public.workspaces (id) on delete cascade,
   balance bigint not null default 0 check (balance >= 0),
   updated_at timestamptz not null default now()
 );
 
-create table public.workspace_ai_credit_transactions (
+create table if not exists public.workspace_ai_credit_transactions (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
   actor_user_id uuid references auth.users (id) on delete set null,
@@ -123,7 +135,7 @@ create table public.workspace_ai_credit_transactions (
   unique (workspace_id, kind, operation_id)
 );
 
-create index workspace_ai_credit_transactions_workspace_created_idx
+create index if not exists workspace_ai_credit_transactions_workspace_created_idx
   on public.workspace_ai_credit_transactions (workspace_id, created_at desc);
 
 alter table public.workspace_ai_credit_accounts enable row level security;

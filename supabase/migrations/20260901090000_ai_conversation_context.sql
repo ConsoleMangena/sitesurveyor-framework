@@ -2,8 +2,11 @@
 -- Existing rows default to 'dashboard'; the CAD panel creates 'cad' rows.
 
 alter table public.ai_conversations
-  add column context text not null default 'dashboard';
+  add column if not exists context text not null default 'dashboard';
 
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."ai_conversations" drop constraint if exists "ai_conversations_context_check";
 alter table public.ai_conversations
   add constraint ai_conversations_context_check
   check (context in ('dashboard', 'cad'));

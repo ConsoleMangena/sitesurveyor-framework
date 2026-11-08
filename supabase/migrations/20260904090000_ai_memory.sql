@@ -3,7 +3,7 @@
 -- they are learned, keyed by conversation, so they survive MAX_HISTORY_TURNS
 -- truncation of the free-text summary. Complements ai_conversations.summary.
 
-create table public.ai_memory (
+create table if not exists public.ai_memory (
   conversation_id uuid not null references public.ai_conversations (id) on delete cascade,
   key text not null,
   value jsonb not null,

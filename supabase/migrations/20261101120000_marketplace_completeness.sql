@@ -35,6 +35,9 @@ alter table public.marketplace_listings
 
 alter table public.marketplace_listings
   drop constraint if exists marketplace_listings_status_check;
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."marketplace_listings" drop constraint if exists "marketplace_listings_status_check";
 alter table public.marketplace_listings
   add constraint marketplace_listings_status_check
   check (status in ('available', 'reserved', 'sold', 'withdrawn'));
@@ -67,6 +70,9 @@ alter table public.market_job_posts
 
 alter table public.market_job_posts
   drop constraint if exists market_job_posts_status_check;
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."market_job_posts" drop constraint if exists "market_job_posts_status_check";
 alter table public.market_job_posts
   add constraint market_job_posts_status_check
   check (status in ('open', 'closed', 'draft'));

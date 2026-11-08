@@ -9,6 +9,9 @@ alter table public.assets
 alter table public.assets
   drop constraint if exists assets_photos_max_six;
 
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."assets" drop constraint if exists "assets_photos_max_six";
 alter table public.assets
   add constraint assets_photos_max_six check (cardinality(photos) <= 6);
 

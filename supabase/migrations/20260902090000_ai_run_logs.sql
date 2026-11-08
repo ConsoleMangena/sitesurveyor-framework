@@ -1,5 +1,5 @@
 -- Observability: one row per AI agent run (tool trace + outcome).
-create table public.ai_run_logs (
+create table if not exists public.ai_run_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
   workspace_id uuid,

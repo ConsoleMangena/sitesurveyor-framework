@@ -15,7 +15,7 @@
 -- owner or admin may change it — enabling or disabling an extension moves
 -- entries in and out of everyone's sidebar, which is a workspace-level decision
 -- in the same spirit as `workspace_ai_providers`.
-create table public.workspace_extensions (
+create table if not exists public.workspace_extensions (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
   extension_id text not null,

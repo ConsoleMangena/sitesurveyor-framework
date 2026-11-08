@@ -206,6 +206,9 @@ create index if not exists transport_departures_route_idx
 -- the cycle is created second can now be linked.
 alter table public.transport_bookings
   drop constraint if exists transport_bookings_departure_fkey;
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."transport_bookings" drop constraint if exists "transport_bookings_departure_fkey";
 alter table public.transport_bookings
   add constraint transport_bookings_departure_fkey
   foreign key (departure_id) references public.transport_departures (id)
@@ -213,6 +216,9 @@ alter table public.transport_bookings
 
 alter table public.transport_departures
   drop constraint if exists transport_departures_route_cutoff;
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."transport_departures" drop constraint if exists "transport_departures_route_cutoff";
 alter table public.transport_departures
   add constraint transport_departures_route_cutoff
   check (planned_departure_at <= backstop_at);

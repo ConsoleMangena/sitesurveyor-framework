@@ -36,6 +36,9 @@ alter table public.workspace_pesepay_transactions
 
 -- A refunded row always carries who recorded it and why, so the status can only
 -- ever come from this function and never from a bare update.
+-- The captured base schema already carries this constraint; drop it so the
+-- migration stays replayable against both a fresh and an existing database.
+alter table public."workspace_pesepay_transactions" drop constraint if exists "workspace_pesepay_transactions_refund_shape";
 alter table public.workspace_pesepay_transactions
   drop constraint if exists workspace_pesepay_transactions_refund_shape,
   add constraint workspace_pesepay_transactions_refund_shape

@@ -1,4 +1,4 @@
-create table public.workspace_pesepay_wallets (
+create table if not exists public.workspace_pesepay_wallets (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -10,7 +10,7 @@ create table public.workspace_pesepay_wallets (
   unique (id, workspace_id, user_id)
 );
 
-create table public.workspace_pesepay_transactions (
+create table if not exists public.workspace_pesepay_transactions (
   id uuid primary key default gen_random_uuid(),
   wallet_id uuid not null,
   workspace_id uuid not null,
@@ -28,10 +28,10 @@ create table public.workspace_pesepay_transactions (
     references public.workspace_pesepay_wallets (id, workspace_id, user_id) on delete cascade
 );
 
-create index workspace_pesepay_transactions_user_created_idx
+create index if not exists workspace_pesepay_transactions_user_created_idx
   on public.workspace_pesepay_transactions (workspace_id, user_id, created_at desc);
 
-create unique index workspace_pesepay_transactions_reference_idx
+create unique index if not exists workspace_pesepay_transactions_reference_idx
   on public.workspace_pesepay_transactions (pesepay_reference)
   where pesepay_reference is not null;
 

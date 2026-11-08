@@ -14,7 +14,7 @@
 -- "inkling-pro")
 -- for backward compat.
 
-create table public.workspace_ai_providers (
+create table if not exists public.workspace_ai_providers (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   -- Short, user-facing tag used in the model id (e.g. "openai", "groq",

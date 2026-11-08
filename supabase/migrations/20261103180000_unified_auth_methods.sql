@@ -111,9 +111,13 @@ $$;
 revoke all on function public.prune_auth_nonces() from public, anon, authenticated;
 grant execute on function public.prune_auth_nonces() to service_role;
 
--- Keep `auth.users.app_metadata.providers` in step with the identities we
+-- Keep `auth.users.raw_app_meta_data.providers` in step with the identities we
 -- manage directly from SQL (Supabase Auth normally recomputes it whenever an
 -- identity changes through its own API).
+--
+-- The column is `raw_app_meta_data`; there is no `app_metadata` column on a
+-- standard Supabase `auth.users`, so writing to that name made this migration
+-- fail on any freshly created project.
 create or replace function public.sync_auth_providers(p_user_id uuid)
 returns void
 language sql
@@ -121,7 +125,7 @@ security definer
 set search_path = public, pg_temp
 as $$
   update auth.users
-     set app_metadata = coalesce(app_metadata, '{}'::jsonb) || jsonb_build_object(
+     set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object(
            'providers',
            coalesce(
              (select jsonb_agg(distinct provider)

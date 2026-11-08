@@ -15,6 +15,7 @@ dist-ssr
 .env.*
 !.env.example
 /supabase/.temp/
+/supabase/.branches/
 supabase/bundle_apply_in_dashboard.sql
 .vscode/*
 !.vscode/extensions.json

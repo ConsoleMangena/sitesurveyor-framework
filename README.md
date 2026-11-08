@@ -174,7 +174,7 @@ sitesurveyor-framework/
 │   └── sitesurveyor-mcp/    # MCP exposure of AI data, CAD, memory, and workflow tools
 ├── supabase/
 │   ├── functions/           # AI, Solana-data, payments, and auth Edge Functions
-│   └── migrations/          # Database schema changes, policies, and seeds
+│   └── migrations/          # Base schema dump + incremental schema changes, policies and seeds
 ├── scripts/ai-eval/         # AI evaluation and consistency checks
 ├── PRODUCT.md               # Product contract
 ├── DESIGN.md                # Architecture and design
@@ -222,6 +222,20 @@ npm run db:push
 ```
 
 Use your normal reviewed migration process for shared or production environments; do not reset a database containing real work.
+
+#### The database can be rebuilt from empty
+
+The first file in `supabase/migrations/` is `20260823000000_base_schema.sql`, a schema dump taken from the deployed project. Everything after it is an incremental change. A local or CI database can therefore be built from nothing:
+
+```bash
+npx supabase start     # boots the local stack and applies every migration
+npx supabase db reset  # apply migrations again onto an empty database
+```
+
+Two consequences worth knowing:
+
+- On an **existing** deployment the base schema is already in place, so `db push` must be told that file is done first: `npx supabase migration repair --status applied 20260823000000`. Otherwise PostgreSQL refuses to recreate existing objects.
+- The baseline is history. Never edit it; schema changes belong in new, later migrations.
 
 ### 3. Start the app
 
