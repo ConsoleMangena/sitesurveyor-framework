@@ -37,7 +37,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     alias: "/prospect",
     title: "Mineral Exploration",
     category: "minerals",
-    description: "AI Questionnaire: hydrothermal alteration, gossans & gold shear lineaments",
+    description: "AI Questionnaire: multi-mineral exploration, alteration haloes, gossans & structural traps",
     example: "/minerals",
     template: "/minerals",
   },

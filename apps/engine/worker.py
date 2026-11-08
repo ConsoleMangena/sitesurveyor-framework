@@ -61,6 +61,8 @@ WORKER_ID = os.getenv("WORKER_ID") or f"{socket.gethostname()}-{os.getpid()}"
 # downloads that do not exist.
 SURVEY_DELIVERABLES: dict[str, str] = {
     "master_json_dossier": "master_site_dossier.json",
+    "mineral_commodities_json": "mineral_commodities.json",
+    "mineral_commodities_csv": "mineral_commodities.csv",
     "boreholes_kmz": "candidate_borehole_sites.kmz",
     "minerals_kmz": "candidate_mineral_targets.kmz",
     "soil_kmz": "candidate_land_zones.kmz",

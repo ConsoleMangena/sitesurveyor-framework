@@ -42,6 +42,13 @@ export default function MineralsPanel({
         clears the moderate band and the index actually varies across the ground.
       </p>
 
+      {indicated.length > 0 ? (
+        <div className="mt-2 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 text-[11.5px] text-amber-900 dark:text-amber-200">
+          <span className="font-semibold">Indicated in survey area: </span>
+          {indicated.map((item) => item.name).join(" · ")}
+        </div>
+      ) : null}
+
       <div className="mt-2.5 grid gap-2">
         {[...indicated, ...rest].map((item) => (
           <CommodityRow key={item.key} item={item} />

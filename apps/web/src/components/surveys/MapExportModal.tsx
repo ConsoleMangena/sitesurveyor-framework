@@ -34,6 +34,7 @@ interface MapExportModalProps {
     label?: string;
   }[];
   targetDepthLabel?: string;
+  indicatedMineralsText?: string;
   legendItems?: SheetLegendItem[];
   legendTitle?: string;
   /** Optical sensor the analysis ran on, printed in the title panel. */
@@ -91,6 +92,7 @@ export default function MapExportModal({
   aoiBounds,
   candidates,
   targetDepthLabel,
+  indicatedMineralsText,
   legendItems,
   legendTitle,
   opticalSource,
@@ -158,6 +160,7 @@ export default function MapExportModal({
         classifiedTiles,
         candidates,
         targetDepthLabel,
+        indicatedMineralsText,
         legendItems,
         legendTitle,
         attribution: basemap.attribution,

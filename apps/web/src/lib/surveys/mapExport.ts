@@ -88,6 +88,8 @@ export interface MapExportOptions {
   }[];
   /** Depth line printed beside the survey centre reticle, e.g. "Water table ~24-31 m". */
   targetDepthLabel?: string;
+  /** Summary line of indicated mineral systems, printed in the title block on mineral sheets. */
+  indicatedMineralsText?: string;
   /** Legend entries; the legend only prints when non-empty. */
   legendItems?: SheetLegendItem[];
   legendTitle?: string;
@@ -1174,6 +1176,7 @@ interface PanelData {
   sheetNo: string;
   generatedText: string;
   waterTableText: string;
+  indicatedMineralsText: string;
   includeLegend: boolean;
   legendTitle: string;
   legendItems: SheetLegendItem[];
@@ -1340,10 +1343,16 @@ function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
     drawPanelDivider(ctx, innerX, innerW, y);
     y += 10;
 
+    const depthLabel =
+      data.categoryName.toUpperCase().includes("WATER") || data.categoryName.toUpperCase().includes("GROUNDWATER")
+        ? "WATER TABLE"
+        : "FIELD TARGET";
+
     const metaRows = [
       { label: "CLIENT", value: data.client },
       { label: "SURVEY DOMAIN", value: data.categoryName },
-      { label: "WATER TABLE", value: data.waterTableText },
+      { label: "INDICATED MINERALS", value: data.indicatedMineralsText },
+      { label: depthLabel, value: data.waterTableText },
       { label: "CENTRE", value: data.coords },
       { label: "SHEET COVERAGE", value: data.coverageText },
       { label: "GRID", value: data.gridText },
@@ -2157,6 +2166,7 @@ export async function exportMapAsPdf(
     sheetNo,
     generatedText,
     waterTableText: options.targetDepthLabel ?? "",
+    indicatedMineralsText: options.indicatedMineralsText ?? "",
     includeLegend: options.includeLegend !== false,
     legendTitle: options.legendTitle || "Map Symbols",
     legendItems: options.legendItems ?? [],

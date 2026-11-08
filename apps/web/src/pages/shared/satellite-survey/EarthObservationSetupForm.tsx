@@ -217,7 +217,7 @@ export default function EarthObservationSetupForm({
         newJobCategory === "water"
           ? "Groundwater & Boreholes"
           : newJobCategory === "minerals"
-            ? "Mineral Prospectivity & Gold"
+            ? "Mineral Exploration & Prospectivity"
             : newJobCategory === "soil"
               ? "Soil & Land Capability"
               : "Multi-Hazard & Safety";

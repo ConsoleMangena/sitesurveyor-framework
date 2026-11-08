@@ -119,7 +119,7 @@ What you must understand before choosing it:
 
 An Earth Observation session is tied to a workspace job. Enter the target coordinate and the **observation extent (AOI)** once — those two inputs are what the credit quote is priced on — pick the survey type, then launch the run. The engine classifies the imagery and the workbench drapes the result over the basemap.
 
-A mineral run answers two questions, not one. The gold index and its ranked targets are unchanged, and alongside them the **Minerals indicated** panel (and the report's matching section) screens six deposit styles — gold, iron ore, nickel and PGM, chromium, copper-zinc-lead, lithium pegmatite — by re-weighting the same alteration, structure, terrain and endowment evidence for each style.
+A mineral exploration run screens multiple mineral systems across the survey area. Alongside the ranked exploration targets, the **Minerals indicated** panel (and the report's matching section) screens nine major deposit styles — gold, iron ore, nickel and PGM, chromium, copper-zinc-lead, lithium pegmatite, manganese, bauxite, and rare earth elements (REE) — by re-weighting the alteration, structure, terrain, and endowment evidence for each style.
 
 Read that list as *which mineral systems this ground could support*, with the confidence column saying how well a satellite can see that style at all (high for iron oxide, low for pegmatites). Two honest limits are built in:
 

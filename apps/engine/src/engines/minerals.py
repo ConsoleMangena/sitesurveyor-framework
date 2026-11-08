@@ -1,26 +1,15 @@
 """
-SiteSurveyor AI — Mineral Prospectivity Engine (Category 2: MINERALS)
-=====================================================================
-Two outputs from one set of evidence layers:
+SiteSurveyor AI — Mineral Exploration & Prospectivity Engine (Category 2: MINERALS)
+===================================================================================
+Generates comprehensive multi-mineral exploration intelligence from Earth Observation:
 
-1. A gold prospectivity index and ranked targets. This is the historic model,
-   shown on the sheet and exported as rasters, vectors and KML.
-2. A commodity screen (`src/utils/commodities.py`): the same evidence is
-   re-weighted per deposit style, so the report can say which minerals this
-   area is indicated for - iron, nickel and PGM, chromium, base metals, lithium
-   pegmatite - and, in `UNSCREENED`, which ones this sensor set cannot see at
-   all. Weights for gold are unchanged from the historic model.
-
-Evidence layers:
-
-Evidence layers:
-  1. Structural lineament density (SAR HV + DEM hillshade)     : 0.28
-  2. Lineament intersections (>20° angular disparity)         : 0.18
-  3. Iron-oxide alteration (SWIR1/Red, vegetation residual)   : 0.14
-  4. Hydroxyl/clay alteration (SWIR2/SWIR1, veg residual)     : 0.14
-  5. Ferrous/mafic anomaly (SWIR1/NIR, veg residual)          : 0.12
-  6. Relative relief / terrain roughness (DEM)                : 0.08
-  7. Regional endowment context (known gold occurrences)      : 0.06
+1. A mineral prospectivity index and prioritised field exploration targets.
+2. A multi-commodity mineral screen (`src/utils/commodities.py`): evaluates the same
+   geological evidence (hydrothermal alteration, iron oxide/gossans, clay/hydroxyl,
+   ferrous/mafic silicates, lineament density, structural intersections, and relief)
+   re-weighted per deposit style to report all available/indicated minerals in the area
+   (gold, iron ore, nickel/PGM, chromium, base metals, lithium, manganese, bauxite, REE)
+   as well as unscreenable commodities.
 """
 from __future__ import annotations
 
@@ -74,7 +63,7 @@ def run_minerals_survey(
     client: str | None = None,
     address: str | None = None,
 ) -> dict:
-    """Execute complete Category 2: MINERALS gold prospectivity survey."""
+    """Execute complete Category 2: MINERALS multi-commodity exploration survey."""
     if target_lat is not None and target_lon is not None:
         cfg.set_target_site(target_lat, target_lon, half_deg=half_deg, client=client, address=address)
 
@@ -83,8 +72,8 @@ def run_minerals_survey(
     ensure_raw(["dem.tif", "landcover.tif", "alos.tif", "optical.tif"])
 
     print("=" * 65)
-    print(f"SiteSurveyor AI — Running Category 2: Mineral Prospectivity Survey [{cfg.AOI_SLUG}]")
-    print(f"Target: ({cfg.TARGET_LAT:.5f}, {cfg.TARGET_LON:.5f}) | Focus: Shear-hosted Gold")
+    print(f"SiteSurveyor AI — Running Category 2: Mineral Exploration Survey [{cfg.AOI_SLUG}]")
+    print(f"Target: ({cfg.TARGET_LAT:.5f}, {cfg.TARGET_LON:.5f}) | Focus: Multi-Commodity Exploration")
     print("=" * 65)
 
     # 1. Load data layers
@@ -244,6 +233,53 @@ def run_minerals_survey(
               f" over {first['overburden_landform']} — first test hole to "
               f"{first['test_hole_depth_m']} m with {first['sampling_method']}")
 
+    # ------------------------------------------------------------------
+    # Commodity screen: the same evidence, re-weighted per deposit style.
+    # ------------------------------------------------------------------
+    print("[5/6] Screening the mineral systems this ground can support...")
+    commodity_screen.validate()
+    evidence_layers = {
+        "lineament_density": norm_lin,
+        "lineament_intersections": norm_inter,
+        "iron_oxide": norm_iron,
+        "hydroxyl_clay": norm_hyd,
+        "ferrous_mafic": norm_fer,
+        "relative_relief": norm_relief,
+        "endowment": norm_endow,
+    }
+    excluded = water_mask | builtup_mask
+    ranked_commodities = commodity_screen.rank_commodities(
+        evidence_layers,
+        mask=excluded,
+        target=(tr, tc),
+        indices={"gold": gold_index},
+    )
+    indicated = commodity_screen.headline(ranked_commodities)
+    for item in ranked_commodities:
+        flag = "INDICATED" if item["indicated"] else "not indicated"
+        print(f"      {item['name'][:34]:34s} top decile {item['area_top_decile']:5.1f} "
+              f"| {item['share_high_pct']:5.2f}% of area in the top class | {flag}")
+    print("      Indicated: " + (", ".join(indicated) if indicated else "none of the screened systems"))
+
+    # Enrich candidates with commodity scores and primary mineral affinity
+    for cand in candidates:
+        cr, cc = cand["row"], cand["col"]
+        best_comm_name = None
+        best_comm_score = -1.0
+        for comm in commodity_screen.COMMODITIES:
+            c_score = sum(comm.weights[k] * evidence_layers[k][cr, cc] for k in comm.weights if k in evidence_layers) * 100.0
+            cand[f"{comm.key}_score"] = safe_round(c_score, 1)
+            if c_score > best_comm_score:
+                best_comm_score = c_score
+                best_comm_name = comm.name
+        cand["primary_commodity"] = best_comm_name
+        cand["primary_commodity_score"] = safe_round(best_comm_score, 1)
+        cand["indicated_minerals"] = ", ".join(indicated) if indicated else "None indicated"
+
+        # Prepend mineral affinity and indicated commodities to field notes
+        cand["field_notes"].insert(0, f"Primary mineral affinity: {cand['primary_commodity']} ({cand['primary_commodity_score']}/100)")
+        cand["field_notes"].insert(1, f"Indicated minerals in area: {cand['indicated_minerals']}")
+
     # Snapshot the target before the layers it is read from are released
     target_fields = field_read(tr, tc)
     del dem, lc, slope, cover_low, cover_high, cover_band
@@ -260,12 +296,15 @@ def run_minerals_survey(
         colors=ZONE_PALETTES["minerals"],
     )
 
-    # Candidate CSV
+    # Candidate CSV with commodity breakdown
     candidate_fields = [
         "rank", "latitude", "longitude", "potential_score", "class_name",
+        "primary_commodity", "primary_commodity_score", "indicated_minerals",
         "distance_from_target_km", "elevation_m", "slope_degrees",
         "overburden_min_m", "overburden_max_m", "overburden_landform",
         "test_hole_depth_m", "sampling_method", "landcover",
+        "gold_score", "base_metals_score", "lithium_score", "nickel_pgm_score",
+        "iron_ore_score", "chromium_score", "manganese_score", "bauxite_score", "rare_earths_score",
         "lineament_density_pct", "intersection_density_pct",
         "iron_oxide_residual_pct", "hydroxyl_clay_residual_pct",
         "ferrous_mafic_pct", "relative_relief_pct", "endowment_context_pct",
@@ -287,45 +326,7 @@ def run_minerals_survey(
         })
     (cfg.OUT / "candidate_mineral_targets.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": geojson_features}, indent=2))
 
-    # Area statistics
-    cell_km2 = (cfg.CELL * cfg.CELL) / 1e6
-    area_stats = {}
-    for code, name in class_names.items():
-        count = int(np.sum(classes == code))
-        area_stats[name] = {
-            "area_km2": round(count * cell_km2, 2),
-            "percentage": round(count / (cfg.WIDTH * cfg.HEIGHT) * 100.0, 1),
-        }
-
-    # ------------------------------------------------------------------
-    # Commodity screen: the same evidence, re-weighted per deposit style.
-    # ------------------------------------------------------------------
-    print("[6/7] Screening the mineral systems this ground can support...")
-    commodity_screen.validate()
-    evidence_layers = {
-        "lineament_density": norm_lin,
-        "lineament_intersections": norm_inter,
-        "iron_oxide": norm_iron,
-        "hydroxyl_clay": norm_hyd,
-        "ferrous_mafic": norm_fer,
-        "relative_relief": norm_relief,
-        "endowment": norm_endow,
-    }
-    excluded = water_mask | builtup_mask
-    ranked_commodities = commodity_screen.rank_commodities(
-        evidence_layers,
-        mask=excluded,
-        target=(tr, tc),
-        # The gold raster is already computed and is what the map sheet shows;
-        # reusing it keeps the table and the map telling the same story.
-        indices={"gold": gold_index},
-    )
-    indicated = commodity_screen.headline(ranked_commodities)
-    for item in ranked_commodities:
-        flag = "INDICATED" if item["indicated"] else "not indicated"
-        print(f"      {item['name'][:34]:34s} top decile {item['area_top_decile']:5.1f} "
-              f"| {item['share_high_pct']:5.2f}% of area in the top class | {flag}")
-    print("      Indicated: " + (", ".join(indicated) if indicated else "none of the screened systems"))
+    # Export mineral commodities JSON and CSV
     commodity_payload = {
         "basis": (
             "Multi-criteria weighted overlay of alteration, structural, terrain and regional "
@@ -339,6 +340,19 @@ def run_minerals_survey(
         "excluded_classes": ["open water", "built-up ground"],
     }
     (cfg.OUT / "mineral_commodities.json").write_text(json.dumps(commodity_payload, indent=2))
+
+    from src.utils.export import export_candidates_kml, export_kmz, export_mineral_commodities_csv
+    export_mineral_commodities_csv(ranked_commodities, cfg.OUT / "mineral_commodities.csv")
+
+    # Area statistics
+    cell_km2 = (cfg.CELL * cfg.CELL) / 1e6
+    area_stats = {}
+    for code, name in class_names.items():
+        count = int(np.sum(classes == code))
+        area_stats[name] = {
+            "area_km2": round(count * cell_km2, 2),
+            "percentage": round(count / (cfg.WIDTH * cfg.HEIGHT) * 100.0, 1),
+        }
 
     # Maps
     _render_minerals_map(gold_index, classes, hs, candidates)
@@ -371,11 +385,10 @@ def run_minerals_survey(
     (cfg.OUT / "mineral_summary.json").write_text(json.dumps(summary, indent=2))
 
     # Export Mobile KML and KMZ for Smartphone GPS
-    from src.utils.export import export_candidates_kml, export_kmz
     kml_path = cfg.OUT / "candidate_mineral_targets.kml"
     kmz_path = cfg.OUT / "candidate_mineral_targets.kmz"
     export_candidates_kml(
-        candidates, kml_path, survey_name="Mineral Prospectivity",
+        candidates, kml_path, survey_name="Mineral Exploration & Prospectivity",
         footnote="Cover thickness and test-hole depth are DEM estimates to first ground, "
                  "not ore depth — confirm with a pit or auger hole.",
     )
@@ -408,7 +421,7 @@ def _render_minerals_map(index: np.ndarray, classes: np.ndarray, hs: np.ndarray,
         ax.annotate(f"#{cand['rank']}", (cx_km + 0.3, cy_km + 0.3), fontsize=9, fontweight="bold", color="black",
                     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="black", alpha=0.85), zorder=11)
 
-    ax.set_title(f"Mineral Prospectivity Zones (Gold / Shear System) — {cfg.CLIENT}\nTarget: {cfg.TARGET_LAT:.4f}°S, {cfg.TARGET_LON:.4f}°E", fontsize=11, color=cfg.BRAND_COLOR, pad=12)
+    ax.set_title(f"Mineral Prospectivity Zones (Multi-Commodity Exploration) — {cfg.CLIENT}\nTarget: {cfg.TARGET_LAT:.4f}°S, {cfg.TARGET_LON:.4f}°E", fontsize=11, color=cfg.BRAND_COLOR, pad=12)
     ax.set_xlabel("Easting (km)", fontsize=10)
     ax.set_ylabel("Northing (km)", fontsize=10)
 

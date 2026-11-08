@@ -168,7 +168,7 @@ WATER = Category(
 )
 
 MINERALS = Category(
-    key="minerals", slug="minerals", name="Mineral Prospectivity", short="Minerals",
+    key="minerals", slug="minerals", name="Mineral Exploration & Prospectivity", short="Minerals",
     hue="#f59e0b", accent="#a16207", accent_dark="#eab44a",
     summary_file="mineral_summary.json", candidates_key="candidate_targets",
     candidate_noun="Target",
@@ -179,8 +179,8 @@ MINERALS = Category(
                 "support. It is not mineral grade, tonnage or economic viability, and it "
                 "does not licence excavation.",
     maps=(
-        ("mineral_prospectivity_map.png", "Mineral prospectivity and shear-zone zoning",
-         "Survey area shaded by gold and shear-system prospectivity class, with the client "
+        ("mineral_prospectivity_map.png", "Multi-mineral prospectivity and structural zoning",
+         "Survey area shaded by mineral prospectivity class, with the client "
          "target starred and ranked exploration targets labelled by rank."),
         ("mineral_evidence_layers.png", "Evidence layers behind the prospectivity index",
          "The lineament, alteration, relief and endowment rasters the mineral model combines."),
@@ -1377,6 +1377,9 @@ def category_state(key: str) -> dict:
     register("index_raster", cat.index_tif, "raster")
     for ext in ("csv", "geojson", "kml", "kmz"):
         register(ext, f"{cat.vector_base}.{ext}", "vector")
+    if cat.key == "minerals":
+        register("commodities_json", "mineral_commodities.json", "data")
+        register("commodities_csv", "mineral_commodities.csv", "data")
 
     html = report_path(cat)
     viewer = viewer_path(cat)
@@ -2037,9 +2040,24 @@ def _commodities_section(cat: Category, data: dict) -> str:
             + "</ul></div>"
         )
 
+    indicated_names = [str(item.get("name") or "") for item in items if item.get("indicated")]
+    if indicated_names:
+        summary_banner = (
+            '<div class="banner" style="background:#fef3c7;border-left:4px solid #f59e0b;color:#92400e;margin-bottom:14px;padding:12px 16px;border-radius:6px;">'
+            f'<strong>Available / Indicated Minerals in this Area ({len(indicated_names)}):</strong> '
+            + ", ".join(f'<span class="badge" style="background:#10b981;color:#fff;margin:0 2px;">{_e(n)}</span>' for n in indicated_names)
+            + ' — Structural controls, hydrothermal alteration, and regional endowment indicate prospectivity for these deposit styles.</div>'
+        )
+    else:
+        summary_banner = (
+            '<div class="banner" style="background:#f8fafc;border-left:4px solid #64748b;color:#334155;margin-bottom:14px;padding:12px 16px;border-radius:6px;">'
+            '<strong>No mineral systems strongly indicated:</strong> None of the screened deposit styles cleared the moderate confidence threshold across this survey area.</div>'
+        )
+
     return (
-        '<div class="section-title">Minerals indicated in this area</div>'
-        '<div class="note"><strong>Read the verdict column first.</strong> A mineral system is '
+        '<div class="section-title">Available & Screened Minerals in This Survey Area</div>'
+        + summary_banner
+        + '<div class="note"><strong>Read the verdict column first.</strong> A mineral system is '
         "indicated when its top decile across this survey area reaches the moderate band. The "
         "score is a percentile of evidence strength inside <em>this</em> area — not a grade, not "
         "a tonnage, and not comparable between properties. Confidence says how well a satellite "
@@ -2104,6 +2122,16 @@ def build_report_html(cat: Category, data: dict) -> str:
         + "</dd></div>"
     )
 
+    mineral_facts = ""
+    if cat.key == "minerals":
+        ind_list = data.get("indicated_commodities") or [
+            str(item.get("name") or "")
+            for item in (data.get("mineral_commodities") or [])
+            if item.get("indicated")
+        ]
+        val = ", ".join(ind_list[:4]) if ind_list else "None indicated in this AOI"
+        mineral_facts = f'<div class="fact"><dt>Indicated Minerals</dt><dd><strong>{_e(val)}</strong></dd></div>'
+
     verdict = f"""
     <div class="verdict">
       <div class="verdict__score">
@@ -2113,6 +2141,7 @@ def build_report_html(cat: Category, data: dict) -> str:
         <div class="verdict__facts">
           {parcel_line}
           {hazard_note}
+          {mineral_facts}
           <div class="fact"><dt>{_e(cat.candidate_noun)} sites ranked</dt><dd class="mono">{len(ranked)}</dd></div>
           <div class="fact"><dt>Nearest ranked site</dt><dd class="mono">{_fmt_distance(top.get("distance_from_target_km") if top else None)}</dd></div>
           {depth_facts}
@@ -2479,5 +2508,7 @@ def bundle_members(key: str) -> tuple[Category, list[Path]]:
     names += [f for f, _, _ in cat.maps]
     names += [f"{cat.slug}_raster_detail.png", f"{cat.slug}_class_key.png", f"{cat.slug}_score_key.png"]
     names += [f"{cat.vector_base}.{ext}" for ext in ("csv", "geojson", "kml", "kmz")]
+    if cat.key == "minerals":
+        names += ["mineral_commodities.json", "mineral_commodities.csv"]
     return cat, [cfg.OUT / n for n in dict.fromkeys(names) if (cfg.OUT / n).exists()]
 

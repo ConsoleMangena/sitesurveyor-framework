@@ -369,7 +369,7 @@ def get_boreholes(latitude: float, longitude: float, top_k: int = 5) -> dict:
 @_single_site
 def get_minerals(latitude: float, longitude: float, top_k: int = 5) -> dict:
     """
-    Screen shear-zone gold prospectivity and hydrothermal alteration around a site.
+    Screen multi-commodity mineral exploration prospectivity and hydrothermal alteration around a site.
 
     Args:
         latitude: Target GPS latitude.
@@ -378,7 +378,8 @@ def get_minerals(latitude: float, longitude: float, top_k: int = 5) -> dict:
 
     Returns:
         Dictionary with mineral prospectivity scores, lineament structural context,
-        alteration indicators (iron oxide, gossan, hydroxyl clay), and ranked targets.
+        alteration indicators (iron oxide, gossan, hydroxyl clay), ranked targets,
+        and screened/indicated mineral systems (gold, base metals, lithium, nickel, iron ore, etc.).
     """
     cfg.set_target_site(latitude, longitude)
     data = _cached_summary(cfg.OUT / "mineral_summary.json", latitude, longitude)
@@ -410,6 +411,9 @@ def get_minerals(latitude: float, longitude: float, top_k: int = 5) -> dict:
             "test_hole_depth_m": target_info.get("test_hole_depth_m"),
         },
         "ranked_targets": targets,
+        "indicated_minerals": data.get("indicated_commodities", []),
+        "mineral_commodities": data.get("mineral_commodities", []),
+        "unscreenable_commodities": data.get("unscreenable_commodities", []),
         "screening_depth_model": data.get("screening_depth_model"),
         "advisory": (
             "Screening-level satellite analysis. Sample the indicated structural targets on the ground "
@@ -422,14 +426,14 @@ def get_minerals(latitude: float, longitude: float, top_k: int = 5) -> dict:
 @mcp.tool()
 @_single_site
 def mineral_exploration(latitude: float, longitude: float, top_k: int = 5) -> dict:
-    """Screen shear-zone gold prospectivity (alias for get_minerals)."""
+    """Screen multi-commodity mineral exploration prospectivity (alias for get_minerals)."""
     return get_minerals(latitude=latitude, longitude=longitude, top_k=top_k)
 
 
 @mcp.tool()
 @_single_site
 def mineralexploration(latitude: float, longitude: float, top_k: int = 5) -> dict:
-    """Screen shear-zone gold prospectivity (alias for get_minerals)."""
+    """Screen multi-commodity mineral exploration prospectivity (alias for get_minerals)."""
     return get_minerals(latitude=latitude, longitude=longitude, top_k=top_k)
 
 

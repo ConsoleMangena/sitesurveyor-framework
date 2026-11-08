@@ -448,6 +448,13 @@ export default function SatelliteSurveyPage({
     ? `Water table ~${metricRange(targetDepth.wetM, targetDepth.dryM) ?? targetDepth.read ?? "?"}`
     : undefined;
 
+  const exportIndicatedMineralsText = useMemo(() => {
+    if (jobDossierCategory !== "minerals") return undefined;
+    const commodities = detail?.run.result?.commodities ?? [];
+    const ind = commodities.filter((c) => c.indicated);
+    return ind.length > 0 ? ind.map((c) => c.name).join(" · ") : "None indicated";
+  }, [jobDossierCategory, detail]);
+
   const exportLegendItems = useMemo(
     () => [
       ...(rasterOn
@@ -1045,6 +1052,7 @@ export default function SatelliteSurveyPage({
         aoiBounds={surveyBounds}
         candidates={exportCandidates}
         targetDepthLabel={exportTargetDepthLabel}
+        indicatedMineralsText={exportIndicatedMineralsText}
         legendItems={exportLegendItems}
         legendTitle={exportLegendTitle}
         opticalSource={opticalSource ?? undefined}

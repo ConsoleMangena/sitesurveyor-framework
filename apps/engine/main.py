@@ -133,7 +133,7 @@ def main():
     # 3. Run Category 2: MINERALS
     if args.category in ("minerals", "all"):
         print("\n" + "#" * 70)
-        print("  CATEGORY 2: MINERALS — Shear-Zone Gold Prospectivity Screening")
+        print("  CATEGORY 2: MINERALS — Multi-Commodity Mineral Exploration Screening")
         print("#" * 70 + "\n")
         from src.engines.minerals import run_minerals_survey
         run_minerals_survey()

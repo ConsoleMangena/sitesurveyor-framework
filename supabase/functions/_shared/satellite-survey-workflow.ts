@@ -105,7 +105,7 @@ export async function quoteSatelliteSurvey(
       can_run: false,
       error: "INVALID_CATEGORY",
       message:
-        "Please choose exactly ONE survey type at a time: 'water' (groundwater/boreholes), 'minerals' (gold/alteration), 'hazard' (flood/safety), or 'soil' (land capability).",
+        "Please choose exactly ONE survey type at a time: 'water' (groundwater/boreholes), 'minerals' (multi-mineral exploration), 'hazard' (flood/safety), or 'soil' (land capability).",
     });
   }
   const category = rawCat as EoCategory;

@@ -260,6 +260,78 @@ LITHIUM = Commodity(
     minerals=("lithium", "tantalum", "tin"),
 )
 
+MANGANESE = Commodity(
+    key="manganese",
+    name="Manganese (oxide / supergene)",
+    group="Ferro-alloy / battery",
+    systems="Sedimentary and supergene manganese oxide enrichment",
+    deposit_style="Stratiform or supergene wad/psilomelane blankets on weathering plateaus",
+    weights={
+        "iron_oxide": 0.34,
+        "relative_relief": 0.22,
+        "ferrous_mafic": 0.16,
+        "lineament_density": 0.12,
+        "lineament_intersections": 0.08,
+        "hydroxyl_clay": 0.04,
+        "endowment": 0.04,
+    },
+    confidence="Moderate",
+    confidence_note=(
+        "Manganese oxides strongly absorb in visible-to-SWIR wavelengths and commonly "
+        "co-occur with iron duricrusts along elevated weathering surfaces."
+    ),
+    verification="Channel sampling along ridge caps with XRF/ICP assay for Mn/Fe ratio",
+    minerals=("manganese",),
+)
+
+BAUXITE = Commodity(
+    key="bauxite",
+    name="Bauxite (aluminium laterite)",
+    group="Base / industrial",
+    systems="Residual lateritic weathering profiles over aluminous parent rock",
+    deposit_style="Plateau-capping residual laterite and gibbsite/kaolinite enrichment",
+    weights={
+        "hydroxyl_clay": 0.38,
+        "iron_oxide": 0.26,
+        "relative_relief": 0.20,
+        "ferrous_mafic": 0.06,
+        "lineament_density": 0.04,
+        "lineament_intersections": 0.03,
+        "endowment": 0.03,
+    },
+    confidence="Moderate",
+    confidence_note=(
+        "Al-OH absorption (gibbsite/kaolinite) coupled with ferricrete capping "
+        "on preserved palaeo-plateaus is clearly discriminated at 20-30 m resolution."
+    ),
+    verification="Pitting, shallow auger drilling, and XRF analysis (available Al2O3 vs reactive silica)",
+    minerals=("aluminium", "bauxite", "gibbsite"),
+)
+
+RARE_EARTHS = Commodity(
+    key="rare_earths",
+    name="Rare earth elements (REE)",
+    group="Critical / tech",
+    systems="Carbonatite complexes, alkaline intrusions and ion-adsorption clays",
+    deposit_style="Hydrothermally altered alkaline ring complexes and weathered clay blankets",
+    weights={
+        "hydroxyl_clay": 0.28,
+        "iron_oxide": 0.24,
+        "lineament_density": 0.20,
+        "lineament_intersections": 0.14,
+        "ferrous_mafic": 0.06,
+        "relative_relief": 0.04,
+        "endowment": 0.04,
+    },
+    confidence="Low",
+    confidence_note=(
+        "Screening captures the intense clay-iron hydrothermal halo and fault intersections "
+        "characteristic of carbonatite/alkaline margins; REE minerals themselves require ground assay."
+    ),
+    verification="Radiometric spectrometry follow-up (Th/U proxy) and multi-element geochemical assay",
+    minerals=("neodymium", "praseodymium", "dysprosium", "lanthanum", "cerium"),
+)
+
 COMMODITIES: tuple[Commodity, ...] = (
     GOLD,
     IRON_ORE,
@@ -267,6 +339,9 @@ COMMODITIES: tuple[Commodity, ...] = (
     CHROMIUM,
     BASE_METALS,
     LITHIUM,
+    MANGANESE,
+    BAUXITE,
+    RARE_EARTHS,
 )
 
 BY_KEY: dict[str, Commodity] = {c.key: c for c in COMMODITIES}

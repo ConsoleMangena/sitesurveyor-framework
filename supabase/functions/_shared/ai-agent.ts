@@ -576,7 +576,7 @@ const TOOLS: ToolSchema[] = [
             type: "string",
             enum: ["water", "minerals", "soil", "hazard"],
             description:
-              "Exactly ONE survey category: 'water' (groundwater/boreholes), 'minerals' (gold/alteration), 'soil' (land capability), or 'hazard' (flood/safety).",
+              "Exactly ONE survey category: 'water' (groundwater/boreholes), 'minerals' (multi-mineral exploration), 'soil' (land capability), or 'hazard' (flood/safety).",
           },
           latitude: {
             type: "number",
@@ -813,10 +813,11 @@ function systemPrompt(supabaseUrl: string): string {
     "   * Mineral Exploration (/minerals):",
     "     [ASK]",
     "     What commodity or geological structure are you targeting?",
+    "     - Multi-Commodity Regional Screening (All available minerals)",
     "     - Gold (Shear zones, quartz veins & gossans)",
     "     - Lithium & Rare Element Pegmatites (LCT)",
-    "     - Base Metals (Copper, Nickel, Cobalt)",
-    "     - Iron Formations & Magnetite Screening",
+    "     - Base Metals (Copper, Zinc, Lead, Nickel, PGMs)",
+    "     - Iron Ore, Manganese, Bauxite & Industrial Minerals",
     "     - Artisanal / Alluvial Workings Screening",
     "     [/ASK]",
     "   * Natural Hazards (/hazard):",

@@ -122,7 +122,7 @@ const jobTypeIcons: Record<string, LucideIcon> = {
 
 const JOB_TYPE_OPTIONS = [
   { value: "Groundwater", label: "Groundwater & Boreholes (Earth Observation)" },
-  { value: "Minerals", label: "Mineral Prospectivity & Gold (Earth Observation)" },
+  { value: "Minerals", label: "Mineral Exploration & Prospectivity (Earth Observation)" },
   { value: "Soil", label: "Soil & Land Capability (Earth Observation)" },
   { value: "Hazard", label: "Multi-Hazard & Site Safety (Earth Observation)" },
   { value: "Topographical", label: "Topographical Survey" },

@@ -24,7 +24,7 @@ export const CATEGORY_LABELS: Record<
   { name: string; short: string; noun: string }
 > = {
   water: { name: "Groundwater", short: "Water", noun: "borehole targets" },
-  minerals: { name: "Mineral prospectivity", short: "Minerals", noun: "exploration targets" },
+  minerals: { name: "Mineral exploration & prospectivity", short: "Minerals", noun: "exploration targets" },
   soil_land: { name: "Soil & land capability", short: "Soil", noun: "land zones" },
   hazard_safety: { name: "Hazard & site safety", short: "Hazard", noun: "safe build sites" },
 };
