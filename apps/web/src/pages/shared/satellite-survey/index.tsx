@@ -927,10 +927,7 @@ export default function SatelliteSurveyPage({
               activeDossierCategory={jobDossierCategory}
             />
             <ExportsPanel
-              deliverables={detail?.deliverables ?? []}
               surveyed={selected !== null && !selected.active}
-              activeDossierCategory={jobDossierCategory}
-              clientName={values.clientName}
               onOpenExportPdf={() => setExportModalOpen(true)}
             />
           </div>
