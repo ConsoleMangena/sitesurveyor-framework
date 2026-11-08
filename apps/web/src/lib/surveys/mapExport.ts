@@ -399,6 +399,35 @@ async function loadTileImage(url: string): Promise<Drawable | null> {
   }
 }
 
+/**
+ * Tile providers serve a flat, near-white (or fully transparent) "no imagery
+ * at this zoom" placeholder beyond their real coverage. Sample the tile and
+ * treat those as missing so the parent fallback can back-fill real imagery.
+ */
+async function isBlankTile(drawable: Drawable): Promise<boolean> {
+  try {
+    const size = 12;
+    const sample = document.createElement("canvas");
+    sample.width = size;
+    sample.height = size;
+    const sctx = sample.getContext("2d");
+    if (!sctx) return false;
+    sctx.drawImage(drawable, 0, 0, size, size);
+    const data = sctx.getImageData(0, 0, size, size).data;
+    let blankish = 0;
+    for (let i = 0; i < size * size; i += 1) {
+      const r = data[i * 4];
+      const g = data[i * 4 + 1];
+      const b = data[i * 4 + 2];
+      const a = data[i * 4 + 3];
+      if (a < 8 || (r >= 230 && g >= 230 && b >= 230)) blankish += 1;
+    }
+    return blankish / (size * size) >= 0.99;
+  } catch {
+    return false;
+  }
+}
+
 async function mapInChunks<T, R>(
   items: T[],
   limit: number,
@@ -581,12 +610,13 @@ async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
   let missingTiles = 0;
 
   await mapInChunks(tiles, TILE_FETCH_CONCURRENCY, async (tile) => {
-    // Direct tile first; on failure walk up to parent tiles and crop the
-    // quadrant, so one failed request never leaves a hole in the sheet.
+    // Direct tile first; on failure (including blank provider placeholders)
+    // walk up to parent tiles and crop the quadrant, so one failed request
+    // never leaves a hole in the sheet.
     const drawable = await loadTileImage(
       tileUrlFor(template, tile.x, tile.y, tileZoom),
     );
-    if (drawable) {
+    if (drawable && !(await isBlankTile(drawable))) {
       drawTile(ctx, drawable, tile.x, tile.y, origin, scale, mapWPx, mapHPx);
       return;
     }
@@ -596,7 +626,7 @@ async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
       const parent = await loadTileImage(
         tileUrlFor(template, tile.x >> p, tile.y >> p, tileZoom - p),
       );
-      if (!parent) continue;
+      if (!parent || (await isBlankTile(parent))) continue;
       const qx = tile.x & (q - 1);
       const qy = tile.y & (q - 1);
       const srcSize = TILE_SIZE / q;
