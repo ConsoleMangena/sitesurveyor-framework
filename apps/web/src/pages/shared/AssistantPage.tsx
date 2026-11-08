@@ -38,65 +38,7 @@ import {
   type AiConversation,
 } from "../../lib/repositories/aiChats.ts";
 import { streamAiReply } from "../../lib/repositories/aiChatApi.ts";
-
-
-export interface SlashCommand {
-  name: string;
-  alias?: string;
-  title: string;
-  category: "water" | "minerals" | "hazard" | "soil" | "eo";
-  description: string;
-  example: string;
-  template: string;
-}
-
-export const SLASH_COMMANDS: SlashCommand[] = [
-  {
-    name: "/borehole",
-    alias: "/water",
-    title: "Groundwater & Boreholes",
-    category: "water",
-    description: "AI Questionnaire: borehole siting, aquifer potential & precision drill targets",
-    example: "/borehole",
-    template: "/borehole",
-  },
-  {
-    name: "/minerals",
-    alias: "/prospect",
-    title: "Mineral Exploration",
-    category: "minerals",
-    description: "AI Questionnaire: hydrothermal alteration, gossans & gold shear lineaments",
-    example: "/minerals",
-    template: "/minerals",
-  },
-  {
-    name: "/hazard",
-    alias: "/flood",
-    title: "Natural Hazards & Safety",
-    category: "hazard",
-    description: "AI Questionnaire: 40-yr flood screening, slope failure risk & buildable sites",
-    example: "/hazard",
-    template: "/hazard",
-  },
-  {
-    name: "/soil",
-    alias: "/agri",
-    title: "Soil & Land Capability",
-    category: "soil",
-    description: "AI Questionnaire: agricultural land suitability, crop health & erosion risk",
-    example: "/soil",
-    template: "/soil",
-  },
-  {
-    name: "/eo",
-    alias: "/sat",
-    title: "Earth Observation Survey",
-    category: "eo",
-    description: "AI Questionnaire: interactive guide for any single-domain satellite survey",
-    example: "/eo",
-    template: "/eo",
-  },
-];
+import { SLASH_COMMANDS } from "@/features/ai/slashCommands.ts";
 
 export interface AssistantPageProps {
   onNavigate?: (view: string) => void;
