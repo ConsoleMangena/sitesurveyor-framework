@@ -25,12 +25,12 @@ nothing is migrated or re-keyed.
 | `/reset-password` | `pages/auth/ResetPasswordPage.tsx` | Sets a new password from the emailed link |
 | `/verify-email` | `pages/auth/VerifyEmailPage.tsx` | Confirmation pending / resend |
 | `/auth/callback` | `pages/auth/AuthCallbackPage.tsx` | OAuth + email-link landing, then routes onward |
-| `/auth/wallet` | `pages/auth/WalletLoginPage.tsx` | Solana/Ethereum wallet sign-in and sign-up |
+| `/auth/wallet` | — (redirect) | Legacy path; `App.tsx` redirects it to `/login`, where the wallet panel now lives |
 | `/account/security` | `pages/auth/AccountSecurityPage.tsx` | Protected. Method list, link/unlink dialogs |
 
-All screens share `components/auth/AuthShell.tsx` (animated backdrop, brand
-block, theme toggle, card column) plus `components/auth/GitHubButton.tsx` and
-`components/auth/AccountSecurity.tsx`.
+All screens share `components/auth/AuthShell.tsx` (animated backdrop, the
+`aside.auth-plat` plate, brand block, theme toggle, working column) plus
+`components/auth/GitHubButton.tsx` and `components/auth/AccountSecurity.tsx`.
 
 ## 2. How a sign-in completes
 

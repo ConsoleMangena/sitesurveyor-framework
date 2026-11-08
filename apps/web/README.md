@@ -103,7 +103,7 @@ The `apps/desktop`, `apps/mobile`, and `apps/live` directories elsewhere in the 
 
 `src/features/phantom/lib/config.ts` resolves the selected cluster, RPC endpoint, USDC mint, treasury, and Explorer URLs. Keep those values consistent. A signature or Explorer link must always be interpreted on its recorded cluster.
 
-`src/features/phantom/anchor/fileAnchor.ts` writes only the versioned attachment ID and SHA-256 digest to Solana Memo Program v3. Original files remain in Supabase Storage in this implemented hash-only mode. The optional full-file product model, meaning ordered, verifiable chunks committed across multiple transactions with a reassembly manifest, is not implemented in this package.
+`src/features/phantom/anchor/fileAnchor.ts` writes only the versioned attachment ID and SHA-256 digest to Solana Memo Program v3. `src/features/phantom/anchor/fullFileAnchor.ts` is the second mode: it splits the file into 256 KiB chunks, encrypts each one (`chunkCrypto.ts`, AES-256-GCM under a PBKDF2-SHA-256 key wrapped by the user's passphrase), stores the chunks and `manifest.json` privately under `<workspace-id>/anchors/<operation-id>/`, and writes one Memo carrying the file digest, manifest digest and chunk count. Original files remain in Supabase Storage in both modes — neither writes file bytes on chain.
 
 ### Data access
 

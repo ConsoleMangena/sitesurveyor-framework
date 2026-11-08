@@ -4,7 +4,7 @@
 
 SiteSurveyor is an **Eineva Labs product and open-source initiative**: an AI-powered, Web3-enabled framework for safer digital surveying. It gathers the complete set of tools a surveyor needs into one connected workspace, with Solana wallet identity and optional blockchain proofs of file integrity running underneath. Its purpose is to help surveying teams move beyond paper field books and disconnected tools without overlooking cybersecurity.
 
-> **Privacy by default:** your original survey files stay in Supabase Storage; when you use standard hash-only anchoring, only the attachment ID and SHA-256 hash are written to Solana. A separate full-file on-chain storage model may be offered by a deployment as an explicit opt-in; it is not the default and is not implemented in the current web client.
+> **Privacy by default:** your original survey files stay in Supabase Storage; when you use standard hash-only anchoring, only the attachment ID and SHA-256 hash are written to Solana. Full-file anchoring is a separate opt-in choice in the file manager — it also keeps the file off-chain and writes only the file digest, manifest digest and chunk count to Solana.
 
 This guide describes the implemented responsive React web application. The native platform targets are **.NET for desktop** and **Java Android SDK for mobile**, but those clients are not implemented in the repository yet. Personal and business workspaces expose slightly different navigation, and platform operators have additional administration views.
 
@@ -93,20 +93,27 @@ ssv1:<attachment-id>:sha256:<lowercase-file-digest>
 
 > Solana transactions are public and effectively permanent. Never place client names, coordinates, legal descriptions, secrets, or other sensitive text in a custom on-chain memo. The built-in flow only includes the attachment ID and digest.
 
-### Optional full-file blockchain storage
+### Optional full-file anchoring
 
-The product framework also defines a separate full-file storage model for deployments that explicitly offer it. In clearer terms, **the file is divided into ordered, verifiable data chunks and committed across multiple Solana transactions**, rather than being uploaded as one large transaction. A manifest records how those chunks fit together and links them to the complete-file integrity record so the payload can be reassembled and verified.
+Full-file anchoring is a second mode in the same **Anchor on Solana** dialog. Pick **Hash only** for the digest-only statement, or **Full file** to additionally keep encrypted, ordered chunk copies of the file so the anchor can be rebuilt and re-proved later:
 
-This mode has a fundamentally different privacy and cost profile from hash-only anchoring:
+1. Choose **Full file** and supply a passphrase of at least the minimum length the dialog shows.
+2. Review the file, network, chunk plan (256 KiB per chunk) and fee.
+3. Approve the single Memo transaction in your wallet.
 
-- It must be an explicit user choice, never a silent default.
-- Sensitive files must be encrypted before they are chunked or committed on-chain.
-- Encryption keys require an approved recovery and access-control process; deleting a database record cannot erase the on-chain chunks.
-- Users must understand network fees, public permanence, reassembly requirements, and any legal or client restrictions before uploading.
+The file is split into ordered chunks, each chunk is encrypted with a fresh AES-256-GCM key wrapped under your passphrase, and the chunk copies plus a `manifest.json` are stored privately in workspace storage. Solana receives **one** transaction carrying the file digest, the manifest digest and the chunk count — not the per-chunk digests, and not the bytes. The manifest records how the chunks fit together so the payload can be reassembled and checked.
 
-**Current status:** the repository implements hash-only anchoring. Chunked full-file storage is a product direction and is not available in the current web client, so the steps above are design guidance rather than an operating procedure for a shipped feature.
+What you must understand before choosing it:
 
-> **Note:** The **satellite survey engine** (Python worker at `apps/engine`) is a separate, implemented component that runs the actual multi-sensor raster analysis (water, minerals, soil, hazard) on DE Africa satellite data. It is **not** the same as the full-file blockchain storage model above. The engine runs as a background worker, polls `survey_runs` from Supabase, processes the job, and publishes deliverables (GeoTIFF, PNG maps, GeoJSON, KMZ, HTML reports) to Supabase Storage. It exposes an MCP server for AI agent integration.
+- It is an explicit per-file choice, never a silent default.
+- The chunk copies are only as recoverable as your passphrase. There is no reset and no recovery service; when the passphrase is lost, the original file and the on-chain record survive but the chunk copies cannot be rebuilt.
+- Verification downloads the chunks, decrypts them, re-hashes each one against the manifest and reassembles the file before offering it for download.
+- Anchors created before encryption existed show their stored copies as **unencrypted (legacy)** in the file manager.
+- Deleting a record removes private copies only; the Solana Memo stays public and permanent.
+
+**Current status:** both modes are available in the web client's file manager. Hash-only is the default.
+
+> **Note:** The **satellite survey engine** (Python worker at `apps/engine`) is a separate, implemented component that runs the actual multi-sensor raster analysis (water, minerals, soil, hazard) on DE Africa satellite data. It is **not** the same as full-file anchoring. The engine runs as a background worker, polls `survey_runs` from Supabase, processes the job, and publishes deliverables (GeoTIFF, PNG maps, GeoJSON, KMZ, HTML reports) to Supabase Storage. It exposes an MCP server for AI agent integration.
 
 ### Step 5: Invoice and settle
 

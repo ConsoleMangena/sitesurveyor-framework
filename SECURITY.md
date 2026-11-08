@@ -20,7 +20,7 @@ This document describes implemented controls, planned storage behaviour, and imp
 
 | Data class | Intended location | Public on Solana? | Key concern |
 | --- | --- | --- | --- |
-| Original plans, point clouds, site photos, reports | Supabase Storage by default; encrypted chunks only in an explicitly enabled future full-file mode | **No by default; yes only with full-file opt-in, once available** | Bucket/object authorization, pre-chunk encryption, key custody, and sharing |
+| Original plans, point clouds, site photos, reports | Supabase Storage; full-file anchoring adds encrypted chunk copies there too | **No in either mode; only digests and the chunk count are written on anchor** | Bucket/object authorization, pre-chunk encryption, key custody, and sharing |
 | Projects, contacts, jobs, quotes, invoices, team data | Supabase Postgres | **No** | Workspace isolation and RLS |
 | AI conversations, summaries, structured memory | Supabase Postgres | **No** | User ownership, retention, provider processing |
 | AI prompts and relevant tool context | Processed by configured NVIDIA NIM service | **No** | Provider policy and confidential-data governance |

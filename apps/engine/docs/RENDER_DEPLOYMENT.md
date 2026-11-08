@@ -7,7 +7,8 @@ A survey reaches it as a row in `survey_runs`.
 ```
 member opens Satellite Survey
   -> POST /functions/v1/satellite-survey   (authenticated; membership checked)
-       -> spend_workspace_ai_credits('satellite.survey')      [20 credits]
+       -> charge_satellite_survey(categories, halfDeg, lat/lon)   [priced from survey_credit_rates;
+          billing_operation_rates['satellite.survey'] = 10 credits is the floor, not the price]
        -> insert survey_runs row (status = 'queued')
   -> this worker claims the row (FOR UPDATE SKIP LOCKED)
        -> runs the same raster pipeline it always ran
@@ -28,7 +29,9 @@ The worker is useless before these exist, and it says so in its logs rather than
 1. **Schema** — `npm run db:push` applies `supabase/migrations/20261106150000_satellite_surveys.sql`,
    which creates `survey_runs`, `survey_targets`, `survey_deliverables`, the survey RPCs,
    the private `survey-deliverables` bucket with its read policies, and the
-   `satellite.survey` rate row.
+   `satellite.survey` rate row. Apply `20261107120000_survey_credit_pricing.sql` too: it adds
+   `survey_credit_rates` and the `price_satellite_survey` / `charge_satellite_survey` pair the
+   edge function calls, and lowers `billing_operation_rates['satellite.survey']` to the floor.
 2. **Edge function** — `npx supabase functions deploy satellite-survey`. This is the only
    entry point a client has; it is what authenticates the caller and charges the credits.
 3. **A workspace with credits** — billing is per workspace, so the member queueing the

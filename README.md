@@ -80,7 +80,7 @@ flowchart LR
 | Execute | Jobs, dispatch, assignments, job events, time tracking, expenses, team chat, and notifications |
 | CAD & project work | Project drawings, layers and entities, CAD-aware AI inspection, and user-executed AI drafting commands |
 | Evidence | File manager, private/public storage options, folders, versions, soft delete and restore, SHA-256 hashing, and integrity verification |
-| Web3 | Sign In With Solana, Phantom and Solflare hand-offs, an encrypted built-in wallet option, Solana USDC payments, and file-hash anchoring |
+| Web3 | Sign In With Solana, Phantom and Solflare hand-offs, an encrypted built-in wallet option, Solana USDC payments, and hash-only or full-file anchoring |
 | AI | Streaming chat, conversation history and memory, allowlisted data tools, reporting, record workflows, and CAD tools |
 | Finance | Invoices, billing, payment references, Solana USDC, and separate PesePay fiat flows |
 | Assets | Instruments, asset details, photos, calibration records, and maintenance history |
@@ -91,11 +91,11 @@ Some project-tool cards (currently instrument calibration, field notes, and QA f
 
 ## Security at a glance
 
-SiteSurveyor defaults to blockchain for **integrity and settlement**, not as a public database for confidential survey records. Full-file on-chain storage is a separate, explicit product model with a different privacy and cost profile.
+SiteSurveyor defaults to blockchain for **integrity and settlement**, not as a public database for confidential survey records. Full-file anchoring is a separate, explicit per-file choice with a different privacy and cost profile — and even there the file bytes stay off-chain.
 
 | Information | Primary location | Written to Solana? |
 | --- | --- | --- |
-| Survey plans, photos, point clouds, and other original files | Supabase Storage by default; encrypted chunks only under the optional full-file model | **No by default; yes only with explicit full-file opt-in, once available** |
+| Survey plans, photos, point clouds, and other original files | Supabase Storage; full-file anchoring adds encrypted chunk copies there too | **No. Neither anchoring mode writes file bytes on chain** |
 | Projects, clients, quotes, jobs, invoices, and workspace records | Supabase Postgres | **No** |
 | AI conversations and operational tool results | Supabase Postgres; prompts/context processed by the configured AI provider | **No** |
 | File attachment ID and lowercase SHA-256 digest | Attachment metadata and a wallet-signed Solana Memo transaction | **Yes, when hash anchoring** |
@@ -106,7 +106,7 @@ SiteSurveyor defaults to blockchain for **integrity and settlement**, not as a p
 
 **Hash-only anchoring (implemented).** The original file stays in Supabase Storage. Solana receives only its attachment ID and SHA-256 digest, providing a tamper-evident reference without publishing the file.
 
-**Full-file on-chain storage (optional product direction, not yet implemented).** Where a deployment enables this mode, a file is divided into **ordered, verifiable data chunks** and committed across multiple Solana transactions instead of being uploaded as one large transaction. A manifest links the chunks, records their order and transaction references, and connects them to the complete-file integrity record so the payload can be reassembled and verified. Sensitive content must be encrypted **before chunking**, and users must explicitly opt in because on-chain data is public and effectively permanent.
+**Full-file anchoring (implemented, opt-in per file).** Choosing **Full file** instead of **Hash only** in the file manager divides the file into ordered, fixed-size chunks (256 KiB), encrypts each chunk in the browser with a fresh AES-256-GCM key wrapped under a passphrase the user supplies, and stores those copies plus a `manifest.json` privately in workspace storage under `<workspace-id>/anchors/<operation-id>/`. Solana receives **one** Memo transaction carrying the file digest, the manifest digest and the chunk count — never the per-chunk digests and never the bytes. Recovery downloads the chunks, decrypts them, re-hashes each one against the manifest, and reassembles the file. Losing the passphrase makes the chunk copies unrecoverable; the original file and the on-chain record are unaffected.
 
 A hash anchor proves that a particular wallet anchored a particular digest at a particular time. It does **not** prove authorship, ownership, survey accuracy, or legal validity, and it does not encrypt the file.
 
@@ -299,7 +299,7 @@ production configuration. `VITE_SOLANA_CLUSTER`, `VITE_SOLANA_RPC_URL`,
 ## Current boundaries
 
 - This repository currently implements the **responsive React web application/PWA**. **.NET desktop** and **Java Android SDK mobile** are platform targets; their directories remain placeholders.
-- The current web client implements **hash-only anchoring**. Chunked full-file on-chain storage is an optional product direction and is not yet implemented or generally available.
+- Anchoring ships in two modes, chosen per file: **hash-only** (the default) and **full-file**. Both keep file bytes in Supabase Storage; only the file digest, the manifest digest and the chunk count reach Solana.
 - Solana development defaults to **devnet**. A transaction on one cluster cannot be treated as proof on another; preserve the recorded network and signature.
 - The AI gateway still needs network access to NVIDIA and Supabase. “Fallback” means an alternate host, not offline inference.
 - AI output requires professional review. A user must execute CAD command blocks, and destructive operations have confirmation safeguards.
@@ -308,7 +308,7 @@ production configuration. `VITE_SOLANA_CLUSTER`, `VITE_SOLANA_RPC_URL`,
 
 ## Contributing
 
-Keep product claims tied to implemented behaviour, preserve the distinction between default private off-chain storage, public hash proofs, and any future opt-in full-file mode, and update the relevant guide when a workflow or configuration changes. Follow the [Code of Conduct](CODE_OF_CONDUCT.md) and the [contributing guide](CONTRIBUTING.md), then run the checks above before submitting changes.
+Keep product claims tied to implemented behaviour, preserve the distinction between default private off-chain storage, public hash proofs, and the opt-in full-file mode, and update the relevant guide when a workflow or configuration changes. Follow the [Code of Conduct](CODE_OF_CONDUCT.md) and the [contributing guide](CONTRIBUTING.md), then run the checks above before submitting changes.
 
 ## License
 

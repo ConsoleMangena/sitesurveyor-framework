@@ -2,7 +2,7 @@
 
 SiteSurveyor is an **Eineva Labs product and open-source initiative** for safer digital surveying. The implemented client is a responsive React web application backed by Supabase, with Solana integrations for identity, payments, and file-integrity anchors, plus an AI agent that can inspect and act on allowlisted workspace data. .NET desktop and Java Android SDK clients are native platform targets, not current implementations.
 
-The architecture is deliberately **hybrid by default**. Confidential survey content and operational records remain off-chain; standard Solana anchors carry only explicit transaction data and the minimal file-hash statement. A separate, explicitly enabled full-file storage model may commit encrypted, ordered chunks on-chain in the future. Neither mode treats blockchain as a substitute for confidential storage design.
+The architecture is deliberately **hybrid by default**. Confidential survey content and operational records remain off-chain; standard Solana anchors carry only explicit transaction data and the minimal file-hash statement. Full-file anchoring is the second, opt-in mode: it commits the file digest and the digest of an encrypted chunk manifest, while the chunks themselves stay in workspace storage. Neither mode treats blockchain as a substitute for confidential storage design.
 
 ## 1. Design goals
 
@@ -51,7 +51,7 @@ flowchart TB
     UI --> PP
     WA --> SOL
     FM -->|"Signed SHA-256 Memo"| SOL
-    FM -. "Planned opt-in: encrypted, ordered chunks" .-> SOL
+    FM -. "Opt-in: encrypted, ordered chunks" .-> SOL
     AI --> NIM
     AI --> DB
     NODE --> NIM
@@ -111,18 +111,18 @@ The baseline is keyboard-operable controls, visible focus, labelled fields, fiel
 
 ### Auth and account surfaces
 
-The seven auth screens plus `/account/security` are composed as one anchor sheet: a drafting plate beside a working column. `AuthShell` supplies the frame, `AnchorPlat` the plate, and `apps/web/src/styles/auth-plat.css` the vocabulary; each page keeps its own form state, validation, copy, and loading behaviour. The split of ownership is what keeps the screens visually identical, so a new auth or account surface reuses the shell rather than composing its own frame.
+The seven auth surfaces — `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/auth/callback` and `/account/security` — are composed as one anchor sheet: a drafting plate beside a working column. `AuthShell` supplies the frame and the `aside.auth-plat` plate it fills with `BlocksAnimation`, and `apps/web/src/styles/auth-plat.css` the vocabulary; each page keeps its own form state, validation, copy, and loading behaviour. The split of ownership is what keeps the screens visually identical, so a new auth or account surface reuses the shell rather than composing its own frame.
 
 At 1024 px and above the sheet splits 44/56 (`minmax(0, 44fr) / minmax(0, 56fr)`) with `grid-template-rows: minmax(0, 1fr)`, so both columns are held to the sheet's own height and a tall working column cannot push the title block past `overflow: hidden`. The sheet is `clamp(560px, 100svh - 88px, 880px)` tall and capped at 1180 px. Below 1024 px the sheet is a full-bleed column (`min-height: 100svh`) and the plate becomes its masthead band.
 
-One measure governs the working column: `--auth-measure`, 27 rem, raised to 34 rem on the two `wide` screens (the wallet sign-in and account security). It is turned into symmetric padding on `.auth-side-body` and never into a child max-width, so the heading rule, the form, the `OR CONTINUE WITH` rule, and the footer band share one axis. The column scrolls at every width with `scrollbar-gutter: stable`, so the measure stays one number whether or not a bar appears, and `overscroll-behavior: contain`; `.auth-side-bar` and `.auth-side-foot` are `flex: 0 0 auto`, so the footer band never shrinks and clips the terms line.
+One measure governs the working column: `--auth-measure`, 27 rem, raised to 34 rem on the one `wide` screen (`/account/security`). It is turned into symmetric padding on `.auth-side-body` and never into a child max-width, so the heading rule, the form, the `OR CONTINUE WITH` rule, and the footer band share one axis. The column scrolls at every width with `scrollbar-gutter: stable`, so the measure stays one number whether or not a bar appears, and `overscroll-behavior: contain`; `.auth-side-bar` and `.auth-side-foot` are `flex: 0 0 auto`, so the footer band never shrinks and clips its content.
 
 Vertical distribution is set by screen type, not by centring the whole column:
 
 - A state screen's `.auth-note` takes the height the column has left and settles its message in the middle of it.
-- A wide screen settles its working block with `margin-block` auto on the `.auth-group-start` and `.auth-group-end` hooks, so the badge, tab strip, and panel stay one group with the air split above and below. Auto margins collapse to zero once the block is taller than the space, so a long form is never cut.
+- A `wide` screen widens the measure as described above and otherwise keeps the same vertical rhythm; `.auth-group-start` and `.auth-group-end` are defined for auto-margining a working block, and no screen uses them today.
 
-The working column is the card: `--card` is painted on the sheet, so nothing inside it is nested. What were cards are ruled rows instead — `.auth-choice-set` for account scope, `.auth-field-row` for the wallet picker and connected-wallet readouts, `.auth-slab` for a tabbed block, `.auth-identity` for the account strip — with `AuthMark` (a ruled square with an inset second rule, in `primary`/`danger`/`success` tones), `AuthRule` (a ruled annotation kept as readable text rather than `role="separator"`), and `AuthTerms` shared from the shell. Selection is ink: `data-selected` gives a muted wash plus a 2 px inset ink bar. Brand red stays on the primary action and the one sealed block on the plate.
+The working column is the card: `--card` is painted on the sheet, so nothing inside it is nested. What were cards are ruled rows instead — `.auth-choice-set` and `.auth-choice` for account scope and the wallet picker, `.auth-slab` for a tabbed block, `.auth-identity` for the account strip, `.auth-note` for a state screen's message — with `AuthMark` (a ruled square with an inset second rule, in `primary`/`danger`/`success` tones) and `AuthRule` (a ruled annotation kept as readable text rather than `role="separator"`). Selection is ink: `data-selected` gives a muted wash plus a 2 px inset ink bar. Brand red stays on the primary action and the one sealed block on the plate. `.auth-field-row` is defined for a ruled label/value row but is not used by any screen yet.
 
 Plate lettering — the schedule, the cartouche, the specimen stamp, the ruled dividers — uses `--mono-plate`, IBM Plex Mono over the system mono stack, loaded from the same Google Fonts request as Inter and Manrope. The app-wide `--mono` is unchanged, so wallet addresses and ledger code keep the existing stack.
 
@@ -179,7 +179,7 @@ After authentication, the app loads the profile and workspace with retries to to
 ### Model and tool controls
 
 - Models are restricted by a shared allowlist in `supabase/functions/_shared/models.ts`.
-- Task-complexity scoring selects an allowed model and tool-round budget.
+- Task-complexity scoring selects the tool-round budget (`MAX_TOOL_ROUNDS` for complex turns, `SIMPLE_MAX_ROUNDS` otherwise). The allowlist currently holds one model, so every request resolves to `DEFAULT_MODEL`; the routing indirection stays so a second model can be added without touching callers.
 - The agent has explicit read and write table allowlists.
 - Live Supabase OpenAPI schema information helps the model use actual columns.
 - Write payloads are checked against the schema; unknown columns are rejected or removed according to the tool path.
@@ -261,7 +261,7 @@ sequenceDiagram
 
 The Memo is self-describing so a chain reader can associate the proof with an attachment without publishing the file. In this implemented hash-only mode, the original file remains off-chain. A hash proves byte equivalence only; it does not establish provenance, ownership, correctness, or regulatory acceptance.
 
-### Full-file chunked storage model (planned)
+### Full-file chunked storage model (opt-in, implemented)
 
 The product framework also defines an optional full-file anchoring model, implemented in the web client as the `ssv2` flow. It deliberately uses one Memo transaction rather than one per chunk, because bytes belong off-chain and only proofs belong on it.
 

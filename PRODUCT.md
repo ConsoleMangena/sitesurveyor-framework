@@ -126,11 +126,12 @@ sensitive content.
   history and optional wallet-signed Solana Memo anchors. In the implemented
   hash-only mode, original files stay in Supabase Storage and only the
   attachment ID and digest are written on-chain.
-- Full-file on-chain storage is an optional product direction, not a current web
-  feature: where enabled, files will be divided into ordered, verifiable chunks
-  and committed across multiple transactions, with a manifest for reassembly
-  and verification. Sensitive payloads must be encrypted before chunking and
-  require explicit user opt-in.
+- Full-file anchoring is a second, opt-in mode of the same feature: the file is
+  split into ordered, encrypted chunks with a reassembly manifest that are kept
+  privately in workspace storage, and one wallet-signed Memo commits the file
+  digest plus the manifest digest and chunk count. Sensitive payloads are
+  encrypted before chunking and the user opts in per file. Both modes keep file
+  bytes off-chain.
 - Public market: listings by category (instruments, professionals, jobs, firms,
   training), geo map of live listings, search and category filters, and a market
   terminal showing a Solana-priced index, chart, ticker and portfolio.
