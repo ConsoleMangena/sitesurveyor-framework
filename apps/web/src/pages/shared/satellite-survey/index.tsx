@@ -280,6 +280,9 @@ export default function SatelliteSurveyPage({
   const imagery =
     coverageLabel(provenance, "optical") ??
     (running ? imageryChip(values.dataSources ?? {}, values.composite ?? DEFAULT_COMPOSITE) : null);
+  const opticalSource = provenance?.selectable.optical
+    ? (provenance.selectable.optical.credit ?? provenance.selectable.optical.label)
+    : null;
 
   const jobCategory = openedJob ? getJobCategory(openedJob) : (values.categories[0] ?? "water");
   const jobDossierCategory = toDossierCategory(jobCategory);
@@ -954,6 +957,7 @@ export default function SatelliteSurveyPage({
         targetDepthLabel={exportTargetDepthLabel}
         legendItems={exportLegendItems}
         legendTitle={exportLegendTitle}
+        opticalSource={opticalSource ?? undefined}
         basemap={{
           tileUrlTemplate: exportBasemap.url,
           attribution: exportBasemap.attribution,

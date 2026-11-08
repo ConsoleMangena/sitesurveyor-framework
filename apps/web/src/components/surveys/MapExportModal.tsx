@@ -35,6 +35,8 @@ interface MapExportModalProps {
   targetDepthLabel?: string;
   legendItems?: SheetLegendItem[];
   legendTitle?: string;
+  /** Optical sensor the analysis ran on, printed in the title panel. */
+  opticalSource?: string;
   basemap: ExportBasemapConfig;
 }
 
@@ -86,6 +88,7 @@ export default function MapExportModal({
   targetDepthLabel,
   legendItems,
   legendTitle,
+  opticalSource,
   basemap,
 }: MapExportModalProps) {
   const [title, setTitle] = useState(
@@ -154,6 +157,7 @@ export default function MapExportModal({
         scaleBarPlacement: scalePlacement,
         gridLineCount,
         coordMode,
+        opticalSource,
       };
 
       await exportMapAsPdf(map, `${slug}_survey_sheet_${timestamp}.pdf`, options);

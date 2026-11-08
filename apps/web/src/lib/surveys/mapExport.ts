@@ -109,6 +109,8 @@ export interface MapExportOptions {
   gridLineCount?: number;
   /** Sheet grid labels: geographic degrees or UTM easting/northing (X/Y). Default "degrees". */
   coordMode?: "degrees" | "utm";
+  /** Optical sensor the analysis was computed from, e.g. "Copernicus Sentinel-2". */
+  opticalSource?: string;
   /** PNG logo drawn in the title panel. Empty string disables; defaults to /logo.png. */
   logoUrl?: string;
 }
@@ -1028,6 +1030,7 @@ interface PanelData {
   coords: string;
   coverageText: string;
   gridText: string;
+  opticalSource: string;
   imageryText: string;
   scaleText: string;
   sheetNo: string;
@@ -1206,6 +1209,7 @@ function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
       { label: "CENTRE", value: data.coords },
       { label: "SHEET COVERAGE", value: data.coverageText },
       { label: "GRID", value: data.gridText },
+      { label: "OPTICAL SOURCE", value: data.opticalSource },
       { label: "IMAGERY", value: data.imageryText },
       { label: "PRINT SCALE", value: data.scaleText },
       { label: "SHEET NO.", value: data.sheetNo },
@@ -1916,6 +1920,7 @@ export async function exportMapAsPdf(
       compose.groundHeightM,
     )} N-S`,
     gridText,
+    opticalSource: options.opticalSource ?? "",
     imageryText: `z${compose.tileZoom} · ~${srcMppText} m/px source · sheet ~${sheetMppText} m/px${upscaledNote}`,
     scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
     sheetNo,
