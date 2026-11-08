@@ -1,4 +1,5 @@
-import { Briefcase, ChevronLeft, Loader, LogOut, Trash2, Undo2 } from "lucide-react";
+import { useState } from "react";
+import { Briefcase, ChevronLeft, Loader, LogOut, Pencil, Trash2, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -49,6 +50,7 @@ interface ContentsPanelProps {
   onSelectJob?: (job: JobWithProject) => void;
   onOpenJobSetup?: () => void;
   onDeleteJob?: (jobId: string) => Promise<void>;
+  onRenameJob?: (jobId: string, title: string) => Promise<void>;
   activeDossierCategory?: DossierCategory;
 }
 
@@ -74,6 +76,7 @@ export default function ContentsPanel({
   onSelectJob,
   onOpenJobSetup,
   onDeleteJob,
+  onRenameJob,
   activeDossierCategory,
 }: ContentsPanelProps) {
   const legendCategories = activeDossierCategory ? [activeDossierCategory] : DOSSIER_ORDER;
@@ -83,6 +86,18 @@ export default function ContentsPanel({
     code,
     label: CATEGORY_ZONE_LABELS[rasterCategory][code],
   }));
+
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState("");
+
+  function commitRename() {
+    const jobId = editingJobId;
+    setEditingJobId(null);
+    if (!jobId || !onRenameJob) return;
+    const title = draftTitle.trim();
+    if (!title) return;
+    void onRenameJob(jobId, title);
+  }
 
   return (
     <div className="sw-panel sw-panel--left" aria-label="Map contents">
@@ -279,46 +294,81 @@ export default function ContentsPanel({
               <ul className="mt-1.5 space-y-1">
                 {jobs.map((job) => {
                   const isCurrent = job.id === currentJob?.id;
+                  const isEditing = editingJobId === job.id;
                   return (
                     <li key={job.id} className="flex items-center gap-1 group">
-                      <button
-                        type="button"
-                        onClick={() => onSelectJob?.(job)}
-                        aria-current={isCurrent ? "true" : undefined}
-                        className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                          isCurrent ? "bg-accent/80 font-medium ring-1 ring-primary/40" : ""
-                        }`}
-                      >
-                        <Briefcase className="size-3.5 shrink-0 text-primary" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[12px] font-medium text-foreground">
-                            {job.title}
-                          </span>
-                          <span className="sw-mono block truncate text-[10.5px] text-muted-foreground">
-                            {job.location ?? "No location specified"}
-                          </span>
-                        </span>
-                        <span className="text-[10px] uppercase font-semibold text-muted-foreground shrink-0">
-                          {job.status}
-                        </span>
-                      </button>
-                      {onDeleteJob ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
-                          title="Delete job"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Delete job "${job.title}"?`)) {
-                              void onDeleteJob(job.id);
-                            }
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          value={draftTitle}
+                          onChange={(e) => setDraftTitle(e.target.value)}
+                          onBlur={commitRename}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitRename();
+                            if (e.key === "Escape") setEditingJobId(null);
                           }}
+                          aria-label="Job name"
+                          className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-[12px] font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onSelectJob?.(job)}
+                          aria-current={isCurrent ? "true" : undefined}
+                          className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                            isCurrent ? "bg-accent/80 font-medium ring-1 ring-primary/40" : ""
+                          }`}
                         >
-                          <Trash2 className="size-3" />
-                        </Button>
-                      ) : null}
+                          <Briefcase className="size-3.5 shrink-0 text-primary" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12px] font-medium text-foreground">
+                              {job.title}
+                            </span>
+                            <span className="sw-mono block truncate text-[10.5px] text-muted-foreground">
+                              {job.location ?? "No location specified"}
+                            </span>
+                          </span>
+                          <span className="text-[10px] uppercase font-semibold text-muted-foreground shrink-0">
+                            {job.status}
+                          </span>
+                        </button>
+                      )}
+                      {isEditing ? null : (
+                        <>
+                          {onRenameJob ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+                              title="Rename job"
+                              onClick={() => {
+                                setEditingJobId(job.id);
+                                setDraftTitle(job.title);
+                              }}
+                            >
+                              <Pencil className="size-3" />
+                            </Button>
+                          ) : null}
+                          {onDeleteJob ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                              title="Delete job"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete job "${job.title}"?`)) {
+                                  void onDeleteJob(job.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
+                          ) : null}
+                        </>
+                      )}
                     </li>
                   );
                 })}

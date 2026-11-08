@@ -194,6 +194,22 @@ export default function SatelliteSurveyPage({
     }
   }, [openedJob, fetchJobs, refresh]);
 
+  const handleRenameJob = useCallback(
+    async (jobId: string, title: string) => {
+      try {
+        await updateJob(jobId, { title });
+        if (openedJob?.id === jobId) {
+          setOpenedJob((prev) => (prev ? { ...prev, title } : prev));
+          setValues((prev) => (prev.jobId === jobId ? { ...prev, clientName: title } : prev));
+        }
+        await fetchJobs();
+      } catch (err) {
+        console.error("Failed to rename job:", err);
+      }
+    },
+    [openedJob, fetchJobs],
+  );
+
   function applyAndOpenJob(job: JobWithProject) {
     const spec = parseJobSpec(job.description);
     const cat = spec?.category ?? getJobCategory(job);
@@ -819,6 +835,7 @@ export default function SatelliteSurveyPage({
           onSelectJob={(job) => applyAndOpenJob(job)}
           onOpenJobSetup={handleExitProject}
           onDeleteJob={handleDeleteJob}
+          onRenameJob={handleRenameJob}
           activeDossierCategory={jobDossierCategory}
         />
 
