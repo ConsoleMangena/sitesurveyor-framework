@@ -175,8 +175,9 @@ MINERALS = Category(
     metric_label="Mineral Prospectivity Index", parcel_label="150 m parcel mean",
     score_labels=("coordinate_cell_score", "coordinate_cell_class"),
     verification="Ground geological mapping and soil geochemical sampling",
-    claim_limit="This ranks where to sample. It is not mineral grade, tonnage or economic "
-                "viability, and it does not licence excavation.",
+    claim_limit="This ranks where to sample and which mineral systems the ground can "
+                "support. It is not mineral grade, tonnage or economic viability, and it "
+                "does not licence excavation.",
     maps=(
         ("mineral_prospectivity_map.png", "Mineral prospectivity and shear-zone zoning",
          "Survey area shaded by gold and shear-system prospectivity class, with the client "
@@ -1967,6 +1968,88 @@ def _depth_section(cat: Category, data: dict) -> str:
     <div class="note"><strong>Confirm before mobilising.</strong> {confirm}</div>"""
 
 
+def _commodities_section(cat: Category, data: dict) -> str:
+    """Which minerals this area is indicated for - and which this data cannot see.
+
+    The mineral category used to answer one commodity (gold). A client asking
+    "what is in this ground" got a number about one metal and no statement about
+    the rest, which reads as "nothing else there". This section lists every
+    mineral system the predictors screen, its strength over the survey area, and
+    the systems a satellite cannot screen at all, with what would be needed.
+    """
+    items = data.get("mineral_commodities")
+    if cat.key != "minerals" or not isinstance(items, list) or not items:
+        return ""
+
+    rows = []
+    for item in items:
+        score = item.get("area_top_decile")
+        color = band(score)
+        indicated = item.get("indicated") is True
+        drivers = item.get("top_evidence") or []
+        driver_text = ", ".join(_weight_name(d.get("evidence", "")) for d in drivers[:2])
+        support = "Indicated" if indicated else "Not indicated"
+        rows.append(
+            '<tr>'
+            f'<td><strong>{_e(str(item.get("name") or ""))}</strong>'
+            f'<div class="cap">{_e(str(item.get("group") or ""))}</div></td>'
+            f'<td>{_e(str(item.get("systems") or ""))}'
+            f'<div class="cap">Confidence that orbit can see this: '
+            f'{_e(str(item.get("confidence") or ""))}</div></td>'
+            f'<td><span class="badge" style="background:{color};">{_e(support)}</span></td>'
+            f'<td class="mono" style="color:{color};">{_fmt_out_of(score)}</td>'
+            f'<td class="mono">{item.get("share_high_pct", 0):.1f}%</td>'
+            f'<td class="mono">{_fmt_out_of(item.get("target_score"))}</td>'
+            f'<td>{_e(driver_text)}</td>'
+            '</tr>'
+        )
+
+    table = (
+        '<div class="table-wrap"><table class="grid">'
+        "<thead><tr><th>Mineral system</th><th>Screened for</th><th>Verdict</th>"
+        "<th>Area top decile</th><th>Area in top class</th><th>At target</th>"
+        "<th>Strongest evidence</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table></div>"
+    )
+
+    caveats = "".join(
+        f'<li><strong>{_e(item.get("name") or "")}</strong> — '
+        f'{_e(str(item.get("confidence_note") or ""))} '
+        f'<span class="cap">Verify by: {_e(str(item.get("verification") or ""))}.</span></li>'
+        for item in items
+        if not item.get("indicated")
+    )
+
+    unscreened = data.get("unscreenable_commodities") or []
+    unscreened_html = ""
+    if isinstance(unscreened, list) and unscreened:
+        unscreened_html = (
+            '<div class="note"><strong>Not screened by this dataset.</strong> '
+            "These were not scored, and that is not a judgement that they are absent: "
+            "<ul>"
+            + "".join(
+                f'<li><strong>{_e(item.get("name") or "")}</strong> — '
+                f'{_e(str(item.get("reason") or ""))} '
+                f'<span class="cap">Would need: {_e(str(item.get("needs") or ""))}.</span></li>'
+                for item in unscreened
+            )
+            + "</ul></div>"
+        )
+
+    return (
+        '<div class="section-title">Minerals indicated in this area</div>'
+        '<div class="note"><strong>Read the verdict column first.</strong> A mineral system is '
+        "indicated when its top decile across this survey area reaches the moderate band. The "
+        "score is a percentile of evidence strength inside <em>this</em> area — not a grade, not "
+        "a tonnage, and not comparable between properties. Confidence says how well a satellite "
+        "can see that deposit style at all.</div>"
+        + table
+        + (f'<ul class="weights">{caveats}</ul>' if caveats else "")
+        + unscreened_html
+    )
+
+
 def build_report_html(cat: Category, data: dict) -> str:
     """One category, one self-contained client document."""
     head = headline_of(cat, data)
@@ -2107,6 +2190,9 @@ def build_report_html(cat: Category, data: dict) -> str:
     # --- depth panel, only when the survey recorded how the depths were built
     depth_html = _depth_section(cat, data)
 
+    # --- commodity screen (minerals only)
+    commodities_html = _commodities_section(cat, data)
+
     # --- model composition
     weights = data.get("model_weights") or data.get("weights_used") or {}
     weight_items = ""
@@ -2187,6 +2273,8 @@ def build_report_html(cat: Category, data: dict) -> str:
   <div class="container">
     {banner}
     {verdict}
+
+    {commodities_html}
 
     <div class="section-title">Prioritised field verification coordinates</div>
     <div class="note"><strong>Work the list top-down.</strong> Rank is computed inside this survey area
