@@ -37,6 +37,7 @@ import { useSurveyQuote } from "../../../lib/hooks/useSurveyQuote.ts";
 import {
   CATEGORY_EXPORTS,
   CATEGORY_RASTER_PALETTE,
+  CATEGORY_ZONE_LABELS,
   outsideCoverage,
   parseCoordinate,
   getJobCategory,
@@ -50,6 +51,7 @@ import {
 } from "../../../lib/surveys/jobSpec.ts";
 import {
   aoiBounds,
+  basemapById,
   basisText,
   candidateRows,
   dmsText,
@@ -361,6 +363,22 @@ export default function SatelliteSurveyPage({
 
   const hasRaster = Boolean(overlayDeliverable || tifDeliverable);
   const rasterOn = rasterOverride ?? hasRaster;
+
+  // Same entries, order and heading the on-screen legend shows, so the printed
+  // sheet reads identically to the workbench.
+  const exportLegendItems = useMemo(
+    () =>
+      rasterOn
+        ? [5, 4, 3, 2, 1].map((code) => ({
+            color: CATEGORY_RASTER_PALETTE[jobDossierCategory][code],
+            label: CATEGORY_ZONE_LABELS[jobDossierCategory][code] ?? `Zone ${code}`,
+          }))
+        : [],
+    [rasterOn, jobDossierCategory],
+  );
+  const exportLegendTitle =
+    jobDossierCategory === "hazard_safety" ? "Classified Risk" : "Classified Potential";
+  const exportBasemap = basemapById(basemap);
 
   const handleDownloadKmz = useCallback(async () => {
     if (!kmzDeliverable) return;
@@ -891,6 +909,15 @@ export default function SatelliteSurveyPage({
         viewInfo={mapViewInfo}
         categoryName={jobCategory.toUpperCase()}
         clientName={values.clientName}
+        aoiBounds={aoiBounds(target.latitude, target.longitude, values.halfDeg)}
+        candidates={layers.candidates ? rows : []}
+        legendItems={exportLegendItems}
+        legendTitle={exportLegendTitle}
+        basemap={{
+          tileUrlTemplate: exportBasemap.url,
+          attribution: exportBasemap.attribution,
+          maxNativeZoom: exportBasemap.maxNativeZoom ?? 19,
+        }}
       />
     </DashboardShell>
   );

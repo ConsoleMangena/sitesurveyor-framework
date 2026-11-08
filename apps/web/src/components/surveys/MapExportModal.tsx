@@ -4,8 +4,18 @@ import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
 import type { MapViewInfo } from "./SurveyMap.tsx";
-import { detectOptimalQuality, exportMapAsPdf, type MapExportOptions } from "../../lib/surveys/mapExport.ts";
-import { metersPerPixel } from "../../lib/surveys/workbench.ts";
+import {
+  detectOptimalQuality,
+  exportMapAsPdf,
+  type MapExportOptions,
+  type SheetLegendItem,
+} from "../../lib/surveys/mapExport.ts";
+
+export interface ExportBasemapConfig {
+  tileUrlTemplate: string;
+  attribution: string;
+  maxNativeZoom: number;
+}
 
 interface MapExportModalProps {
   open: boolean;
@@ -15,6 +25,11 @@ interface MapExportModalProps {
   viewInfo: MapViewInfo;
   categoryName?: string;
   clientName?: string;
+  aoiBounds?: [[number, number], [number, number]];
+  candidates?: { latitude: number; longitude: number; color?: string }[];
+  legendItems?: SheetLegendItem[];
+  legendTitle?: string;
+  basemap: ExportBasemapConfig;
 }
 
 export default function MapExportModal({
@@ -25,6 +40,11 @@ export default function MapExportModal({
   viewInfo,
   categoryName = "Survey Map",
   clientName = "Site Survey",
+  aoiBounds,
+  candidates,
+  legendItems,
+  legendTitle,
+  basemap,
 }: MapExportModalProps) {
   const [title, setTitle] = useState(
     `${categoryName.toUpperCase()} — ${clientName || "SITE AREA"}`
@@ -56,27 +76,24 @@ export default function MapExportModal({
         .replace(/[^a-z0-9]+/g, "_");
       const timestamp = new Date().toISOString().slice(0, 10);
 
-      const mapBounds = map.getBounds();
-      const bounds: [[number, number], [number, number]] = [
-        [mapBounds.getSouth(), mapBounds.getWest()],
-        [mapBounds.getNorth(), mapBounds.getEast()],
-      ];
-      const mpp = metersPerPixel(target.latitude, viewInfo.zoom);
-
       const options: MapExportOptions = {
         title,
         client: clientName,
         categoryName,
         coords: viewInfo.coords || `${target.latitude.toFixed(4)}°, ${target.longitude.toFixed(4)}°`,
-        scale: viewInfo.scale,
         includeLegend,
         includeHeader,
         includeNorthArrow,
         includeScaleBar,
         includeNeatline: true,
         target,
-        bounds,
-        mpp,
+        aoiBounds,
+        candidates,
+        legendItems,
+        legendTitle,
+        attribution: basemap.attribution,
+        tileUrlTemplate: basemap.tileUrlTemplate,
+        maxNativeZoom: basemap.maxNativeZoom,
       };
 
       await exportMapAsPdf(map, `${slug}_survey_sheet_${timestamp}.pdf`, options);
@@ -114,7 +131,7 @@ export default function MapExportModal({
                 <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">PDF</span>
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                High-resolution cartographic map with compass rose, scale bar & neatline
+                Vector A4 sheet with graticule, legend, scale bar &amp; north arrow
               </p>
             </div>
           </div>
@@ -133,19 +150,19 @@ export default function MapExportModal({
           <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
             <div className="flex items-center gap-2 text-foreground font-medium">
               <Sparkles className="size-3.5 text-primary shrink-0" />
-              <span>Calibrated Resolution:</span>
+              <span>Print Resolution:</span>
               <strong className="text-primary">{quality.label}</strong>
             </div>
             <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <ShieldCheck className="size-3 text-success" />
-              <span>Print-Ready A4</span>
+              <span>Vector Annotations</span>
             </div>
           </div>
 
           {/* View extent details */}
           <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
             <div className="flex justify-between text-muted-foreground">
-              <span>Zoom & Scale:</span>
+              <span>Zoom &amp; Scale:</span>
               <span className="font-mono font-medium text-foreground">Zoom {viewInfo.zoom} ({viewInfo.scale})</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
@@ -185,7 +202,7 @@ export default function MapExportModal({
                   onChange={(e) => setIncludeHeader(e.target.checked)}
                   className="rounded border-input text-primary focus:ring-primary"
                 />
-                <span>Title block & GPS</span>
+                <span>Title block &amp; GPS</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -194,7 +211,7 @@ export default function MapExportModal({
                   onChange={(e) => setIncludeNorthArrow(e.target.checked)}
                   className="rounded border-input text-primary focus:ring-primary"
                 />
-                <span>North compass rose</span>
+                <span>North arrow</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -212,7 +229,7 @@ export default function MapExportModal({
                   onChange={(e) => setIncludeLegend(e.target.checked)}
                   className="rounded border-input text-primary focus:ring-primary"
                 />
-                <span>Potential legend</span>
+                <span>Classification legend</span>
               </label>
             </div>
           </div>

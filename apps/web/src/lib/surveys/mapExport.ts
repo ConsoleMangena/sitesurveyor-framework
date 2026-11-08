@@ -1,20 +1,65 @@
-import type { Map as LeafletMap } from "leaflet";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { ImageOverlay as LeafletImageOverlay, type Map as LeafletMap } from "leaflet";
+
+import { metersPerPixel } from "./workbench.ts";
+
+/**
+ * A4 landscape sheet geometry in PDF points (72 pt = 1 inch).
+ * The sheet is a map frame on the left and a title/legend panel on the right.
+ */
+export const SHEET = {
+  widthPt: 842,
+  heightPt: 595,
+  marginPt: 18,
+  panelWidthPt: 216,
+  panelGapPt: 10,
+} as const;
+
+export interface SheetMapRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export function sheetMapRect(): SheetMapRect {
+  return {
+    x: SHEET.marginPt,
+    y: SHEET.marginPt,
+    w: SHEET.widthPt - SHEET.marginPt * 2 - SHEET.panelWidthPt - SHEET.panelGapPt,
+    h: SHEET.heightPt - SHEET.marginPt * 2,
+  };
+}
+
+export interface SheetLegendItem {
+  color: string;
+  label: string;
+}
 
 export interface MapExportOptions {
   title?: string;
   client?: string;
   categoryName?: string;
   coords?: string;
-  scale?: string;
-  dpr?: number;
+  /** Print resolution of the sheet; defaults to what detectOptimalQuality() picks. */
+  dpi?: number;
   includeLegend?: boolean;
   includeHeader?: boolean;
   includeNorthArrow?: boolean;
   includeScaleBar?: boolean;
   includeNeatline?: boolean;
   target?: { latitude: number; longitude: number };
-  bounds?: [[number, number], [number, number]];
-  mpp?: number;
+  /** Dashed AOI rectangle, [[south, west], [north, east]]. */
+  aoiBounds?: [[number, number], [number, number]];
+  candidates?: { latitude: number; longitude: number; color?: string }[];
+  /** Legend entries for the classified raster; the legend only prints when non-empty. */
+  legendItems?: SheetLegendItem[];
+  legendTitle?: string;
+  /** Imagery credit, e.g. "Imagery © Esri, Earthstar Geographics". */
+  attribution?: string;
+  /** Slippy-map tile template, e.g. from BASEMAPS[].url. */
+  tileUrlTemplate?: string;
+  maxNativeZoom?: number;
 }
 
 export interface OptimalQuality {
@@ -24,8 +69,8 @@ export interface OptimalQuality {
 }
 
 /**
- * Dynamically determines optimal export resolution (DPI) based on the user's
- * computer hardware (hardwareConcurrency, devicePixelRatio, GPU limits).
+ * Picks a print DPI from the machine's capabilities. With the off-screen renderer
+ * the number is real: the canvas is sized from the paper, not from the screen.
  */
 export function detectOptimalQuality(requestedDpr?: number): OptimalQuality {
   if (requestedDpr && requestedDpr > 0) {
@@ -33,11 +78,10 @@ export function detectOptimalQuality(requestedDpr?: number): OptimalQuality {
     return { dpr: requestedDpr, dpi, label: `${dpi} DPI (Custom)` };
   }
 
-  const dpr = typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1;
-  const cores = typeof navigator !== "undefined" ? (navigator.hardwareConcurrency || 4) : 4;
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  const cores =
+    typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4;
 
-  // On modern multi-core machines (>=6 cores or high-DPI Retina/4K screens),
-  // target 300 DPI print quality (approx 3.125x scale)
   if (cores >= 6 || dpr >= 2) {
     return { dpr: 3.125, dpi: 300, label: "300 DPI (Ultra High-Res Print Quality)" };
   }
@@ -45,559 +89,6 @@ export function detectOptimalQuality(requestedDpr?: number): OptimalQuality {
     return { dpr: 2.5, dpi: 240, label: "240 DPI (High-Res Executive Quality)" };
   }
   return { dpr: 2.0, dpi: 192, label: "192 DPI (Standard Crisp Quality)" };
-}
-
-/**
- * Safely load an image source without tainting the target canvas.
- * If the image element cannot be safely drawn, it is fetched via CORS or converted to ImageBitmap.
- * If that fails, returns null so the canvas remains clean.
- */
-async function loadCleanDrawable(img: HTMLImageElement): Promise<CanvasImageSource | null> {
-  const src = img.currentSrc || img.src;
-  if (!src) return null;
-
-  // Data URLs and Blob URLs are local and inherently origin-clean
-  if (src.startsWith("data:") || src.startsWith("blob:")) {
-    return img;
-  }
-
-  // If already CORS-enabled in DOM and loaded
-  if (
-    (img.crossOrigin === "anonymous" || img.crossOrigin === "use-credentials" || img.crossOrigin === "") &&
-    img.complete &&
-    img.naturalWidth > 0
-  ) {
-    try {
-      // Test drawing on a tiny scratch canvas to verify origin-cleanliness
-      const testCanvas = document.createElement("canvas");
-      testCanvas.width = 1;
-      testCanvas.height = 1;
-      const testCtx = testCanvas.getContext("2d");
-      if (testCtx) {
-        testCtx.drawImage(img, 0, 0, 1, 1);
-        testCtx.getImageData(0, 0, 1, 1);
-        return img;
-      }
-    } catch {
-      // Fall through to fetch
-    }
-  }
-
-  // Fetch with CORS to obtain a guaranteed origin-clean ImageBitmap or ObjectURL
-  try {
-    const res = await fetch(src, { mode: "cors", credentials: "omit" });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    if (typeof createImageBitmap === "function") {
-      try {
-        return await createImageBitmap(blob);
-      } catch {
-        // Fallback below
-      }
-    }
-    const blobUrl = URL.createObjectURL(blob);
-    return await new Promise<HTMLImageElement | null>((resolve) => {
-      const cleanImg = new window.Image();
-      cleanImg.onload = () => resolve(cleanImg);
-      cleanImg.onerror = () => {
-        URL.revokeObjectURL(blobUrl);
-        resolve(null);
-      };
-      cleanImg.src = blobUrl;
-    });
-  } catch {
-    // Return null to protect the destination canvas from being tainted
-    return null;
-  }
-}
-
-/** Draw professional surveyor compass rose with cardinal directions and star points */
-function drawCompassRose(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number): void {
-  ctx.save();
-  ctx.translate(cx, cy);
-
-  // Semi-transparent circular plate backing
-  ctx.fillStyle = "rgba(11, 16, 24, 0.85)";
-  ctx.beginPath();
-  ctx.arc(0, 0, radius + 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // Outer ring
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Inner ring
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.arc(0, 0, radius * 0.72, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Degree ticks
-  for (let deg = 0; deg < 360; deg += 30) {
-    const rad = (deg * Math.PI) / 180;
-    const isMajor = deg % 90 === 0;
-    const r1 = radius;
-    const r2 = isMajor ? radius - 6 : radius - 3.5;
-    ctx.strokeStyle = isMajor ? "rgba(255, 255, 255, 0.85)" : "rgba(255, 255, 255, 0.35)";
-    ctx.lineWidth = isMajor ? 1.4 : 0.8;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(rad) * r1, Math.sin(rad) * r1);
-    ctx.lineTo(Math.cos(rad) * r2, Math.sin(rad) * r2);
-    ctx.stroke();
-  }
-
-  // 4 Cardinal Star Points (North, East, South, West)
-  const mainLen = radius * 0.95;
-  const innerLen = radius * 0.22;
-
-  const points = [
-    { angle: -Math.PI / 2, color: "#D14141", altColor: "#ffffff" }, // North (Red/White)
-    { angle: 0, color: "#cbd5e1", altColor: "#475569" },             // East
-    { angle: Math.PI / 2, color: "#cbd5e1", altColor: "#475569" },  // South
-    { angle: Math.PI, color: "#cbd5e1", altColor: "#475569" },       // West
-  ];
-
-  for (const pt of points) {
-    const a = pt.angle;
-    const aLeft = a - Math.PI / 4;
-    const aRight = a + Math.PI / 4;
-
-    // Left triangle
-    ctx.fillStyle = pt.color;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(a) * mainLen, Math.sin(a) * mainLen);
-    ctx.lineTo(Math.cos(aLeft) * innerLen, Math.sin(aLeft) * innerLen);
-    ctx.closePath();
-    ctx.fill();
-
-    // Right triangle (shaded)
-    ctx.fillStyle = pt.altColor;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(a) * mainLen, Math.sin(a) * mainLen);
-    ctx.lineTo(Math.cos(aRight) * innerLen, Math.sin(aRight) * innerLen);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // North 'N' letter above the rose
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `bold ${Math.round(radius * 0.42)}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillText("N", 0, -radius - 3);
-
-  // Center hub
-  ctx.fillStyle = "#0b1018";
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(0, 0, 3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-/** Draw cartographic segmented scale bar with metric divisions */
-function drawScaleBar(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  mpp: number,
-  scaleLabel: string
-): void {
-  ctx.save();
-  const targetPixels = 150;
-  const rawMeters = Math.max(1, targetPixels * mpp);
-
-  // Nice round distance choices
-  const steps = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
-  let chosenMeters = steps[0];
-  for (const step of steps) {
-    if (step <= rawMeters * 1.4) {
-      chosenMeters = step;
-    }
-  }
-
-  const barWidth = Math.max(60, chosenMeters / mpp);
-  const halfWidth = barWidth / 2;
-  const barHeight = 6;
-
-  // Background card
-  const plateW = Math.max(barWidth + 36, 180);
-  const plateH = 46;
-  ctx.fillStyle = "rgba(11, 16, 24, 0.88)";
-  ctx.fillRect(x - 10, y - 22, plateW, plateH);
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x - 10, y - 22, plateW, plateH);
-
-  // Left segment (white)
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(x, y - barHeight / 2, halfWidth, barHeight);
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = 0.8;
-  ctx.strokeRect(x, y - barHeight / 2, halfWidth, barHeight);
-
-  // Right segment (dark slate)
-  ctx.fillStyle = "#1e293b";
-  ctx.fillRect(x + halfWidth, y - barHeight / 2, halfWidth, barHeight);
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 0.8;
-  ctx.strokeRect(x + halfWidth, y - barHeight / 2, halfWidth, barHeight);
-
-  // Outer border
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y - barHeight / 2, barWidth, barHeight);
-
-  // Scale numbers above bar
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 9.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-
-  ctx.fillText("0", x, y - 5);
-  const midLabel = chosenMeters >= 1000 ? `${(chosenMeters / 2000).toFixed(1)} km` : `${chosenMeters / 2} m`;
-  ctx.fillText(midLabel, x + halfWidth, y - 5);
-  const fullLabel = chosenMeters >= 1000 ? `${(chosenMeters / 1000).toFixed(0)} km` : `${chosenMeters} m`;
-  ctx.fillText(fullLabel, x + barWidth, y - 5);
-
-  // Ground resolution readout below bar
-  ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-  ctx.font = "9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText(
-    `Scale: ${scaleLabel || "—"}  •  Res: ${mpp < 10 ? mpp.toFixed(2) : mpp.toFixed(1)} m/px`,
-    x,
-    y + 7
-  );
-
-  ctx.restore();
-}
-
-/** Draw surveyor neatline, double border, and corner GPS labels */
-function drawNeatlineAndTicks(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  bounds?: [[number, number], [number, number]]
-): void {
-  ctx.save();
-  const pad = 10;
-  const innerPad = 15;
-
-  // Outer border
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(pad, pad, width - pad * 2, height - pad * 2);
-
-  // Inner neatline
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-  ctx.lineWidth = 0.8;
-  ctx.strokeRect(innerPad, innerPad, width - innerPad * 2, height - innerPad * 2);
-
-  // Corner tick crosshairs
-  const tickLen = 6;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
-  ctx.lineWidth = 1;
-
-  const corners = [
-    { x: innerPad, y: innerPad, dx: 1, dy: 1 },
-    { x: width - innerPad, y: innerPad, dx: -1, dy: 1 },
-    { x: innerPad, y: height - innerPad, dx: 1, dy: -1 },
-    { x: width - innerPad, y: height - innerPad, dx: -1, dy: -1 },
-  ];
-  for (const c of corners) {
-    ctx.beginPath();
-    ctx.moveTo(c.x, c.y);
-    ctx.lineTo(c.x + c.dx * tickLen, c.y);
-    ctx.moveTo(c.x, c.y);
-    ctx.lineTo(c.x, c.y + c.dy * tickLen);
-    ctx.stroke();
-  }
-
-  // Corner coordinates if available
-  if (bounds) {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-    ctx.font = "8px ui-monospace, SFMono-Regular, Menlo, monospace";
-
-    // NW corner: top-left
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(`${bounds[1][0].toFixed(4)}° N, ${bounds[0][1].toFixed(4)}° E`, innerPad + 6, innerPad + 4);
-
-    // SE corner: bottom-right
-    ctx.textAlign = "right";
-    ctx.textBaseline = "bottom";
-    ctx.fillText(`${bounds[0][0].toFixed(4)}° S, ${bounds[1][1].toFixed(4)}° E`, width - innerPad - 6, height - innerPad - 4);
-  }
-
-  // Legal / Certification watermark footer line
-  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  ctx.font = "7.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(
-    "OFFICIAL SITESURVEYOR™ OBSERVATION SHEET  •  MULTI-SPECTRAL EO SCREENING  •  CONFIDENTIAL & PROPRIETARY",
-    width / 2,
-    height - 4
-  );
-
-  ctx.restore();
-}
-
-/**
- * Capture the current visible Leaflet map extent onto an HTML5 canvas
- * with complete surveyor cartographic elements: North arrow rose,
- * segmented graphic scale bar, title block, coordinate ticks, neatline, and legend.
- */
-export async function captureMapCanvas(
-  map: LeafletMap,
-  options: MapExportOptions = {}
-): Promise<HTMLCanvasElement> {
-  const container = map.getContainer();
-  const width = container.clientWidth || 800;
-  const height = container.clientHeight || 600;
-
-  // Determine optimal resolution from computer capabilities
-  const quality = detectOptimalQuality(options.dpr);
-  const dpr = quality.dpr;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(width * dpr);
-  canvas.height = Math.round(height * dpr);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not create canvas 2d context");
-
-  ctx.scale(dpr, dpr);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-
-  // 1. Base dark background
-  ctx.fillStyle = "#080c12";
-  ctx.fillRect(0, 0, width, height);
-
-  // 2. Draw map tiles and image overlays
-  const mapRect = container.getBoundingClientRect();
-  const images = Array.from(
-    container.querySelectorAll<HTMLImageElement>(
-      ".leaflet-pane img, .leaflet-overlay-pane img, .leaflet-marker-pane img"
-    )
-  );
-
-  for (const img of images) {
-    if (!img.complete || img.naturalWidth === 0) continue;
-    const rect = img.getBoundingClientRect();
-    const x = rect.left - mapRect.left;
-    const y = rect.top - mapRect.top;
-    const w = rect.width;
-    const h = rect.height;
-
-    // Boundary check
-    if (x + w <= 0 || y + h <= 0 || x >= width || y >= height) continue;
-
-    const drawable = await loadCleanDrawable(img);
-    if (!drawable) continue;
-
-    ctx.save();
-    const opacity = parseFloat(window.getComputedStyle(img).opacity || "1");
-    if (opacity < 1) ctx.globalAlpha = opacity;
-
-    try {
-      ctx.drawImage(drawable, x, y, w, h);
-    } catch {
-      // Ignore
-    }
-    ctx.restore();
-  }
-
-  // 3. Draw SVG overlays (AOI rectangle, candidate circles)
-  const svgs = Array.from(
-    container.querySelectorAll<SVGSVGElement>(".leaflet-overlay-pane svg")
-  );
-  for (const svg of svgs) {
-    const rect = svg.getBoundingClientRect();
-    const x = rect.left - mapRect.left;
-    const y = rect.top - mapRect.top;
-
-    try {
-      let xml = new XMLSerializer().serializeToString(svg);
-      if (!xml.includes("xmlns=")) {
-        xml = xml.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
-      }
-      const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
-      const img = new window.Image();
-      await new Promise<void>((resolve) => {
-        img.onload = () => {
-          ctx.drawImage(img, x, y, rect.width, rect.height);
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-        img.src = url;
-      });
-    } catch {
-      // Ignore SVG render errors
-    }
-  }
-
-  // 4. Draw Target Site Reticle Marker
-  if (options.target) {
-    try {
-      const pt = map.latLngToContainerPoint([options.target.latitude, options.target.longitude]);
-      if (pt.x >= -30 && pt.x <= width + 30 && pt.y >= -30 && pt.y <= height + 30) {
-        ctx.save();
-        // Red surveyor reticle
-        ctx.fillStyle = "#D14141";
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.strokeStyle = "#D14141";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(pt.x - 16, pt.y);
-        ctx.lineTo(pt.x + 16, pt.y);
-        ctx.moveTo(pt.x, pt.y - 16);
-        ctx.lineTo(pt.x, pt.y + 16);
-        ctx.stroke();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    } catch {
-      // Ignore coordinate conversion
-    }
-  }
-
-  // 5. Cartographic Title Block (top-left)
-  if (options.includeHeader !== false) {
-    ctx.save();
-    const boxW = Math.min(width - 48, 430);
-    const boxH = 62;
-    const boxX = 22;
-    const boxY = 22;
-
-    ctx.fillStyle = "rgba(11, 16, 24, 0.9)";
-    ctx.fillRect(boxX, boxY, boxW, boxH);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-    // Accent line on left
-    ctx.fillStyle = "#D14141";
-    ctx.fillRect(boxX, boxY, 3.5, boxH);
-
-    // Brand tag
-    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-    ctx.font = "bold 8.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("SITESURVEYOR™  •  EARTH OBSERVATION DOSSIER", boxX + 14, boxY + 16);
-
-    // Main Title
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(options.title || "Earth Observation Survey Sheet", boxX + 14, boxY + 36);
-
-    // Metadata line
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    ctx.font = "10.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    const subText = [
-      options.categoryName,
-      options.coords,
-      new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
-    ]
-      .filter(Boolean)
-      .join("  •  ");
-    ctx.fillText(subText, boxX + 14, boxY + 52);
-    ctx.restore();
-  }
-
-  // 6. North Arrow Compass Rose (top-right)
-  if (options.includeNorthArrow !== false) {
-    const roseRadius = 26;
-    const roseX = width - 48;
-    const roseY = 48;
-    drawCompassRose(ctx, roseX, roseY, roseRadius);
-  }
-
-  // 7. Graphic Segmented Scale Bar (bottom-left)
-  if (options.includeScaleBar !== false) {
-    const scaleX = 26;
-    const scaleY = height - 44;
-    const mpp = options.mpp || 1.2;
-    drawScaleBar(ctx, scaleX, scaleY, mpp, options.scale || "—");
-  }
-
-  // 8. Classified Potential Legend (bottom-right)
-  if (options.includeLegend !== false) {
-    ctx.save();
-    const legW = 160;
-    const legH = 135;
-    const legX = width - legW - 22;
-    const legY = height - legH - 24;
-
-    ctx.fillStyle = "rgba(11, 16, 24, 0.9)";
-    ctx.fillRect(legX, legY, legW, legH);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(legX, legY, legW, legH);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("CLASSIFIED POTENTIAL", legX + 12, legY + 18);
-
-    const classes = [
-      { color: "#1a9850", label: "Very High" },
-      { color: "#a6d96a", label: "High" },
-      { color: "#fdae61", label: "Moderate" },
-      { color: "#f46d43", label: "Low" },
-      { color: "#d73027", label: "Very Low" },
-    ];
-
-    let rowY = legY + 36;
-    for (const item of classes) {
-      ctx.fillStyle = item.color;
-      ctx.beginPath();
-      ctx.arc(legX + 16, rowY - 3, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
-      ctx.stroke();
-
-      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-      ctx.font = "10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      ctx.fillText(item.label, legX + 28, rowY);
-      rowY += 18;
-    }
-    ctx.restore();
-  }
-
-  // 9. Surveyor Neatline & Border (perimeter)
-  if (options.includeNeatline !== false) {
-    drawNeatlineAndTicks(ctx, width, height, options.bounds);
-  }
-
-  return canvas;
 }
 
 /** Trigger browser download for a Blob */
@@ -621,179 +112,1198 @@ export function downloadBlob(blob: Blob, filename: string): void {
   }, 1000);
 }
 
-/** Export current map view as a high-resolution PNG (fallback utility) */
-export async function exportMapAsPng(
-  map: LeafletMap,
-  filename = "sitesurveyor_map_extent.png",
-  options: MapExportOptions = {}
-): Promise<void> {
-  const canvas = await captureMapCanvas(map, options);
-  await new Promise<void>((resolve, reject) => {
-    try {
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          try {
-            const dataUrl = canvas.toDataURL("image/png");
-            const arr = dataUrl.split(",");
-            const bstr = atob(arr[1]);
-            let n = bstr.length;
-            const u8arr = new Uint8Array(n);
-            while (n--) {
-              u8arr[n] = bstr.charCodeAt(n);
-            }
-            const fallbackBlob = new Blob([u8arr], { type: "image/png" });
-            downloadBlob(fallbackBlob, filename);
-            resolve();
-          } catch (e) {
-            reject(new Error("Failed to produce PNG blob from canvas."));
-          }
-          return;
-        }
-        downloadBlob(blob, filename);
-        resolve();
-      }, "image/png");
-    } catch (err) {
-      reject(err);
-    }
-  });
+// ---------------------------------------------------------------------------
+// Pure sheet math (unit-tested)
+// ---------------------------------------------------------------------------
+
+/** Smallest tile zoom whose ground resolution is at least as fine as `neededMpp`. */
+export function chooseTileZoom(
+  centerLat: number,
+  neededMpp: number,
+  maxNativeZoom: number,
+): number {
+  const cap = Math.max(0, Math.min(22, Math.floor(maxNativeZoom)));
+  for (let z = 0; z <= cap; z += 1) {
+    if (metersPerPixel(centerLat, z) <= neededMpp) return z;
+  }
+  return cap;
+}
+
+export interface ProjectedPoint {
+  x: number;
+  y: number;
+}
+
+export interface ProjectedRect {
+  topLeft: ProjectedPoint;
+  bottomRight: ProjectedPoint;
 }
 
 /**
- * Generate a standard, ultra high-resolution PDF 1.4 survey map sheet.
- * Embeds the high-DPI rendered cartographic canvas with complete surveyor elements.
+ * Grow a projected rectangle symmetrically until it matches `aspect` (w/h),
+ * clamped to the tile world (0..worldPx). Used so the map area is filled with
+ * imagery instead of letterboxed.
  */
-export async function exportMapAsPdf(
-  map: LeafletMap,
-  filename = "sitesurveyor_map_extent.pdf",
-  options: MapExportOptions = {}
-): Promise<void> {
-  const canvas = await captureMapCanvas(map, options);
+export function expandBoundsToAspect(
+  topLeft: ProjectedPoint,
+  bottomRight: ProjectedPoint,
+  aspect: number,
+  worldPx: number,
+): ProjectedRect {
+  const w = Math.max(1, bottomRight.x - topLeft.x);
+  const h = Math.max(1, bottomRight.y - topLeft.y);
+  const cx = (topLeft.x + bottomRight.x) / 2;
+  const cy = (topLeft.y + bottomRight.y) / 2;
 
-  // Convert canvas to JPEG bytes at high quality (0.98)
-  let dataUrl: string;
+  const targetW = Math.max(w, h * aspect);
+  const targetH = Math.max(h, w / aspect);
+
+  let x0 = cx - targetW / 2;
+  let x1 = cx + targetW / 2;
+  let y0 = cy - targetH / 2;
+  let y1 = cy + targetH / 2;
+
+  if (x0 < 0) {
+    x1 -= x0;
+    x0 = 0;
+  }
+  if (x1 > worldPx) {
+    x0 -= x1 - worldPx;
+    x1 = worldPx;
+  }
+  if (y0 < 0) {
+    y1 -= y0;
+    y0 = 0;
+  }
+  if (y1 > worldPx) {
+    y0 -= y1 - worldPx;
+    y1 = worldPx;
+  }
+
+  // A continent-scale view can want more world than exists at this zoom; clamp
+  // rather than push the origin negative, where there are no tiles to draw.
+  x0 = Math.max(0, Math.min(x0, worldPx - 1));
+  y0 = Math.max(0, Math.min(y0, worldPx - 1));
+  x1 = Math.min(worldPx, Math.max(x1, x0 + 1));
+  y1 = Math.min(worldPx, Math.max(y1, y0 + 1));
+
+  return {
+    topLeft: { x: x0, y: y0 },
+    bottomRight: { x: Math.max(x0 + 1, x1), y: Math.max(y0 + 1, y1) },
+  };
+}
+
+const GRATICULE_STEPS = [
+  0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5,
+  1, 2, 5, 10, 20, 50, 100, 200,
+];
+
+function decimalsForStep(step: number): number {
+  if (step >= 1) return 0;
+  if (step >= 0.1) return 1;
+  if (step >= 0.01) return 2;
+  if (step >= 0.002) return 3;
+  return 4;
+}
+
+/** Graticule interval that yields roughly 4-7 labelled ticks across `spanDeg`. */
+export function niceGraticuleStep(
+  spanDeg: number,
+  maxTicks = 7,
+): { step: number; decimals: number } {
+  const span = Math.max(1e-6, Math.abs(spanDeg));
+  for (const step of GRATICULE_STEPS) {
+    if (span / step <= maxTicks) return { step, decimals: decimalsForStep(step) };
+  }
+  return { step: 10, decimals: 0 };
+}
+
+export function formatDeg(
+  value: number,
+  axis: "lat" | "lon",
+  decimals: number,
+): string {
+  const magnitude = Math.abs(value).toFixed(decimals);
+  const hemisphere =
+    axis === "lat" ? (value < 0 ? "S" : "N") : value < 0 ? "W" : "E";
+  return `${magnitude}°${hemisphere}`;
+}
+
+const SCALE_STEPS: number[] = (() => {
+  const steps: number[] = [];
+  for (let exp = 0; exp <= 7; exp += 1) {
+    for (const mantissa of [1, 2, 2.5, 5]) {
+      steps.push(mantissa * 10 ** exp);
+    }
+  }
+  return steps;
+})();
+
+/**
+ * Pick a round ground distance for the scale bar and return its exact printed
+ * length. The bar is never stretched: widthPt always corresponds to `meters`
+ * at the sheet's ground resolution.
+ */
+export function scaleBarLayout(
+  groundPerPt: number,
+  targetPt = 84,
+): { meters: number; widthPt: number } {
+  const ground = Math.max(1e-6, groundPerPt);
+  const raw = targetPt * ground;
+  let best = SCALE_STEPS[0];
+  let bestErr = Infinity;
+  for (const step of SCALE_STEPS) {
+    const err = Math.abs(Math.log(step / raw));
+    if (err < bestErr) {
+      bestErr = err;
+      best = step;
+    }
+  }
+  return { meters: best, widthPt: best / ground };
+}
+
+/** Representative-fraction denominator for ground metres per printed point. */
+export function representativeFraction(groundPerPt: number): number {
+  return Math.max(1, Math.round((groundPerPt * 72) / 0.0254));
+}
+
+export function formatMeters(meters: number): string {
+  if (meters >= 1000) {
+    const km = meters / 1000;
+    const digits = km >= 100 ? 0 : km >= 10 ? 1 : 2;
+    return `${km.toFixed(digits)} km`;
+  }
+  return `${meters % 1 === 0 ? meters.toFixed(0) : meters.toFixed(1)} m`;
+}
+
+// ---------------------------------------------------------------------------
+// Tile fetching and composition
+// ---------------------------------------------------------------------------
+
+type Drawable = ImageBitmap | HTMLImageElement;
+
+const TILE_SIZE = 256;
+const MAX_TILES = 512;
+const TILE_FETCH_CONCURRENCY = 8;
+const TILE_FETCH_TIMEOUT_MS = 15000;
+
+function tileUrlFor(template: string, x: number, y: number, z: number): string {
+  const subdomain = "abc"[Math.abs(x + y) % 3] ?? "a";
+  return template
+    .replace("{s}", subdomain)
+    .replace("{z}", String(z))
+    .replace("{x}", String(x))
+    .replace("{y}", String(y));
+}
+
+async function loadTileImage(url: string): Promise<Drawable | null> {
   try {
-    dataUrl = canvas.toDataURL("image/jpeg", 0.98);
-  } catch (err) {
+    const response = await fetch(url, {
+      mode: "cors",
+      credentials: "omit",
+      signal:
+        typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(TILE_FETCH_TIMEOUT_MS)
+          : undefined,
+    });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    if (typeof createImageBitmap === "function") {
+      try {
+        return await createImageBitmap(blob);
+      } catch {
+        // Fall through to the <img> path.
+      }
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    return await new Promise<HTMLImageElement | null>((resolve) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(null);
+      };
+      img.src = objectUrl;
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function mapInChunks<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (cursor < items.length) {
+        const index = cursor;
+        cursor += 1;
+        results[index] = await worker(items[index]);
+      }
+    },
+  );
+  await Promise.all(runners);
+  return results;
+}
+
+async function loadImageSmart(src: string): Promise<Drawable | null> {
+  if (src.startsWith("data:")) {
+    return await new Promise<HTMLImageElement | null>((resolve) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img.naturalWidth > 0 ? img : null);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+  return await loadTileImage(src);
+}
+
+interface RasterOverlaySpec {
+  src: string;
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+  opacity: number;
+}
+
+function collectRasterOverlays(map: LeafletMap): RasterOverlaySpec[] {
+  const overlays: RasterOverlaySpec[] = [];
+  map.eachLayer((layer) => {
+    if (!(layer instanceof LeafletImageOverlay)) return;
+    const element = layer.getElement() as HTMLImageElement | undefined;
+    const bounds = layer.getBounds();
+    if (!element?.src || !bounds) return;
+    overlays.push({
+      src: element.src,
+      south: bounds.getSouth(),
+      west: bounds.getWest(),
+      north: bounds.getNorth(),
+      east: bounds.getEast(),
+      opacity: layer.options.opacity ?? 1,
+    });
+  });
+  return overlays;
+}
+
+interface ComposeResult {
+  canvas: HTMLCanvasElement;
+  totalTiles: number;
+  missingTiles: number;
+  tileZoom: number;
+  sourceMpp: number;
+  canvasMpp: number;
+  groundWidthM: number;
+  groundHeightM: number;
+  north: number;
+  south: number;
+  west: number;
+  east: number;
+  upscale: number;
+  center: { latitude: number; longitude: number };
+  mapRef: LeafletMap;
+  originRef: ProjectedPoint;
+}
+
+interface ComposeInput {
+  map: LeafletMap;
+  mapWPx: number;
+  mapHPx: number;
+  tileUrlTemplate?: string;
+  maxNativeZoom: number;
+  overlays: RasterOverlaySpec[];
+}
+
+async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
+  const { map, mapWPx, mapHPx, maxNativeZoom } = input;
+
+  const center = map.getCenter();
+  const viewZoom = map.getZoom();
+  const viewBounds = map.getBounds();
+  const nwView = map.project(viewBounds.getNorthWest(), viewZoom);
+  const seView = map.project(viewBounds.getSouthEast(), viewZoom);
+  const viewGroundWidthM = Math.max(
+    1,
+    (seView.x - nwView.x) * metersPerPixel(center.lat, viewZoom),
+  );
+  const neededMpp = viewGroundWidthM / mapWPx;
+
+  const tileZoom = chooseTileZoom(center.lat, neededMpp, maxNativeZoom);
+  const sourceMpp = metersPerPixel(center.lat, tileZoom);
+
+  const worldPx = TILE_SIZE * 2 ** tileZoom;
+  const aspect = mapWPx / mapHPx;
+  const expanded = expandBoundsToAspect(
+    map.project(viewBounds.getNorthWest(), tileZoom),
+    map.project(viewBounds.getSouthEast(), tileZoom),
+    aspect,
+    worldPx,
+  );
+
+  const origin = expanded.topLeft;
+  const projW = expanded.bottomRight.x - origin.x;
+  const projH = expanded.bottomRight.y - origin.y;
+  // Above 1 means the source imagery is coarser than the sheet and is being
+  // interpolated; the sheet reports this instead of hiding it.
+  const scale = mapWPx / projW;
+  const canvasMpp = (projW * sourceMpp) / mapWPx;
+  const groundWidthM = projW * sourceMpp;
+  const groundHeightM = projH * sourceMpp;
+
+  const nwLatLng = map.unproject([origin.x, origin.y], tileZoom);
+  const seLatLng = map.unproject(
+    [expanded.bottomRight.x, expanded.bottomRight.y],
+    tileZoom,
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = mapWPx;
+  canvas.height = mapHPx;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not create the map render canvas.");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.fillStyle = "#0a0e14";
+  ctx.fillRect(0, 0, mapWPx, mapHPx);
+
+  const tileMinX = Math.max(0, Math.floor(origin.x / TILE_SIZE));
+  const tileMaxX = Math.min(
+    2 ** tileZoom - 1,
+    Math.floor((origin.x + projW) / TILE_SIZE),
+  );
+  const tileMinY = Math.max(0, Math.floor(origin.y / TILE_SIZE));
+  const tileMaxY = Math.min(
+    2 ** tileZoom - 1,
+    Math.floor((origin.y + projH) / TILE_SIZE),
+  );
+
+  const tiles: { x: number; y: number }[] = [];
+  for (let ty = tileMinY; ty <= tileMaxY; ty += 1) {
+    for (let tx = tileMinX; tx <= tileMaxX; tx += 1) {
+      tiles.push({ x: tx, y: ty });
+    }
+  }
+  if (!input.tileUrlTemplate) {
+    throw new Error("No basemap tile source is configured for the map sheet.");
+  }
+  if (tiles.length > MAX_TILES) {
     throw new Error(
-      "Failed to encode map image for PDF generation: " +
-        (err instanceof Error ? err.message : String(err))
+      `The current view needs ${tiles.length} map tiles, which is too many for one ` +
+        "sheet. Zoom in a little, then export again.",
     );
   }
 
-  const base64Data = dataUrl.split(",")[1];
-  if (!base64Data) {
-    throw new Error("Canvas did not produce valid image data.");
+  const template = input.tileUrlTemplate;
+  let missingTiles = 0;
+
+  await mapInChunks(tiles, TILE_FETCH_CONCURRENCY, async (tile) => {
+    // Direct tile first; on failure walk up to parent tiles and crop the
+    // quadrant, so one failed request never leaves a hole in the sheet.
+    const drawable = await loadTileImage(
+      tileUrlFor(template, tile.x, tile.y, tileZoom),
+    );
+    if (drawable) {
+      drawTile(ctx, drawable, tile.x, tile.y, origin, scale, mapWPx, mapHPx);
+      return;
+    }
+    let drew = false;
+    for (let p = 1; p <= 3 && tileZoom - p >= 0; p += 1) {
+      const q = 2 ** p;
+      const parent = await loadTileImage(
+        tileUrlFor(template, tile.x >> p, tile.y >> p, tileZoom - p),
+      );
+      if (!parent) continue;
+      const qx = tile.x & (q - 1);
+      const qy = tile.y & (q - 1);
+      const srcSize = TILE_SIZE / q;
+      ctx.drawImage(
+        parent,
+        qx * srcSize,
+        qy * srcSize,
+        srcSize,
+        srcSize,
+        (tile.x * TILE_SIZE - origin.x) * scale - 0.5,
+        (tile.y * TILE_SIZE - origin.y) * scale - 0.5,
+        TILE_SIZE * scale + 1,
+        TILE_SIZE * scale + 1,
+      );
+      drew = true;
+      break;
+    }
+    if (!drew) {
+      missingTiles += 1;
+      ctx.fillStyle = "#131a24";
+      ctx.fillRect(
+        (tile.x * TILE_SIZE - origin.x) * scale,
+        (tile.y * TILE_SIZE - origin.y) * scale,
+        TILE_SIZE * scale + 1,
+        TILE_SIZE * scale + 1,
+      );
+    }
+  });
+
+  if (tiles.length > 0 && missingTiles === tiles.length) {
+    throw new Error(
+      "No imagery could be loaded for the sheet. Check the connection and try again.",
+    );
   }
 
-  const binaryString = atob(base64Data);
-  const jpegBytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    jpegBytes[i] = binaryString.charCodeAt(i);
+  // Classified raster overlays from the live map, projected into the sheet.
+  for (const overlay of input.overlays) {
+    const drawable = await loadImageSmart(overlay.src);
+    if (!drawable) continue;
+    const nwP = projectToCanvas(map, overlay.north, overlay.west, tileZoom, origin, scale);
+    const seP = projectToCanvas(map, overlay.south, overlay.east, tileZoom, origin, scale);
+    const w = seP.x - nwP.x;
+    const h = seP.y - nwP.y;
+    if (w <= 0 || h <= 0) continue;
+    if (nwP.x >= mapWPx || nwP.y >= mapHPx || seP.x <= 0 || seP.y <= 0) continue;
+    ctx.save();
+    ctx.globalAlpha = overlay.opacity;
+    ctx.drawImage(drawable, nwP.x, nwP.y, w, h);
+    ctx.restore();
   }
 
-  // A4 Landscape dimensions in PDF points (72 points per inch: 842 x 595)
-  const pageWidth = 842;
-  const pageHeight = 595;
+  return {
+    canvas,
+    totalTiles: tiles.length,
+    missingTiles,
+    tileZoom,
+    sourceMpp,
+    canvasMpp,
+    groundWidthM,
+    groundHeightM,
+    north: nwLatLng.lat,
+    south: seLatLng.lat,
+    west: nwLatLng.lng,
+    east: seLatLng.lng,
+    upscale: scale,
+    center: { latitude: center.lat, longitude: center.lng },
+    mapRef: map,
+    originRef: origin,
+  };
+}
 
-  // Fit image into printable area with margins
-  const margin = 20;
-  const maxWidth = pageWidth - margin * 2;
-  const maxHeight = pageHeight - margin * 2;
+function drawTile(
+  ctx: CanvasRenderingContext2D,
+  drawable: Drawable,
+  tx: number,
+  ty: number,
+  origin: ProjectedPoint,
+  scale: number,
+  mapWPx: number,
+  mapHPx: number,
+): void {
+  const dx = (tx * TILE_SIZE - origin.x) * scale;
+  const dy = (ty * TILE_SIZE - origin.y) * scale;
+  const dw = TILE_SIZE * scale;
+  if (dx >= mapWPx || dy >= mapHPx || dx + dw <= 0 || dy + dw <= 0) return;
+  // Half-pixel overlap so antialiasing cannot open seams between tiles.
+  ctx.drawImage(drawable, dx - 0.5, dy - 0.5, dw + 1, dw + 1);
+}
 
-  const imgAspect = canvas.width / canvas.height;
-  let renderWidth = maxWidth;
-  let renderHeight = renderWidth / imgAspect;
+function projectToCanvas(
+  map: LeafletMap,
+  lat: number,
+  lng: number,
+  tileZoom: number,
+  origin: ProjectedPoint,
+  scale: number,
+): ProjectedPoint {
+  const p = map.project([lat, lng], tileZoom);
+  return { x: (p.x - origin.x) * scale, y: (p.y - origin.y) * scale };
+}
 
-  if (renderHeight > maxHeight) {
-    renderHeight = maxHeight;
-    renderWidth = renderHeight * imgAspect;
+// ---------------------------------------------------------------------------
+// PDF sheet
+// ---------------------------------------------------------------------------
+
+const INK = rgb(0.09, 0.12, 0.17);
+const INK_SOFT = rgb(0.42, 0.47, 0.54);
+const PAPER = rgb(0.976, 0.98, 0.988);
+const PAPER_LINE = rgb(0.78, 0.81, 0.85);
+const ACCENT = rgb(0.82, 0.25, 0.25);
+const GRID_LINE = rgb(0.72, 0.76, 0.8);
+const CHIP_BG = rgb(0.04, 0.055, 0.08);
+
+function yFlip(yTop: number): number {
+  return SHEET.heightPt - yTop;
+}
+
+/** Standard fonts cannot encode characters outside WinAnsi; drop the rest. */
+function safeText(value: string): string {
+  return value
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^\x20-\x7E\u00B0\u2022\u2122\u00B7]/g, "");
+}
+
+interface SheetCtx {
+  page: PDFPage;
+  font: PDFFont;
+  bold: PDFFont;
+}
+
+function drawTextLine(
+  ctx: SheetCtx,
+  text: string,
+  x: number,
+  yTop: number,
+  size: number,
+  options: { font?: PDFFont; color?: ReturnType<typeof rgb> } = {},
+): number {
+  const font = options.font ?? ctx.font;
+  const clean = safeText(text);
+  ctx.page.drawText(clean, {
+    x,
+    y: yFlip(yTop + size * 0.78),
+    size,
+    font,
+    color: options.color ?? INK,
+  });
+  return font.widthOfTextAtSize(clean, size);
+}
+
+function wrapText(
+  ctx: SheetCtx,
+  text: string,
+  size: number,
+  maxWidth: number,
+  font: PDFFont,
+  maxLines = 3,
+): string[] {
+  const words = safeText(text).split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      line = candidate;
+      continue;
+    }
+    if (line) lines.push(line);
+    line = word;
+    if (lines.length === maxLines) break;
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  if (lines.length === maxLines && words.length) {
+    const consumed = lines.join(" ").split(/\s+/).length;
+    if (consumed < words.length) {
+      let last = lines[maxLines - 1];
+      while (
+        font.widthOfTextAtSize(`${last}...`, size) > maxWidth &&
+        last.length > 1
+      ) {
+        last = last.slice(0, -1);
+      }
+      lines[maxLines - 1] = `${last}...`;
+    }
+  }
+  return lines;
+}
+
+interface PanelData {
+  includeHeader: boolean;
+  title: string;
+  client: string;
+  categoryName: string;
+  coords: string;
+  coverageText: string;
+  imageryText: string;
+  scaleText: string;
+  sheetNo: string;
+  generatedText: string;
+  includeLegend: boolean;
+  legendTitle: string;
+  legendItems: SheetLegendItem[];
+  includeScaleBar: boolean;
+  scaleBarMeters: number;
+  scaleBarWidthPt: number;
+  includeNorthArrow: boolean;
+  footerText: string;
+}
+
+function drawPanelDivider(ctx: SheetCtx, innerX: number, innerW: number, y: number): void {
+  ctx.page.drawLine({
+    start: { x: innerX, y: yFlip(y) },
+    end: { x: innerX + innerW, y: yFlip(y) },
+    thickness: 0.5,
+    color: PAPER_LINE,
+  });
+}
+
+function hexToPdfRgb(hex: string): ReturnType<typeof rgb> | null {
+  const clean = hex.trim().replace(/^#/, "");
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return null;
+  const value = Number.parseInt(clean, 16);
+  return rgb(
+    ((value >> 16) & 0xff) / 255,
+    ((value >> 8) & 0xff) / 255,
+    (value & 0xff) / 255,
+  );
+}
+
+function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void {
+  const { page } = ctx;
+  const px = mapRect.x + mapRect.w + SHEET.panelGapPt;
+  const pw = SHEET.panelWidthPt;
+  const ph = mapRect.h;
+  const innerX = px + 14;
+  const innerW = pw - 28;
+  const bottomLimit = mapRect.y + ph - 78;
+
+  page.drawRectangle({
+    x: px,
+    y: yFlip(mapRect.y + ph),
+    width: pw,
+    height: ph,
+    color: PAPER,
+    borderColor: PAPER_LINE,
+    borderWidth: 0.8,
+  });
+
+  let y = mapRect.y + 20;
+
+  page.drawRectangle({
+    x: px + 0.8,
+    y: yFlip(y - 4),
+    width: 2.6,
+    height: 26,
+    color: ACCENT,
+  });
+  drawTextLine(ctx, "SITESURVEYOR™", innerX, y, 9.5, { font: ctx.bold });
+  drawTextLine(ctx, "EARTH OBSERVATION MAP SHEET", innerX, y + 13, 5.6, {
+    color: INK_SOFT,
+  });
+  y += 36;
+  drawPanelDivider(ctx, innerX, innerW, y);
+  y += 12;
+
+  if (data.includeHeader) {
+    const titleLines = wrapText(ctx, data.title, 12, innerW, ctx.bold, 3);
+    for (const line of titleLines) {
+      drawTextLine(ctx, line, innerX, y, 12, { font: ctx.bold });
+      y += 14.5;
+    }
+    y += 6;
+    drawPanelDivider(ctx, innerX, innerW, y);
+    y += 10;
+
+    const metaRows: { label: string; value: string }[] = [
+      { label: "CLIENT", value: data.client },
+      { label: "SURVEY DOMAIN", value: data.categoryName },
+      { label: "CENTRE", value: data.coords },
+      { label: "SHEET COVERAGE", value: data.coverageText },
+      { label: "DATUM", value: "WGS 84 / Web Mercator" },
+      { label: "IMAGERY", value: data.imageryText },
+      { label: "PRINT SCALE", value: data.scaleText },
+      { label: "SHEET NO.", value: data.sheetNo },
+      { label: "GENERATED", value: data.generatedText },
+    ];
+    for (const row of metaRows) {
+      drawTextLine(ctx, row.label, innerX, y, 5.8, { color: INK_SOFT });
+      y += 8.5;
+      const valueLines = wrapText(ctx, row.value, 8.3, innerW, ctx.font, 2);
+      for (const line of valueLines) {
+        drawTextLine(ctx, line, innerX, y, 8.3);
+        y += 10.5;
+      }
+      y += 5;
+    }
+    y += 3;
+    drawPanelDivider(ctx, innerX, innerW, y);
+    y += 11;
   }
 
-  const renderX = margin + (maxWidth - renderWidth) / 2;
-  const renderY = margin + (maxHeight - renderHeight) / 2;
+  if (data.includeLegend && data.legendItems.length > 0 && y < bottomLimit) {
+    drawTextLine(ctx, data.legendTitle.toUpperCase(), innerX, y, 7, {
+      font: ctx.bold,
+    });
+    y += 13;
+    for (const item of data.legendItems) {
+      const color = hexToPdfRgb(item.color);
+      if (color) {
+        page.drawCircle({
+          x: innerX + 3.4,
+          y: yFlip(y + 3.2),
+          size: 2.9,
+          color,
+          borderColor: rgb(0.15, 0.18, 0.22),
+          borderWidth: 0.4,
+        });
+      }
+      drawTextLine(ctx, item.label, innerX + 11, y, 8);
+      y += 13.5;
+    }
+    y += 8;
+    drawPanelDivider(ctx, innerX, innerW, y);
+    y += 11;
+  }
 
-  // Build standard PDF 1.4 binary structure with LF linefeeds
-  const nl = "\n";
-  const header = "%PDF-1.4" + nl + "%\xE2\xE3\xCF\xD3" + nl;
+  if (data.includeScaleBar && y < bottomLimit) {
+    drawTextLine(ctx, "SCALE BAR", innerX, y, 7, { font: ctx.bold });
+    y += 12;
+    const segments = 4;
+    const segW = data.scaleBarWidthPt / segments;
+    for (let i = 0; i < segments; i += 1) {
+      page.drawRectangle({
+        x: innerX + i * segW,
+        y: yFlip(y + 6),
+        width: segW,
+        height: 6,
+        color: i % 2 === 0 ? INK : PAPER,
+        borderColor: INK,
+        borderWidth: 0.7,
+      });
+    }
+    drawTextLine(ctx, "0", innerX - 2, y + 8.5, 6, { color: INK_SOFT });
+    const midLabel = formatMeters(data.scaleBarMeters / 2);
+    const midW = ctx.font.widthOfTextAtSize(midLabel, 6);
+    drawTextLine(ctx, midLabel, innerX + data.scaleBarWidthPt / 2 - midW / 2, y + 8.5, 6, {
+      color: INK_SOFT,
+    });
+    const fullLabel = formatMeters(data.scaleBarMeters);
+    const fullW = ctx.font.widthOfTextAtSize(fullLabel, 6);
+    drawTextLine(
+      ctx,
+      fullLabel,
+      innerX + data.scaleBarWidthPt - fullW + 2,
+      y + 8.5,
+      6,
+      { color: INK_SOFT },
+    );
+    y += 17;
+    drawTextLine(ctx, data.scaleText, innerX, y, 6, { color: INK_SOFT });
+    y += 14;
+    drawPanelDivider(ctx, innerX, innerW, y);
+    y += 11;
+  }
 
-  const obj1 = "1 0 obj" + nl + "<< /Type /Catalog /Pages 2 0 R >>" + nl + "endobj" + nl;
-  const obj2 = "2 0 obj" + nl + "<< /Type /Pages /Kids [3 0 R] /Count 1 >>" + nl + "endobj" + nl;
-  const obj3 =
-    "3 0 obj" + nl +
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
-    "/Contents 4 0 R /Resources << /XObject << /Im0 5 0 R >> /ProcSet [/PDF /ImageC] >> >>" + nl +
-    "endobj" + nl;
+  if (data.includeNorthArrow && y < bottomLimit) {
+    drawTextLine(ctx, "ORIENTATION", innerX, y, 7, { font: ctx.bold });
+    y += 12;
+    const cx = innerX + 18;
+    const cy = y + 24;
+    page.drawCircle({
+      x: cx,
+      y: yFlip(cy),
+      size: 16,
+      borderColor: INK_SOFT,
+      borderWidth: 0.7,
+    });
+    // Needle: dark west half, white east half, tip at the top of the sheet.
+    page.drawSvgPath("M 0 -15 L -5.5 11 L 0 7 Z", {
+      x: cx,
+      y: yFlip(cy),
+      color: INK,
+    });
+    page.drawSvgPath("M 0 -15 L 5.5 11 L 0 7 Z", {
+      x: cx,
+      y: yFlip(cy),
+      color: PAPER,
+      borderColor: INK,
+      borderWidth: 0.6,
+    });
+    drawTextLine(ctx, "N", cx - 2.4, cy - 30, 8, { font: ctx.bold });
+    const noteLines = wrapText(
+      ctx,
+      "Map top is grid north. Web Mercator projection; convergence ignored at this scale.",
+      5.8,
+      innerW - 48,
+      ctx.font,
+      4,
+    );
+    let noteY = y + 4;
+    for (const line of noteLines) {
+      drawTextLine(ctx, line, innerX + 48, noteY, 5.8, { color: INK_SOFT });
+      noteY += 7.5;
+    }
+    y += 52;
+  }
 
-  const streamContent = `q${nl}${renderWidth.toFixed(2)} 0 0 ${renderHeight.toFixed(2)} ${renderX.toFixed(2)} ${renderY.toFixed(2)} cm${nl}/Im0 Do${nl}Q${nl}`;
-  const obj4 = "4 0 obj" + nl + `<< /Length ${streamContent.length} >>` + nl + "stream" + nl + streamContent + "endstream" + nl + "endobj" + nl;
+  const footerLines = wrapText(ctx, data.footerText, 5.6, innerW, ctx.font, 4);
+  let footerY = mapRect.y + ph - 12 - (footerLines.length - 1) * 7.5;
+  for (const line of footerLines) {
+    drawTextLine(ctx, line, innerX, footerY, 5.6, { color: INK_SOFT });
+    footerY += 7.5;
+  }
+}
 
-  const imageObjHeader =
-    "5 0 obj" + nl +
-    `<< /Type /XObject /Subtype /Image /Width ${canvas.width} ` +
-    `/Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 ` +
-    `/Filter /DCTDecode /Length ${jpegBytes.length} >>` + nl +
-    "stream" + nl;
-  const imageObjFooter = nl + "endstream" + nl + "endobj" + nl;
+function tickValues(min: number, max: number, step: number): number[] {
+  const ticks: number[] = [];
+  const eps = step * 1e-6;
+  const start = Math.ceil((min + eps) / step) * step;
+  for (let value = start; value <= max - eps; value += step) {
+    ticks.push(Number(value.toFixed(6)));
+  }
+  return ticks;
+}
 
-  // Calculate offsets for cross-reference table (xref)
-  const enc = new TextEncoder();
-  const hBytes = enc.encode(header);
-  const o1Bytes = enc.encode(obj1);
-  const o2Bytes = enc.encode(obj2);
-  const o3Bytes = enc.encode(obj3);
-  const o4Bytes = enc.encode(obj4);
-  const imgHBytes = enc.encode(imageObjHeader);
-  const imgFBytes = enc.encode(imageObjFooter);
+function drawMapFurniture(
+  ctx: SheetCtx,
+  mapRect: SheetMapRect,
+  compose: ComposeResult,
+  options: MapExportOptions,
+): void {
+  const { page, font, bold } = ctx;
+  const { canvas, mapRef, originRef, upscale } = compose;
+  const ptPerPx = mapRect.w / canvas.width;
+  const toPtX = (xPx: number) => mapRect.x + xPx * ptPerPx;
+  const toPtY = (yPx: number) => mapRect.y + yPx * ptPerPx;
 
-  const off1 = hBytes.length;
-  const off2 = off1 + o1Bytes.length;
-  const off3 = off2 + o2Bytes.length;
-  const off4 = off3 + o3Bytes.length;
-  const off5 = off4 + o4Bytes.length;
+  // Frame: dark outer rule, white inner rule readable on imagery.
+  page.drawRectangle({
+    x: mapRect.x,
+    y: yFlip(mapRect.y + mapRect.h),
+    width: mapRect.w,
+    height: mapRect.h,
+    borderColor: rgb(0.08, 0.1, 0.13),
+    borderWidth: 1.2,
+  });
+  page.drawRectangle({
+    x: mapRect.x + 2.5,
+    y: yFlip(mapRect.y + mapRect.h - 2.5),
+    width: mapRect.w - 5,
+    height: mapRect.h - 5,
+    borderColor: rgb(1, 1, 1),
+    borderWidth: 0.5,
+  });
 
-  const endOf5 = off5 + imgHBytes.length + jpegBytes.length + imgFBytes.length;
+  if (options.includeNeatline !== false) {
+    // Graticule: light lines across the imagery, ticks on the frame, labels in
+    // dark chips just inside the edge (the page margin is too slim for labels).
+    const latGrid = niceGraticuleStep(compose.north - compose.south);
+    const lngGrid = niceGraticuleStep(compose.east - compose.west);
+    const centerLng = (compose.west + compose.east) / 2;
+    const centerLat = (compose.north + compose.south) / 2;
 
-  const xref =
-    "xref" + nl +
-    "0 6" + nl +
-    "0000000000 65535 f " + nl +
-    `${String(off1).padStart(10, "0")} 00000 n ` + nl +
-    `${String(off2).padStart(10, "0")} 00000 n ` + nl +
-    `${String(off3).padStart(10, "0")} 00000 n ` + nl +
-    `${String(off4).padStart(10, "0")} 00000 n ` + nl +
-    `${String(off5).padStart(10, "0")} 00000 n ` + nl;
+    for (const lat of tickValues(compose.south, compose.north, latGrid.step)) {
+      const p = projectToCanvas(mapRef, lat, centerLng, compose.tileZoom, originRef, upscale);
+      if (p.y < 0 || p.y > canvas.height) continue;
+      const yPt = toPtY(p.y);
+      page.drawLine({
+        start: { x: mapRect.x, y: yFlip(yPt) },
+        end: { x: mapRect.x + mapRect.w, y: yFlip(yPt) },
+        thickness: 0.35,
+        color: GRID_LINE,
+        opacity: 0.45,
+      });
+      page.drawLine({
+        start: { x: mapRect.x - 4, y: yFlip(yPt) },
+        end: { x: mapRect.x + 4, y: yFlip(yPt) },
+        thickness: 0.8,
+        color: rgb(1, 1, 1),
+      });
+      const label = formatDeg(lat, "lat", latGrid.decimals);
+      const chipW = font.widthOfTextAtSize(label, 5.2) + 6;
+      page.drawRectangle({
+        x: mapRect.x + 5,
+        y: yFlip(yPt + 4.5),
+        width: chipW,
+        height: 9,
+        color: CHIP_BG,
+        opacity: 0.72,
+      });
+      drawTextLine(ctx, label, mapRect.x + 8, yPt - 4.4, 5.2, {
+        color: rgb(1, 1, 1),
+      });
+    }
 
-  const trailer =
-    "trailer" + nl +
-    "<< /Size 6 /Root 1 0 R >>" + nl +
-    "startxref" + nl +
-    `${endOf5}` + nl +
-    "%%EOF" + nl;
-  const trailerBytes = enc.encode(xref + trailer);
+    for (const lng of tickValues(compose.west, compose.east, lngGrid.step)) {
+      const p = projectToCanvas(mapRef, centerLat, lng, compose.tileZoom, originRef, upscale);
+      if (p.x < 0 || p.x > canvas.width) continue;
+      const xPt = toPtX(p.x);
+      page.drawLine({
+        start: { x: xPt, y: yFlip(mapRect.y) },
+        end: { x: xPt, y: yFlip(mapRect.y + mapRect.h) },
+        thickness: 0.35,
+        color: GRID_LINE,
+        opacity: 0.45,
+      });
+      page.drawLine({
+        start: { x: xPt, y: yFlip(mapRect.y - 4) },
+        end: { x: xPt, y: yFlip(mapRect.y + 4) },
+        thickness: 0.8,
+        color: rgb(1, 1, 1),
+      });
+      const label = formatDeg(lng, "lon", lngGrid.decimals);
+      const chipW = font.widthOfTextAtSize(label, 5.2) + 6;
+      page.drawRectangle({
+        x: xPt - chipW / 2,
+        y: yFlip(mapRect.y + 14.5),
+        width: chipW,
+        height: 9,
+        color: CHIP_BG,
+        opacity: 0.72,
+      });
+      const labelW = font.widthOfTextAtSize(label, 5.2);
+      drawTextLine(ctx, label, xPt - labelW / 2, mapRect.y + 5.6, 5.2, {
+        color: rgb(1, 1, 1),
+      });
+    }
 
-  // Combine into single Uint8Array
-  const totalLength = endOf5 + trailerBytes.length;
-  const pdfBuffer = new Uint8Array(totalLength);
+    if (options.aoiBounds) {
+      const [[south, west], [north, east]] = options.aoiBounds;
+      const nwP = projectToCanvas(mapRef, north, west, compose.tileZoom, originRef, upscale);
+      const seP = projectToCanvas(mapRef, south, east, compose.tileZoom, originRef, upscale);
+      const x = Math.max(mapRect.x, toPtX(nwP.x));
+      const yTop = Math.max(mapRect.y, toPtY(nwP.y));
+      const x1 = Math.min(mapRect.x + mapRect.w, toPtX(seP.x));
+      const y1 = Math.min(mapRect.y + mapRect.h, toPtY(seP.y));
+      if (x1 > x && y1 > yTop) {
+        page.drawRectangle({
+          x,
+          y: yFlip(y1),
+          width: x1 - x,
+          height: y1 - yTop,
+          borderColor: ACCENT,
+          borderWidth: 1,
+          borderDashArray: [4, 3],
+        });
+      }
+    }
+  }
 
-  let cursor = 0;
-  pdfBuffer.set(hBytes, cursor);
-  cursor += hBytes.length;
-  pdfBuffer.set(o1Bytes, cursor);
-  cursor += o1Bytes.length;
-  pdfBuffer.set(o2Bytes, cursor);
-  cursor += o2Bytes.length;
-  pdfBuffer.set(o3Bytes, cursor);
-  cursor += o3Bytes.length;
-  pdfBuffer.set(o4Bytes, cursor);
-  cursor += o4Bytes.length;
-  pdfBuffer.set(imgHBytes, cursor);
-  cursor += imgHBytes.length;
-  pdfBuffer.set(jpegBytes, cursor);
-  cursor += jpegBytes.length;
-  pdfBuffer.set(imgFBytes, cursor);
-  cursor += imgFBytes.length;
-  pdfBuffer.set(trailerBytes, cursor);
+  for (const candidate of options.candidates ?? []) {
+    const p = projectToCanvas(
+      mapRef,
+      candidate.latitude,
+      candidate.longitude,
+      compose.tileZoom,
+      originRef,
+      upscale,
+    );
+    const x = toPtX(p.x);
+    const yPt = toPtY(p.y);
+    if (
+      x < mapRect.x + 3 ||
+      x > mapRect.x + mapRect.w - 3 ||
+      yPt < mapRect.y + 3 ||
+      yPt > mapRect.y + mapRect.h - 3
+    ) {
+      continue;
+    }
+    page.drawCircle({
+      x,
+      y: yFlip(yPt),
+      size: 2.1,
+      color: hexToPdfRgb(candidate.color ?? "#D14141") ?? ACCENT,
+      borderColor: rgb(1, 1, 1),
+      borderWidth: 0.6,
+    });
+  }
 
-  const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
-  downloadBlob(pdfBlob, filename);
+  if (options.target) {
+    const p = projectToCanvas(
+      mapRef,
+      options.target.latitude,
+      options.target.longitude,
+      compose.tileZoom,
+      originRef,
+      upscale,
+    );
+    const x = toPtX(p.x);
+    const yPt = toPtY(p.y);
+    if (
+      x >= mapRect.x - 10 &&
+      x <= mapRect.x + mapRect.w + 10 &&
+      yPt >= mapRect.y - 10 &&
+      yPt <= mapRect.y + mapRect.h + 10
+    ) {
+      page.drawCircle({
+        x,
+        y: yFlip(yPt),
+        size: 4.6,
+        color: ACCENT,
+        borderColor: rgb(1, 1, 1),
+        borderWidth: 1,
+      });
+      const crossArms: [number, number, number, number][] = [
+        [-9, 0, -3.5, 0],
+        [3.5, 0, 9, 0],
+        [0, -9, 0, -3.5],
+        [0, 3.5, 0, 9],
+      ];
+      for (const [dx0, dy0, dx1, dy1] of crossArms) {
+        page.drawLine({
+          start: { x: x + dx0, y: yFlip(yPt + dy0) },
+          end: { x: x + dx1, y: yFlip(yPt + dy1) },
+          thickness: 1.1,
+          color: ACCENT,
+        });
+      }
+      page.drawCircle({ x, y: yFlip(yPt), size: 1.1, color: rgb(1, 1, 1) });
+    }
+  }
+
+  const attribution = safeText(options.attribution ?? "");
+  if (attribution) {
+    const size = 5;
+    const chipW = font.widthOfTextAtSize(attribution, size) + 8;
+    page.drawRectangle({
+      x: mapRect.x + mapRect.w - chipW - 4,
+      y: yFlip(mapRect.y + mapRect.h - 12),
+      width: chipW,
+      height: 9.5,
+      color: CHIP_BG,
+      opacity: 0.72,
+    });
+    drawTextLine(
+      ctx,
+      attribution,
+      mapRect.x + mapRect.w - chipW + 0.5,
+      mapRect.y + mapRect.h - 10.6,
+      size,
+      { color: rgb(1, 1, 1) },
+    );
+  }
+
+  if (compose.missingTiles > 0) {
+    const label = `${compose.missingTiles} of ${compose.totalTiles} tiles unavailable`;
+    const size = 5.5;
+    const chipW = bold.widthOfTextAtSize(label, size) + 10;
+    page.drawRectangle({
+      x: mapRect.x + 4,
+      y: yFlip(mapRect.y + mapRect.h - 13),
+      width: chipW,
+      height: 10,
+      color: rgb(0.85, 0.55, 0.1),
+      opacity: 0.85,
+    });
+    drawTextLine(ctx, label, mapRect.x + 9, mapRect.y + mapRect.h - 11.4, size, {
+      font: bold,
+      color: rgb(1, 1, 1),
+    });
+  }
+}
+
+/**
+ * Generate a standard A4 landscape map sheet as vector PDF.
+ *
+ * Imagery is fetched tile-by-tile for the current view at the paper's true
+ * resolution (never a screenshot of the screen), the classified raster is
+ * composited from the live map, and every cartographic element — graticule,
+ * scale bar, legend, title block, north arrow, attribution — is drawn as PDF
+ * vectors so text stays crisp at any zoom.
+ */
+export async function exportMapAsPdf(
+  map: LeafletMap,
+  filename = "sitesurveyor_map_sheet.pdf",
+  options: MapExportOptions = {},
+): Promise<void> {
+  if (!map) throw new Error("Map view is not ready yet. Please wait and try again.");
+
+  const quality = detectOptimalQuality();
+  const dpi = Math.max(96, Math.min(320, Math.round(options.dpi ?? quality.dpi)));
+  const mapRect = sheetMapRect();
+  const mapWPx = Math.round((mapRect.w / 72) * dpi);
+  const mapHPx = Math.round((mapRect.h / 72) * dpi);
+
+  const overlays = collectRasterOverlays(map);
+  const compose = await composeImagery({
+    map,
+    mapWPx,
+    mapHPx,
+    tileUrlTemplate: options.tileUrlTemplate,
+    maxNativeZoom: options.maxNativeZoom ?? 19,
+    overlays,
+  });
+
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage([SHEET.widthPt, SHEET.heightPt]);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const ctx: SheetCtx = { page, font, bold };
+
+  const pngBytes = await canvasToPngBytes(compose.canvas);
+  const image = await pdf.embedPng(pngBytes);
+  page.drawImage(image, {
+    x: mapRect.x,
+    y: yFlip(mapRect.y + mapRect.h),
+    width: mapRect.w,
+    height: mapRect.h,
+  });
+
+  drawMapFurniture(ctx, mapRect, compose, options);
+
+  const groundPerPt = compose.groundWidthM / mapRect.w;
+  const rf = representativeFraction(groundPerPt);
+  const bar = scaleBarLayout(groundPerPt);
+  const sheetMppText =
+    compose.canvasMpp < 10 ? compose.canvasMpp.toFixed(2) : compose.canvasMpp.toFixed(1);
+  const srcMppText =
+    compose.sourceMpp < 10 ? compose.sourceMpp.toFixed(2) : compose.sourceMpp.toFixed(1);
+  const upscaledNote =
+    compose.upscale > 1.02 ? ` (upscaled x${compose.upscale.toFixed(1)})` : "";
+
+  const now = new Date();
+  const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(
+    now.getDate(),
+  ).padStart(2, "0")}`;
+  const sheetNo = `EO-${dateStamp}-${String(now.getHours()).padStart(2, "0")}${String(
+    now.getMinutes(),
+  ).padStart(2, "0")}`;
+  const generatedText = now.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  drawPanel(ctx, mapRect, {
+    includeHeader: options.includeHeader !== false,
+    title: options.title || "Earth Observation Survey Sheet",
+    client: options.client || "Site Survey",
+    categoryName: options.categoryName || "Earth Observation",
+    coords: options.coords || "—",
+    coverageText: `${formatMeters(compose.groundWidthM)} E-W x ${formatMeters(
+      compose.groundHeightM,
+    )} N-S`,
+    imageryText: `z${compose.tileZoom} · ~${srcMppText} m/px source · sheet ~${sheetMppText} m/px${upscaledNote}`,
+    scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
+    sheetNo,
+    generatedText,
+    includeLegend: options.includeLegend !== false,
+    legendTitle: options.legendTitle || "Classified Potential",
+    legendItems: options.legendItems ?? [],
+    includeScaleBar: options.includeScaleBar !== false,
+    scaleBarMeters: bar.meters,
+    scaleBarWidthPt: bar.widthPt,
+    includeNorthArrow: options.includeNorthArrow !== false,
+    footerText:
+      `Confidential & proprietary. Generated by SiteSurveyor on ${generatedText}. ` +
+      (options.attribution ? `${options.attribution}.` : ""),
+  });
+
+  pdf.setTitle(safeText(options.title || "Earth Observation Survey Sheet"));
+  pdf.setAuthor("SiteSurveyor");
+  pdf.setSubject("Earth Observation Map Sheet");
+  pdf.setCreator("SiteSurveyor");
+
+  const bytes = await pdf.save();
+  downloadBlob(new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), filename);
+}
+
+async function canvasToPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {
+  const blob = await new Promise<Blob | null>((resolve) => {
+    try {
+      canvas.toBlob(resolve, "image/png");
+    } catch {
+      resolve(null);
+    }
+  });
+  if (blob) return new Uint8Array(await blob.arrayBuffer());
+
+  const dataUrl = canvas.toDataURL("image/png");
+  const binary = atob(dataUrl.split(",")[1] ?? "");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
