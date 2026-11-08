@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
-import { Check, Download, FileText, Loader, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Check, Download, FileText, Loader, X } from "lucide-react";
 import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 import type { MapViewInfo } from "./SurveyMap.tsx";
 import {
-  detectOptimalQuality,
   exportMapAsPdf,
   type MapExportOptions,
   type SheetLegendItem,
@@ -104,8 +103,6 @@ export default function MapExportModal({
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const quality = useMemo(() => detectOptimalQuality(), []);
-
   const extentHintKm = useMemo(() => {
     if (!aoiBounds) return null;
     const [[s, w], [n, e]] = aoiBounds;
@@ -186,12 +183,9 @@ export default function MapExportModal({
             </div>
             <div>
               <h3 id="export-modal-title" className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <span>Export Official Survey Map Sheet</span>
+                <span>Export Map Sheet</span>
                 <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">PDF</span>
               </h3>
-              <p className="text-[11px] text-muted-foreground">
-                Full survey area with context, vector A4 sheet — graticule, legend, scale bar &amp; depths
-              </p>
             </div>
           </div>
           <button
@@ -205,37 +199,6 @@ export default function MapExportModal({
         </div>
 
         <div className="mt-4 space-y-3.5">
-          {/* Quality detection callout */}
-          <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
-            <div className="flex items-center gap-2 text-foreground font-medium">
-              <Sparkles className="size-3.5 text-primary shrink-0" />
-              <span>Print Resolution:</span>
-              <strong className="text-primary">{quality.label}</strong>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <ShieldCheck className="size-3 text-success" />
-              <span>Vector Annotations</span>
-            </div>
-          </div>
-
-          {/* View extent details */}
-          <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
-            <div className="flex justify-between text-muted-foreground">
-              <span>Zoom &amp; Scale:</span>
-              <span className="font-mono font-medium text-foreground">Zoom {viewInfo.zoom} ({viewInfo.scale})</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Center GPS:</span>
-              <span className="font-mono text-foreground truncate max-w-[260px]">
-                {viewInfo.coords || `${target.latitude.toFixed(4)}°, ${target.longitude.toFixed(4)}°`}
-              </span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Survey Domain:</span>
-              <span className="font-medium text-foreground">{categoryName}</span>
-            </div>
-          </div>
-
           {/* Document Title */}
           <div>
             <label className="text-xs font-medium text-foreground">Map Sheet Title Block</label>
