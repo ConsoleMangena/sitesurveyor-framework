@@ -746,6 +746,17 @@ interface SheetTilesLayer {
   getTile: (z: number, x: number, y: number) => Promise<Drawable | null>;
 }
 
+/** A classified read the network refuses must never wedge the sheet: the
+ *  reader is handed a self-aborting signal and one failed tile just ships
+ *  unpainted. */
+const CLASS_TILE_TIMEOUT_MS = 20000;
+
+function abortAfter(ms: number): AbortSignal | undefined {
+  return typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(ms)
+    : undefined;
+}
+
 async function buildSheetTilesLayer(
   option: ClassifiedTilesOption,
 ): Promise<SheetTilesLayer | null> {
@@ -753,18 +764,44 @@ async function buildSheetTilesLayer(
     // Same lazy reader the live overlay imports; the export never pulls it
     // into the map bundle.
     const { PMTiles } = await import("pmtiles");
-    const archive = new PMTiles(option.source);
+    // Bound every archive read to the sheet's own clock: a stalled proxy
+    // request must not hold the eight tile workers hostage.
+    const timedSource: SheetTilesSource = {
+      getKey: option.source.getKey,
+      getBytes: (offset, length, signal, etag) =>
+        option.source.getBytes(
+          offset,
+          length,
+          signal ?? abortAfter(CLASS_TILE_TIMEOUT_MS),
+          etag,
+        ),
+    };
+    const archive = new PMTiles(timedSource);
     // The header round-trip is the sanity check the live overlay uses too:
     // without it a broken proxy would leave the sheet believing it drew zones.
     await archive.getHeader();
+    let warned = false;
     return {
       opacity: Math.max(0, Math.min(1, option.opacity)),
       minZoom: CLASS_TILES_MIN_ZOOM,
       maxNativeZoom: CLASS_TILES_MAX_NATIVE_ZOOM,
       getTile: async (z, x, y) => {
-        const tile = await archive.getZxy(z, x, y);
-        if (!tile || tile.data.byteLength === 0) return null;
-        return await loadImageFromBlob(new Blob([tile.data], { type: "image/png" }));
+        try {
+          const tile = await archive.getZxy(z, x, y);
+          if (!tile || tile.data.byteLength === 0) return null;
+          return await loadImageFromBlob(new Blob([tile.data], { type: "image/png" }));
+        } catch (error: unknown) {
+          // One unread tile prints without its zones; the sheet itself still
+          // gets out. Warn once rather than once per tile.
+          if (!warned) {
+            warned = true;
+            console.warn(
+              "Some classified tiles failed to read; the sheet ships without those zones.",
+              error,
+            );
+          }
+          return null;
+        }
       },
     };
   } catch (error: unknown) {

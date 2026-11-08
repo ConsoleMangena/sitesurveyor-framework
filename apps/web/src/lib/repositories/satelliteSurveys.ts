@@ -550,6 +550,11 @@ export function surveyTilesSource(deliverable: SurveyDeliverable): SurveyTilesSo
           ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY } : {}),
           Range: `bytes=${offset}-${offset + length - 1}`,
         },
+        // Range requests and browser caches mix badly -- a stored ranged entry
+        // surfaces later as ERR_CACHE_OPERATION_NOT_SUPPORTED -- and every
+        // read already carries this session's own token, so skip the cache
+        // entirely on both ends of the request.
+        cache: "no-store",
         signal,
       });
       if (!res.ok) {

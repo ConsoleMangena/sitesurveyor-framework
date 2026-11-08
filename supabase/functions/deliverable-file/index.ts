@@ -122,10 +122,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (value) headers.set(name, value);
   }
   headers.set("accept-ranges", "bytes");
-  // The slice itself is immutable, but every fetch is attributed to one
-  // session's token, so keep browsers caching it privately for a working
-  // session-length and keep intermediaries out entirely.
-  headers.set("cache-control", "private, max-age=300");
+  // Byte ranges must never sit in a browser or intermediary cache -- a stored
+  // ranged entry later turns ordinary requests into ERR_CACHE_OPERATION_
+  // NOT_SUPPORTED failures -- and every read is already owned by one session's
+  // token, so there is nothing worth caching in the first place.
+  headers.set("cache-control", "private, no-store");
   return new Response(upstream.body, {
     status: upstream.status,
     headers,

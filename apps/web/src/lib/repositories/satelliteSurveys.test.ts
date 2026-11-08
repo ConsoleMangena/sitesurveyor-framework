@@ -263,6 +263,7 @@ describe("surveyTilesSource", () => {
           Authorization: "Bearer token-1",
           Range: "bytes=16384-16895",
         }),
+        cache: "no-store",
       }),
     );
     expect(data.byteLength).toBe(10);

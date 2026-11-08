@@ -290,12 +290,7 @@ export default function MapExportModal({
                 ["survey", "Survey area"],
               ]}
             />
-            {frame === "view" ? (
-              <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-[10.5px] leading-snug text-muted-foreground">
-                Follows the map's point of view: whatever extent and zoom level the
-                workbench is showing is what prints, classified raster included.
-              </p>
-            ) : (
+            {frame === "survey" ? (
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Context around survey area</span>
@@ -323,7 +318,7 @@ export default function MapExportModal({
                   <span>Wide</span>
                 </div>
               </div>
-            )}
+            ) : null}
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">Grid lines</span>
