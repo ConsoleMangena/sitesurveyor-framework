@@ -105,6 +105,10 @@ export interface MapExportOptions {
   northArrowPlacement?: "panel" | "map";
   /** Scale bar in the title panel or on a cartouche at the map's bottom-left. */
   scaleBarPlacement?: "panel" | "map";
+  /** Approximate number of grid divisions per axis on the sheet. Default 7. */
+  gridLineCount?: number;
+  /** Sheet grid labels: geographic degrees or UTM easting/northing (X/Y). Default "degrees". */
+  coordMode?: "degrees" | "utm";
   /** PNG logo drawn in the title panel. Empty string disables; defaults to /logo.png. */
   logoUrl?: string;
 }
@@ -274,6 +278,190 @@ export function formatDeg(
   const hemisphere =
     axis === "lat" ? (value < 0 ? "S" : "N") : value < 0 ? "W" : "E";
   return `${magnitude}°${hemisphere}`;
+}
+
+// ---------------------------------------------------------------------------
+// UTM (WGS 84) — the X/Y easting-northing grid surveyors read in the field
+// ---------------------------------------------------------------------------
+
+const WGS84_A = 6378137;
+const WGS84_F = 1 / 298.257223563;
+const UTM_K0 = 0.9996;
+
+export interface UtmCoord {
+  easting: number;
+  northing: number;
+}
+
+export function utmZoneFor(longitude: number): number {
+  return Math.min(60, Math.max(1, Math.floor((longitude + 180) / 6) + 1));
+}
+
+function utmCentralMeridian(zone: number): number {
+  return (zone - 1) * 6 - 180 + 3;
+}
+
+/** Transverse Mercator forward projection, WGS 84 ellipsoid, k0 = 0.9996. */
+export function forwardUTM(
+  latitude: number,
+  longitude: number,
+  zone: number,
+): UtmCoord {
+  const a = WGS84_A;
+  const e2 = WGS84_F * (2 - WGS84_F);
+  const ep2 = e2 / (1 - e2);
+  const phi = (latitude * Math.PI) / 180;
+  const dLng = ((longitude - utmCentralMeridian(zone)) * Math.PI) / 180;
+  const sin = Math.sin(phi);
+  const cos = Math.cos(phi);
+  const tan = Math.tan(phi);
+  const n = a / Math.sqrt(1 - e2 * sin * sin);
+  const t = tan * tan;
+  const c = ep2 * cos * cos;
+  const A = cos * dLng;
+  const m =
+    a *
+    ((1 - e2 / 4 - (3 * e2 ** 2) / 64 - (5 * e2 ** 3) / 256) * phi -
+      ((3 * e2) / 8 + (3 * e2 ** 2) / 32 + (45 * e2 ** 3) / 1024) *
+        Math.sin(2 * phi) +
+      ((15 * e2 ** 2) / 256 + (45 * e2 ** 3) / 1024) * Math.sin(4 * phi) -
+      ((35 * e2 ** 3) / 3072) * Math.sin(6 * phi));
+  const easting =
+    UTM_K0 *
+      n *
+      (A +
+        ((1 - t + c) * A ** 3) / 6 +
+        ((5 - 18 * t + t * t + 72 * c - 58 * ep2) * A ** 5) / 120) +
+    500000;
+  let northing =
+    UTM_K0 *
+    (m +
+      n *
+        tan *
+        ((A * A) / 2 +
+          ((5 - t + 9 * c + 4 * c * c) * A ** 4) / 24 +
+          ((61 - 58 * t + t * t + 600 * c - 330 * ep2) * A ** 6) / 720));
+  if (latitude < 0) northing += 10000000;
+  return { easting, northing };
+}
+
+/** Nice meter interval (1/2/5 × 10^k) giving at most maxTicks divisions. */
+export function utmGridStep(spanMeters: number, maxTicks: number): number {
+  const span = Math.max(1, Math.abs(spanMeters));
+  for (let exp = 0; exp <= 6; exp += 1) {
+    for (const mantissa of [1, 2, 5]) {
+      const step = mantissa * 10 ** exp;
+      if (span / step <= maxTicks) return step;
+    }
+  }
+  return 1000000;
+}
+
+export interface UtmGridLine {
+  /** "x" lines run north-south at a constant easting; "y" lines east-west. */
+  axis: "x" | "y";
+  value: number;
+  label: string;
+  path: { lat: number; lng: number }[];
+}
+
+export interface UtmGrid {
+  zone: number;
+  step: number;
+  lines: UtmGridLine[];
+}
+
+const UTM_LINE_SAMPLES = 24;
+
+function lngForEasting(
+  lat: number,
+  easting: number,
+  zone: number,
+  guessLng: number,
+): number {
+  const h = 1e-5;
+  let lng = guessLng;
+  for (let i = 0; i < 5; i += 1) {
+    const f = forwardUTM(lat, lng, zone).easting - easting;
+    const d =
+      (forwardUTM(lat, lng + h, zone).easting -
+        forwardUTM(lat, lng - h, zone).easting) /
+      (2 * h);
+    if (!Number.isFinite(d) || d === 0) break;
+    lng -= f / d;
+  }
+  return lng;
+}
+
+function latForNorthing(
+  lng: number,
+  northing: number,
+  zone: number,
+  guessLat: number,
+): number {
+  const h = 1e-5;
+  let lat = guessLat;
+  for (let i = 0; i < 5; i += 1) {
+    const f = forwardUTM(lat, lng, zone).northing - northing;
+    const d =
+      (forwardUTM(lat + h, lng, zone).northing -
+        forwardUTM(lat - h, lng, zone).northing) /
+      (2 * h);
+    if (!Number.isFinite(d) || d === 0) break;
+    lat -= f / d;
+  }
+  return lat;
+}
+
+/**
+ * The sheet's UTM grid: lines of constant easting/northing (curved in lat/lng
+ * space) at a shared meter interval, labeled with their full meter value.
+ */
+export function utmGridLines(
+  extent: { south: number; west: number; north: number; east: number },
+  maxTicks: number,
+): UtmGrid {
+  const centerLng = (extent.west + extent.east) / 2;
+  const centerLat = (extent.south + extent.north) / 2;
+  const zone = utmZoneFor(centerLng);
+  const corners = [
+    forwardUTM(extent.south, extent.west, zone),
+    forwardUTM(extent.south, extent.east, zone),
+    forwardUTM(extent.north, extent.west, zone),
+    forwardUTM(extent.north, extent.east, zone),
+  ];
+  const minE = Math.min(...corners.map((c) => c.easting));
+  const maxE = Math.max(...corners.map((c) => c.easting));
+  const minN = Math.min(...corners.map((c) => c.northing));
+  const maxN = Math.max(...corners.map((c) => c.northing));
+  const step = utmGridStep(Math.max(maxE - minE, maxN - minN), maxTicks);
+
+  const lines: UtmGridLine[] = [];
+  const easting0 = forwardUTM(centerLat, centerLng, zone).easting;
+  for (let e = Math.ceil(minE / step) * step; e <= maxE; e += step) {
+    const path: { lat: number; lng: number }[] = [];
+    for (let i = 0; i <= UTM_LINE_SAMPLES; i += 1) {
+      const lat = extent.south + ((extent.north - extent.south) * i) / UTM_LINE_SAMPLES;
+      path.push({
+        lat,
+        lng: lngForEasting(lat, e, zone, centerLng + (e - easting0) / 100000),
+      });
+    }
+    lines.push({ axis: "x", value: e, label: String(Math.round(e)), path });
+  }
+  const northing0 = forwardUTM(centerLat, centerLng, zone).northing;
+  for (let n = Math.ceil(minN / step) * step; n <= maxN; n += step) {
+    const path: { lat: number; lng: number }[] = [];
+    for (let i = 0; i <= UTM_LINE_SAMPLES; i += 1) {
+      const lng = extent.west + ((extent.east - extent.west) * i) / UTM_LINE_SAMPLES;
+      path.push({
+        lat: latForNorthing(lng, n, zone, centerLat + (n - northing0) / 110000),
+        lng,
+      });
+    }
+    lines.push({ axis: "y", value: n, label: String(Math.round(n)), path });
+  }
+  return { zone, step, lines };
 }
 
 const SCALE_STEPS: number[] = (() => {
@@ -737,8 +925,12 @@ const INK_SOFT = rgb(0.42, 0.47, 0.54);
 const PAPER = rgb(0.976, 0.98, 0.988);
 const PAPER_LINE = rgb(0.78, 0.81, 0.85);
 const ACCENT = rgb(0.82, 0.25, 0.25);
-const GRID_LINE = rgb(0.72, 0.76, 0.8);
 const CHIP_BG = rgb(0.04, 0.055, 0.08);
+// Grid strokes: a dark halo under a white line so the grid reads on any cover.
+const GRID_STROKES = [
+  { thickness: 1.6, color: rgb(0.04, 0.06, 0.09), opacity: 0.55 },
+  { thickness: 0.8, color: rgb(1, 1, 1), opacity: 0.95 },
+] as const;
 
 function yFlip(yTop: number): number {
   return SHEET.heightPt - yTop;
@@ -835,6 +1027,7 @@ interface PanelData {
   categoryName: string;
   coords: string;
   coverageText: string;
+  gridText: string;
   imageryText: string;
   scaleText: string;
   sheetNo: string;
@@ -1012,7 +1205,7 @@ function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
       { label: "WATER TABLE", value: data.waterTableText },
       { label: "CENTRE", value: data.coords },
       { label: "SHEET COVERAGE", value: data.coverageText },
-      { label: "DATUM", value: "WGS 84 / Web Mercator" },
+      { label: "GRID", value: data.gridText },
       { label: "IMAGERY", value: data.imageryText },
       { label: "PRINT SCALE", value: data.scaleText },
       { label: "SHEET NO.", value: data.sheetNo },
@@ -1233,6 +1426,43 @@ function tickValues(min: number, max: number, step: number): number[] {
   return ticks;
 }
 
+/** Liang-Barsky clip of one segment against the canvas rectangle. */
+function clipSegmentToCanvas(
+  a: ProjectedPoint,
+  b: ProjectedPoint,
+  width: number,
+  height: number,
+): [ProjectedPoint, ProjectedPoint] | null {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const edges: [number, number][] = [
+    [-dx, a.x],
+    [dx, width - a.x],
+    [-dy, a.y],
+    [dy, height - a.y],
+  ];
+  for (const [p, q] of edges) {
+    if (p === 0) {
+      if (q < 0) return null;
+      continue;
+    }
+    const t = q / p;
+    if (p < 0) {
+      if (t > t1) return null;
+      if (t > t0) t0 = t;
+    } else {
+      if (t < t0) return null;
+      if (t < t1) t1 = t;
+    }
+  }
+  return [
+    { x: a.x + t0 * dx, y: a.y + t0 * dy },
+    { x: a.x + t1 * dx, y: a.y + t1 * dy },
+  ];
+}
+
 function drawMapFurniture(
   ctx: SheetCtx,
   mapRect: SheetMapRect,
@@ -1270,76 +1500,141 @@ function drawMapFurniture(
   });
 
   if (options.includeNeatline !== false) {
-    // Graticule: light lines across the imagery, ticks on the frame, labels in
-    // dark chips just inside the edge (the page margin is too slim for labels).
-    const latGrid = niceGraticuleStep(compose.north - compose.south);
-    const lngGrid = niceGraticuleStep(compose.east - compose.west);
-    const centerLng = (compose.west + compose.east) / 2;
-    const centerLat = (compose.north + compose.south) / 2;
+    // Grid across the imagery: white strokes over a dark halo so they read on
+    // any ground cover, ticks on the frame, labels in paper chips just inside
+    // the edge (the page margin is too slim for labels).
+    const maxTicks = Math.max(2, Math.min(12, Math.round(options.gridLineCount ?? 7)));
 
-    for (const lat of tickValues(compose.south, compose.north, latGrid.step)) {
-      const p = projectToCanvas(mapRef, lat, centerLng, compose.tileZoom, originRef, upscale);
-      if (p.y < 0 || p.y > canvas.height) continue;
-      const yPt = toPtY(p.y);
-      page.drawLine({
-        start: { x: mapRect.x, y: yFlip(yPt) },
-        end: { x: mapRect.x + mapRect.w, y: yFlip(yPt) },
-        thickness: 0.35,
-        color: GRID_LINE,
-        opacity: 0.45,
-      });
-      page.drawLine({
-        start: { x: mapRect.x - 4, y: yFlip(yPt) },
-        end: { x: mapRect.x + 4, y: yFlip(yPt) },
-        thickness: 0.8,
-        color: rgb(1, 1, 1),
-      });
-      const label = formatDeg(lat, "lat", latGrid.decimals);
-      const chipW = font.widthOfTextAtSize(label, 5.2) + 6;
-      page.drawRectangle({
-        x: mapRect.x + 5,
-        y: yFlip(yPt + 4.5),
-        width: chipW,
-        height: 9,
-        color: CHIP_BG,
-        opacity: 0.72,
-      });
-      drawTextLine(ctx, label, mapRect.x + 8, yPt - 4.4, 5.2, {
-        color: rgb(1, 1, 1),
-      });
+    interface GridPoly {
+      axis: "x" | "y";
+      label: string;
+      pts: ProjectedPoint[];
     }
 
-    for (const lng of tickValues(compose.west, compose.east, lngGrid.step)) {
-      const p = projectToCanvas(mapRef, centerLat, lng, compose.tileZoom, originRef, upscale);
-      if (p.x < 0 || p.x > canvas.width) continue;
-      const xPt = toPtX(p.x);
-      page.drawLine({
-        start: { x: xPt, y: yFlip(mapRect.y) },
-        end: { x: xPt, y: yFlip(mapRect.y + mapRect.h) },
-        thickness: 0.35,
-        color: GRID_LINE,
-        opacity: 0.45,
-      });
-      page.drawLine({
-        start: { x: xPt, y: yFlip(mapRect.y - 4) },
-        end: { x: xPt, y: yFlip(mapRect.y + 4) },
-        thickness: 0.8,
-        color: rgb(1, 1, 1),
-      });
-      const label = formatDeg(lng, "lon", lngGrid.decimals);
-      const chipW = font.widthOfTextAtSize(label, 5.2) + 6;
-      page.drawRectangle({
-        x: xPt - chipW / 2,
-        y: yFlip(mapRect.y + 14.5),
-        width: chipW,
-        height: 9,
-        color: CHIP_BG,
-        opacity: 0.72,
-      });
-      const labelW = font.widthOfTextAtSize(label, 5.2);
-      drawTextLine(ctx, label, xPt - labelW / 2, mapRect.y + 5.6, 5.2, {
-        color: rgb(1, 1, 1),
-      });
+    const polys: GridPoly[] = [];
+    if (options.coordMode === "utm") {
+      const grid = utmGridLines(
+        {
+          south: compose.south,
+          west: compose.west,
+          north: compose.north,
+          east: compose.east,
+        },
+        maxTicks,
+      );
+      for (const line of grid.lines) {
+        polys.push({
+          axis: line.axis,
+          label: line.label,
+          pts: line.path.map(({ lat, lng }) =>
+            projectToCanvas(mapRef, lat, lng, compose.tileZoom, originRef, upscale),
+          ),
+        });
+      }
+    } else {
+      const latGrid = niceGraticuleStep(compose.north - compose.south, maxTicks);
+      const lngGrid = niceGraticuleStep(compose.east - compose.west, maxTicks);
+      const centerLng = (compose.west + compose.east) / 2;
+      const centerLat = (compose.north + compose.south) / 2;
+      for (const lat of tickValues(compose.south, compose.north, latGrid.step)) {
+        const p = projectToCanvas(mapRef, lat, centerLng, compose.tileZoom, originRef, upscale);
+        if (p.y < 0 || p.y > canvas.height) continue;
+        polys.push({
+          axis: "y",
+          label: formatDeg(lat, "lat", latGrid.decimals),
+          pts: [
+            { x: 0, y: p.y },
+            { x: canvas.width, y: p.y },
+          ],
+        });
+      }
+      for (const lng of tickValues(compose.west, compose.east, lngGrid.step)) {
+        const p = projectToCanvas(mapRef, centerLat, lng, compose.tileZoom, originRef, upscale);
+        if (p.x < 0 || p.x > canvas.width) continue;
+        polys.push({
+          axis: "x",
+          label: formatDeg(lng, "lon", lngGrid.decimals),
+          pts: [
+            { x: p.x, y: 0 },
+            { x: p.x, y: canvas.height },
+          ],
+        });
+      }
+    }
+
+    for (const poly of polys) {
+      for (let i = 1; i < poly.pts.length; i += 1) {
+        const seg = clipSegmentToCanvas(
+          poly.pts[i - 1],
+          poly.pts[i],
+          canvas.width,
+          canvas.height,
+        );
+        if (!seg) continue;
+        const [p0, p1] = seg;
+        for (const style of GRID_STROKES) {
+          page.drawLine({
+            start: { x: toPtX(p0.x), y: yFlip(toPtY(p0.y)) },
+            end: { x: toPtX(p1.x), y: yFlip(toPtY(p1.y)) },
+            thickness: style.thickness,
+            color: style.color,
+            opacity: style.opacity,
+          });
+        }
+      }
+
+      // Label where the line ends nearest its axis edge; ticks cross the frame there.
+      const anchorPt =
+        poly.axis === "x"
+          ? poly.pts.reduce((a, b) => (b.y > a.y ? b : a))
+          : poly.pts.reduce((a, b) => (b.x < a.x ? b : a));
+      const label = poly.label;
+      const chipW = font.widthOfTextAtSize(label, 5.2) + 7;
+      if (poly.axis === "x") {
+        const xTick = toPtX(anchorPt.x);
+        page.drawLine({
+          start: { x: xTick, y: yFlip(mapRect.y + mapRect.h + 4) },
+          end: { x: xTick, y: yFlip(mapRect.y + mapRect.h - 4) },
+          thickness: 1,
+          color: rgb(1, 1, 1),
+        });
+        const chipX = Math.max(
+          mapRect.x + 3,
+          Math.min(mapRect.x + mapRect.w - chipW - 3, xTick - chipW / 2),
+        );
+        page.drawRectangle({
+          x: chipX,
+          y: yFlip(mapRect.y + 15),
+          width: chipW,
+          height: 9.5,
+          color: PAPER,
+          opacity: 0.94,
+          borderColor: INK,
+          borderWidth: 0.4,
+          borderOpacity: 0.55,
+        });
+        drawTextLine(ctx, label, chipX + 3.5, mapRect.y + 6, 5.2, { color: INK });
+      } else {
+        const yTick = toPtY(anchorPt.y);
+        page.drawLine({
+          start: { x: mapRect.x - 4, y: yFlip(yTick) },
+          end: { x: mapRect.x + 4, y: yFlip(yTick) },
+          thickness: 1,
+          color: rgb(1, 1, 1),
+        });
+        page.drawRectangle({
+          x: mapRect.x + 5,
+          y: yFlip(yTick + 4.75),
+          width: chipW,
+          height: 9.5,
+          color: PAPER,
+          opacity: 0.94,
+          borderColor: INK,
+          borderWidth: 0.4,
+          borderOpacity: 0.55,
+        });
+        drawTextLine(ctx, label, mapRect.x + 8.5, yTick - 4.4, 5.2, { color: INK });
+      }
     }
 
     if (options.aoiBounds) {
@@ -1604,6 +1899,12 @@ export async function exportMapAsPdf(
     month: "short",
     day: "numeric",
   });
+  const gridText =
+    options.coordMode === "utm"
+      ? `WGS 84 / UTM zone ${utmZoneFor((compose.west + compose.east) / 2)}${
+          (compose.north + compose.south) / 2 < 0 ? "S" : "N"
+        } · X=Easting, Y=Northing (m)`
+      : "WGS 84 · geographic (lat/lon)";
 
   drawPanel(ctx, panelRect, {
     includeHeader: options.includeHeader !== false,
@@ -1614,6 +1915,7 @@ export async function exportMapAsPdf(
     coverageText: `${formatMeters(compose.groundWidthM)} E-W x ${formatMeters(
       compose.groundHeightM,
     )} N-S`,
+    gridText,
     imageryText: `z${compose.tileZoom} · ~${srcMppText} m/px source · sheet ~${sheetMppText} m/px${upscaledNote}`,
     scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
     sheetNo,

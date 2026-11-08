@@ -5,12 +5,16 @@ import {
   expandBoundsToAspect,
   formatDeg,
   formatMeters,
+  forwardUTM,
   niceGraticuleStep,
   padBounds,
   representativeFraction,
   scaleBarLayout,
   sheetMapRect,
   sheetPanelRect,
+  utmGridLines,
+  utmGridStep,
+  utmZoneFor,
 } from "./mapExport.ts";
 import { metersPerPixel } from "./workbench.ts";
 
@@ -162,5 +166,82 @@ describe("sheetMapRect", () => {
     expect(left.x + left.w).toBeLessThanOrEqual(842 - 18);
     expect(sheetPanelRect("left").x).toBe(18);
     expect(sheetPanelRect("right").x).toBeGreaterThan(sheetPanelRect("left").x);
+  });
+});
+
+describe("utmZoneFor", () => {
+  it("splits Zimbabwe across zones 35 and 36", () => {
+    expect(utmZoneFor(29.85)).toBe(35);
+    expect(utmZoneFor(31.03)).toBe(36);
+    expect(utmZoneFor(25.86)).toBe(35);
+  });
+});
+
+describe("forwardUTM", () => {
+  it("puts the central meridian at 500000 E and the equator at 0 N", () => {
+    const p = forwardUTM(0, 3, 31); // zone 31 covers 0-6E, CM = 3E
+    expect(p.easting).toBeCloseTo(500000, 0);
+    expect(p.northing).toBeCloseTo(0, 0);
+  });
+
+  it("adds the 10,000,000 m false northing south of the equator", () => {
+    const p = forwardUTM(-19.5, 29.85, 35);
+    expect(p.northing).toBeGreaterThan(7_800_000);
+    expect(p.northing).toBeLessThan(7_900_000);
+  });
+
+  it("is symmetric about the central meridian", () => {
+    const zone = 35;
+    const cm = (zone - 1) * 6 - 180 + 3;
+    const left = forwardUTM(-19.5, cm - 0.5, zone).easting;
+    const right = forwardUTM(-19.5, cm + 0.5, zone).easting;
+    expect(left + right).toBeCloseTo(1_000_000, 1);
+  });
+});
+
+describe("utmGridStep", () => {
+  it("picks a coarse enough interval for the tick budget", () => {
+    expect(utmGridStep(120_000, 6)).toBe(20_000);
+    expect(utmGridStep(30_000, 6)).toBe(5_000);
+    expect(utmGridStep(5_000, 8)).toBe(1_000);
+  });
+});
+
+describe("utmGridLines", () => {
+  const extent = { south: -20.38, west: 28.35, north: -19.92, east: 28.81 };
+  const grid = utmGridLines(extent, 6);
+
+  it("uses the sheet centre's zone", () => {
+    expect(grid.zone).toBe(35);
+  });
+
+  it("labels every line with its full meter value on the shared step", () => {
+    expect(grid.lines.length).toBeGreaterThan(3);
+    for (const line of grid.lines) {
+      expect(line.value % grid.step).toBe(0);
+      expect(line.label).toBe(String(Math.round(line.value)));
+    }
+  });
+
+  it("returns lines whose points actually sit on the named easting/northing", () => {
+    for (const line of grid.lines) {
+      for (const { lat, lng } of line.path) {
+        const p = forwardUTM(lat, lng, grid.zone);
+        const measured = line.axis === "x" ? p.easting : p.northing;
+        expect(Math.abs(measured - line.value)).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("draws both line families", () => {
+    expect(grid.lines.some((l) => l.axis === "x")).toBe(true);
+    expect(grid.lines.some((l) => l.axis === "y")).toBe(true);
+  });
+});
+
+describe("niceGraticuleStep density", () => {
+  it("honours a caller-supplied tick budget", () => {
+    expect(niceGraticuleStep(0.5, 3).step).toBe(0.2);
+    expect(niceGraticuleStep(0.5, 7).step).toBe(0.1);
   });
 });

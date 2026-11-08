@@ -99,6 +99,8 @@ export default function MapExportModal({
   const [panelSide, setPanelSide] = useState<"right" | "left">("right");
   const [northPlacement, setNorthPlacement] = useState<"panel" | "map">("panel");
   const [scalePlacement, setScalePlacement] = useState<"panel" | "map">("panel");
+  const [gridLineCount, setGridLineCount] = useState(6);
+  const [coordMode, setCoordMode] = useState<"degrees" | "utm">("utm");
   const [exporting, setExporting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -150,6 +152,8 @@ export default function MapExportModal({
         panelSide,
         northArrowPlacement: northPlacement,
         scaleBarPlacement: scalePlacement,
+        gridLineCount,
+        coordMode,
       };
 
       await exportMapAsPdf(map, `${slug}_survey_sheet_${timestamp}.pdf`, options);
@@ -288,6 +292,31 @@ export default function MapExportModal({
                 <span>Wide</span>
               </div>
             </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-foreground">Grid lines</span>
+                <span className="font-mono text-muted-foreground">{gridLineCount}</span>
+              </div>
+              <input
+                type="range"
+                min={2}
+                max={12}
+                step={1}
+                value={gridLineCount}
+                onChange={(e) => setGridLineCount(Number(e.target.value))}
+                className="mt-1.5 w-full accent-primary"
+                aria-label="Number of grid lines per axis"
+              />
+            </div>
+            <PlacementRow
+              label="Coordinates"
+              value={coordMode}
+              onChange={setCoordMode}
+              options={[
+                ["utm", "UTM X/Y"],
+                ["degrees", "Degrees"],
+              ]}
+            />
             <PlacementRow
               label="Title panel"
               value={panelSide}
