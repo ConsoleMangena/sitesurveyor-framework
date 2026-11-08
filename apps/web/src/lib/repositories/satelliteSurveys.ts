@@ -85,6 +85,15 @@ export interface SurveyResult {
   scoreBasis: string | null;
   dataSources: SurveyProvenance;
   target: SurveyTargetArea | null;
+  /** The engine's depth-to-water at the survey centre, when the run included water.
+   *  Null on runs that skipped water or were published by an engine predating the field. */
+  waterDepth: SurveyWaterDepth | null;
+}
+
+export interface SurveyWaterDepth {
+  wetM: number | null;
+  dryM: number | null;
+  read: string | null;
 }
 
 export interface SurveyRun {
@@ -237,6 +246,7 @@ export function parseSurveyResult(raw: unknown): SurveyResult | null {
   const result = raw as Record<string, unknown>;
   const scores = (result.scores ?? {}) as Record<string, unknown>;
   const block = (result.target ?? null) as Record<string, unknown> | null;
+  const waterDepth = waterDepthOf(result.categories);
 
   return {
     summary: asText(result.executive_summary),
@@ -266,7 +276,33 @@ export function parseSurveyResult(raw: unknown): SurveyResult | null {
           crs: asText(block.crs),
         }
       : null,
+    waterDepth,
   };
+}
+
+/**
+ * The engine's depth-to-water at the survey centre, from
+ * `categories.water.target_assessment`. The result blob is the engine's own document, so
+ * every key is read defensively: an older engine or a water-less survey costs one null,
+ * not a broken parse.
+ */
+function waterDepthOf(categories: unknown): SurveyWaterDepth | null {
+  if (!categories || typeof categories !== "object") return null;
+  const water = (categories as Record<string, unknown>).water;
+  if (!water || typeof water !== "object") return null;
+  const assessment = (water as Record<string, unknown>).target_assessment;
+  if (!assessment || typeof assessment !== "object") return null;
+  const doc = assessment as Record<string, unknown>;
+
+  const asDepth = (value: unknown): number | null => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const wetM = asDepth(doc.depth_to_water_wet_m);
+  const dryM = asDepth(doc.depth_to_water_dry_m);
+  const read = asText(doc.borehole_read);
+  if (wetM === null && dryM === null && read === null) return null;
+  return { wetM, dryM, read };
 }
 
 export function toSurveyRun(row: SurveyRunRow): SurveyRun {

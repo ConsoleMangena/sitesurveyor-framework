@@ -6,6 +6,7 @@ import {
   formatDeg,
   formatMeters,
   niceGraticuleStep,
+  padBounds,
   representativeFraction,
   scaleBarLayout,
   sheetMapRect,
@@ -122,6 +123,24 @@ describe("formatMeters", () => {
     expect(formatMeters(1250)).toBe("1.25 km");
     expect(formatMeters(45_000)).toBe("45.0 km");
     expect(formatMeters(300_000)).toBe("300 km");
+  });
+});
+
+describe("padBounds", () => {
+  it("grows each side by the fraction of the rectangle", () => {
+    const padded = padBounds(-1, 20, 1, 22, 0.25);
+    expect(padded.south).toBeCloseTo(-1.5, 10);
+    expect(padded.north).toBeCloseTo(1.5, 10);
+    expect(padded.west).toBeCloseTo(19.5, 10);
+    expect(padded.east).toBeCloseTo(22.5, 10);
+  });
+
+  it("stays inside the Web Mercator world", () => {
+    const padded = padBounds(-84.9, -179.9, 84.9, 179.9, 0.25);
+    expect(padded.south).toBeGreaterThanOrEqual(-85);
+    expect(padded.north).toBeLessThanOrEqual(85);
+    expect(padded.west).toBeGreaterThanOrEqual(-180);
+    expect(padded.east).toBeLessThanOrEqual(180);
   });
 });
 

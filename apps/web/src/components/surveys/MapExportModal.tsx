@@ -26,7 +26,13 @@ interface MapExportModalProps {
   categoryName?: string;
   clientName?: string;
   aoiBounds?: [[number, number], [number, number]];
-  candidates?: { latitude: number; longitude: number; color?: string }[];
+  candidates?: {
+    latitude: number;
+    longitude: number;
+    color?: string;
+    label?: string;
+  }[];
+  targetDepthLabel?: string;
   legendItems?: SheetLegendItem[];
   legendTitle?: string;
   basemap: ExportBasemapConfig;
@@ -42,6 +48,7 @@ export default function MapExportModal({
   clientName = "Site Survey",
   aoiBounds,
   candidates,
+  targetDepthLabel,
   legendItems,
   legendTitle,
   basemap,
@@ -89,6 +96,7 @@ export default function MapExportModal({
         target,
         aoiBounds,
         candidates,
+        targetDepthLabel,
         legendItems,
         legendTitle,
         attribution: basemap.attribution,
@@ -131,7 +139,7 @@ export default function MapExportModal({
                 <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">PDF</span>
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                Vector A4 sheet with graticule, legend, scale bar &amp; north arrow
+                Full survey area with context, vector A4 sheet — graticule, legend, scale bar &amp; depths
               </p>
             </div>
           </div>

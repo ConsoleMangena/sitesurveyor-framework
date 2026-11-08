@@ -1,4 +1,11 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+} from "pdf-lib";
 import { ImageOverlay as LeafletImageOverlay, type Map as LeafletMap } from "leaflet";
 
 import { metersPerPixel } from "./workbench.ts";
@@ -31,9 +38,14 @@ export function sheetMapRect(): SheetMapRect {
   };
 }
 
+export type LegendItemKind = "zone" | "station" | "target" | "aoi" | "imagery";
+
 export interface SheetLegendItem {
-  color: string;
+  /** Swatch colour; required for zone/station/imagery kinds. */
+  color?: string;
   label: string;
+  /** Defaults to "zone" (a coloured circle). */
+  kind?: LegendItemKind;
 }
 
 export interface MapExportOptions {
@@ -49,10 +61,19 @@ export interface MapExportOptions {
   includeScaleBar?: boolean;
   includeNeatline?: boolean;
   target?: { latitude: number; longitude: number };
-  /** Dashed AOI rectangle, [[south, west], [north, east]]. */
+  /** Dashed AOI rectangle, [[south, west], [north, east]]. The sheet's export extent is
+   *  this area grown by a context margin — the full survey ground, not the screen view. */
   aoiBounds?: [[number, number], [number, number]];
-  candidates?: { latitude: number; longitude: number; color?: string }[];
-  /** Legend entries for the classified raster; the legend only prints when non-empty. */
+  candidates?: {
+    latitude: number;
+    longitude: number;
+    color?: string;
+    /** Short depth line printed in a chip beside the station dot. */
+    label?: string;
+  }[];
+  /** Depth line printed beside the survey centre reticle, e.g. "Water table ~24-31 m". */
+  targetDepthLabel?: string;
+  /** Legend entries; the legend only prints when non-empty. */
   legendItems?: SheetLegendItem[];
   legendTitle?: string;
   /** Imagery credit, e.g. "Imagery © Esri, Earthstar Geographics". */
@@ -60,6 +81,8 @@ export interface MapExportOptions {
   /** Slippy-map tile template, e.g. from BASEMAPS[].url. */
   tileUrlTemplate?: string;
   maxNativeZoom?: number;
+  /** PNG logo drawn in the title panel. Empty string disables; defaults to /logo.png. */
+  logoUrl?: string;
 }
 
 export interface OptimalQuality {
@@ -276,6 +299,28 @@ export function formatMeters(meters: number): string {
   return `${meters % 1 === 0 ? meters.toFixed(0) : meters.toFixed(1)} m`;
 }
 
+/**
+ * Grow a lat/lon rectangle by `frac` of its size on every side, clamped to the Web
+ * Mercator world. Used to give the exported sheet context around the survey area the
+ * way a GIS layout does, instead of cropping the AOI at the frame edge.
+ */
+export function padBounds(
+  south: number,
+  west: number,
+  north: number,
+  east: number,
+  frac: number,
+): { south: number; west: number; north: number; east: number } {
+  const latPad = (north - south) * frac;
+  const lngPad = (east - west) * frac;
+  return {
+    south: Math.max(-85, south - latPad),
+    west: Math.max(-180, west - lngPad),
+    north: Math.min(85, north + latPad),
+    east: Math.min(180, east + lngPad),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Tile fetching and composition
 // ---------------------------------------------------------------------------
@@ -417,30 +462,40 @@ interface ComposeInput {
   tileUrlTemplate?: string;
   maxNativeZoom: number;
   overlays: RasterOverlaySpec[];
+  /** Ground the sheet must cover. When absent, the map's current view is used. */
+  extent?: { south: number; west: number; north: number; east: number };
 }
 
 async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
   const { map, mapWPx, mapHPx, maxNativeZoom } = input;
 
-  const center = map.getCenter();
   const viewZoom = map.getZoom();
-  const viewBounds = map.getBounds();
-  const nwView = map.project(viewBounds.getNorthWest(), viewZoom);
-  const seView = map.project(viewBounds.getSouthEast(), viewZoom);
+  const extent = input.extent;
+  const centerLat = extent
+    ? (extent.north + extent.south) / 2
+    : map.getCenter().lat;
+  const centerLng = extent ? (extent.west + extent.east) / 2 : map.getCenter().lng;
+  const north = extent ? extent.north : map.getBounds().getNorth();
+  const south = extent ? extent.south : map.getBounds().getSouth();
+  const west = extent ? extent.west : map.getBounds().getWest();
+  const east = extent ? extent.east : map.getBounds().getEast();
+
+  const nwView = map.project([north, west], viewZoom);
+  const seView = map.project([south, east], viewZoom);
   const viewGroundWidthM = Math.max(
     1,
-    (seView.x - nwView.x) * metersPerPixel(center.lat, viewZoom),
+    (seView.x - nwView.x) * metersPerPixel(centerLat, viewZoom),
   );
   const neededMpp = viewGroundWidthM / mapWPx;
 
-  const tileZoom = chooseTileZoom(center.lat, neededMpp, maxNativeZoom);
-  const sourceMpp = metersPerPixel(center.lat, tileZoom);
+  const tileZoom = chooseTileZoom(centerLat, neededMpp, maxNativeZoom);
+  const sourceMpp = metersPerPixel(centerLat, tileZoom);
 
   const worldPx = TILE_SIZE * 2 ** tileZoom;
   const aspect = mapWPx / mapHPx;
   const expanded = expandBoundsToAspect(
-    map.project(viewBounds.getNorthWest(), tileZoom),
-    map.project(viewBounds.getSouthEast(), tileZoom),
+    map.project([north, west], tileZoom),
+    map.project([south, east], tileZoom),
     aspect,
     worldPx,
   );
@@ -583,7 +638,7 @@ async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
     west: nwLatLng.lng,
     east: seLatLng.lng,
     upscale: scale,
-    center: { latitude: center.lat, longitude: center.lng },
+    center: { latitude: centerLat, longitude: centerLng },
     mapRef: map,
     originRef: origin,
   };
@@ -670,6 +725,17 @@ function drawTextLine(
   return font.widthOfTextAtSize(clean, size);
 }
 
+/** One line that never overflows: shrink with an ellipsis when it would. */
+function fitText(ctx: SheetCtx, text: string, size: number, maxWidth: number): string {
+  const clean = safeText(text);
+  if (ctx.font.widthOfTextAtSize(clean, size) <= maxWidth) return clean;
+  let out = clean;
+  while (out.length > 1 && ctx.font.widthOfTextAtSize(`${out}...`, size) > maxWidth) {
+    out = out.slice(0, -1);
+  }
+  return `${out}...`;
+}
+
 function wrapText(
   ctx: SheetCtx,
   text: string,
@@ -719,6 +785,7 @@ interface PanelData {
   scaleText: string;
   sheetNo: string;
   generatedText: string;
+  waterTableText: string;
   includeLegend: boolean;
   legendTitle: string;
   legendItems: SheetLegendItem[];
@@ -727,6 +794,7 @@ interface PanelData {
   scaleBarWidthPt: number;
   includeNorthArrow: boolean;
   footerText: string;
+  logo: PDFImage | null;
 }
 
 function drawPanelDivider(ctx: SheetCtx, innerX: number, innerW: number, y: number): void {
@@ -747,6 +815,83 @@ function hexToPdfRgb(hex: string): ReturnType<typeof rgb> | null {
     ((value >> 8) & 0xff) / 255,
     (value & 0xff) / 255,
   );
+}
+
+/** The swatch a legend entry carries, shaped like what the map actually draws. */
+function drawLegendSwatch(
+  ctx: SheetCtx,
+  item: SheetLegendItem,
+  x: number,
+  y: number,
+): void {
+  const { page } = ctx;
+  const kind = item.kind ?? "zone";
+
+  if (kind === "aoi") {
+    page.drawRectangle({
+      x: x + 0.5,
+      y: yFlip(y + 5.8),
+      width: 6,
+      height: 4.4,
+      borderColor: ACCENT,
+      borderWidth: 0.8,
+      borderDashArray: [2.4, 1.8],
+    });
+    return;
+  }
+
+  if (kind === "target") {
+    const cx = x + 3.4;
+    const cy = y + 3.2;
+    page.drawCircle({
+      x: cx,
+      y: yFlip(cy),
+      size: 1.5,
+      color: ACCENT,
+      borderColor: rgb(1, 1, 1),
+      borderWidth: 0.5,
+    });
+    const arms: [number, number, number, number][] = [
+      [-4.4, 0, -2, 0],
+      [2, 0, 4.4, 0],
+      [0, -4.4, 0, -2],
+      [0, 2, 0, 4.4],
+    ];
+    for (const [dx0, dy0, dx1, dy1] of arms) {
+      page.drawLine({
+        start: { x: cx + dx0, y: yFlip(cy + dy0) },
+        end: { x: cx + dx1, y: yFlip(cy + dy1) },
+        thickness: 0.7,
+        color: ACCENT,
+      });
+    }
+    return;
+  }
+
+  if (kind === "imagery") {
+    page.drawRectangle({
+      x,
+      y: yFlip(y + 6.4),
+      width: 6.8,
+      height: 6.8,
+      color: rgb(0.16, 0.2, 0.26),
+      borderColor: rgb(0.15, 0.18, 0.22),
+      borderWidth: 0.4,
+    });
+    return;
+  }
+
+  const color = item.color ? hexToPdfRgb(item.color) : null;
+  if (color) {
+    page.drawCircle({
+      x: x + 3.4,
+      y: yFlip(y + 3.2),
+      size: 2.9,
+      color,
+      borderColor: rgb(0.15, 0.18, 0.22),
+      borderWidth: 0.4,
+    });
+  }
 }
 
 function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void {
@@ -777,8 +922,20 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
     height: 26,
     color: ACCENT,
   });
-  drawTextLine(ctx, "SITESURVEYOR™", innerX, y, 9.5, { font: ctx.bold });
-  drawTextLine(ctx, "EARTH OBSERVATION MAP SHEET", innerX, y + 13, 5.6, {
+  let brandX = innerX;
+  if (data.logo) {
+    const logoH = 21;
+    const logoW = (logoH * data.logo.width) / data.logo.height;
+    page.drawImage(data.logo, {
+      x: innerX,
+      y: yFlip(y + logoH + 1),
+      width: logoW,
+      height: logoH,
+    });
+    brandX = innerX + logoW + 7;
+  }
+  drawTextLine(ctx, "SITESURVEYOR™", brandX, y, 9.5, { font: ctx.bold });
+  drawTextLine(ctx, "EARTH OBSERVATION MAP SHEET", brandX, y + 13, 5.6, {
     color: INK_SOFT,
   });
   y += 36;
@@ -795,9 +952,10 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
     drawPanelDivider(ctx, innerX, innerW, y);
     y += 10;
 
-    const metaRows: { label: string; value: string }[] = [
+    const metaRows = [
       { label: "CLIENT", value: data.client },
       { label: "SURVEY DOMAIN", value: data.categoryName },
+      { label: "WATER TABLE", value: data.waterTableText },
       { label: "CENTRE", value: data.coords },
       { label: "SHEET COVERAGE", value: data.coverageText },
       { label: "DATUM", value: "WGS 84 / Web Mercator" },
@@ -805,18 +963,15 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
       { label: "PRINT SCALE", value: data.scaleText },
       { label: "SHEET NO.", value: data.sheetNo },
       { label: "GENERATED", value: data.generatedText },
-    ];
+    ].filter((row) => row.value);
     for (const row of metaRows) {
       drawTextLine(ctx, row.label, innerX, y, 5.8, { color: INK_SOFT });
-      y += 8.5;
-      const valueLines = wrapText(ctx, row.value, 8.3, innerW, ctx.font, 2);
-      for (const line of valueLines) {
-        drawTextLine(ctx, line, innerX, y, 8.3);
-        y += 10.5;
-      }
-      y += 5;
+      const labelW = ctx.font.widthOfTextAtSize(safeText(row.label), 5.8);
+      const valueX = innerX + labelW + 6;
+      drawTextLine(ctx, fitText(ctx, row.value, 8.3, innerX + innerW - valueX), valueX, y - 2, 8.3);
+      y += 12;
     }
-    y += 3;
+    y += 4;
     drawPanelDivider(ctx, innerX, innerW, y);
     y += 11;
   }
@@ -827,19 +982,9 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
     });
     y += 13;
     for (const item of data.legendItems) {
-      const color = hexToPdfRgb(item.color);
-      if (color) {
-        page.drawCircle({
-          x: innerX + 3.4,
-          y: yFlip(y + 3.2),
-          size: 2.9,
-          color,
-          borderColor: rgb(0.15, 0.18, 0.22),
-          borderWidth: 0.4,
-        });
-      }
+      drawLegendSwatch(ctx, item, innerX, y);
       drawTextLine(ctx, item.label, innerX + 11, y, 8);
-      y += 13.5;
+      y += 12.5;
     }
     y += 8;
     drawPanelDivider(ctx, innerX, innerW, y);
@@ -1097,6 +1242,22 @@ function drawMapFurniture(
       borderColor: rgb(1, 1, 1),
       borderWidth: 0.6,
     });
+    if (candidate.label) {
+      const size = 5.5;
+      const text = safeText(candidate.label);
+      const chipW = font.widthOfTextAtSize(text, size) + 6;
+      let chipX = x + 6;
+      if (chipX + chipW > mapRect.x + mapRect.w - 4) chipX = x - 6 - chipW;
+      page.drawRectangle({
+        x: chipX,
+        y: yFlip(yPt - 4),
+        width: chipW,
+        height: 10,
+        color: CHIP_BG,
+        opacity: 0.78,
+      });
+      drawTextLine(ctx, text, chipX + 3, yPt - 1.6, size, { color: rgb(1, 1, 1) });
+    }
   }
 
   if (options.target) {
@@ -1139,6 +1300,29 @@ function drawMapFurniture(
         });
       }
       page.drawCircle({ x, y: yFlip(yPt), size: 1.1, color: rgb(1, 1, 1) });
+
+      if (options.targetDepthLabel) {
+        const size = 5.5;
+        const text = safeText(options.targetDepthLabel);
+        const chipW = bold.widthOfTextAtSize(text, size) + 8;
+        const chipX = Math.max(
+          mapRect.x + 4,
+          Math.min(x - chipW / 2, mapRect.x + mapRect.w - chipW - 4),
+        );
+        const chipTop = yPt + 9;
+        page.drawRectangle({
+          x: chipX,
+          y: yFlip(chipTop),
+          width: chipW,
+          height: 10.5,
+          color: ACCENT,
+          opacity: 0.92,
+        });
+        drawTextLine(ctx, text, chipX + 4, chipTop + 2.4, size, {
+          font: bold,
+          color: rgb(1, 1, 1),
+        });
+      }
     }
   }
 
@@ -1206,6 +1390,15 @@ export async function exportMapAsPdf(
   const mapHPx = Math.round((mapRect.h / 72) * dpi);
 
   const overlays = collectRasterOverlays(map);
+  const extent = options.aoiBounds
+    ? padBounds(
+        options.aoiBounds[0][0],
+        options.aoiBounds[0][1],
+        options.aoiBounds[1][0],
+        options.aoiBounds[1][1],
+        0.25,
+      )
+    : undefined;
   const compose = await composeImagery({
     map,
     mapWPx,
@@ -1213,6 +1406,7 @@ export async function exportMapAsPdf(
     tileUrlTemplate: options.tileUrlTemplate,
     maxNativeZoom: options.maxNativeZoom ?? 19,
     overlays,
+    extent,
   });
 
   const pdf = await PDFDocument.create();
@@ -1220,6 +1414,7 @@ export async function exportMapAsPdf(
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const ctx: SheetCtx = { page, font, bold };
+  const logo = await loadLogoImage(pdf, options.logoUrl ?? "/logo.png");
 
   const pngBytes = await canvasToPngBytes(compose.canvas);
   const image = await pdf.embedPng(pngBytes);
@@ -1268,8 +1463,9 @@ export async function exportMapAsPdf(
     scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
     sheetNo,
     generatedText,
+    waterTableText: options.targetDepthLabel ?? "",
     includeLegend: options.includeLegend !== false,
-    legendTitle: options.legendTitle || "Classified Potential",
+    legendTitle: options.legendTitle || "Map Symbols",
     legendItems: options.legendItems ?? [],
     includeScaleBar: options.includeScaleBar !== false,
     scaleBarMeters: bar.meters,
@@ -1278,6 +1474,7 @@ export async function exportMapAsPdf(
     footerText:
       `Confidential & proprietary. Generated by SiteSurveyor on ${generatedText}. ` +
       (options.attribution ? `${options.attribution}.` : ""),
+    logo,
   });
 
   pdf.setTitle(safeText(options.title || "Earth Observation Survey Sheet"));
@@ -1287,6 +1484,19 @@ export async function exportMapAsPdf(
 
   const bytes = await pdf.save();
   downloadBlob(new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), filename);
+}
+
+/** Embed the brand logo into the PDF; a missing file only costs the sheet its logo. */
+async function loadLogoImage(pdf: PDFDocument, url: string): Promise<PDFImage | null> {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { mode: "cors", credentials: "omit" });
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return await pdf.embedPng(bytes);
+  } catch {
+    return null;
+  }
 }
 
 async function canvasToPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {

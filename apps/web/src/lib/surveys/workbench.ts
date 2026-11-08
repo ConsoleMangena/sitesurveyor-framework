@@ -159,6 +159,46 @@ export function candidateRows(
   return mapCandidates(targets, Number.POSITIVE_INFINITY, allowedCategories);
 }
 
+/** `low-high` with the unit, or the single value, or null when neither is a number. */
+export function metricRange(low: unknown, high: unknown, unit = " m"): string | null {
+  const toNum = (value: unknown): number | null => {
+    if (value === null || value === undefined || typeof value === "boolean") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const lo = toNum(low);
+  const hi = toNum(high);
+  if (lo === null && hi === null) return null;
+  if (lo === null) return `${hi}${unit}`;
+  if (hi === null) return `${lo}${unit}`;
+  if (lo === hi) return `${lo}${unit}`;
+  return `${lo}-${hi}${unit}`;
+}
+
+/**
+ * The short depth line a station chip or attribute row carries, worded per category the
+ * same way the worker's `readout` is: a drilling depth for water, a stripped-cover
+ * thickness for minerals, the hazard class as is. Null when the category has no depth
+ * story or the payload is missing the numbers.
+ */
+export function stationDepthLabel(
+  category: DossierCategory,
+  payload: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!payload) return null;
+  if (category === "water") {
+    return metricRange(payload.depth_to_water_wet_m, payload.depth_to_water_dry_m);
+  }
+  if (category === "minerals") {
+    return metricRange(payload.overburden_min_m, payload.overburden_max_m);
+  }
+  if (category === "hazard_safety") {
+    const klass = payload.class_name;
+    return typeof klass === "string" && klass.trim() ? klass.trim() : null;
+  }
+  return null;
+}
+
 /**
  * Coordinate as the workbench prints it: value with the hemisphere, not a signed number.
  *

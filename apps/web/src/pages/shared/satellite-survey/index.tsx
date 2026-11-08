@@ -59,6 +59,8 @@ import {
   gridText,
   jobText,
   mapCandidates,
+  metricRange,
+  stationDepthLabel,
   type MapCandidate,
 } from "../../../lib/surveys/workbench.ts";
 import {
@@ -365,19 +367,57 @@ export default function SatelliteSurveyPage({
   const rasterOn = rasterOverride ?? hasRaster;
 
   // Same entries, order and heading the on-screen legend shows, so the printed
-  // sheet reads identically to the workbench.
-  const exportLegendItems = useMemo(
+  // sheet reads identically to the workbench. Zone classes first, then every other
+  // symbol the sheet draws.
+  const exportCandidates = useMemo(
     () =>
-      rasterOn
+      layers.candidates
+        ? rows.map((row) => ({
+            latitude: row.latitude,
+            longitude: row.longitude,
+            color: row.color,
+            label: stationDepthLabel(row.category, row.payload) ?? undefined,
+          }))
+        : [],
+    [layers.candidates, rows],
+  );
+
+  const targetDepth = detail?.run.result?.waterDepth ?? null;
+  const exportTargetDepthLabel = targetDepth
+    ? `Water table ~${metricRange(targetDepth.wetM, targetDepth.dryM) ?? targetDepth.read ?? "?"}`
+    : undefined;
+
+  const exportLegendItems = useMemo(
+    () => [
+      ...(rasterOn
         ? [5, 4, 3, 2, 1].map((code) => ({
+            kind: "zone" as const,
             color: CATEGORY_RASTER_PALETTE[jobDossierCategory][code],
             label: CATEGORY_ZONE_LABELS[jobDossierCategory][code] ?? `Zone ${code}`,
           }))
-        : [],
-    [rasterOn, jobDossierCategory],
+        : []),
+      ...(layers.candidates && rows.length > 0
+        ? [
+            {
+              kind: "station" as const,
+              color: rows[0].color,
+              label: "Recommended station (depth beside each)",
+            },
+          ]
+        : []),
+      ...(layers.aoi
+        ? [{ kind: "aoi" as const, label: "Survey area (AOI) boundary" }]
+        : []),
+      { kind: "target" as const, label: "Survey centre" },
+      { kind: "imagery" as const, label: "Satellite imagery base" },
+    ],
+    [rasterOn, jobDossierCategory, layers.candidates, layers.aoi, rows],
   );
-  const exportLegendTitle =
-    jobDossierCategory === "hazard_safety" ? "Classified Risk" : "Classified Potential";
+  const exportLegendTitle = rasterOn
+    ? jobDossierCategory === "hazard_safety"
+      ? "Classified Risk"
+      : "Classified Potential"
+    : "Map Symbols";
   const exportBasemap = basemapById(basemap);
 
   const handleDownloadKmz = useCallback(async () => {
@@ -910,7 +950,8 @@ export default function SatelliteSurveyPage({
         categoryName={jobCategory.toUpperCase()}
         clientName={values.clientName}
         aoiBounds={aoiBounds(target.latitude, target.longitude, values.halfDeg)}
-        candidates={layers.candidates ? rows : []}
+        candidates={exportCandidates}
+        targetDepthLabel={exportTargetDepthLabel}
         legendItems={exportLegendItems}
         legendTitle={exportLegendTitle}
         basemap={{

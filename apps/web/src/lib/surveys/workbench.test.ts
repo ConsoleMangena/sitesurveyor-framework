@@ -16,8 +16,10 @@ import {
   mapCandidates,
   metersPerPixel,
   meterWidth,
+  metricRange,
   scaleText,
   scoreValueText,
+  stationDepthLabel,
 } from "./workbench.ts";
 import type { SurveyTarget } from "../repositories/satelliteSurveys.ts";
 
@@ -182,5 +184,46 @@ describe("score provenance wording", () => {
   it("keeps one decimal, because that is all the score has", () => {
     expect(scoreValueText(61.44)).toBe("61.4");
     expect(scoreValueText(null)).toBe("—");
+  });
+});
+
+describe("metricRange", () => {
+  it("prints a range, a single value, or nothing", () => {
+    expect(metricRange(24.2, 31.4)).toBe("24.2-31.4 m");
+    expect(metricRange(24, null)).toBe("24 m");
+    expect(metricRange(null, 31)).toBe("31 m");
+    expect(metricRange(18, 18)).toBe("18 m");
+    expect(metricRange(null, null)).toBeNull();
+    expect(metricRange("nope", false)).toBeNull();
+  });
+
+  it("changes unit on request", () => {
+    expect(metricRange(2, 5, " km")).toBe("2-5 km");
+  });
+});
+
+describe("stationDepthLabel", () => {
+  it("reads the water depth the engine stored on the payload", () => {
+    expect(
+      stationDepthLabel("water", {
+        depth_to_water_wet_m: 24.2,
+        depth_to_water_dry_m: 31.4,
+      }),
+    ).toBe("24.2-31.4 m");
+  });
+
+  it("reads overburden for minerals and the class for hazard", () => {
+    expect(
+      stationDepthLabel("minerals", { overburden_min_m: 12, overburden_max_m: 18 }),
+    ).toBe("12-18 m");
+    expect(stationDepthLabel("hazard_safety", { class_name: "Low hazard" })).toBe(
+      "Low hazard",
+    );
+  });
+
+  it("returns null when the category has no depth story", () => {
+    expect(stationDepthLabel("soil_land", { anything: 1 })).toBeNull();
+    expect(stationDepthLabel("water", null)).toBeNull();
+    expect(stationDepthLabel("water", {})).toBeNull();
   });
 });
