@@ -387,10 +387,6 @@ export default function SatelliteSurveyPage({
     setValues((current) => ({ ...current, ...next }));
   }
 
-  function moveTarget(latitude: number, longitude: number) {
-    patch({ latitude: latitude.toFixed(5), longitude: longitude.toFixed(5) });
-  }
-
   function focusCandidate(candidate: MapCandidate) {
     setFocusedKey(candidate.key);
     setFocus({
@@ -800,13 +796,12 @@ export default function SatelliteSurveyPage({
             classifiedOpacity={rasterOpacity}
             basemap={basemap}
             outside={outside}
-            showHint={running === null}
+            showHint={false}
             crs={detail?.run.result?.target?.crs ?? null}
             imagery={imagery}
             fitToken={fitToken}
             resizeToken={resizeToken}
             focus={focus}
-            onMoveTarget={moveTarget}
             onView={(info) => {
               setView(info);
               setMapViewInfo(info);

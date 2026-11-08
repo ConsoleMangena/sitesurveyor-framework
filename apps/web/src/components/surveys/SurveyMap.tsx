@@ -39,7 +39,7 @@ interface SurveyMapProps {
   basemap: string;
   /** Outside the coverage the worker can read: the pin goes amber before the money does. */
   outside: boolean;
-  showHint: boolean;
+  showHint?: boolean;
   crs: string | null;
   imagery: string | null;
   /** Bumped when a survey publishes or another run is opened — the map follows it. */
@@ -47,7 +47,7 @@ interface SurveyMapProps {
   /** Bumped by the panels' collapse buttons, because Leaflet cannot measure a resized box. */
   resizeToken: number;
   focus: { latitude: number; longitude: number; token: number } | null;
-  onMoveTarget: (latitude: number, longitude: number) => void;
+  onMoveTarget?: (latitude: number, longitude: number) => void;
   onView: (info: MapViewInfo) => void;
   onMapReady?: (map: LeafletMap) => void;
   onOpenExportView?: () => void;
@@ -60,12 +60,11 @@ function Controller({
   fitToken,
   resizeToken,
   focus,
-  onMoveTarget,
   onView,
   onMapReady,
 }: Pick<
   SurveyMapProps,
-  "bounds" | "fitToken" | "resizeToken" | "focus" | "onMoveTarget" | "onView" | "onMapReady"
+  "bounds" | "fitToken" | "resizeToken" | "focus" | "onView" | "onMapReady"
 >) {
   const map = useMap();
   useEffect(() => {
@@ -80,11 +79,7 @@ function Controller({
   }, [bounds]);
 
   useMapEvents({
-    // Clicking the canvas moves the target, which is the only way to place a survey on
-    // the thing a reader actually recognises: the ground.
-    click: (event: LeafletMouseEvent) => {
-      onMoveTarget(event.latlng.lat, event.latlng.lng);
-    },
+    // Coordinates are only set via the form inputs, not modified by clicking the map canvas.
     mousemove: (event: LeafletMouseEvent) => reportView(map, event.latlng.lat, event.latlng.lng, onView),
     mouseout: () => reportView(map, null, null, onView),
     zoomend: () => reportView(map, null, null, onView),
@@ -199,15 +194,6 @@ export default function SurveyMap({
       <Marker
         position={[target.latitude, target.longitude]}
         icon={pin}
-        draggable
-        eventHandlers={{
-          dragend: (event) => {
-            const latlng = (
-              event.target as { getLatLng: () => { lat: number; lng: number } }
-            ).getLatLng();
-            onMoveTarget(latlng.lat, latlng.lng);
-          },
-        }}
       >
         <Popup>
           <div className="sw-popup__title">Target site</div>
@@ -275,7 +261,6 @@ export default function SurveyMap({
         fitToken={fitToken}
         resizeToken={resizeToken}
         focus={focus}
-        onMoveTarget={onMoveTarget}
         onView={onView}
         onMapReady={onMapReady}
       />
@@ -304,7 +289,7 @@ export default function SurveyMap({
         ) : null}
       </div>
 
-      {showHint ? <div className="sw-hint">Click the map to move the target pin</div> : null}
+      {/* Pin location is fixed to form input coordinates */}
     </MapContainer>
   );
 }
