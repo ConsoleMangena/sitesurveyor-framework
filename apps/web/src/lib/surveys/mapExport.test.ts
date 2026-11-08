@@ -7,6 +7,7 @@ import {
   formatMeters,
   forwardUTM,
   niceGraticuleStep,
+  overzoomQuadrant,
   padBounds,
   representativeFraction,
   scaleBarLayout,
@@ -243,5 +244,20 @@ describe("niceGraticuleStep density", () => {
   it("honours a caller-supplied tick budget", () => {
     expect(niceGraticuleStep(0.5, 3).step).toBe(0.2);
     expect(niceGraticuleStep(0.5, 7).step).toBe(0.1);
+  });
+});
+
+describe("overzoomQuadrant", () => {
+  it("keeps the tile whole at or below the archive's native cap", () => {
+    expect(overzoomQuadrant(16, 49304, 31330, 16)).toEqual({ shift: 0, qx: 0, qy: 0 });
+    expect(overzoomQuadrant(9, 241, 134, 16)).toEqual({ shift: 0, qx: 0, qy: 0 });
+  });
+
+  it("names the quadrant of the native parent a deeper zoom stretches", () => {
+    // z18 x49304 y31330 sits in the third row, first column of its z16 parent.
+    const q = overzoomQuadrant(18, 49304, 31330, 16);
+    expect(q).toEqual({ shift: 2, qx: 0, qy: 2 });
+    expect(49304 >> q.shift).toBe(12326);
+    expect(31330 >> q.shift).toBe(7832);
   });
 });

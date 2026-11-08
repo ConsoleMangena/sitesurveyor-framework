@@ -55,6 +55,9 @@ interface SurveyMapProps {
   onView: (info: MapViewInfo) => void;
   onMapReady?: (map: LeafletMap) => void;
   onOpenExportView?: () => void;
+  /** The page also learns when the tile archive fails, so its own consumers --
+   *  the PDF export -- fall back with the same drape the map fell back to. */
+  onTilesUnavailable?: () => void;
 }
 
 /** Everything that has to reach the Leaflet instance itself, in one child so the page
@@ -153,6 +156,7 @@ export default function SurveyMap({
   onView,
   onMapReady,
   onOpenExportView,
+  onTilesUnavailable,
 }: SurveyMapProps) {
   const tile = useMemo(() => basemapById(basemap), [basemap]);
   const pin = useMemo(() => targetIcon(outside ? OUTSIDE : BRAND), [outside]);
@@ -165,7 +169,10 @@ export default function SurveyMap({
   // Stable callback: PmtilesOverlay keys its build effect on this prop's
   // identity, and a fresh arrow here would tear the tile layer down on every
   // map-move re-render.
-  const handleTilesUnavailable = useCallback(() => setTilesUnavailable(true), []);
+  const handleTilesUnavailable = useCallback(() => {
+    setTilesUnavailable(true);
+    onTilesUnavailable?.();
+  }, [onTilesUnavailable]);
   const useTiles = layers.raster !== false && Boolean(classifiedTilesSource) && !tilesUnavailable;
 
   return (

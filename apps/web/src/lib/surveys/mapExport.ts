@@ -111,8 +111,35 @@ export interface MapExportOptions {
   coordMode?: "degrees" | "utm";
   /** Optical sensor the analysis was computed from, e.g. "Copernicus Sentinel-2". */
   opticalSource?: string;
+  /** "view" frames the sheet to the live map's current point of view -- the extent
+   *  and zoom level exactly as the workbench shows them (default). "survey" keeps
+   *  the whole-ground product: the AOI grown by the context margin. */
+  frame?: "view" | "survey";
+  /** The survey's classified zone tiles, painted over the basemap like the live
+   *  raster layer. Omit (or null) to ship the sheet without the classification. */
+  classifiedTiles?: ClassifiedTilesOption | null;
   /** PNG logo drawn in the title panel. Empty string disables; defaults to /logo.png. */
   logoUrl?: string;
+}
+
+/** Reading contract of the survey tile archive, structurally the same object the
+ *  live PMTiles overlay is handed -- kept here as a shape so the compositor never
+ *  needs the repository module. */
+export interface SheetTilesSource {
+  getKey: () => string;
+  getBytes(
+    offset: number,
+    length: number,
+    signal?: AbortSignal,
+    etag?: string,
+  ): Promise<{ data: ArrayBuffer }>;
+}
+
+/** Classified-tiles input for the sheet: the archive reader and the live layer's
+ *  opacity. */
+export interface ClassifiedTilesOption {
+  source: SheetTilesSource;
+  opacity: number;
 }
 
 export interface OptimalQuality {
@@ -546,6 +573,32 @@ const MAX_TILES = 512;
 const TILE_FETCH_CONCURRENCY = 8;
 const TILE_FETCH_TIMEOUT_MS = 15000;
 
+// The classified archive's usable zoom band, kept in step with the live
+// PMTiles overlay: below the floor nothing paints, above the cap the parent
+// tile is over-zoomed with the right quadrant scaled up.
+const CLASS_TILES_MIN_ZOOM = 7;
+const CLASS_TILES_MAX_NATIVE_ZOOM = 16;
+
+export interface OverzoomQuadrant {
+  /** nativeZoom = sheetZoom - shift */
+  shift: number;
+  /** The quadrant of the parent tile the sheet tile occupies. */
+  qx: number;
+  qy: number;
+}
+
+/** Which quadrant of which native tile a sheet tile over-zooms from. */
+export function overzoomQuadrant(
+  z: number,
+  x: number,
+  y: number,
+  maxNativeZoom: number,
+): OverzoomQuadrant {
+  const shift = Math.max(0, z - maxNativeZoom);
+  const mask = (1 << shift) - 1;
+  return { shift, qx: x & mask, qy: y & mask };
+}
+
 function tileUrlFor(template: string, x: number, y: number, z: number): string {
   const subdomain = "abc"[Math.abs(x + y) % 3] ?? "a";
   return template
@@ -566,27 +619,31 @@ async function loadTileImage(url: string): Promise<Drawable | null> {
           : undefined,
     });
     if (!response.ok) return null;
-    const blob = await response.blob();
-    if (typeof createImageBitmap === "function") {
-      try {
-        return await createImageBitmap(blob);
-      } catch {
-        // Fall through to the <img> path.
-      }
-    }
-    const objectUrl = URL.createObjectURL(blob);
-    return await new Promise<HTMLImageElement | null>((resolve) => {
-      const img = new window.Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        resolve(null);
-      };
-      img.src = objectUrl;
-    });
+    return await loadImageFromBlob(await response.blob());
   } catch {
     return null;
   }
+}
+
+/** Decode a fetched blob to something drawable, without tainting the sheet canvas. */
+async function loadImageFromBlob(blob: Blob): Promise<Drawable | null> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      return await createImageBitmap(blob);
+    } catch {
+      // Fall through to the <img> path.
+    }
+  }
+  const objectUrl = URL.createObjectURL(blob);
+  return await new Promise<HTMLImageElement | null>((resolve) => {
+    const img = new window.Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(null);
+    };
+    img.src = objectUrl;
+  });
 }
 
 /**
@@ -679,6 +736,43 @@ function collectRasterOverlays(map: LeafletMap): RasterOverlaySpec[] {
   return overlays;
 }
 
+/** The classified tiles layer for the sheet, reading the same archive the live
+ *  overlay paints -- only the tiles the sheet frame covers, through the same
+ *  authenticated byte ranges. */
+interface SheetTilesLayer {
+  opacity: number;
+  minZoom: number;
+  maxNativeZoom: number;
+  getTile: (z: number, x: number, y: number) => Promise<Drawable | null>;
+}
+
+async function buildSheetTilesLayer(
+  option: ClassifiedTilesOption,
+): Promise<SheetTilesLayer | null> {
+  try {
+    // Same lazy reader the live overlay imports; the export never pulls it
+    // into the map bundle.
+    const { PMTiles } = await import("pmtiles");
+    const archive = new PMTiles(option.source);
+    // The header round-trip is the sanity check the live overlay uses too:
+    // without it a broken proxy would leave the sheet believing it drew zones.
+    await archive.getHeader();
+    return {
+      opacity: Math.max(0, Math.min(1, option.opacity)),
+      minZoom: CLASS_TILES_MIN_ZOOM,
+      maxNativeZoom: CLASS_TILES_MAX_NATIVE_ZOOM,
+      getTile: async (z, x, y) => {
+        const tile = await archive.getZxy(z, x, y);
+        if (!tile || tile.data.byteLength === 0) return null;
+        return await loadImageFromBlob(new Blob([tile.data], { type: "image/png" }));
+      },
+    };
+  } catch (error: unknown) {
+    console.warn("Sheet classified tiles unavailable; exporting without them.", error);
+    return null;
+  }
+}
+
 interface ComposeResult {
   canvas: HTMLCanvasElement;
   totalTiles: number;
@@ -705,6 +799,8 @@ interface ComposeInput {
   tileUrlTemplate?: string;
   maxNativeZoom: number;
   overlays: RasterOverlaySpec[];
+  /** Classified zone tiles drawn over the basemap, like the live raster layer. */
+  tilesLayer?: SheetTilesLayer | null;
   /** Ground the sheet must cover. When absent, the map's current view is used. */
   extent?: { south: number; west: number; north: number; east: number };
 }
@@ -850,6 +946,33 @@ async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
     throw new Error(
       "No imagery could be loaded for the sheet. Check the connection and try again.",
     );
+  }
+
+  // Classified zone tiles over the basemap: the same archive the live raster
+  // layer paints, over-zoomed the same way, at the layer's own opacity. Below
+  // the archive's floor the live layer paints nothing either, so the sheet
+  // stays honest about that instead of improvising a drape.
+  // Tile rects are concatted, not overlapped: unlike the basemap's opaque
+  // half-pixel trick, a blend-mode overlap would print a doubled seam under a
+  // translucent raster.
+  if (input.tilesLayer && tileZoom >= input.tilesLayer.minZoom) {
+    const layer = input.tilesLayer;
+    const nativeZoom = Math.min(tileZoom, layer.maxNativeZoom);
+    await mapInChunks(tiles, TILE_FETCH_CONCURRENCY, async (tile) => {
+      const x0 = Math.round((tile.x * TILE_SIZE - origin.x) * scale);
+      const y0 = Math.round((tile.y * TILE_SIZE - origin.y) * scale);
+      const x1 = Math.round(((tile.x + 1) * TILE_SIZE - origin.x) * scale);
+      const y1 = Math.round(((tile.y + 1) * TILE_SIZE - origin.y) * scale);
+      if (x1 <= 0 || y1 <= 0 || x0 >= mapWPx || y0 >= mapHPx) return;
+      const { shift, qx, qy } = overzoomQuadrant(tileZoom, tile.x, tile.y, nativeZoom);
+      const srcSize = TILE_SIZE >> shift;
+      const parent = await layer.getTile(nativeZoom, tile.x >> shift, tile.y >> shift);
+      if (!parent) return;
+      ctx.save();
+      ctx.globalAlpha = layer.opacity;
+      ctx.drawImage(parent, qx * srcSize, qy * srcSize, srcSize, srcSize, x0, y0, x1 - x0, y1 - y0);
+      ctx.restore();
+    });
   }
 
   // Classified raster overlays from the live map, projected into the sheet.
@@ -1828,11 +1951,17 @@ function drawMapFurniture(
 /**
  * Generate a standard A4 landscape map sheet as vector PDF.
  *
- * Imagery is fetched tile-by-tile for the current view at the paper's true
- * resolution (never a screenshot of the screen), the classified raster is
- * composited from the live map, and every cartographic element — graticule,
+ * Imagery is fetched tile-by-tile at the paper's true resolution (never a
+ * screenshot of the screen), and every cartographic element — graticule,
  * scale bar, legend, title block, north arrow, attribution — is drawn as PDF
  * vectors so text stays crisp at any zoom.
+ *
+ * Framing defaults to the map's own point of view — the extent and zoom level
+ * showing in the workbench — with the whole-ground survey product available
+ * under `frame: "survey"`. The survey's classified tiles are painted over the
+ * basemap the same way the live raster layer paints them, from the same
+ * private archive; older runs fall back to the georeferenced drape overlays
+ * collected from the live map.
  */
 export async function exportMapAsPdf(
   map: LeafletMap,
@@ -1850,16 +1979,24 @@ export async function exportMapAsPdf(
   const mapHPx = Math.round((mapRect.h / 72) * dpi);
 
   const overlays = collectRasterOverlays(map);
+  // Default is the map's own point of view -- the extent and zoom level on
+  // screen -- which is what a sheet that "shows what I am looking at" means.
+  // "survey" keeps the whole-ground product around the AOI.
+  const frame = options.frame === "survey" ? "survey" : "view";
   const contextFraction = Math.max(0, Math.min(1, options.contextFraction ?? 0.25));
-  const extent = options.aoiBounds
-    ? padBounds(
-        options.aoiBounds[0][0],
-        options.aoiBounds[0][1],
-        options.aoiBounds[1][0],
-        options.aoiBounds[1][1],
-        contextFraction,
-      )
-    : undefined;
+  const extent =
+    frame === "survey" && options.aoiBounds
+      ? padBounds(
+          options.aoiBounds[0][0],
+          options.aoiBounds[0][1],
+          options.aoiBounds[1][0],
+          options.aoiBounds[1][1],
+          contextFraction,
+        )
+      : undefined;
+  const tilesLayer = options.classifiedTiles
+    ? await buildSheetTilesLayer(options.classifiedTiles)
+    : null;
   const compose = await composeImagery({
     map,
     mapWPx,
@@ -1867,6 +2004,7 @@ export async function exportMapAsPdf(
     tileUrlTemplate: options.tileUrlTemplate,
     maxNativeZoom: options.maxNativeZoom ?? 19,
     overlays,
+    tilesLayer,
     extent,
   });
 

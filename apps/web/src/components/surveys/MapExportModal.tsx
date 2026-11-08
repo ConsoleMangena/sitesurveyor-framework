@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils.ts";
 import type { MapViewInfo } from "./SurveyMap.tsx";
 import {
   exportMapAsPdf,
+  type ClassifiedTilesOption,
   type MapExportOptions,
   type SheetLegendItem,
 } from "../../lib/surveys/mapExport.ts";
@@ -37,6 +38,10 @@ interface MapExportModalProps {
   legendTitle?: string;
   /** Optical sensor the analysis ran on, printed in the title panel. */
   opticalSource?: string;
+  /** The survey's classified tiles; present when the run published a tile
+   *  archive and the raster layer is on. Absent means the sheet exports
+   *  without the classification. */
+  classifiedTiles?: ClassifiedTilesOption | null;
   basemap: ExportBasemapConfig;
 }
 
@@ -89,6 +94,7 @@ export default function MapExportModal({
   legendItems,
   legendTitle,
   opticalSource,
+  classifiedTiles,
   basemap,
 }: MapExportModalProps) {
   const [title, setTitle] = useState(
@@ -99,6 +105,10 @@ export default function MapExportModal({
   const [includeNorthArrow, setIncludeNorthArrow] = useState(true);
   const [includeScaleBar, setIncludeScaleBar] = useState(true);
   const [contextFraction, setContextFraction] = useState(0.25);
+  // "view" keeps the sheet honest to what the user is looking at: the live
+  // map's extent and zoom level. The exact survey-ground framing stays
+  // available for the whole-area product.
+  const [frame, setFrame] = useState<"view" | "survey">("view");
   const [panelSide, setPanelSide] = useState<"right" | "left">("right");
   const [northPlacement, setNorthPlacement] = useState<"panel" | "map">("panel");
   const [scalePlacement, setScalePlacement] = useState<"panel" | "map">("panel");
@@ -144,6 +154,8 @@ export default function MapExportModal({
         includeNeatline: true,
         target,
         aoiBounds,
+        frame,
+        classifiedTiles,
         candidates,
         targetDepthLabel,
         legendItems,
@@ -269,33 +281,49 @@ export default function MapExportModal({
             <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground block">
               Sheet Layout &amp; Extent
             </span>
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-foreground">Context around survey area</span>
-                <span className="font-mono text-muted-foreground">
-                  {Math.round(contextFraction * 100)}%
-                </span>
+            <PlacementRow
+              label="Sheet extent"
+              value={frame}
+              onChange={setFrame}
+              options={[
+                ["view", "Map view"],
+                ["survey", "Survey area"],
+              ]}
+            />
+            {frame === "view" ? (
+              <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-[10.5px] leading-snug text-muted-foreground">
+                Follows the map's point of view: whatever extent and zoom level the
+                workbench is showing is what prints, classified raster included.
+              </p>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-foreground">Context around survey area</span>
+                  <span className="font-mono text-muted-foreground">
+                    {Math.round(contextFraction * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={contextFraction}
+                  onChange={(e) => setContextFraction(Number(e.target.value))}
+                  className="mt-1.5 w-full accent-primary"
+                  aria-label="Context around the survey area"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>AOI only</span>
+                  <span>
+                    {extentHintKm !== null
+                      ? `Sheet ≈ ${extentHintKm < 10 ? extentHintKm.toFixed(1) : Math.round(extentHintKm)} km across`
+                      : "Wide"}
+                  </span>
+                  <span>Wide</span>
+                </div>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={contextFraction}
-                onChange={(e) => setContextFraction(Number(e.target.value))}
-                className="mt-1.5 w-full accent-primary"
-                aria-label="Context around the survey area"
-              />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>AOI only</span>
-                <span>
-                  {extentHintKm !== null
-                    ? `Sheet ≈ ${extentHintKm < 10 ? extentHintKm.toFixed(1) : Math.round(extentHintKm)} km across`
-                    : "Wide"}
-                </span>
-                <span>Wide</span>
-              </div>
-            </div>
+            )}
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">Grid lines</span>

@@ -377,6 +377,15 @@ export default function SatelliteSurveyPage({
     [tilesDeliverable],
   );
 
+  // Whether the tile archive worked on-screen. The PDF export drops its own
+  // classified-tiles pull when it did not, counting on the same image-drape
+  // fallback the live map fell back to.
+  const [tilesUnavailable, setTilesUnavailable] = useState(false);
+  useEffect(() => {
+    setTilesUnavailable(false);
+  }, [tilesSource]);
+  const handleTilesUnavailable = useCallback(() => setTilesUnavailable(true), []);
+
   useEffect(() => {
     let active = true;
     setRasterUrl(null);
@@ -903,6 +912,7 @@ export default function SatelliteSurveyPage({
             classifiedImageUrl={rasterUrl}
             classifiedTiffUrl={geoTiffUrl}
             classifiedTilesSource={tilesSource}
+            onTilesUnavailable={handleTilesUnavailable}
             rasterPalette={CATEGORY_RASTER_PALETTE[jobDossierCategory]}
             classifiedOpacity={rasterOpacity}
             basemap={basemap}
@@ -997,9 +1007,14 @@ export default function SatelliteSurveyPage({
         map={mapInstance}
         target={target}
         viewInfo={mapViewInfo}
+        classifiedTiles={
+          tilesSource && rasterOn && !tilesUnavailable
+            ? { source: tilesSource, opacity: rasterOpacity }
+            : null
+        }
         categoryName={jobCategory.toUpperCase()}
         clientName={values.clientName}
-        aoiBounds={aoiBounds(target.latitude, target.longitude, values.halfDeg)}
+        aoiBounds={surveyBounds}
         candidates={exportCandidates}
         targetDepthLabel={exportTargetDepthLabel}
         legendItems={exportLegendItems}
