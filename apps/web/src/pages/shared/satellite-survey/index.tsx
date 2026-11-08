@@ -409,6 +409,14 @@ export default function SatelliteSurveyPage({
   const hasRaster = Boolean(overlayDeliverable || tifDeliverable);
   const rasterOn = rasterOverride ?? hasRaster;
 
+  // One stable AOI rectangle for the session: SurveyMap re-renders on every map
+  // move, and a fresh bounds array would reposition the classified drape and
+  // churn the map children each time.
+  const surveyBounds = useMemo(
+    () => aoiBounds(target.latitude, target.longitude, values.halfDeg),
+    [target.latitude, target.longitude, values.halfDeg],
+  );
+
   // Same entries, order and heading the on-screen legend shows, so the printed
   // sheet reads identically to the workbench. Zone classes first, then every other
   // symbol the sheet draws.
@@ -889,7 +897,7 @@ export default function SatelliteSurveyPage({
 
           <SurveyMap
             target={target}
-            bounds={aoiBounds(target.latitude, target.longitude, values.halfDeg)}
+            bounds={surveyBounds}
             candidates={candidates}
             layers={{ ...layers, raster: rasterOn }}
             classifiedImageUrl={rasterUrl}

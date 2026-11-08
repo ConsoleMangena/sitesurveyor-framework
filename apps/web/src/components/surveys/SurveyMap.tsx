@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
@@ -162,6 +162,10 @@ export default function SurveyMap({
   useEffect(() => {
     setTilesUnavailable(false);
   }, [classifiedTilesSource]);
+  // Stable callback: PmtilesOverlay keys its build effect on this prop's
+  // identity, and a fresh arrow here would tear the tile layer down on every
+  // map-move re-render.
+  const handleTilesUnavailable = useCallback(() => setTilesUnavailable(true), []);
   const useTiles = layers.raster !== false && Boolean(classifiedTilesSource) && !tilesUnavailable;
 
   return (
@@ -197,7 +201,7 @@ export default function SurveyMap({
         <PmtilesOverlay
           source={classifiedTilesSource ?? null}
           opacity={classifiedOpacity}
-          onUnavailable={() => setTilesUnavailable(true)}
+          onUnavailable={handleTilesUnavailable}
         />
       ) : layers.raster !== false && (classifiedTiffUrl || classifiedImageUrl) ? (
         <GeoTiffOverlay
