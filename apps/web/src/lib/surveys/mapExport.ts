@@ -1259,22 +1259,17 @@ function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
     drawTextLine(ctx, "ORIENTATION", innerX, y, 7, { font: ctx.bold });
     y += 12;
     const cx = innerX + 18;
-    const cy = y + 24;
+    const cy = y + 22;
     drawNorthNeedle(ctx, cx, cy, false);
-    const noteLines = wrapText(
+    drawTextLine(
       ctx,
-      "Map top is grid north. Web Mercator projection; convergence ignored at this scale.",
+      "Map top is grid north (Web Mercator)",
+      innerX + 52,
+      cy - 3,
       5.8,
-      innerW - 48,
-      ctx.font,
-      4,
+      { color: INK_SOFT },
     );
-    let noteY = y + 4;
-    for (const line of noteLines) {
-      drawTextLine(ctx, line, innerX + 48, noteY, 5.8, { color: INK_SOFT });
-      noteY += 7.5;
-    }
-    y += 52;
+    y += 44;
   }
 
   const footerLines = wrapText(ctx, data.footerText, 5.6, innerW, ctx.font, 4);
@@ -1297,24 +1292,39 @@ function drawNorthNeedle(
     x: cx,
     y: yFlip(cyTop),
     size: 16,
-    borderColor: onMap ? rgb(1, 1, 1) : INK_SOFT,
-    borderWidth: onMap ? 0.9 : 0.7,
+    borderColor: onMap ? INK : INK_SOFT,
+    borderWidth: onMap ? 0.8 : 0.7,
+    color: onMap ? PAPER : undefined,
   });
   page.drawSvgPath("M 0 -15 L -5.5 11 L 0 7 Z", {
     x: cx,
     y: yFlip(cyTop),
-    color: onMap ? PAPER : INK,
+    color: INK,
   });
   page.drawSvgPath("M 0 -15 L 5.5 11 L 0 7 Z", {
     x: cx,
     y: yFlip(cyTop),
-    color: onMap ? INK : PAPER,
-    borderColor: onMap ? PAPER : INK,
+    color: onMap ? PAPER : INK_SOFT,
+    borderColor: INK,
     borderWidth: 0.6,
   });
-  drawTextLine(ctx, "N", cx - 2.4, onMap ? cyTop + 18 : cyTop - 30, 8, {
+  // The letter reads in one line on the side of the needle, never over the
+  // section header or floating on the imagery.
+  if (onMap) {
+    page.drawRectangle({
+      x: cx + 20,
+      y: yFlip(cyTop + 5.5),
+      width: 10,
+      height: 11,
+      color: PAPER,
+      borderColor: INK,
+      borderWidth: 0.4,
+      borderOpacity: 0.55,
+    });
+  }
+  drawTextLine(ctx, "N", cx + 22.2, cyTop - 4.5, 8, {
     font: ctx.bold,
-    color: onMap ? rgb(1, 1, 1) : INK,
+    color: INK,
   });
 }
 
@@ -1807,7 +1817,8 @@ function drawMapFurniture(
   }
 
   if (furniture.northOnMap) {
-    drawNorthNeedle(ctx, mapRect.x + mapRect.w - 24, mapRect.y + 26, true);
+    // Badge sits clear of the frame: circle + side chip span ~46pt from cx.
+    drawNorthNeedle(ctx, mapRect.x + mapRect.w - 40, mapRect.y + 26, true);
   }
   if (furniture.scaleOnMap) {
     drawScaleBarOnMap(ctx, mapRect, furniture.bar, furniture.scaleText);
