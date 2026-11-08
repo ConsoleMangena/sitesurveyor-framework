@@ -29,11 +29,26 @@ export interface SheetMapRect {
   h: number;
 }
 
-export function sheetMapRect(): SheetMapRect {
+export function sheetMapRect(panelSide: "right" | "left" = "right"): SheetMapRect {
   return {
-    x: SHEET.marginPt,
+    x:
+      panelSide === "right"
+        ? SHEET.marginPt
+        : SHEET.marginPt + SHEET.panelWidthPt + SHEET.panelGapPt,
     y: SHEET.marginPt,
     w: SHEET.widthPt - SHEET.marginPt * 2 - SHEET.panelWidthPt - SHEET.panelGapPt,
+    h: SHEET.heightPt - SHEET.marginPt * 2,
+  };
+}
+
+export function sheetPanelRect(panelSide: "right" | "left" = "right"): SheetMapRect {
+  return {
+    x:
+      panelSide === "right"
+        ? SHEET.marginPt + sheetMapRect().w + SHEET.panelGapPt
+        : SHEET.marginPt,
+    y: SHEET.marginPt,
+    w: SHEET.panelWidthPt,
     h: SHEET.heightPt - SHEET.marginPt * 2,
   };
 }
@@ -81,6 +96,15 @@ export interface MapExportOptions {
   /** Slippy-map tile template, e.g. from BASEMAPS[].url. */
   tileUrlTemplate?: string;
   maxNativeZoom?: number;
+  /** Context around the AOI as a fraction of its size: 0 crops the AOI at the frame,
+   *  1 doubles the covered ground. Default 0.25. */
+  contextFraction?: number;
+  /** Which side of the sheet the title/legend panel sits on. Default "right". */
+  panelSide?: "right" | "left";
+  /** North arrow in the title panel or pinned to the map's top-right corner. */
+  northArrowPlacement?: "panel" | "map";
+  /** Scale bar in the title panel or on a cartouche at the map's bottom-left. */
+  scaleBarPlacement?: "panel" | "map";
   /** PNG logo drawn in the title panel. Empty string disables; defaults to /logo.png. */
   logoUrl?: string;
 }
@@ -894,18 +918,18 @@ function drawLegendSwatch(
   }
 }
 
-function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void {
+function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
   const { page } = ctx;
-  const px = mapRect.x + mapRect.w + SHEET.panelGapPt;
-  const pw = SHEET.panelWidthPt;
-  const ph = mapRect.h;
+  const px = rect.x;
+  const pw = rect.w;
+  const ph = rect.h;
   const innerX = px + 14;
   const innerW = pw - 28;
-  const bottomLimit = mapRect.y + ph - 78;
+  const bottomLimit = rect.y + ph - 78;
 
   page.drawRectangle({
     x: px,
-    y: yFlip(mapRect.y + ph),
+    y: yFlip(rect.y + ph),
     width: pw,
     height: ph,
     color: PAPER,
@@ -913,7 +937,7 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
     borderWidth: 0.8,
   });
 
-  let y = mapRect.y + 20;
+  let y = rect.y + 20;
 
   page.drawRectangle({
     x: px + 0.8,
@@ -994,36 +1018,10 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
   if (data.includeScaleBar && y < bottomLimit) {
     drawTextLine(ctx, "SCALE BAR", innerX, y, 7, { font: ctx.bold });
     y += 12;
-    const segments = 4;
-    const segW = data.scaleBarWidthPt / segments;
-    for (let i = 0; i < segments; i += 1) {
-      page.drawRectangle({
-        x: innerX + i * segW,
-        y: yFlip(y + 6),
-        width: segW,
-        height: 6,
-        color: i % 2 === 0 ? INK : PAPER,
-        borderColor: INK,
-        borderWidth: 0.7,
-      });
-    }
-    drawTextLine(ctx, "0", innerX - 2, y + 8.5, 6, { color: INK_SOFT });
-    const midLabel = formatMeters(data.scaleBarMeters / 2);
-    const midW = ctx.font.widthOfTextAtSize(midLabel, 6);
-    drawTextLine(ctx, midLabel, innerX + data.scaleBarWidthPt / 2 - midW / 2, y + 8.5, 6, {
-      color: INK_SOFT,
+    y += drawScaleBarCore(ctx, innerX, y, {
+      meters: data.scaleBarMeters,
+      widthPt: data.scaleBarWidthPt,
     });
-    const fullLabel = formatMeters(data.scaleBarMeters);
-    const fullW = ctx.font.widthOfTextAtSize(fullLabel, 6);
-    drawTextLine(
-      ctx,
-      fullLabel,
-      innerX + data.scaleBarWidthPt - fullW + 2,
-      y + 8.5,
-      6,
-      { color: INK_SOFT },
-    );
-    y += 17;
     drawTextLine(ctx, data.scaleText, innerX, y, 6, { color: INK_SOFT });
     y += 14;
     drawPanelDivider(ctx, innerX, innerW, y);
@@ -1035,27 +1033,7 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
     y += 12;
     const cx = innerX + 18;
     const cy = y + 24;
-    page.drawCircle({
-      x: cx,
-      y: yFlip(cy),
-      size: 16,
-      borderColor: INK_SOFT,
-      borderWidth: 0.7,
-    });
-    // Needle: dark west half, white east half, tip at the top of the sheet.
-    page.drawSvgPath("M 0 -15 L -5.5 11 L 0 7 Z", {
-      x: cx,
-      y: yFlip(cy),
-      color: INK,
-    });
-    page.drawSvgPath("M 0 -15 L 5.5 11 L 0 7 Z", {
-      x: cx,
-      y: yFlip(cy),
-      color: PAPER,
-      borderColor: INK,
-      borderWidth: 0.6,
-    });
-    drawTextLine(ctx, "N", cx - 2.4, cy - 30, 8, { font: ctx.bold });
+    drawNorthNeedle(ctx, cx, cy, false);
     const noteLines = wrapText(
       ctx,
       "Map top is grid north. Web Mercator projection; convergence ignored at this scale.",
@@ -1073,11 +1051,106 @@ function drawPanel(ctx: SheetCtx, mapRect: SheetMapRect, data: PanelData): void 
   }
 
   const footerLines = wrapText(ctx, data.footerText, 5.6, innerW, ctx.font, 4);
-  let footerY = mapRect.y + ph - 12 - (footerLines.length - 1) * 7.5;
+  let footerY = rect.y + ph - 12 - (footerLines.length - 1) * 7.5;
   for (const line of footerLines) {
     drawTextLine(ctx, line, innerX, footerY, 5.6, { color: INK_SOFT });
     footerY += 7.5;
   }
+}
+
+/** The needle itself: tip at the top, dark west half, light east half. */
+function drawNorthNeedle(
+  ctx: SheetCtx,
+  cx: number,
+  cyTop: number,
+  onMap: boolean,
+): void {
+  const { page } = ctx;
+  page.drawCircle({
+    x: cx,
+    y: yFlip(cyTop),
+    size: 16,
+    borderColor: onMap ? rgb(1, 1, 1) : INK_SOFT,
+    borderWidth: onMap ? 0.9 : 0.7,
+  });
+  page.drawSvgPath("M 0 -15 L -5.5 11 L 0 7 Z", {
+    x: cx,
+    y: yFlip(cyTop),
+    color: onMap ? PAPER : INK,
+  });
+  page.drawSvgPath("M 0 -15 L 5.5 11 L 0 7 Z", {
+    x: cx,
+    y: yFlip(cyTop),
+    color: onMap ? INK : PAPER,
+    borderColor: onMap ? PAPER : INK,
+    borderWidth: 0.6,
+  });
+  drawTextLine(ctx, "N", cx - 2.4, onMap ? cyTop + 18 : cyTop - 30, 8, {
+    font: ctx.bold,
+    color: onMap ? rgb(1, 1, 1) : INK,
+  });
+}
+
+/** Segmented bar with metre labels; the printed length is never stretched. */
+function drawScaleBarCore(
+  ctx: SheetCtx,
+  x: number,
+  yTop: number,
+  bar: { meters: number; widthPt: number },
+): number {
+  const { page, font } = ctx;
+  const segments = 4;
+  const segW = bar.widthPt / segments;
+  for (let i = 0; i < segments; i += 1) {
+    page.drawRectangle({
+      x: x + i * segW,
+      y: yFlip(yTop + 6),
+      width: segW,
+      height: 6,
+      color: i % 2 === 0 ? INK : PAPER,
+      borderColor: INK,
+      borderWidth: 0.7,
+    });
+  }
+  drawTextLine(ctx, "0", x - 2, yTop + 8.5, 6, { color: INK_SOFT });
+  const midLabel = formatMeters(bar.meters / 2);
+  const midW = font.widthOfTextAtSize(midLabel, 6);
+  drawTextLine(ctx, midLabel, x + bar.widthPt / 2 - midW / 2, yTop + 8.5, 6, {
+    color: INK_SOFT,
+  });
+  const fullLabel = formatMeters(bar.meters);
+  const fullW = font.widthOfTextAtSize(fullLabel, 6);
+  drawTextLine(ctx, fullLabel, x + bar.widthPt - fullW + 2, yTop + 8.5, 6, {
+    color: INK_SOFT,
+  });
+  return 17;
+}
+
+/** Paper cartouche bottom-left of the imagery, holding the same honest bar. */
+function drawScaleBarOnMap(
+  ctx: SheetCtx,
+  mapRect: SheetMapRect,
+  bar: { meters: number; widthPt: number },
+  scaleText: string,
+): void {
+  const { page } = ctx;
+  const padX = 8;
+  const stripW = bar.widthPt + padX * 2;
+  const stripH = 30;
+  const x = mapRect.x + 6;
+  const yTop = mapRect.y + mapRect.h - stripH - 6;
+  page.drawRectangle({
+    x,
+    y: yFlip(yTop),
+    width: stripW,
+    height: stripH,
+    color: PAPER,
+    opacity: 0.9,
+    borderColor: rgb(0.15, 0.18, 0.22),
+    borderWidth: 0.5,
+  });
+  drawScaleBarCore(ctx, x + padX, yTop + 4, bar);
+  drawTextLine(ctx, scaleText, x + padX, yTop + 21, 5.5, { color: INK_SOFT });
 }
 
 function tickValues(min: number, max: number, step: number): number[] {
@@ -1095,6 +1168,12 @@ function drawMapFurniture(
   mapRect: SheetMapRect,
   compose: ComposeResult,
   options: MapExportOptions,
+  furniture: {
+    northOnMap: boolean;
+    scaleOnMap: boolean;
+    bar: { meters: number; widthPt: number };
+    scaleText: string;
+  },
 ): void {
   const { page, font, bold } = ctx;
   const { canvas, mapRef, originRef, upscale } = compose;
@@ -1253,10 +1332,12 @@ function drawMapFurniture(
         y: yFlip(yPt - 4),
         width: chipW,
         height: 10,
-        color: CHIP_BG,
-        opacity: 0.78,
+        color: PAPER,
+        opacity: 0.94,
+        borderColor: rgb(0.15, 0.18, 0.22),
+        borderWidth: 0.4,
       });
-      drawTextLine(ctx, text, chipX + 3, yPt - 1.6, size, { color: rgb(1, 1, 1) });
+      drawTextLine(ctx, text, chipX + 3, yPt - 1.6, size, { color: INK });
     }
   }
 
@@ -1365,6 +1446,13 @@ function drawMapFurniture(
       color: rgb(1, 1, 1),
     });
   }
+
+  if (furniture.northOnMap) {
+    drawNorthNeedle(ctx, mapRect.x + mapRect.w - 24, mapRect.y + 26, true);
+  }
+  if (furniture.scaleOnMap) {
+    drawScaleBarOnMap(ctx, mapRect, furniture.bar, furniture.scaleText);
+  }
 }
 
 /**
@@ -1385,18 +1473,21 @@ export async function exportMapAsPdf(
 
   const quality = detectOptimalQuality();
   const dpi = Math.max(96, Math.min(320, Math.round(options.dpi ?? quality.dpi)));
-  const mapRect = sheetMapRect();
+  const panelSide = options.panelSide === "left" ? "left" : "right";
+  const mapRect = sheetMapRect(panelSide);
+  const panelRect = sheetPanelRect(panelSide);
   const mapWPx = Math.round((mapRect.w / 72) * dpi);
   const mapHPx = Math.round((mapRect.h / 72) * dpi);
 
   const overlays = collectRasterOverlays(map);
+  const contextFraction = Math.max(0, Math.min(1, options.contextFraction ?? 0.25));
   const extent = options.aoiBounds
     ? padBounds(
         options.aoiBounds[0][0],
         options.aoiBounds[0][1],
         options.aoiBounds[1][0],
         options.aoiBounds[1][1],
-        0.25,
+        contextFraction,
       )
     : undefined;
   const compose = await composeImagery({
@@ -1425,8 +1516,6 @@ export async function exportMapAsPdf(
     height: mapRect.h,
   });
 
-  drawMapFurniture(ctx, mapRect, compose, options);
-
   const groundPerPt = compose.groundWidthM / mapRect.w;
   const rf = representativeFraction(groundPerPt);
   const bar = scaleBarLayout(groundPerPt);
@@ -1437,6 +1526,12 @@ export async function exportMapAsPdf(
   const upscaledNote =
     compose.upscale > 1.02 ? ` (upscaled x${compose.upscale.toFixed(1)})` : "";
 
+  drawMapFurniture(ctx, mapRect, compose, options, {
+    northOnMap: options.northArrowPlacement === "map",
+    scaleOnMap: options.scaleBarPlacement === "map",
+    bar,
+    scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
+  });
   const now = new Date();
   const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(
     now.getDate(),
@@ -1450,7 +1545,7 @@ export async function exportMapAsPdf(
     day: "numeric",
   });
 
-  drawPanel(ctx, mapRect, {
+  drawPanel(ctx, panelRect, {
     includeHeader: options.includeHeader !== false,
     title: options.title || "Earth Observation Survey Sheet",
     client: options.client || "Site Survey",
@@ -1467,10 +1562,12 @@ export async function exportMapAsPdf(
     includeLegend: options.includeLegend !== false,
     legendTitle: options.legendTitle || "Map Symbols",
     legendItems: options.legendItems ?? [],
-    includeScaleBar: options.includeScaleBar !== false,
+    includeScaleBar:
+      options.includeScaleBar !== false && options.scaleBarPlacement !== "map",
     scaleBarMeters: bar.meters,
     scaleBarWidthPt: bar.widthPt,
-    includeNorthArrow: options.includeNorthArrow !== false,
+    includeNorthArrow:
+      options.includeNorthArrow !== false && options.northArrowPlacement !== "map",
     footerText:
       `Confidential & proprietary. Generated by SiteSurveyor on ${generatedText}. ` +
       (options.attribution ? `${options.attribution}.` : ""),

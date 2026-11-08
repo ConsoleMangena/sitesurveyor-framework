@@ -10,6 +10,7 @@ import {
   representativeFraction,
   scaleBarLayout,
   sheetMapRect,
+  sheetPanelRect,
 } from "./mapExport.ts";
 import { metersPerPixel } from "./workbench.ts";
 
@@ -150,5 +151,16 @@ describe("sheetMapRect", () => {
     expect(rect.w).toBeGreaterThan(0);
     expect(rect.h).toBeGreaterThan(0);
     expect(rect.x + rect.w).toBeLessThan(842 - 216);
+  });
+
+  it("mirrors the map when the panel moves to the left", () => {
+    const right = sheetMapRect("right");
+    const left = sheetMapRect("left");
+    expect(left.x).toBeGreaterThan(right.x);
+    expect(left.w).toBe(right.w);
+    // Panel left: the map runs to the sheet's right margin.
+    expect(left.x + left.w).toBeLessThanOrEqual(842 - 18);
+    expect(sheetPanelRect("left").x).toBe(18);
+    expect(sheetPanelRect("right").x).toBeGreaterThan(sheetPanelRect("left").x);
   });
 });

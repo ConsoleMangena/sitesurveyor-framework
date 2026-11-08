@@ -3,6 +3,7 @@ import { Check, Download, FileText, Loader, ShieldCheck, Sparkles, X } from "luc
 import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
+import { cn } from "@/lib/utils.ts";
 import type { MapViewInfo } from "./SurveyMap.tsx";
 import {
   detectOptimalQuality,
@@ -38,6 +39,41 @@ interface MapExportModalProps {
   basemap: ExportBasemapConfig;
 }
 
+function PlacementRow<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: [T, string][];
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="font-medium text-foreground">{label}</span>
+      <div className="flex rounded-md border border-border p-0.5">
+        {options.map(([optionValue, text]) => (
+          <button
+            key={optionValue}
+            type="button"
+            onClick={() => onChange(optionValue)}
+            className={cn(
+              "rounded px-2 py-0.5 text-[11px] transition-colors",
+              value === optionValue
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function MapExportModal({
   open,
   onClose,
@@ -60,11 +96,22 @@ export default function MapExportModal({
   const [includeHeader, setIncludeHeader] = useState(true);
   const [includeNorthArrow, setIncludeNorthArrow] = useState(true);
   const [includeScaleBar, setIncludeScaleBar] = useState(true);
+  const [contextFraction, setContextFraction] = useState(0.25);
+  const [panelSide, setPanelSide] = useState<"right" | "left">("right");
+  const [northPlacement, setNorthPlacement] = useState<"panel" | "map">("panel");
+  const [scalePlacement, setScalePlacement] = useState<"panel" | "map">("panel");
   const [exporting, setExporting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const quality = useMemo(() => detectOptimalQuality(), []);
+
+  const extentHintKm = useMemo(() => {
+    if (!aoiBounds) return null;
+    const [[s, w], [n, e]] = aoiBounds;
+    const midLat = ((s + n) / 2) * (Math.PI / 180);
+    return (e - w) * 111.32 * Math.cos(midLat) * (1 + 2 * contextFraction);
+  }, [aoiBounds, contextFraction]);
 
   if (!open) return null;
 
@@ -102,6 +149,10 @@ export default function MapExportModal({
         attribution: basemap.attribution,
         tileUrlTemplate: basemap.tileUrlTemplate,
         maxNativeZoom: basemap.maxNativeZoom,
+        contextFraction,
+        panelSide,
+        northArrowPlacement: northPlacement,
+        scaleBarPlacement: scalePlacement,
       };
 
       await exportMapAsPdf(map, `${slug}_survey_sheet_${timestamp}.pdf`, options);
@@ -240,6 +291,67 @@ export default function MapExportModal({
                 <span>Classification legend</span>
               </label>
             </div>
+          </div>
+
+          {/* Sheet layout & extent */}
+          <div className="rounded-lg border border-border/70 bg-card/60 p-3 space-y-3 text-xs">
+            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground block">
+              Sheet Layout &amp; Extent
+            </span>
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-foreground">Context around survey area</span>
+                <span className="font-mono text-muted-foreground">
+                  {Math.round(contextFraction * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={contextFraction}
+                onChange={(e) => setContextFraction(Number(e.target.value))}
+                className="mt-1.5 w-full accent-primary"
+                aria-label="Context around the survey area"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>AOI only</span>
+                <span>
+                  {extentHintKm !== null
+                    ? `Sheet ≈ ${extentHintKm < 10 ? extentHintKm.toFixed(1) : Math.round(extentHintKm)} km across`
+                    : "Wide"}
+                </span>
+                <span>Wide</span>
+              </div>
+            </div>
+            <PlacementRow
+              label="Title panel"
+              value={panelSide}
+              onChange={setPanelSide}
+              options={[
+                ["right", "Right"],
+                ["left", "Left"],
+              ]}
+            />
+            <PlacementRow
+              label="North arrow"
+              value={northPlacement}
+              onChange={setNorthPlacement}
+              options={[
+                ["panel", "Title panel"],
+                ["map", "On map"],
+              ]}
+            />
+            <PlacementRow
+              label="Scale bar"
+              value={scalePlacement}
+              onChange={setScalePlacement}
+              options={[
+                ["panel", "Title panel"],
+                ["map", "On map"],
+              ]}
+            />
           </div>
 
           {errorMessage ? (
