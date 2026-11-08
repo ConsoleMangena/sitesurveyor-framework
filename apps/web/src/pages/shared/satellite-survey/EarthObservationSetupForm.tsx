@@ -496,7 +496,7 @@ export default function EarthObservationSetupForm({
 
               <div className="space-y-1.5">
                 <Label htmlFor="eo-new-extent" className={labelClass}>
-                  Surface area to survey *
+                  Observation extent (AOI) *
                 </Label>
                 <select
                   id="eo-new-extent"
@@ -740,7 +740,10 @@ export default function EarthObservationSetupForm({
       </Card>
 
       {/* ── SELECTED JOB CONFIGURATION & PARAMETERS ─────────────────────── */}
-      {currentJob ? (
+      {/* Hidden while a job is being created: the new-job card carries its own
+          coordinate and extent inputs, and showing both put two editors for the
+          same AOI on screen at once, each with its own state. */}
+      {currentJob && !creatingJob ? (
         <div className="space-y-6 pt-2">
           {/* Active Job Summary Banner */}
           <div className="flex items-center justify-between rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs">
@@ -992,7 +995,8 @@ export default function EarthObservationSetupForm({
                 <div>
                   <CardTitle className="text-base">Site Coordinates & Extent</CardTitle>
                   <CardDescription className="text-xs">
-                    Specify decimal degrees target coordinate and screening area radius.
+                    Decimal-degrees target coordinate and the observation extent (AOI)
+                    the job covers. These are the inputs the credit quote is priced on.
                   </CardDescription>
                 </div>
               </div>

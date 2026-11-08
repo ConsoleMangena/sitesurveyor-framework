@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 import EarthObservationSetupForm from "./EarthObservationSetupForm.tsx";
+import type { JobWithProject } from "../../../lib/repositories/jobs.ts";
 import { initialForm } from "./model.ts";
 
 const quoteSurvey = vi.fn();
@@ -74,15 +75,59 @@ describe("Earth Observation job creation", () => {
     });
   });
 
-  it("asks for the area and the surface area, not only a title", async () => {
+  it("asks for the coordinate and the observation extent, not only a title", async () => {
     renderForm();
     fireEvent.click(screen.getByRole("button", { name: /create new job/i }));
 
     const card = creationCard();
     expect(screen.getByLabelText(/latitude/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/longitude/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/surface area/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/observation extent/i)).toBeInTheDocument();
     expect(card).toBeInTheDocument();
+  });
+
+  it("shows exactly one extent control while a job is being created", async () => {
+    // The setup form used to render the new-job extent plus the selected job's
+    // "Site Coordinates & Extent" card at the same time - two editors for the
+    // same AOI, each with its own state.
+    const selectedJob = {
+      id: "22222222-2222-2222-2222-222222222222",
+      title: "Kwekwe Soil Grid",
+      location: "Kwekwe",
+      job_type: null,
+      status: "planned",
+      project_id: null,
+      project_name: null,
+    } as unknown as JobWithProject;
+    render(
+      <EarthObservationSetupForm
+        workspaceId="11111111-1111-1111-1111-111111111111"
+        values={{ ...initialForm(), jobId: selectedJob.id }}
+        onChange={vi.fn()}
+        jobs={[selectedJob]}
+        jobsLoading={false}
+        openedJob={selectedJob}
+        onSelectJob={vi.fn()}
+        onProceedToWorkbench={vi.fn()}
+        onLaunchSurvey={vi.fn()}
+        busy={false}
+        queueing={false}
+        quote={null}
+        quoteLoading={false}
+        balance={500}
+      />,
+    );
+
+    // The selected job's config is on screen first, with its own extent control.
+    expect(screen.getAllByLabelText(/observation extent/i)).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /create new job/i }));
+    expect(screen.getAllByLabelText(/observation extent/i)).toHaveLength(1);
+
+    fireEvent.click(
+      within(creationCard()).getByRole("button", { name: /cancel/i }),
+    );
+    expect(screen.getAllByLabelText(/observation extent/i)).toHaveLength(1);
   });
 
   it("shows what the specification costs before the job is created", async () => {
@@ -108,7 +153,7 @@ describe("Earth Observation job creation", () => {
     fireEvent.change(screen.getByLabelText(/longitude/i), {
       target: { value: "29.85" },
     });
-    fireEvent.change(screen.getByLabelText(/surface area/i), {
+    fireEvent.change(screen.getByLabelText(/observation extent/i), {
       target: { value: "0.23" },
     });
 

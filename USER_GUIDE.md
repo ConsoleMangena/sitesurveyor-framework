@@ -115,6 +115,17 @@ What you must understand before choosing it:
 
 > **Note:** The **satellite survey engine** (Python worker at `apps/engine`) is a separate, implemented component that runs the actual multi-sensor raster analysis (water, minerals, soil, hazard) on DE Africa satellite data. It is **not** the same as full-file anchoring. The engine runs as a background worker, polls `survey_runs` from Supabase, processes the job, and publishes deliverables (GeoTIFF, PNG maps, GeoJSON, KMZ, HTML reports, plus web-map tile layers that the workbench renders as a zoomable classified drape) to Supabase Storage. It exposes an MCP server for AI agent integration.
 
+### Optional: Earth Observation and the map sheet
+
+An Earth Observation session is tied to a workspace job. Enter the target coordinate and the **observation extent (AOI)** once — those two inputs are what the credit quote is priced on — pick the survey type, then launch the run. The engine classifies the imagery and the workbench drapes the result over the basemap.
+
+**Export map sheet** produces an A4 landscape vector PDF. The imagery is fetched at the paper's true resolution (up to 320 DPI, never a screenshot of the screen) and everything that reads as cartography — graticule, frame, ticks, labels, scale bar, north arrow, title block, attribution — is drawn as vector so it stays sharp at any zoom.
+
+- **Sheet extent** frames either the map view or the whole survey area, with a context margin around the AOI when you frame the survey.
+- **Coordinates** switches the graticule between **UTM X/Y** (default) and **degrees**. UTM lines curve with the projection, so each line is anchored where it meets the edge that carries its number: eastings are labelled and ticked along the top edge, northings along the left.
+- **Grid lines** sets how many divisions per axis to aim for (2–12); the printed interval is rounded to a whole metre value or a whole degree step, so the count can come out slightly lower than asked.
+- The AOI is outlined as a dashed red box, survey candidates and the target as markers, and the sheet reports its own resolution and says when the imagery had to be upscaled.
+
 ### Step 5: Invoice and settle
 
 1. Confirm delivered work, time, expenses, and quote details.
