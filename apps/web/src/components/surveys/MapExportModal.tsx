@@ -33,13 +33,18 @@ export default function MapExportModal({
   const [includeHeader, setIncludeHeader] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!open) return null;
 
   async function handleExport() {
-    if (!map) return;
+    if (!map) {
+      setErrorMessage("Map view is not ready yet. Please wait a moment and try again.");
+      return;
+    }
     setExporting(true);
     setSuccess(false);
+    setErrorMessage(null);
 
     try {
       const slug = (clientName || "survey")
@@ -54,6 +59,7 @@ export default function MapExportModal({
         scale: viewInfo.scale,
         includeLegend,
         includeHeader,
+        target,
       };
 
       if (format === "png") {
@@ -68,6 +74,9 @@ export default function MapExportModal({
       }, 1200);
     } catch (err) {
       console.error("Failed to export map extent:", err);
+      setErrorMessage(
+        err instanceof Error ? err.message : "Failed to export map extent. Please try again."
+      );
     } finally {
       setExporting(false);
     }
@@ -188,6 +197,19 @@ export default function MapExportModal({
               <span>Include title & coordinate header card</span>
             </label>
           </div>
+
+          {errorMessage ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive flex items-center justify-between">
+              <span>{errorMessage}</span>
+              <button
+                type="button"
+                onClick={() => setErrorMessage(null)}
+                className="text-destructive font-bold ml-2 hover:opacity-75"
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-5 flex items-center justify-end gap-2 border-t border-border pt-3">

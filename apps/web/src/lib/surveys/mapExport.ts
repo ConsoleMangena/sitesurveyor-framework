@@ -9,6 +9,71 @@ export interface MapExportOptions {
   dpr?: number;
   includeLegend?: boolean;
   includeHeader?: boolean;
+  target?: { latitude: number; longitude: number };
+}
+
+/**
+ * Safely load an image source without tainting the target canvas.
+ * If the image element cannot be safely drawn, it is fetched via CORS or converted to ImageBitmap.
+ * If that fails, returns null so the canvas remains clean.
+ */
+async function loadCleanDrawable(img: HTMLImageElement): Promise<CanvasImageSource | null> {
+  const src = img.currentSrc || img.src;
+  if (!src) return null;
+
+  // Data URLs and Blob URLs are local and inherently origin-clean
+  if (src.startsWith("data:") || src.startsWith("blob:")) {
+    return img;
+  }
+
+  // If already CORS-enabled in DOM and loaded
+  if (
+    (img.crossOrigin === "anonymous" || img.crossOrigin === "use-credentials" || img.crossOrigin === "") &&
+    img.complete &&
+    img.naturalWidth > 0
+  ) {
+    try {
+      // Test drawing on a tiny scratch canvas to verify origin-cleanliness
+      const testCanvas = document.createElement("canvas");
+      testCanvas.width = 1;
+      testCanvas.height = 1;
+      const testCtx = testCanvas.getContext("2d");
+      if (testCtx) {
+        testCtx.drawImage(img, 0, 0, 1, 1);
+        testCtx.getImageData(0, 0, 1, 1);
+        return img;
+      }
+    } catch {
+      // Fall through to fetch
+    }
+  }
+
+  // Fetch with CORS to obtain a guaranteed origin-clean ImageBitmap or ObjectURL
+  try {
+    const res = await fetch(src, { mode: "cors", credentials: "omit" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (typeof createImageBitmap === "function") {
+      try {
+        return await createImageBitmap(blob);
+      } catch {
+        // Fallback below
+      }
+    }
+    const blobUrl = URL.createObjectURL(blob);
+    return await new Promise<HTMLImageElement | null>((resolve) => {
+      const cleanImg = new window.Image();
+      cleanImg.onload = () => resolve(cleanImg);
+      cleanImg.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        resolve(null);
+      };
+      cleanImg.src = blobUrl;
+    });
+  } catch {
+    // Return null to protect the destination canvas from being tainted
+    return null;
+  }
 }
 
 /**
@@ -55,15 +120,18 @@ export async function captureMapCanvas(
     // Check if within bounds
     if (x + w <= 0 || y + h <= 0 || x >= width || y >= height) continue;
 
+    const drawable = await loadCleanDrawable(img);
+    if (!drawable) continue;
+
     ctx.save();
     // Inherit opacity if set on parent or element
     const opacity = parseFloat(window.getComputedStyle(img).opacity || "1");
     if (opacity < 1) ctx.globalAlpha = opacity;
 
     try {
-      ctx.drawImage(img, x, y, w, h);
+      ctx.drawImage(drawable, x, y, w, h);
     } catch {
-      // Ignore cross-origin image drawing errors silently
+      // Ignore
     }
     ctx.restore();
   }
@@ -78,7 +146,10 @@ export async function captureMapCanvas(
     const y = rect.top - mapRect.top;
 
     try {
-      const xml = new XMLSerializer().serializeToString(svg);
+      let xml = new XMLSerializer().serializeToString(svg);
+      if (!xml.includes("xmlns=")) {
+        xml = xml.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
       const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
       const url = URL.createObjectURL(svgBlob);
       const img = new window.Image();
@@ -99,7 +170,41 @@ export async function captureMapCanvas(
     }
   }
 
-  // 4. Cartographic Header (if enabled)
+  // 4. Draw Target Marker Pin
+  if (options.target) {
+    try {
+      const pt = map.latLngToContainerPoint([options.target.latitude, options.target.longitude]);
+      if (pt.x >= -30 && pt.x <= width + 30 && pt.y >= -30 && pt.y <= height + 30) {
+        ctx.save();
+        ctx.fillStyle = "#D14141";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 8.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = "#D14141";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pt.x - 15, pt.y);
+        ctx.lineTo(pt.x + 15, pt.y);
+        ctx.moveTo(pt.x, pt.y - 15);
+        ctx.lineTo(pt.x, pt.y + 15);
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    } catch {
+      // Ignore marker coordinate conversion
+    }
+  }
+
+  // 5. Cartographic Header (if enabled)
   if (options.includeHeader !== false) {
     ctx.save();
     ctx.fillStyle = "rgba(11, 16, 24, 0.88)";
@@ -126,7 +231,7 @@ export async function captureMapCanvas(
     ctx.restore();
   }
 
-  // 5. Cartographic Legend (if enabled)
+  // 6. Cartographic Legend (if enabled)
   if (options.includeLegend !== false) {
     ctx.save();
     const legW = 160;
@@ -169,7 +274,7 @@ export async function captureMapCanvas(
     ctx.restore();
   }
 
-  // 6. Scale and North indicator (bottom left)
+  // 7. Scale and North indicator (bottom left)
   ctx.save();
   const infoX = 16;
   const infoY = height - 24;
@@ -197,10 +302,19 @@ export function downloadBlob(blob: Blob, filename: string): void {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.style.display = "none";
   document.body.appendChild(anchor);
   anchor.click();
-  document.body.removeChild(anchor);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => {
+    try {
+      if (anchor.parentNode) {
+        anchor.parentNode.removeChild(anchor);
+      }
+      URL.revokeObjectURL(url);
+    } catch {
+      // Ignored
+    }
+  }, 1000);
 }
 
 /** Export current map view as a high-resolution PNG */
@@ -211,14 +325,32 @@ export async function exportMapAsPng(
 ): Promise<void> {
   const canvas = await captureMapCanvas(map, options);
   await new Promise<void>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Failed to produce PNG blob from canvas"));
-        return;
-      }
-      downloadBlob(blob, filename);
-      resolve();
-    }, "image/png");
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          try {
+            const dataUrl = canvas.toDataURL("image/png");
+            const arr = dataUrl.split(",");
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+              u8arr[n] = bstr.charCodeAt(n);
+            }
+            const fallbackBlob = new Blob([u8arr], { type: "image/png" });
+            downloadBlob(fallbackBlob, filename);
+            resolve();
+          } catch (e) {
+            reject(new Error("Failed to produce PNG blob from canvas."));
+          }
+          return;
+        }
+        downloadBlob(blob, filename);
+        resolve();
+      }, "image/png");
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
@@ -234,8 +366,18 @@ export async function exportMapAsPdf(
   const canvas = await captureMapCanvas(map, options);
 
   // Convert canvas to JPEG bytes
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+  let dataUrl: string;
+  try {
+    dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+  } catch (err) {
+    throw new Error("Failed to encode map image for PDF generation: " + (err instanceof Error ? err.message : String(err)));
+  }
+
   const base64Data = dataUrl.split(",")[1];
+  if (!base64Data) {
+    throw new Error("Canvas did not produce valid image data.");
+  }
+
   const binaryString = atob(base64Data);
   const jpegBytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
@@ -264,23 +406,27 @@ export async function exportMapAsPdf(
   const renderY = margin + (maxHeight - renderHeight) / 2;
 
   // Build standard PDF 1.4 binary structure
-  const header = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
+  const nl = "\n";
+  const header = "%PDF-1.4" + nl + "%\xE2\xE3\xCF\xD3" + nl;
 
-  const obj1 = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
-  const obj2 =
-    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+  const obj1 = "1 0 obj" + nl + "<< /Type /Catalog /Pages 2 0 R >>" + nl + "endobj" + nl;
+  const obj2 = "2 0 obj" + nl + "<< /Type /Pages /Kids [3 0 R] /Count 1 >>" + nl + "endobj" + nl;
   const obj3 =
-    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
-    `/Contents 4 0 R /Resources << /XObject << /Im0 5 0 R >> /ProcSet [/PDF /ImageC] >> >>\nendobj\n`;
+    "3 0 obj" + nl +
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
+    "/Contents 4 0 R /Resources << /XObject << /Im0 5 0 R >> /ProcSet [/PDF /ImageC] >> >>" + nl +
+    "endobj" + nl;
 
-  const streamContent = `q\n${renderWidth.toFixed(2)} 0 0 ${renderHeight.toFixed(2)} ${renderX.toFixed(2)} ${renderY.toFixed(2)} cm\n/Im0 Do\nQ\n`;
-  const obj4 = `4 0 obj\n<< /Length ${streamContent.length} >>\nstream\n${streamContent}endstream\nendobj\n`;
+  const streamContent = `q${nl}${renderWidth.toFixed(2)} 0 0 ${renderHeight.toFixed(2)} ${renderX.toFixed(2)} ${renderY.toFixed(2)} cm${nl}/Im0 Do${nl}Q${nl}`;
+  const obj4 = "4 0 obj" + nl + `<< /Length ${streamContent.length} >>` + nl + "stream" + nl + streamContent + "endstream" + nl + "endobj" + nl;
 
   const imageObjHeader =
-    `5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${canvas.width} ` +
+    "5 0 obj" + nl +
+    `<< /Type /XObject /Subtype /Image /Width ${canvas.width} ` +
     `/Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 ` +
-    `/Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`;
-  const imageObjFooter = "\nendstream\nendobj\n";
+    `/Filter /DCTDecode /Length ${jpegBytes.length} >>` + nl +
+    "stream" + nl;
+  const imageObjFooter = nl + "endstream" + nl + "endobj" + nl;
 
   // Calculate offsets for cross-reference table (xref)
   const enc = new TextEncoder();
@@ -301,16 +447,21 @@ export async function exportMapAsPdf(
   const endOf5 = off5 + imgHBytes.length + jpegBytes.length + imgFBytes.length;
 
   const xref =
-    `xref\n0 6\n` +
-    `0000000000 65535 f \n` +
-    `${String(off1).padStart(10, "0")} 00000 n \n` +
-    `${String(off2).padStart(10, "0")} 00000 n \n` +
-    `${String(off3).padStart(10, "0")} 00000 n \n` +
-    `${String(off4).padStart(10, "0")} 00000 n \n` +
-    `${String(off5).padStart(10, "0")} 00000 n \n`;
+    "xref" + nl +
+    "0 6" + nl +
+    "0000000000 65535 f " + nl +
+    `${String(off1).padStart(10, "0")} 00000 n ` + nl +
+    `${String(off2).padStart(10, "0")} 00000 n ` + nl +
+    `${String(off3).padStart(10, "0")} 00000 n ` + nl +
+    `${String(off4).padStart(10, "0")} 00000 n ` + nl +
+    `${String(off5).padStart(10, "0")} 00000 n ` + nl;
 
   const trailer =
-    `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${endOf5}\n%%EOF\n`;
+    "trailer" + nl +
+    "<< /Size 6 /Root 1 0 R >>" + nl +
+    "startxref" + nl +
+    `${endOf5}` + nl +
+    "%%EOF" + nl;
   const trailerBytes = enc.encode(xref + trailer);
 
   // Combine into single Uint8Array

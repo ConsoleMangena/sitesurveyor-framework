@@ -165,6 +165,7 @@ export default function SurveyMap({
         attribution={tile.attribution}
         maxZoom={20}
         maxNativeZoom={tile.maxNativeZoom ?? 19}
+        crossOrigin="anonymous"
       />
 
       {layers.aoi ? (
