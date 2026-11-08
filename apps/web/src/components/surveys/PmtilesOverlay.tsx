@@ -53,7 +53,12 @@ export default function PmtilesOverlay({
   // The fallback hand-off is read by reference: a fresh inline callback from
   // the parent is not a change in what the layer should do.
   const onUnavailableRef = useRef(onUnavailable);
-  onUnavailableRef.current = onUnavailable;
+  // Written after commit, never during render: assigning a ref while rendering
+  // is a React rules violation, and the hand-off only ever runs from the async
+  // archive read that follows the same commit.
+  useEffect(() => {
+    onUnavailableRef.current = onUnavailable;
+  }, [onUnavailable]);
 
   // Live opacity, without a teardown.
   useEffect(() => {
