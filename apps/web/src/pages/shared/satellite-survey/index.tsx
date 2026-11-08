@@ -1008,8 +1008,31 @@ export default function SatelliteSurveyPage({
         target={target}
         viewInfo={mapViewInfo}
         classifiedTiles={
-          tilesSource && rasterOn && !tilesUnavailable
-            ? { source: tilesSource, opacity: rasterOpacity }
+          tilesDeliverable && rasterOn && !tilesUnavailable
+            ? {
+                opacity: rasterOpacity,
+                // The sheet reads every tile from one copy of the archive: a
+                // short-lived link is minted as the export starts, the file is
+                // fetched once, and nothing is ranged per tile through the
+                // delivery proxy.
+                loadArchive: async () => {
+                  const url = await deliverableUrl(tilesDeliverable);
+                  if (!url) {
+                    throw new Error("The tile archive link could not be minted.");
+                  }
+                  const res = await fetch(url, {
+                    signal:
+                      typeof AbortSignal !== "undefined" &&
+                      typeof AbortSignal.timeout === "function"
+                        ? AbortSignal.timeout(30000)
+                        : undefined,
+                  });
+                  if (!res.ok) {
+                    throw new Error(`The tile archive answered ${res.status}.`);
+                  }
+                  return await res.arrayBuffer();
+                },
+              }
             : null
         }
         categoryName={jobCategory.toUpperCase()}

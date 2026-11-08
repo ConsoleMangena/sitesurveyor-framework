@@ -122,23 +122,12 @@ export interface MapExportOptions {
   logoUrl?: string;
 }
 
-/** Reading contract of the survey tile archive, structurally the same object the
- *  live PMTiles overlay is handed -- kept here as a shape so the compositor never
- *  needs the repository module. */
-export interface SheetTilesSource {
-  getKey: () => string;
-  getBytes(
-    offset: number,
-    length: number,
-    signal?: AbortSignal,
-    etag?: string,
-  ): Promise<{ data: ArrayBuffer }>;
-}
-
-/** Classified-tiles input for the sheet: the archive reader and the live layer's
- *  opacity. */
+/** Classified-tiles input for the sheet: one whole-archive loader and the live
+ *  layer's opacity. The loader returns the raw PMTiles bytes -- the sheet reads
+ *  every tile from that single fetched copy instead of spanning a fresh ranged
+ *  session through the delivery proxy for each slice. */
 export interface ClassifiedTilesOption {
-  source: SheetTilesSource;
+  loadArchive: () => Promise<ArrayBuffer>;
   opacity: number;
 }
 
@@ -736,25 +725,13 @@ function collectRasterOverlays(map: LeafletMap): RasterOverlaySpec[] {
   return overlays;
 }
 
-/** The classified tiles layer for the sheet, reading the same archive the live
- *  overlay paints -- only the tiles the sheet frame covers, through the same
- *  authenticated byte ranges. */
+/** The classified tiles layer for the sheet, read from one in-memory copy of the
+ *  same archive the live overlay paints. */
 interface SheetTilesLayer {
   opacity: number;
   minZoom: number;
   maxNativeZoom: number;
   getTile: (z: number, x: number, y: number) => Promise<Drawable | null>;
-}
-
-/** A classified read the network refuses must never wedge the sheet: the
- *  reader is handed a self-aborting signal and one failed tile just ships
- *  unpainted. */
-const CLASS_TILE_TIMEOUT_MS = 20000;
-
-function abortAfter(ms: number): AbortSignal | undefined {
-  return typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
-    ? AbortSignal.timeout(ms)
-    : undefined;
 }
 
 async function buildSheetTilesLayer(
@@ -764,21 +741,22 @@ async function buildSheetTilesLayer(
     // Same lazy reader the live overlay imports; the export never pulls it
     // into the map bundle.
     const { PMTiles } = await import("pmtiles");
-    // Bound every archive read to the sheet's own clock: a stalled proxy
-    // request must not hold the eight tile workers hostage.
-    const timedSource: SheetTilesSource = {
-      getKey: option.source.getKey,
-      getBytes: (offset, length, signal, etag) =>
-        option.source.getBytes(
-          offset,
-          length,
-          signal ?? abortAfter(CLASS_TILE_TIMEOUT_MS),
-          etag,
-        ),
+    // One whole-file read for the entire sheet. Reading tiles as ranges would
+    // span a fresh authenticated session through the delivery proxy for every
+    // slice -- an auth check, an ownership query and a storage fetch each --
+    // and a sheet spans dozens of slices. The archive itself is small, so it
+    // arrives once and every tile is then read from memory.
+    const bytes = await option.loadArchive();
+    if (bytes.byteLength === 0) return null;
+    const memorySource = {
+      getKey: () => "sheet://classified-archive",
+      getBytes: async (offset: number, length: number) => ({
+        data: bytes.slice(offset, offset + length),
+      }),
     };
-    const archive = new PMTiles(timedSource);
-    // The header round-trip is the sanity check the live overlay uses too:
-    // without it a broken proxy would leave the sheet believing it drew zones.
+    const archive = new PMTiles(memorySource);
+    // The header parse is the sanity check the live overlay uses too: without
+    // it a corrupt archive would leave the sheet believing it drew zones.
     await archive.getHeader();
     let warned = false;
     return {
