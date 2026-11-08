@@ -5424,6 +5424,18 @@ export type Database = {
         Args: { p_item_id: string; p_kind: string }
         Returns: string
       }
+      market_listing_payout: {
+        Args: { p_listing_id: string }
+        Returns: { wallet_address: string | null; workspace_id: string }[]
+      }
+      market_order_attach_signature: {
+        Args: { p_order_id: string; p_signature: string }
+        Returns: string
+      }
+      market_order_cancel: {
+        Args: { p_order_id: string }
+        Returns: string
+      }
       path_first_segment_uuid: { Args: { path: string }; Returns: string }
       pay_workspace_invoice_with_balance: {
         Args: {

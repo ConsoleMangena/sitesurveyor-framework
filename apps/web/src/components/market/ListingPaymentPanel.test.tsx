@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const maybeSingle = vi.hoisted(() => vi.fn());
 const sendTokens = vi.hoisted(() => vi.fn());
 const createMarketplaceOrder = vi.hoisted(() => vi.fn());
+const attachPaymentSignature = vi.hoisted(() => vi.fn());
+const cancelPendingOrder = vi.hoisted(() => vi.fn());
+const resolveListingPayout = vi.hoisted(() => vi.fn());
+const verifyMarketPayment = vi.hoisted(() => vi.fn());
 const wallet = vi.hoisted(() => ({
   installed: true,
   isMobile: false,
@@ -30,6 +34,10 @@ vi.mock("../../features/phantom/hooks/usePhantomWallet.ts", () => ({
 vi.mock("../../features/phantom/payments/phantomPay.ts", () => ({ sendTokens }));
 vi.mock("../../lib/repositories/marketplaceOrders.ts", () => ({
   createMarketplaceOrder,
+  attachPaymentSignature,
+  cancelPendingOrder,
+  resolveListingPayout,
+  verifyMarketPayment,
 }));
 vi.mock("../SelectDropdown.tsx", () => ({
   default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
@@ -54,19 +62,17 @@ const listing = {
   listingType: "hire",
 };
 
-function sellerRow(overrides: Record<string, unknown> = {}) {
-  return {
-    workspace_id: "ws-seller",
-    seller_wallet_address: "So11111111111111111111111111111111111111112",
-    ...overrides,
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  maybeSingle.mockResolvedValue({ data: sellerRow(), error: null });
+  resolveListingPayout.mockResolvedValue({
+    workspaceId: "ws-seller",
+    walletAddress: "So11111111111111111111111111111111111111112",
+  });
   sendTokens.mockResolvedValue({ signature: "5sig" });
   createMarketplaceOrder.mockResolvedValue({ id: "order-123456789" });
+  attachPaymentSignature.mockResolvedValue(undefined);
+  cancelPendingOrder.mockResolvedValue(undefined);
+  verifyMarketPayment.mockResolvedValue({ verified: true, status: "completed" });
   wallet.installed = true;
 });
 
@@ -80,8 +86,8 @@ describe("ListingPaymentPanel", () => {
     expect(sendTokens).not.toHaveBeenCalled();
   });
 
-  it("blocks payment when the seller has no wallet on the listing", async () => {
-    maybeSingle.mockResolvedValue({ data: sellerRow({ seller_wallet_address: null }), error: null });
+  it("blocks payment when the seller has no wallet", async () => {
+    resolveListingPayout.mockResolvedValue({ workspaceId: "ws-seller", walletAddress: null });
     render(<ListingPaymentPanel listing={listing} buyerWorkspaceId="ws-buyer" />);
 
     await screen.findByText("The seller has not added a Solana wallet to this listing.");
@@ -97,9 +103,9 @@ describe("ListingPaymentPanel", () => {
   });
 
   it("rejects a malformed seller address instead of attempting a transfer", async () => {
-    maybeSingle.mockResolvedValue({
-      data: sellerRow({ seller_wallet_address: "definitely-not-a-key" }),
-      error: null,
+    resolveListingPayout.mockResolvedValue({
+      workspaceId: "ws-seller",
+      walletAddress: "definitely-not-a-key",
     });
     render(<ListingPaymentPanel listing={listing} buyerWorkspaceId="ws-buyer" />);
 
@@ -110,18 +116,13 @@ describe("ListingPaymentPanel", () => {
     expect(sendTokens).not.toHaveBeenCalled();
   });
 
-  it("sends the payment, records the order and shows the explorer link", async () => {
+  it("records the order before signing, then attaches the signature and asks the server to confirm", async () => {
     const onPaid = vi.fn();
     render(<ListingPaymentPanel listing={listing} buyerWorkspaceId="ws-buyer" onPaid={onPaid} />);
 
     fireEvent.click(await screen.findByRole("button", { name: /Pay 250 USDC/ }));
 
-    await screen.findByText("Payment sent and order recorded.");
-    expect(sendTokens).toHaveBeenCalledWith({
-      token: "USDC",
-      recipient: "So11111111111111111111111111111111111111112",
-      amount: 250,
-    });
+    await screen.findByText("Payment confirmed on chain.");
     expect(createMarketplaceOrder).toHaveBeenCalledWith(
       expect.objectContaining({
         listing_id: "L1",
@@ -130,17 +131,43 @@ describe("ListingPaymentPanel", () => {
         amount: 250,
         currency: "USDC",
         provider: "solana",
-        external_payment_ref: "5sig",
-        payment_status: "completed",
+        payment_status: "pending",
       }),
     );
+    // The claim is never written by the browser.
+    expect(createMarketplaceOrder.mock.calls[0][0].payment_status).not.toBe("completed");
+    expect(createMarketplaceOrder.mock.calls[0][0].external_payment_ref).toBeUndefined();
+
+    expect(sendTokens).toHaveBeenCalledWith({
+      token: "USDC",
+      recipient: "So11111111111111111111111111111111111111112",
+      amount: 250,
+    });
+    expect(attachPaymentSignature).toHaveBeenCalledWith("order-123456789", "5sig");
+    expect(verifyMarketPayment).toHaveBeenCalledWith("order-123456789");
     expect(onPaid).toHaveBeenCalledWith("order-123456789");
     expect(
       screen.getByRole("link", { name: "View transaction on Solana Explorer" }),
     ).toHaveAttribute("href", expect.stringContaining("/tx/5sig"));
   });
 
-  it("reports a declined transfer without recording an order", async () => {
+  it("keeps the payment honest when the verifier has not confirmed it yet", async () => {
+    verifyMarketPayment.mockResolvedValue({
+      verified: false,
+      reason: "The transaction is not confirmed yet. Try again shortly.",
+    });
+    render(<ListingPaymentPanel listing={listing} buyerWorkspaceId="ws-buyer" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Pay 250 USDC/ }));
+
+    await screen.findByText("Payment sent. We are still confirming it on chain.");
+    expect(
+      screen.getByText("The transaction is not confirmed yet. Try again shortly."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Payment confirmed on chain.")).toBeNull();
+  });
+
+  it("cancels the pending order when the wallet declines, and never sends", async () => {
     sendTokens.mockRejectedValue(new Error("User rejected the transaction."));
     render(<ListingPaymentPanel listing={listing} buyerWorkspaceId="ws-buyer" />);
 
@@ -149,6 +176,18 @@ describe("ListingPaymentPanel", () => {
     await waitFor(() =>
       expect(screen.getByText("User rejected the transaction.")).toBeInTheDocument(),
     );
-    expect(createMarketplaceOrder).not.toHaveBeenCalled();
+    expect(cancelPendingOrder).toHaveBeenCalledWith("order-123456789");
+    expect(attachPaymentSignature).not.toHaveBeenCalled();
+    expect(verifyMarketPayment).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing at all when the order cannot be recorded", async () => {
+    createMarketplaceOrder.mockRejectedValue(new Error("Failed to record marketplace order: denied"));
+    render(<ListingPaymentPanel listing={listing} buyerWorkspaceId="ws-buyer" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Pay 250 USDC/ }));
+
+    await screen.findByText(/Failed to record marketplace order/);
+    expect(sendTokens).not.toHaveBeenCalled();
   });
 });

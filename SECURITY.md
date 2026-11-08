@@ -174,6 +174,8 @@ Development defaults to **devnet**. Before approving an anchor or payment, verif
 
 A devnet signature is not mainnet proof. A submitted signature is not necessarily a confirmed transaction. A confirmed file anchor is not a payment, and a payment signature is not proof that an invoice's off-chain status was correctly reconciled.
 
+**Marketplace orders enforce that rule in code.** Checkout writes the order as `pending` before the wallet is asked to sign, so an abandoned tab leaves a record rather than an untraceable transfer. `market_order_attach_signature` moves it to `submitted`; a trigger (`guard_marketplace_order_status`) rejects `completed` from any non-service role and refuses to reopen a completed order or replace a recorded signature. Only `supabase/functions/market-verify-payment` marks an order complete, after `getTransaction` shows the seller wallet receiving at least the order amount on a transaction that did not fail. The payout address is resolved from the seller workspace at pay time (`market_listing_payout`), not from the copy taken when the listing was created.
+
 Use a trusted production RPC strategy, explicit mainnet configuration, separate production treasury/wallet controls, and monitoring appropriate to the value and evidence involved.
 
 ## 8. Fiat payment safety

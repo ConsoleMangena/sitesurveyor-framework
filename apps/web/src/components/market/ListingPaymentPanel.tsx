@@ -10,8 +10,13 @@ import { Label } from "../ui/label.tsx";
 import { SOLANA_CLUSTER } from "../../features/phantom/lib/config.ts";
 import { usePhantomWallet } from "../../features/phantom/hooks/usePhantomWallet.ts";
 import { sendTokens } from "../../features/phantom/payments/phantomPay.ts";
-import { supabase } from "../../lib/supabase/client.ts";
-import { createMarketplaceOrder } from "../../lib/repositories/marketplaceOrders.ts";
+import {
+  attachPaymentSignature,
+  cancelPendingOrder,
+  createMarketplaceOrder,
+  resolveListingPayout,
+  verifyMarketPayment,
+} from "../../lib/repositories/marketplaceOrders.ts";
 
 export interface PayableListing {
   id: string;
@@ -22,9 +27,13 @@ export interface PayableListing {
 }
 
 /**
- * Payment for a listing whose request the seller has accepted. The seller's
- * receiving wallet lives on the listing row, so it is read here rather than
- * requiring every caller to carry it.
+ * Payment for a listing whose request the seller has accepted.
+ *
+ * The order row is written *before* the wallet is asked to sign, so a closed
+ * tab or a dropped connection cannot leave a buyer paid with nothing recorded.
+ * The status is never set from here: the database marks the order `submitted`
+ * when the signature lands, and only the server-side verifier can mark it
+ * `completed` after checking the transaction on chain.
  */
 export function ListingPaymentPanel(props: {
   listing: PayableListing;
@@ -52,27 +61,28 @@ function PaymentForm({
   const [token, setToken] = useState<"SOL" | "USDC">("USDC");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ signature: string; orderId: string } | null>(null);
+  const [receipt, setReceipt] = useState<{
+    signature: string;
+    orderId: string;
+    confirmed: boolean;
+    note: string | null;
+  } | null>(null);
 
   const phantomWallet = usePhantomWallet();
 
   useEffect(() => {
     let cancelled = false;
-    supabase
-      .from("marketplace_listings")
-      .select("workspace_id, seller_wallet_address")
-      .eq("id", listing.id)
-      .maybeSingle()
-      .then(({ data, error: fetchError }) => {
+    resolveListingPayout(listing.id)
+      .then((payout) => {
         if (cancelled) return;
-        if (fetchError) {
-          setError(fetchError.message);
-          return;
-        }
         setSeller({
-          workspaceId: data?.workspace_id ?? null,
-          walletAddress: data?.seller_wallet_address ?? null,
+          workspaceId: payout.workspaceId,
+          walletAddress: payout.walletAddress,
         });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Could not check the seller payout address.");
       });
     return () => {
       cancelled = true;
@@ -98,21 +108,19 @@ function PaymentForm({
     }
     setBusy(true);
     setError(null);
+
+    // 1. Record the intent first. If the wallet never signs, the row survives
+    //    as `cancelled` and the buyer has something to point at.
+    let order: { id: string };
     try {
-      const { signature } = await sendTokens({
-        token,
-        recipient,
-        amount: listing.price,
-      });
-      const order = await createMarketplaceOrder({
+      order = await createMarketplaceOrder({
         listing_id: listing.id,
         listing_workspace_id: listingWorkspaceId,
         buyer_workspace_id: buyerWorkspaceId,
         amount: listing.price,
         currency: token,
         provider: "solana",
-        external_payment_ref: signature,
-        payment_status: "completed",
+        payment_status: "pending",
         platform_fee_amount: 0,
         metadata: {
           listing_type: listing.listingType,
@@ -120,15 +128,58 @@ function PaymentForm({
           seller_wallet_address: recipient,
         },
       });
-      setSuccess({ signature, orderId: order.id });
-      onPaid?.(order.id);
     } catch (err) {
+      setBusy(false);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "The order could not be recorded, so nothing was sent.",
+      );
+      return;
+    }
+
+    // 2. Sign and send.
+    let signature: string;
+    try {
+      ({ signature } = await sendTokens({
+        token,
+        recipient,
+        amount: listing.price,
+      }));
+    } catch (err) {
+      await cancelPendingOrder(order.id).catch(() => {
+        /* The order stays pending; the panel still reports the declined transfer. */
+      });
+      setBusy(false);
       setError(
         err instanceof Error ? err.message : "Payment failed. Please try again.",
       );
-    } finally {
-      setBusy(false);
+      return;
     }
+
+    // 3. Attach the signature (status becomes `submitted`), then ask the
+    //    server to confirm it on chain. Confirmation is not ours to claim.
+    try {
+      await attachPaymentSignature(order.id, signature);
+    } catch (err) {
+      setBusy(false);
+      setError(
+        err instanceof Error
+          ? `${err.message} Your transaction signature is ${signature} - keep it and contact support.`
+          : `The transfer was sent but could not be recorded. Your signature is ${signature}.`,
+      );
+      return;
+    }
+
+    const verification = await verifyMarketPayment(order.id);
+    setReceipt({
+      signature,
+      orderId: order.id,
+      confirmed: verification.verified,
+      note: verification.verified ? null : verification.reason,
+    });
+    setBusy(false);
+    onPaid?.(order.id);
   }, [seller, token, listing, buyerWorkspaceId, onPaid]);
 
   return (
@@ -137,13 +188,20 @@ function PaymentForm({
         Pay for {listing.name}
       </h4>
 
-      {success ? (
+      {receipt ? (
         <Alert variant="success">
           <CheckCircle2 className="size-4" />
           <AlertDescription className="space-y-1">
-            <p>Payment sent and order recorded.</p>
+            <p>
+              {receipt.confirmed
+                ? "Payment confirmed on chain."
+                : "Payment sent. We are still confirming it on chain."}
+            </p>
+            {receipt.note ? (
+              <p className="text-xs text-muted-foreground">{receipt.note}</p>
+            ) : null}
             <a
-              href={`https://explorer.solana.com/tx/${success.signature}?cluster=${SOLANA_CLUSTER}`}
+              href={`https://explorer.solana.com/tx/${receipt.signature}?cluster=${SOLANA_CLUSTER}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-xs text-primary underline"

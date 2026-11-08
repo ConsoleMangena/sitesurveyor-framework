@@ -71,8 +71,14 @@ flowchart TB
 | `supabase/functions/ai-chat` | Authenticated primary AI endpoint; streams NDJSON events and invokes the shared agent core |
 | `supabase/functions/_shared` | Model routing, agent tools, memory, skills, workflows, and shared AI behaviour |
 | `supabase/functions/solana-data` | Public Solana RPC proxy and cached market snapshots |
+| `supabase/functions/market-verify-payment` | Confirms a marketplace transfer on chain (recipient, amount, finality) and is the only writer of an order's `completed` status |
+| `supabase/functions/market-chat` | Public market concierge; anonymous, rate-limited, read-only tools over the published market views |
+| `supabase/functions/satellite-survey` | Authenticated survey job intake and credit-priced dispatch to the Python engine |
+| `supabase/functions/backfill-geocode` | Admin-only backfill of coordinates for listings and professionals |
+| `supabase/functions/delete-user` | Account deletion workflow |
+| `supabase/functions/web3-auth` | SIWE/SIWS nonces and wallet link/unlink for signed-in accounts |
 | `supabase/functions/pesepay` | Server-side PesePay payment operations |
-| `supabase/migrations` | Incremental database tables, views, RLS policies, functions, and marketplace seed changes |
+| `supabase/migrations` | Incremental database tables, views, RLS policies, functions, and marketplace seed changes. These are **deltas**: they do not create the base schema (`workspaces`, `projects`, `marketplace_orders`, `project_cad_drawings`, …), which is managed outside this directory — see `SECURITY.md` §7. |
 | `ai-gateway` | Optional Node static host and self-hosted `/api/chat` fallback using the same agent contract |
 | `ai-gateway/sitesurveyor-mcp` | MCP server exposing equivalent data, CAD, memory, and workflow tools over stdio |
 | `scripts/ai-eval` | Evaluation and consistency checks for models, memory, skills, and tool rounds |
