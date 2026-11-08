@@ -284,6 +284,10 @@ Run these from the repository root:
 
 Before submitting a change, run at least `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` for affected web functionality.
 
+### Continuous integration
+
+`.github/workflows/ci.yml` runs seven jobs on every push to `main` and every pull request: web checks (typecheck, lint, tests, build), the Python engine tests, the MCP server tests, the Deno `_shared` tests, the deterministic AI checks, a deploy hook, and **Migrations apply from empty** — which boots the Supabase stack, applies every migration to a bare PostgreSQL, asserts the tables and views the app queries exist, and proves that a client cannot mark its own marketplace order `completed`. That last job is what keeps the base schema honest: it fails if a migration stops applying from scratch.
+
 ## Docker
 
 Build and serve the production SPA through Nginx. The Supabase URL and anon key

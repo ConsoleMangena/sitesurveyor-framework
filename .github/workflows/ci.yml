@@ -127,6 +127,97 @@ jobs:
       - name: Test
         run: deno test --allow-env --allow-net supabase/functions/_shared/
 
+  database:
+    name: Migrations apply from empty
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Pinned to the version the baseline dump was verified against locally.
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.98.0
+
+      # Every migration is applied to an empty PostgreSQL, in order, starting
+      # with the captured base schema. This is the check that was missing when
+      # 39 of 80 tables had no `create table` in this repository.
+      - name: Apply all migrations to an empty database
+        run: supabase start
+
+      - name: Check the schema the app depends on
+        shell: bash
+        run: |
+          set -euo pipefail
+          DB=$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -1)
+          [ -n "$DB" ] || { echo "no database container"; exit 1; }
+          q() { docker exec "$DB" psql -U postgres -d postgres -tAc "$1"; }
+          fail() { echo "FAIL: $1"; exit 1; }
+
+          tables=$(q "select count(*) from pg_tables where schemaname='public'")
+          views=$(q "select count(*) from pg_views where schemaname='public'")
+          policies=$(q "select count(*) from pg_policies where schemaname='public'")
+          echo "tables=$tables views=$views policies=$policies"
+          [ "$tables" -ge 80 ] || fail "expected at least 80 public tables, got $tables"
+          [ "$views" -ge 12 ] || fail "expected at least 12 public views, got $views"
+          [ "$policies" -ge 170 ] || fail "expected at least 170 policies, got $policies"
+
+          # Base-schema relations the app queries directly.
+          for t in workspaces workspace_members projects assets marketplace_listings                    marketplace_orders professionals project_cad_drawings survey_runs; do
+            n=$(q "select count(*) from pg_tables where schemaname='public' and tablename='$t'")
+            [ "$n" = "1" ] || fail "missing table $t"
+          done
+
+          # Seeded market inventory, so /market has something to render.
+          listings=$(q "select count(*) from public.public_market_listings")
+          [ "$listings" -gt 0 ] || fail "public_market_listings is empty after seeding"
+          echo "seeded listings=$listings"
+
+          # Functions added by the newest migrations must exist.
+          q "select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+             where n.nspname='public' and p.proname='market_listing_payout'" | grep -q 1             || fail "market_listing_payout() missing"
+          q "select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+             where n.nspname='public' and p.proname='sample_market_item_keys'" | grep -q 1             || fail "sample_market_item_keys() missing"
+
+      # The order-status guard is the only thing standing between a browser and
+      # a self-declared "paid". Prove it still fires on a freshly built schema.
+      - name: Payment status cannot be self-declared
+        shell: bash
+        run: |
+          set -euo pipefail
+          DB=$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -1)
+          q() { docker exec "$DB" psql -U postgres -d postgres -tAc "$1"; }
+
+          order_id=$(q "with ins as (
+              insert into public.marketplace_orders
+                (listing_id, listing_workspace_id, buyer_workspace_id, amount, currency, provider, payment_status)
+              values ('e2000000-0000-4000-8000-000000000001','e0000000-0000-4000-8000-000000000001',
+                      'e0000000-0000-4000-8000-000000000001',10,'USDC','solana','pending')
+              returning id
+            ) select id from ins" | tr -d '[:space:]')
+          case "$order_id" in
+            *[!0-9a-f-]*|'') echo "FAIL: could not create a pending order (got '$order_id')"; exit 1 ;;
+          esac
+          echo "order=$order_id"
+
+          # RLS is disabled for this transaction only so the test exercises the
+          # trigger rather than the policy that would otherwise filter the row.
+          out=$(docker exec "$DB" psql -U postgres -d postgres -v ON_ERROR_STOP=0 -c             "begin; alter table public.marketplace_orders disable row level security;
+             set local role authenticated;
+             update public.marketplace_orders set payment_status='completed' where id='$order_id';
+             rollback;" 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "Payments are confirmed from the transaction"             || { echo "FAIL: a client could mark its own order completed"; exit 1; }
+
+          status=$(q "select public.market_order_attach_signature('$order_id','5sig')" | tr -d '[:space:]')
+          [ "$status" = "submitted" ] || { echo "FAIL: attach signature returned '$status'"; exit 1; }
+          echo "signature attached -> $status"
+
+      - name: Stop the local stack
+        if: always()
+        run: supabase stop --no-backup
+
   ai-eval:
     name: AI deterministic checks
     runs-on: ubuntu-latest
