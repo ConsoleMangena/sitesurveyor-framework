@@ -38,6 +38,7 @@ const SatelliteSurveyPage = lazy(
 
 interface PersonalViewRendererOptions {
   user: UiUser;
+  isProjectFullscreen?: boolean;
   onEnterFullscreenProject: () => void;
   onExitFullscreenProject: () => void;
   onNavigate?: (view: string) => void;
@@ -132,7 +133,13 @@ export function renderPersonalView(
     case "satellite":
       return (
         <Suspense fallback={<PageLoader />}>
-          <SatelliteSurveyPage workspaceId={user.workspaceId} onNavigate={onNavigate} />
+          <SatelliteSurveyPage
+            workspaceId={user.workspaceId}
+            onNavigate={onNavigate}
+            onEnterFullscreen={onEnterFullscreenProject}
+            onExitFullscreen={onExitFullscreenProject}
+            isFullscreen={options.isProjectFullscreen}
+          />
         </Suspense>
       );
 

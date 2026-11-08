@@ -98,8 +98,13 @@ export default function PlatformOperatorWorkspaceShell({
     >
       {renderPersonalView(activeView, {
         user,
+        isProjectFullscreen,
         onEnterFullscreenProject: () => setIsProjectFullscreen(true),
         onExitFullscreenProject: () => setIsProjectFullscreen(false),
+        onNavigate: (view) => {
+          setIsProjectFullscreen(false);
+          setCurrentView(view as import("../../features/workspace/types").WorkspaceView);
+        },
       })}
     </WorkspaceShell>
   );

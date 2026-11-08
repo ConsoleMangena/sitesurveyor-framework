@@ -44,7 +44,7 @@ export default function WorkspaceShell({
   onLogout,
   children,
 }: WorkspaceShellProps) {
-  const shouldHideGlobalChrome = activeView === "projects" && isProjectFullscreen;
+  const shouldHideGlobalChrome = (activeView === "projects" || activeView === "satellite") && isProjectFullscreen;
 
   // Read once on mount: the sidebar primitive owns the cookie afterwards.
   const defaultSidebarOpen = useMemo(

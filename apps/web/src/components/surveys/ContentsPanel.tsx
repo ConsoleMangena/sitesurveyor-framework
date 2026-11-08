@@ -1,4 +1,4 @@
-import { Briefcase, ChevronLeft, Loader, Trash2, Undo2 } from "lucide-react";
+import { Briefcase, ChevronLeft, Loader, LogOut, Trash2, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -260,10 +260,12 @@ export default function ContentsPanel({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-[11px] text-primary hover:text-primary"
+                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive gap-1"
                 onClick={onOpenJobSetup}
+                title="Exit project or switch to another job"
               >
-                Switch Job
+                <LogOut className="size-3 shrink-0" />
+                <span>Exit Project</span>
               </Button>
             ) : null}
           </div>

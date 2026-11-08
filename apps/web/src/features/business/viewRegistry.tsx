@@ -39,6 +39,7 @@ const SatelliteSurveyPage = lazy(
 
 interface BusinessViewRegistryOptions {
   user: UiUser;
+  isProjectFullscreen?: boolean;
   onEnterFullscreenProject: () => void;
   onExitFullscreenProject: () => void;
   onNavigate?: (view: string) => void;
@@ -167,7 +168,13 @@ export function renderBusinessView(
     case "satellite":
       return (
         <Suspense fallback={<PageLoader />}>
-          <SatelliteSurveyPage workspaceId={user.workspaceId} onNavigate={onNavigate} />
+          <SatelliteSurveyPage
+            workspaceId={user.workspaceId}
+            onNavigate={onNavigate}
+            onEnterFullscreen={onEnterFullscreenProject}
+            onExitFullscreen={onExitFullscreenProject}
+            isFullscreen={options.isProjectFullscreen}
+          />
         </Suspense>
       );
 

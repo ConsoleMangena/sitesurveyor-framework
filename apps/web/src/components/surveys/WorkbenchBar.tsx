@@ -8,6 +8,9 @@ import {
   RefreshCw,
   RotateCcw,
   Eraser,
+  Maximize2,
+  Minimize2,
+  LogOut,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -31,6 +34,9 @@ interface WorkbenchBarProps {
   onToggleLeft: () => void;
   onToggleRight: () => void;
   pill: EnginePill;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onExitProject?: () => void;
 }
 
 /** The engine's toolbar, one for one, with two links it no longer has.
@@ -52,6 +58,9 @@ export function WorkbenchBar({
   onToggleLeft,
   onToggleRight,
   pill,
+  isFullscreen,
+  onToggleFullscreen,
+  onExitProject,
 }: WorkbenchBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -133,6 +142,47 @@ export function WorkbenchBar({
             label="Analysis"
           />
         </div>
+
+        {onToggleFullscreen || onExitProject ? (
+          <div className="flex items-center gap-1.5">
+            <span className="sw-toolbar__divider" aria-hidden="true" />
+
+            {onToggleFullscreen ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`h-7 gap-1.5 text-[11.5px] shrink-0 ${isFullscreen ? "bg-primary/10 border-primary/40 text-primary" : ""}`}
+                onClick={onToggleFullscreen}
+                title={isFullscreen ? "Exit Fill Dashboard" : "Fill Dashboard with Earth Observation UI"}
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="size-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Maximize2 className="size-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="hidden md:inline">
+                  {isFullscreen ? "Standard view" : "Fill dashboard"}
+                </span>
+              </Button>
+            ) : null}
+
+            {onExitProject ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px] shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                onClick={onExitProject}
+                title="Exit current project and return to job selection"
+              >
+                <LogOut className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="hidden sm:inline">Exit Project</span>
+                <span className="sm:hidden">Exit</span>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <span className="sw-pill" data-state={pill.state}>

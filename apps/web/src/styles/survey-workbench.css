@@ -18,6 +18,11 @@
   transition: grid-template-columns 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.sw-workspace.sw-workspace--fullscreen {
+  height: calc(100dvh - 125px);
+  min-height: calc(100dvh - 125px);
+}
+
 .sw-workspace[data-left="collapsed"] {
   grid-template-columns: 0px minmax(0, 1fr) 410px;
 }

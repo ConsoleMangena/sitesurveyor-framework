@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   Briefcase,
   Calendar,
@@ -13,6 +14,7 @@ import {
   Search,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -86,6 +88,7 @@ interface EarthObservationSetupFormProps {
   /** The workspace's credit balance, or null when it has not been reported. */
   balance: number | null;
   onNavigateBilling?: () => void;
+  onNavigate?: (view: string) => void;
 }
 
 export default function EarthObservationSetupForm({
@@ -105,6 +108,7 @@ export default function EarthObservationSetupForm({
   quoteLoading,
   balance,
   onNavigateBilling,
+  onNavigate,
 }: EarthObservationSetupFormProps) {
   // Job creation state
   const [creatingJob, setCreatingJob] = useState(false);
@@ -323,32 +327,49 @@ export default function EarthObservationSetupForm({
           </div>
         </div>
 
-        {!creatingJob ? (
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            className="h-8 gap-1.5 text-xs font-medium self-start sm:self-auto"
-            onClick={() => setCreatingJob(true)}
-            disabled={busy}
-          >
-            <Plus className="size-3.5" />
-            Create New Job
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs font-medium self-start sm:self-auto"
-            onClick={() => {
-              setCreatingJob(false);
-              setJobError(null);
-            }}
-          >
-            Cancel New Job
-          </Button>
-        )}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {onNavigate ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-medium"
+              onClick={() => onNavigate("projects")}
+              title="Return to Projects"
+            >
+              <ArrowLeft className="size-3.5" />
+              <span>Projects</span>
+            </Button>
+          ) : null}
+
+          {!creatingJob ? (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-medium"
+              onClick={() => setCreatingJob(true)}
+              disabled={busy}
+            >
+              <Plus className="size-3.5" />
+              Create New Job
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-medium"
+              onClick={() => {
+                setCreatingJob(false);
+                setJobError(null);
+              }}
+            >
+              <X className="size-3.5" />
+              Cancel New Job
+            </Button>
+          )}
+        </div>
       </div>
 
       {validationProblems.length > 0 ? (
@@ -548,7 +569,7 @@ export default function EarthObservationSetupForm({
                   ? "Creating Job…"
                   : draftQuote.quote
                     ? `Save & Open · ${draftQuote.quote.credits} credit${draftQuote.quote.credits === 1 ? "" : "s"}`
-                    : "Save & Open in Earth Observation"}
+                    : "Save & Open"}
               </Button>
               <Button
                 type="button"
@@ -1079,8 +1100,19 @@ export default function EarthObservationSetupForm({
 
           {/* ── Footer Actions ────────────────────────────────────────────── */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60">
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
               <span>Opened Job: <strong className="text-foreground">{currentJob.title}</strong></span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-xs text-muted-foreground hover:text-destructive gap-1"
+                onClick={() => onChange({ jobId: "", clientName: "", address: "" })}
+                title="Deselect this job"
+              >
+                <X className="size-3" />
+                <span>Exit Selection</span>
+              </Button>
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
@@ -1091,8 +1123,7 @@ export default function EarthObservationSetupForm({
                 disabled={busy || queueing}
                 onClick={handleProceed}
               >
-                <span className="hidden sm:inline">Open Earth Observation Workbench</span>
-                <span className="sm:hidden">Open Workbench</span>
+                <span>Open Workbench</span>
                 <ArrowRight className="size-4 shrink-0" />
               </Button>
 
@@ -1113,14 +1144,12 @@ export default function EarthObservationSetupForm({
                   "Screening in progress…"
                 ) : quote ? (
                   <>
-                    <span className="hidden sm:inline">Launch & Run Screening</span>
-                    <span className="sm:hidden">Launch Screening</span>
+                    <span>Run Screening</span>
                     <span>· {quote.credits} credit{quote.credits === 1 ? "" : "s"}</span>
                   </>
                 ) : (
                   <>
-                    <span className="hidden sm:inline">Launch & Run Screening</span>
-                    <span className="sm:hidden">Launch Screening</span>
+                    <span>Run Screening</span>
                   </>
                 )}
               </Button>

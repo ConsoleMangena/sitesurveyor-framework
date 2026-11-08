@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Briefcase, ChevronLeft, Coins } from "lucide-react";
+import { Briefcase, ChevronLeft, Coins, Maximize2, Minimize2, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils.ts";
 import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -78,6 +79,9 @@ import {
 interface SatelliteSurveyPageProps {
   workspaceId: string;
   onNavigate?: (view: string) => void;
+  onEnterFullscreen?: () => void;
+  onExitFullscreen?: () => void;
+  isFullscreen?: boolean;
 }
 
 /**
@@ -93,7 +97,39 @@ interface SatelliteSurveyPageProps {
 export default function SatelliteSurveyPage({
   workspaceId,
   onNavigate,
+  onEnterFullscreen,
+  onExitFullscreen,
+  isFullscreen: externalIsFullscreen,
 }: SatelliteSurveyPageProps) {
+  const [localFullscreen, setLocalFullscreen] = useState(false);
+  const isFullscreen = externalIsFullscreen ?? localFullscreen;
+
+  const toggleFullscreen = useCallback(() => {
+    const next = !isFullscreen;
+    if (next) {
+      onEnterFullscreen?.();
+    } else {
+      onExitFullscreen?.();
+    }
+    setLocalFullscreen(next);
+    setTimeout(() => {
+      setResizeToken((token) => token + 1);
+    }, 200);
+  }, [isFullscreen, onEnterFullscreen, onExitFullscreen]);
+
+  const handleExitProject = useCallback(() => {
+    if (isFullscreen) {
+      onExitFullscreen?.();
+      setLocalFullscreen(false);
+    }
+    setOpenedJob(null);
+    patch({ jobId: "", clientName: "", address: "" });
+    sessionStorage.removeItem("sitesurveyor:selected_job_id");
+    sessionStorage.removeItem("sitesurveyor:selected_job_name");
+    setTimeout(() => {
+      setResizeToken((token) => token + 1);
+    }, 200);
+  }, [isFullscreen, onExitFullscreen, patch]);
   const { runs, error: listError, loaded, refresh, adopt } = useSurveyRuns(workspaceId);
 
   const [jobs, setJobs] = useState<JobWithProject[]>([]);
@@ -517,7 +553,7 @@ export default function SatelliteSurveyPage({
 
   if (!isJobOpened && !running) {
     return (
-      <DashboardShell>
+      <DashboardShell className="w-full max-w-none">
         <EarthObservationSetupForm
           workspaceId={workspaceId}
           values={values}
@@ -542,31 +578,87 @@ export default function SatelliteSurveyPage({
           quoteLoading={quoteLoading}
           balance={balance}
           onNavigateBilling={() => onNavigate?.("billing")}
+          onNavigate={onNavigate}
         />
       </DashboardShell>
     );
   }
 
   return (
-    <DashboardShell>
+    <DashboardShell
+      className={cn(
+        "w-full transition-all duration-200",
+        isFullscreen
+          ? "max-w-none h-full min-h-0 gap-1.5 sm:gap-2 overflow-hidden p-2 sm:p-3"
+          : "max-w-[1780px] gap-4 sm:gap-5"
+      )}
+    >
       <DashboardHeader
         title="Earth Observation"
-        description="Screen a coordinate for groundwater, minerals, soil capability and site safety using multi-spectral Earth Observation."
-        meta={openedJob ? `Job: ${openedJob.title}${openedJob.location ? ` · ${openedJob.location}` : ""}` : undefined}
+        description={
+          isFullscreen
+            ? undefined
+            : "Screen a coordinate for groundwater, minerals, soil capability and site safety using multi-spectral Earth Observation."
+        }
+        meta={
+          openedJob
+            ? `Job: ${openedJob.title}${openedJob.location ? ` · ${openedJob.location}` : ""}`
+            : undefined
+        }
         actions={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs font-medium"
-            onClick={() => {
-              setOpenedJob(null);
-              patch({ jobId: "", clientName: "", address: "" });
-            }}
-          >
-            <Briefcase className="size-3.5 text-primary" />
-            Recent Jobs / Switch Job
-          </Button>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-8 gap-1.5 text-xs font-medium transition-colors",
+                isFullscreen && "bg-primary/10 border-primary/40 text-primary"
+              )}
+              onClick={toggleFullscreen}
+              title={
+                isFullscreen
+                  ? "Exit Fill Dashboard (show sidebar and navigation)"
+                  : "Fill dashboard with Earth Observation UI"
+              }
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>Exit Full View</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>Fill Dashboard</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+              onClick={handleExitProject}
+              title="Exit current project and return to job selection"
+            >
+              <LogOut className="size-3.5 shrink-0" aria-hidden="true" />
+              <span>Exit Project</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-medium"
+              onClick={handleExitProject}
+              title="Switch to another job"
+            >
+              <Briefcase className="size-3.5 text-primary" aria-hidden="true" />
+              <span className="hidden sm:inline">Switch Job</span>
+            </Button>
+          </div>
         }
       />
 
@@ -582,6 +674,9 @@ export default function SatelliteSurveyPage({
         onToggleLeft={() => togglePanel("left")}
         onToggleRight={() => togglePanel("right")}
         pill={pill}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        onExitProject={handleExitProject}
       />
 
       {listError ? (
@@ -639,7 +734,10 @@ export default function SatelliteSurveyPage({
       ) : null}
 
       <div
-        className="sw-workspace gap-3"
+        className={cn(
+          "sw-workspace gap-3",
+          isFullscreen && "sw-workspace--fullscreen flex-1 min-h-0"
+        )}
         data-left={leftOpen ? undefined : "collapsed"}
         data-right={rightOpen ? undefined : "collapsed"}
       >
@@ -662,10 +760,7 @@ export default function SatelliteSurveyPage({
           jobs={jobs}
           currentJob={openedJob}
           onSelectJob={(job) => applyAndOpenJob(job)}
-          onOpenJobSetup={() => {
-            setOpenedJob(null);
-            patch({ jobId: "", clientName: "", address: "" });
-          }}
+          onOpenJobSetup={handleExitProject}
           onDeleteJob={handleDeleteJob}
           activeDossierCategory={jobDossierCategory}
         />
@@ -743,10 +838,7 @@ export default function SatelliteSurveyPage({
               workspaceId={workspaceId}
               values={values}
               onChange={patch}
-              onOpenSetup={() => {
-                setOpenedJob(null);
-                patch({ jobId: "", clientName: "", address: "" });
-              }}
+              onOpenSetup={handleExitProject}
               queueing={queueing}
               busy={running !== null}
               stage={running?.stage ?? null}

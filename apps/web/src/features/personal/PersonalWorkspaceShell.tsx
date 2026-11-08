@@ -79,9 +79,13 @@ export default function PersonalWorkspaceShell({
     >
       {renderPersonalView(activeView, {
         user,
+        isProjectFullscreen,
         onEnterFullscreenProject: () => setIsProjectFullscreen(true),
         onExitFullscreenProject: () => setIsProjectFullscreen(false),
-        onNavigate: (view) => setCurrentView(view as import("../../features/workspace/types").WorkspaceView),
+        onNavigate: (view) => {
+          setIsProjectFullscreen(false);
+          setCurrentView(view as import("../../features/workspace/types").WorkspaceView);
+        },
       })}
     </WorkspaceShell>
   );

@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader,
+  LogOut,
   MapPin,
   Plus,
   Sparkles,
@@ -218,10 +219,12 @@ export default function TargetForm({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-[10.5px] text-primary hover:text-primary/90"
+            className="h-6 px-2 text-[10.5px] text-muted-foreground hover:text-destructive gap-1"
             onClick={onOpenSetup}
+            title="Exit project or switch to another job"
           >
-            Recent Jobs
+            <LogOut className="size-3 shrink-0" />
+            <span>Exit Project</span>
           </Button>
         ) : null}
       </div>
@@ -636,15 +639,11 @@ export default function TargetForm({
           "Observation in progress…"
         ) : quote ? (
           <>
-            <span className="hidden sm:inline">Run Earth Observation Screening</span>
-            <span className="sm:hidden">Run Screening</span>
+            <span>Run Screening</span>
             <span>· {quote.credits} credit{quote.credits === 1 ? "" : "s"}</span>
           </>
         ) : (
-          <>
-            <span className="hidden sm:inline">Run Earth Observation Screening</span>
-            <span className="sm:hidden">Run Screening</span>
-          </>
+          <span>Run Screening</span>
         )}
       </Button>
 
