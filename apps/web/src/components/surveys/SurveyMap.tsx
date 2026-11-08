@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { FileText } from "lucide-react";
 import GeoTiffOverlay from "./GeoTiffOverlay.tsx";
+import PmtilesOverlay from "./PmtilesOverlay.tsx";
 import { candidateIcon, targetIcon } from "./mapIcons.ts";
 import {
   basemapById,
@@ -14,6 +15,7 @@ import {
   type MapCandidate,
 } from "../../lib/surveys/workbench.ts";
 import { coordText, distanceText, scoreText } from "../../lib/surveys/labels.ts";
+import type { SurveyTilesSource } from "../../lib/repositories/satelliteSurveys.ts";
 
 const BRAND = "#D14141";
 const OUTSIDE = "#f59e0b";
@@ -33,6 +35,8 @@ interface SurveyMapProps {
   classifiedImageUrl?: string | null;
   /** Georeferenced zone GeoTIFF preferred over the flattened PNG. */
   classifiedTiffUrl?: string | null;
+  /** One PMTiles reader source of the same classes: real tiles, native zoom. */
+  classifiedTilesSource?: SurveyTilesSource | null;
   /** Class colours used when the GeoTIFF has no embedded colour table. */
   rasterPalette?: readonly string[];
   classifiedOpacity?: number;
@@ -134,6 +138,7 @@ export default function SurveyMap({
   layers,
   classifiedImageUrl,
   classifiedTiffUrl,
+  classifiedTilesSource,
   rasterPalette,
   classifiedOpacity = 0.65,
   basemap,
@@ -151,6 +156,13 @@ export default function SurveyMap({
 }: SurveyMapProps) {
   const tile = useMemo(() => basemapById(basemap), [basemap]);
   const pin = useMemo(() => targetIcon(outside ? OUTSIDE : BRAND), [outside]);
+  // A tile archive that will not load must not blank the raster drape: the
+  // single-image overlay picks the work up from the same classes.
+  const [tilesUnavailable, setTilesUnavailable] = useState(false);
+  useEffect(() => {
+    setTilesUnavailable(false);
+  }, [classifiedTilesSource]);
+  const useTiles = layers.raster !== false && Boolean(classifiedTilesSource) && !tilesUnavailable;
 
   return (
     <MapContainer
@@ -181,7 +193,13 @@ export default function SurveyMap({
         />
       ) : null}
 
-      {layers.raster !== false && (classifiedTiffUrl || classifiedImageUrl) ? (
+      {useTiles ? (
+        <PmtilesOverlay
+          source={classifiedTilesSource ?? null}
+          opacity={classifiedOpacity}
+          onUnavailable={() => setTilesUnavailable(true)}
+        />
+      ) : layers.raster !== false && (classifiedTiffUrl || classifiedImageUrl) ? (
         <GeoTiffOverlay
           url={classifiedTiffUrl}
           fallbackUrl={classifiedImageUrl}

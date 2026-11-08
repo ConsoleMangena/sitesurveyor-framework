@@ -23,6 +23,7 @@ import {
   cancelSurveyRun,
   deliverableUrl,
   startSurvey,
+  surveyTilesSource,
   type SurveyProvenance,
 } from "../../../lib/repositories/satelliteSurveys.ts";
 import { getAiCreditBalance } from "../../../lib/repositories/pesepay.ts";
@@ -355,8 +356,26 @@ export default function SatelliteSurveyPage({
     return (detail?.deliverables ?? []).find((d) => d.kind === kinds.tif) ?? null;
   }, [detail?.deliverables, jobDossierCategory]);
 
+  const webTiffDeliverable = useMemo(() => {
+    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
+    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.webtif) ?? null;
+  }, [detail?.deliverables, jobDossierCategory]);
+
+  const tilesDeliverable = useMemo(() => {
+    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
+    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.tiles) ?? null;
+  }, [detail?.deliverables, jobDossierCategory]);
+
   const [rasterUrl, setRasterUrl] = useState<string | null>(null);
   const [geoTiffUrl, setGeoTiffUrl] = useState<string | null>(null);
+
+  // The tile archive is not fetched through a signed URL: the PMTiles reader
+  // pulls byte slices through the deliverable-range edge function, which
+  // re-proves this session's workspace ownership on every request.
+  const tilesSource = useMemo(
+    () => (tilesDeliverable ? surveyTilesSource(tilesDeliverable) : null),
+    [tilesDeliverable],
+  );
 
   useEffect(() => {
     let active = true;
@@ -370,17 +389,22 @@ export default function SatelliteSurveyPage({
     };
   }, [overlayDeliverable]);
 
+  // The worker's north-up copy carries the same colour table on EPSG:4326, so
+  // the drape decodes onto its exact lat/lon rectangle when it exists; the
+  // UTM-zone original is the fallback for runs published before this change.
+  const decodeTiffDeliverable = webTiffDeliverable ?? tifDeliverable;
+
   useEffect(() => {
     let active = true;
     setGeoTiffUrl(null);
-    if (!tifDeliverable) return;
-    void deliverableUrl(tifDeliverable).then((url) => {
+    if (!decodeTiffDeliverable) return;
+    void deliverableUrl(decodeTiffDeliverable).then((url) => {
       if (active) setGeoTiffUrl(url);
     });
     return () => {
       active = false;
     };
-  }, [tifDeliverable]);
+  }, [decodeTiffDeliverable]);
 
   const hasRaster = Boolean(overlayDeliverable || tifDeliverable);
   const rasterOn = rasterOverride ?? hasRaster;
@@ -870,6 +894,7 @@ export default function SatelliteSurveyPage({
             layers={{ ...layers, raster: rasterOn }}
             classifiedImageUrl={rasterUrl}
             classifiedTiffUrl={geoTiffUrl}
+            classifiedTilesSource={tilesSource}
             rasterPalette={CATEGORY_RASTER_PALETTE[jobDossierCategory]}
             classifiedOpacity={rasterOpacity}
             basemap={basemap}

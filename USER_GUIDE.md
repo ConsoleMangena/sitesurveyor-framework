@@ -113,7 +113,7 @@ What you must understand before choosing it:
 
 **Current status:** both modes are available in the web client's file manager. Hash-only is the default.
 
-> **Note:** The **satellite survey engine** (Python worker at `apps/engine`) is a separate, implemented component that runs the actual multi-sensor raster analysis (water, minerals, soil, hazard) on DE Africa satellite data. It is **not** the same as full-file anchoring. The engine runs as a background worker, polls `survey_runs` from Supabase, processes the job, and publishes deliverables (GeoTIFF, PNG maps, GeoJSON, KMZ, HTML reports) to Supabase Storage. It exposes an MCP server for AI agent integration.
+> **Note:** The **satellite survey engine** (Python worker at `apps/engine`) is a separate, implemented component that runs the actual multi-sensor raster analysis (water, minerals, soil, hazard) on DE Africa satellite data. It is **not** the same as full-file anchoring. The engine runs as a background worker, polls `survey_runs` from Supabase, processes the job, and publishes deliverables (GeoTIFF, PNG maps, GeoJSON, KMZ, HTML reports, plus web-map tile layers that the workbench renders as a zoomable classified drape) to Supabase Storage. It exposes an MCP server for AI agent integration.
 
 ### Step 5: Invoice and settle
 

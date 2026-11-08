@@ -45,6 +45,7 @@ import requests
 from src import config as cfg
 from src import fetch_data
 from src.mcp.server import set_progress_callback, survey_site
+from src.utils import webtiles
 
 logger = logging.getLogger("sitesurveyor.worker")
 
@@ -84,6 +85,19 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     "minerals_overlay": "minerals_overlay.png",
     "soil_overlay": "soil_overlay.png",
     "hazard_overlay": "hazard_overlay.png",
+    # Web-map deliverables, built after the survey runs by src/utils/webtiles.py:
+    # a north-up EPSG:4326 raster the browser drape sits exactly on, and a
+    # single-file raster PMTiles archive the workbench map pans and zooms as
+    # real tiles. Written the same way as everything above (existence is the
+    # only test), so an older run without them simply offers no map layer.
+    "groundwater_webtif": "groundwater_potential_zones_web.tif",
+    "minerals_webtif": "mineral_prospectivity_zones_web.tif",
+    "soil_webtif": "soil_capability_zones_web.tif",
+    "hazard_webtif": "hazard_risk_zones_web.tif",
+    "groundwater_tiles": "groundwater_potential_zones_tiles.pmtiles",
+    "minerals_tiles": "mineral_prospectivity_zones_tiles.pmtiles",
+    "soil_tiles": "soil_capability_zones_tiles.pmtiles",
+    "hazard_tiles": "hazard_risk_zones_tiles.pmtiles",
 }
 
 CONTENT_TYPES = {
@@ -94,6 +108,9 @@ CONTENT_TYPES = {
     ".tif": "image/tiff",
     ".csv": "text/csv",
     ".html": "text/html",
+    # Single-file tile archives are served by the browser's PMTiles reader
+    # over HTTP range requests; content type is informational only.
+    ".pmtiles": "application/octet-stream",
 }
 
 
@@ -315,6 +332,23 @@ def execute(payload: dict) -> dict:
     return result
 
 
+def web_tiles_payload(run: dict) -> None:
+    """Cut the run's zone rasters into the map-view deliverables, never fatally.
+
+    Tiles and web rasters are visual draperies over the analysis: if their
+    cutting fails, the survey still publishes the PNG, GeoTIFF and KMZ results
+    and the workbench keeps the single-image drape instead of the tile layer.
+    """
+    categories = run.get("categories") or []
+    try:
+        built = webtiles.build_survey_tiles(categories)
+    except Exception as exc:  # noqa: BLE001 - the map is not worth the survey
+        logger.warning("web map deliverables skipped for run %s: %s", run["id"], exc)
+        return
+    if built:
+        logger.info("built %d web-map deliverable(s) for run %s", len(built), run["id"])
+
+
 def report_progress(platform: Platform, run_id: str, status: str):
     """Build the stage reporter the pipeline calls, bound to one run.
 
@@ -388,6 +422,7 @@ def handle(platform: Platform, run: dict) -> None:
     try:
         result = execute(run_payload(run))
         set_progress_callback(report_progress(platform, run_id, "publishing"))
+        web_tiles_payload(run)
         publish(platform, run, result)
     except Exception as exc:  # noqa: BLE001 - a worker must survive any single job
         logger.exception("run %s failed", run_id)

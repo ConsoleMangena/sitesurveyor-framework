@@ -1,4 +1,4 @@
-import { supabase } from "../supabase/client.ts";
+import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from "../supabase/client.ts";
 import type { Tables } from "../supabase/types.ts";
 import { parseQuote, type SurveyQuote } from "../surveys/pricing.ts";
 
@@ -512,6 +512,59 @@ export async function deliverableUrl(deliverable: SurveyDeliverable): Promise<st
     });
   if (error) return null;
   return data.signedUrl;
+}
+
+/** The two-method slice of the `pmtiles` package's Source interface its reader needs. */
+export interface SurveyTilesSource {
+  getKey: () => string;
+  getBytes(
+    offset: number,
+    length: number,
+    signal?: AbortSignal,
+    etag?: string,
+  ): Promise<{ data: ArrayBuffer }>;
+}
+
+/** A PMTiles reader source for a deliverable, served by our edge function.
+ *
+ * The archive is read as byte ranges, and a signed storage URL is not a
+ * guarantee for arbitrary range requests, so every slice goes through the
+ * `deliverable-file` edge function instead: it carries this session's token on
+ * each request -- supabase-js keeps that token fresh -- the function re-proves
+ * the caller's workspace through the table's RLS before streaming bytes, and
+ * the reader needs no long-lived link minted for the archive.
+ */
+export function surveyTilesSource(deliverable: SurveyDeliverable): SurveyTilesSource {
+  const path = deliverable.storagePath;
+  const endpoint = `${SUPABASE_URL}/functions/v1/deliverable-file?path=${encodeURIComponent(path)}`;
+  return {
+    getKey: () => `${BUCKET}/${path}`,
+    getBytes: async (offset, length, signal) => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sign in to open survey maps.");
+
+      const res = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY } : {}),
+          Range: `bytes=${offset}-${offset + length - 1}`,
+        },
+        signal,
+      });
+      if (!res.ok) {
+        throw new Error(`The tile proxy answered ${res.status}.`);
+      }
+      let buffer = await res.arrayBuffer();
+      // Storage serves back the requested slice; a middle layer that ignored
+      // the Range header hands over the whole archive, which the reader would
+      // misread as a giant directory blob -- slice to the asked-for bytes.
+      if (buffer.byteLength !== length && offset + length <= buffer.byteLength) {
+        buffer = buffer.slice(offset, offset + length);
+      }
+      return { data: buffer };
+    },
+  };
 }
 
 /**

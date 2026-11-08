@@ -83,6 +83,7 @@ python -m src.mcp_server --transport sse     # Cloud SSE transport (port 8000)
 | **Cat 2: MINERALS** | [`src/engines/minerals.py`](src/engines/minerals.py) | Sentinel-2 GeoMAD (SWIR/NIR/Red/Blue), ALOS PALSAR, DEM | `mineral_prospectivity_map.png`, `candidate_mineral_targets.csv/.geojson/.kmz`, `mineral_prospectivity_index.tif` |
 | **Cat 3: SOIL & LAND** | [`src/engines/soil.py`](src/engines/soil.py) | Sentinel-2 (NDVI, NDMI, BSI), Copernicus DEM, ESA WorldCover, CHIRPS | `soil_capability_map.png`, `candidate_land_zones.csv/.geojson/.kmz`, `soil_capability_index.tif` |
 | **Cat 5: HAZARD & RISK** | [`src/engines/hazard.py`](src/engines/hazard.py) | Landsat WOfS 1984-2024 water frequency, DEM slope/ponding, Sentinel-2 dry biomass fuel | `hazard_risk_map.png`, `safest_buildable_sites.csv/.geojson/.kmz`, `hazard_composite_index.tif` |
+| **WEB MAP LAYERS** | [`src/utils/webtiles.py`](src/utils/webtiles.py) | Each category's classified zone raster | `<zones>_web.tif` (north-up EPSG:4326 for the browser drape) and `<zones>_tiles.pmtiles` (single-file raster tile archive the workbench map pans/zooms at native 30 m density) |
 | **EXECUTIVE DOSSIER** | [`src/report.py`](src/report.py) | Consolidated outputs from all categories | `master_site_dossier.json` (the scorecard the app renders and MCP agents read) |
 | **CLIENT REPORTS** | [`src/category_report.py`](src/category_report.py) | One category's summary, raster and candidates | `groundwater_report.html`, `minerals_report.html`, `soil_report.html`, `hazard_report.html` plus their raster viewers |
 
@@ -128,6 +129,7 @@ apps/engine/
         ├── spectral.py         # NDVI, NDMI, NDWI, iron oxide, hydroxyl, ferrous, bare soil
         ├── lineaments.py       # Canny + Probabilistic Hough lineament extraction
         ├── classification.py   # Pure NumPy 1-D natural breaks (Jenks) & spatial peak picking
+        ├── webtiles.py         # Web-map deliverables: north-up web GeoTIFF + raster PMTiles archive
         └── export.py           # Mobile-ready KML & compressed KMZ export for smartphone GPS
 ```
 

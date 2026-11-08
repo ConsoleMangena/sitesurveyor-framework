@@ -1,15 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   InsufficientCreditsError,
   parseSurveyResult,
   startSurvey,
+  surveyTilesSource,
   toSurveyRun,
+  type SurveyDeliverable,
 } from "./satelliteSurveys.ts";
 import { supabase } from "../supabase/client.ts";
 
 vi.mock("../supabase/client.ts", () => ({
+  SUPABASE_URL: "https://example.supabase.co",
+  SUPABASE_ANON_KEY: "anon-key",
   supabase: {
+    auth: { getSession: vi.fn() },
     functions: { invoke: vi.fn() },
     from: vi.fn(),
     rpc: vi.fn(),
@@ -213,5 +218,95 @@ describe("startSurvey", () => {
     await expect(startSurvey(input as never)).rejects.toThrow(
       "Pick at least one category.",
     );
+  });
+});
+
+describe("surveyTilesSource", () => {
+  const deliverable: SurveyDeliverable = {
+    id: "0f0f0f0f-0000-4000-8000-000000000003",
+    runId: "0f0f0f0f-0000-4000-8000-000000000001",
+    kind: "groundwater_tiles",
+    storagePath: "0f0f0f0f-0000-4000-8000-000000000002/0f0f0f0f-0000-4000-8000-000000000001/groundwater_potential_zones_tiles.pmtiles",
+    contentType: "application/octet-stream",
+    sizeBytes: 48691,
+  };
+
+  const fetchMock = vi.fn();
+  const sessionMock = vi.mocked(supabase.auth.getSession);
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+    sessionMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("serves one byte slice through the range proxy with the live token", async () => {
+    sessionMock.mockResolvedValue({
+      data: { session: { access_token: "token-1" } as never },
+    } as never);
+    fetchMock.mockResolvedValue(
+      new Response(new ArrayBuffer(10), { status: 206 }),
+    );
+
+    const source = surveyTilesSource(deliverable);
+    const { data } = await source.getBytes(16384, 512);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.supabase.co/functions/v1/deliverable-file?path=" +
+        encodeURIComponent(deliverable.storagePath),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer token-1",
+          Range: "bytes=16384-16895",
+        }),
+      }),
+    );
+    expect(data.byteLength).toBe(10);
+  });
+
+  it("falls back to slicing when a hop ignored the Range header", async () => {
+    // A 200 for a range request means something between the reader and
+    // Storage chose to mail the entire file; the reader cannot digest a
+    // directory window made of the wrong bytes.
+    sessionMock.mockResolvedValue({
+      data: { session: { access_token: "token-1" } as never },
+    } as never);
+    const whole = new Uint8Array(100).map((_, index) => index).buffer;
+    fetchMock.mockResolvedValue(new Response(whole, { status: 200 }));
+
+    const source = surveyTilesSource(deliverable);
+    const { data } = await source.getBytes(10, 4);
+
+    expect(data.byteLength).toBe(4);
+    expect(new DataView(data).getUint8(0)).toBe(10);
+  });
+
+  it("refuses to read anything without a signed-in session", async () => {
+    sessionMock.mockResolvedValue({ data: { session: null } } as never);
+
+    const source = surveyTilesSource(deliverable);
+    await expect(source.getBytes(0, 16)).rejects.toThrow("Sign in");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a failing proxy as an error the overlay can fall back on", async () => {
+    sessionMock.mockResolvedValue({
+      data: { session: { access_token: "token-1" } as never },
+    } as never);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "Deliverable not found." }), { status: 404 }),
+    );
+
+    const source = surveyTilesSource(deliverable);
+    await expect(source.getBytes(0, 16)).rejects.toThrow("404");
+  });
+
+  it("keys the reader's cache by the exact object it reads", () => {
+    const source = surveyTilesSource(deliverable);
+    expect(source.getKey()).toBe(`survey-deliverables/${deliverable.storagePath}`);
   });
 });

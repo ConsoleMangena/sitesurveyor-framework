@@ -13,6 +13,10 @@ if (!supabaseUrl || !supabaseKey) {
   );
 }
 
+export const SUPABASE_URL = supabaseUrl;
+/** The project's public key, needed when the app calls edge functions directly. */
+export const SUPABASE_ANON_KEY = supabaseKey;
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,

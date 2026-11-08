@@ -7,6 +7,9 @@ scikit-image>=0.21
 rasterio>=1.5
 matplotlib>=3.7
 pyproj>=3.8
+# Raster PMTiles writer: builds the worker's single-file tile archives
+# (src/utils/webtiles.py) for the workbench's zoomable map layer.
+pmtiles>=3.8
 owslib>=0.28
 python-dotenv>=1.0
 requests>=2.28

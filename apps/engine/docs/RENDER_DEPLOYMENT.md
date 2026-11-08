@@ -32,8 +32,13 @@ The worker is useless before these exist, and it says so in its logs rather than
    `satellite.survey` rate row. Apply `20261107120000_survey_credit_pricing.sql` too: it adds
    `survey_credit_rates` and the `price_satellite_survey` / `charge_satellite_survey` pair the
    edge function calls, and lowers `billing_operation_rates['satellite.survey']` to the floor.
-2. **Edge function** — `npx supabase functions deploy satellite-survey`. This is the only
-   entry point a client has; it is what authenticates the caller and charges the credits.
+2. **Edge functions** — `npx supabase functions deploy satellite-survey`, then
+   `npx supabase functions deploy deliverable-file`. The first is the only entry
+   point that starts a survey: it authenticates the caller and charges the
+   credits. The second is what keeps the workbench's zoomable tile map readable:
+   the PMTiles archive is fetched as byte slices through it, so range requests
+   never depend on signed-URL range support, and it re-proves workspace ownership
+   per request before streaming a slice.
 3. **A workspace with credits** — billing is per workspace, so the member queueing the
    survey needs a balance at the platform's survey rate.
 

@@ -54,7 +54,13 @@ export const AOI_CHOICES = [
  */
 export const CATEGORY_EXPORTS: Record<
   DossierCategory,
-  { map: string; kmz: string; geojson: string; tif: string; overlay: string }
+  {
+    map: string; kmz: string; geojson: string; tif: string; overlay: string;
+    /** North-up EPSG:4326 copy the browser drape reads (worker-built). */
+    webtif: string;
+    /** Single-file raster PMTiles tile archive the map pans/zooms (worker-built). */
+    tiles: string;
+  }
 > = {
   water: {
     map: "groundwater_map",
@@ -62,6 +68,8 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "boreholes_geojson",
     tif: "groundwater_tif",
     overlay: "groundwater_overlay",
+    webtif: "groundwater_webtif",
+    tiles: "groundwater_tiles",
   },
   minerals: {
     map: "minerals_map",
@@ -69,6 +77,8 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "minerals_geojson",
     tif: "minerals_tif",
     overlay: "minerals_overlay",
+    webtif: "minerals_webtif",
+    tiles: "minerals_tiles",
   },
   soil_land: {
     map: "soil_map",
@@ -76,6 +86,8 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "soil_geojson",
     tif: "soil_tif",
     overlay: "soil_overlay",
+    webtif: "soil_webtif",
+    tiles: "soil_tiles",
   },
   hazard_safety: {
     map: "hazard_map",
@@ -83,6 +95,8 @@ export const CATEGORY_EXPORTS: Record<
     geojson: "safest_sites_geojson",
     tif: "hazard_tif",
     overlay: "hazard_overlay",
+    webtif: "hazard_webtif",
+    tiles: "hazard_tiles",
   },
 };
 
