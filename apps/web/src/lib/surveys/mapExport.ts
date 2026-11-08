@@ -1153,6 +1153,46 @@ function drawScaleBarOnMap(
   drawTextLine(ctx, scaleText, x + padX, yTop + 21, 5.5, { color: INK_SOFT });
 }
 
+/** Cartographic label: the text itself with a contrasting halo, no box behind it. */
+function drawHaloText(
+  ctx: SheetCtx,
+  text: string,
+  x: number,
+  yTop: number,
+  size: number,
+  options: {
+    font?: PDFFont;
+    fill?: ReturnType<typeof rgb>;
+    halo?: ReturnType<typeof rgb>;
+  } = {},
+): void {
+  const font = options.font ?? ctx.font;
+  const fill = options.fill ?? INK;
+  const halo = options.halo ?? rgb(1, 1, 1);
+  const clean = safeText(text);
+  const baseline = yFlip(yTop + size * 0.78);
+  const offsets: [number, number][] = [
+    [-0.5, 0],
+    [0.5, 0],
+    [0, -0.5],
+    [0, 0.5],
+    [-0.4, -0.4],
+    [0.4, -0.4],
+    [-0.4, 0.4],
+    [0.4, 0.4],
+  ];
+  for (const [dx, dy] of offsets) {
+    ctx.page.drawText(clean, {
+      x: x + dx,
+      y: baseline + dy,
+      size,
+      font,
+      color: halo,
+    });
+  }
+  ctx.page.drawText(clean, { x, y: baseline, size, font, color: fill });
+}
+
 function tickValues(min: number, max: number, step: number): number[] {
   const ticks: number[] = [];
   const eps = step * 1e-6;
@@ -1324,20 +1364,10 @@ function drawMapFurniture(
     if (candidate.label) {
       const size = 5.5;
       const text = safeText(candidate.label);
-      const chipW = font.widthOfTextAtSize(text, size) + 6;
-      let chipX = x + 6;
-      if (chipX + chipW > mapRect.x + mapRect.w - 4) chipX = x - 6 - chipW;
-      page.drawRectangle({
-        x: chipX,
-        y: yFlip(yPt - 4),
-        width: chipW,
-        height: 10,
-        color: PAPER,
-        opacity: 0.94,
-        borderColor: rgb(0.15, 0.18, 0.22),
-        borderWidth: 0.4,
-      });
-      drawTextLine(ctx, text, chipX + 3, yPt - 1.6, size, { color: INK });
+      const textW = font.widthOfTextAtSize(text, size);
+      let labelX = x + 5;
+      if (labelX + textW > mapRect.x + mapRect.w - 4) labelX = x - 5 - textW;
+      drawHaloText(ctx, text, labelX, yPt - 1.6, size, { fill: INK });
     }
   }
 
