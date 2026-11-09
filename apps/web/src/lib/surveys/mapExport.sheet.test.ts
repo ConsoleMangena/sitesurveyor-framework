@@ -333,12 +333,39 @@ describe("survey sheet layout", () => {
     }
   });
 
-  it("keeps the sheet's own furniture on the map sheet", async () => {
-    const { marks } = await render("water");
-    const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
-    expect(texts).toContain("SCALE BAR");
-    expect(texts).toContain("GRID NORTH");
-    expect(texts).toContain("SITESURVEYOR™");
+  it("keeps the sheet's own furniture on the map sheet across all categories", async () => {
+    for (const category of ["water", "minerals", "soil_land", "hazard_safety"] as DossierCategory[]) {
+      const { marks } = await render(category);
+      const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
+      expect(texts).toContain("SCALE BAR");
+      expect(texts).toContain("GRID NORTH");
+      expect(texts).toContain("SITESURVEYOR™");
+    }
+  });
+
+  it("aligns the title panel metadata values straight in a column with distinct row spacing", async () => {
+    const { marks } = await render("minerals");
+    const clientVal = marks.find((m) => m.text === "Site Survey");
+    const domainVal = marks.find((m) => m.text === "MINERAL PROSPECTIVITY");
+    const generatedVal = marks.find((m) => m.text === "Nov 9, 2026");
+
+    expect(clientVal).toBeDefined();
+    expect(domainVal).toBeDefined();
+    expect(generatedVal).toBeDefined();
+
+    // Values align straight along the exact same vertical guide
+    expect(clientVal?.left).toBe(domainVal?.left);
+    expect(generatedVal?.left).toBe(domainVal?.left);
+
+    // Labels align straight at innerX
+    const clientLabel = marks.find((m) => m.text === "CLIENT");
+    const domainLabel = marks.find((m) => m.text === "SURVEY DOMAIN");
+    const gridLabel = marks.find((m) => m.text === "GRID");
+    expect(clientLabel?.left).toBe(domainLabel?.left);
+    expect(gridLabel?.left).toBe(domainLabel?.left);
+
+    // Row positions descend with clear row spacing
+    expect((domainLabel?.top ?? 0) - (clientLabel?.top ?? 0)).toBeGreaterThanOrEqual(11.0);
   });
 
   it("keeps the stations on the map sheet when the key leaves room for them", async () => {

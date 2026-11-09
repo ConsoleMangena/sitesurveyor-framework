@@ -1598,11 +1598,11 @@ function fittedTableSize(
 }
 
 /**
- * One title-block row: a small label and the figure beside it.
+ * One title-block row: a small label on the left and the value aligned straight in a column.
  *
- * The value is bold and the label is not, so the reader's eye lands on the number.
- * A value too long for one line wraps instead of being cut: a sheet that reads
- * "Gold · Lithium · Rare…" is less use than one that names every system.
+ * Each row is laid out on a consistent column rhythm with vertical spacing between rows:
+ * label starts at innerX, value starts at a straight vertical alignment (innerX + labelColW + gap),
+ * followed by a clean row gap before the next row.
  */
 function drawValueRow(
   ctx: SheetCtx,
@@ -1614,18 +1614,20 @@ function drawValueRow(
   size: number,
   maxLines = 2,
   labelSize = 5.8,
+  labelColW = 68,
 ): number {
-  const labelW = ctx.font.widthOfTextAtSize(safeText(label), labelSize);
-  const valueX = innerX + labelW + 6;
-  const lines = wrapValue(ctx, value, size, innerX + innerW - valueX, ctx.bold, maxLines);
+  const valueX = innerX + labelColW + 5;
+  const valueW = Math.max(40, innerW - labelColW - 5);
+  const lines = wrapValue(ctx, value, size, valueW, ctx.bold, maxLines);
   drawTextLine(ctx, label, innerX, y, labelSize, { color: INK_SOFT });
   const baselineShift = (labelSize - size) * 0.78;
+  const linePitch = size + 1.2;
   lines.forEach((line, index) => {
-    drawTextLine(ctx, line, valueX, y + baselineShift + index * (size + 1.6), size, {
+    drawTextLine(ctx, line, valueX, y + baselineShift + index * linePitch, size, {
       font: ctx.bold,
     });
   });
-  return y + Math.max(11, lines.length * (size + 1.6) + 1.2);
+  return y + Math.max(11.2, (lines.length - 1) * linePitch + 11.2);
 }
 
 /**
@@ -1646,7 +1648,7 @@ function drawPacedRows(
 ): number {
   for (const row of rows) {
     const before = y;
-    y = drawValueRow(ctx, row.label, row.value, x, w, y, size, 3, labelSize);
+    y = drawValueRow(ctx, row.label, row.value, x, w, y, size, 3, labelSize, 76);
     y += Math.max(0, pitch - (y - before));
   }
   return y;
@@ -1724,7 +1726,7 @@ function drawPanel(
 
     // The survey's own figures, stated before the reference rows.
     for (const row of data.summaryRows) {
-      y = drawValueRow(ctx, row.label, row.value, innerX, innerW, y, 8.8, 3);
+      y = drawValueRow(ctx, row.label, row.value, innerX, innerW, y, 8.2, 3, 5.8, 68);
     }
     if (data.summaryRows.length > 0) {
       y += 3;
@@ -1747,7 +1749,7 @@ function drawPanel(
       { label: "GENERATED", value: data.generatedText },
     ].filter((row) => row.value);
     for (const row of metaRows) {
-      y = drawValueRow(ctx, row.label, row.value, innerX, innerW, y, 8.3, 3);
+      y = drawValueRow(ctx, row.label, row.value, innerX, innerW, y, 7.8, 3, 5.8, 68);
     }
     y += 3;
     drawPanelDivider(ctx, innerX, innerW, y);
@@ -1855,38 +1857,36 @@ function drawPanel(
     ]
       .filter(Boolean)
       .join(" & ");
-    drawTextLine(ctx, `${missing} — SHEET 2`, innerX, y, 6.5, { color: INK_SOFT });
-    y += POINTER_H;
+    const pointerY = Math.min(y, furnitureTop - POINTER_H);
+    drawTextLine(ctx, `${missing} — SHEET 2`, innerX, pointerY, 6.5, { color: INK_SOFT });
+    y = pointerY + POINTER_H;
   }
 
   if (data.includeScaleBar || data.includeNorthArrow) {
     // The furniture sits at the foot of the title block, so the panel reads as one
     // block from the brand mark down to the scale bar rather than trailing off.
-    const furnitureTop = bottomLimit - FURNITURE_BLOCK_H;
-    if (y + FURNITURE_BLOCK_H <= bottomLimit) {
-      const furnitureY = Math.max(y, furnitureTop);
-      if (data.includeScaleBar) {
-        drawTextLine(ctx, "SCALE BAR", innerX, furnitureY, 7, { font: ctx.bold });
-        const barY = furnitureY + 10;
-        const barH = drawScaleBarCore(ctx, innerX, barY, {
-          meters: data.scaleBarMeters,
-          widthPt: data.scaleBarWidthPt,
-        });
-        drawTextLine(ctx, data.scaleRatioText, innerX, barY + barH - 2, 5.8, {
-          color: INK_SOFT,
-        });
-      }
-      if (data.includeNorthArrow) {
-        // The needle sits at the panel's right edge with its letter clear of the frame.
-        drawNorthNeedle(ctx, innerX + innerW - 32, furnitureY + 16, false);
-        drawTextLine(ctx, "GRID NORTH", innerX + innerW - 32, furnitureY + 36, 5, {
-          color: INK_SOFT,
-        });
-      }
-      y = furnitureY + FURNITURE_BLOCK_H;
-      drawPanelDivider(ctx, innerX, innerW, y);
-      y += 9;
+    // Anchored at furnitureTop so scale bar and north needle are unconditionally drawn on the map sheet.
+    const furnitureY = furnitureTop;
+    drawPanelDivider(ctx, innerX, innerW, furnitureY - 6);
+    if (data.includeScaleBar) {
+      drawTextLine(ctx, "SCALE BAR", innerX, furnitureY, 7, { font: ctx.bold });
+      const barY = furnitureY + 10;
+      const barH = drawScaleBarCore(ctx, innerX, barY, {
+        meters: data.scaleBarMeters,
+        widthPt: data.scaleBarWidthPt,
+      });
+      drawTextLine(ctx, data.scaleRatioText, innerX, barY + barH - 2, 5.8, {
+        color: INK_SOFT,
+      });
     }
+    if (data.includeNorthArrow) {
+      // The needle sits at the panel's right edge with its letter clear of the frame.
+      drawNorthNeedle(ctx, innerX + innerW - 32, furnitureY + 16, false);
+      drawTextLine(ctx, "GRID NORTH", innerX + innerW - 32, furnitureY + 36, 5, {
+        color: INK_SOFT,
+      });
+    }
+    drawPanelDivider(ctx, innerX, innerW, furnitureY + FURNITURE_BLOCK_H);
   }
 
   let footerY = footerTop;
