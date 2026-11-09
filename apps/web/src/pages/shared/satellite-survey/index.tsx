@@ -39,6 +39,7 @@ import { useSurveyQuote } from "../../../lib/hooks/useSurveyQuote.ts";
 import {
   CATEGORY_EXPORTS,
   CATEGORY_LEGEND_CODES,
+  CATEGORY_LEGEND_TITLES,
   CATEGORY_RASTER_PALETTE,
   CATEGORY_TRANSPARENT_CODES,
   CATEGORY_ZONE_LABELS,
@@ -78,7 +79,10 @@ import EarthObservationSetupForm from "./EarthObservationSetupForm.tsx";
 import {
   initialForm,
   pinTarget,
+  fieldTargetText,
   resultsNote,
+  sheetSummaryRows,
+  sheetSystemTable,
   sourceText,
   validateForm,
   type SurveyFormValues,
@@ -440,6 +444,11 @@ export default function SatelliteSurveyPage({
             longitude: row.longitude,
             color: row.color,
             label: stationDepthLabel(row.category, row.payload) ?? undefined,
+            kind: row.kind,
+            rank: row.rank,
+            readout: row.readout ?? undefined,
+            distanceKm: row.distanceKm,
+            score: row.score,
           }))
         : [],
     [layers.candidates, rows],
@@ -450,21 +459,35 @@ export default function SatelliteSurveyPage({
     ? `Water table ~${metricRange(targetDepth.wetM, targetDepth.dryM) ?? targetDepth.read ?? "?"}`
     : undefined;
 
-  const exportIndicatedMineralsText = useMemo(() => {
-    if (jobDossierCategory !== "minerals") return undefined;
-    const commodities = detail?.run.result?.commodities ?? [];
-    const ind = commodities.filter((c) => c.indicated);
-    return ind.length > 0 ? ind.map((c) => c.name).join(" · ") : "None indicated";
-  }, [jobDossierCategory, detail]);
+  const exportSystemTable = useMemo(
+    () => sheetSystemTable(detail?.run.result ?? null),
+    [detail],
+  );
+
+  const exportSummaryRows = useMemo(
+    () => sheetSummaryRows(jobDossierCategory, detail?.run.result ?? null, rows),
+    [jobDossierCategory, detail?.run.result, rows],
+  );
+
+  // The worker's own line for the best target: a drilling depth, a cover thickness or
+  // the hazard class. Water states its water table instead, which the reticle carries.
+  const exportFieldTargetLabel = useMemo(() => {
+    if (jobDossierCategory === "water") return undefined;
+    return fieldTargetText(rows) || undefined;
+  }, [jobDossierCategory, rows]);
 
   const exportLegendItems = useMemo(
     () => [
       ...(rasterOn
-        ? CATEGORY_LEGEND_CODES[jobDossierCategory].map((code) => ({
-            kind: "zone" as const,
-            color: CATEGORY_RASTER_PALETTE[jobDossierCategory][code],
-            label: CATEGORY_ZONE_LABELS[jobDossierCategory][code] ?? `Zone ${code}`,
-          }))
+        ? CATEGORY_LEGEND_CODES[jobDossierCategory].map((code) => {
+            const label =
+              CATEGORY_ZONE_LABELS[jobDossierCategory][code] ?? `Zone ${code}`;
+            return {
+              kind: "zone" as const,
+              color: CATEGORY_RASTER_PALETTE[jobDossierCategory][code],
+              label,
+            };
+          })
         : []),
       ...(layers.candidates && rows.length > 0
         ? [
@@ -483,11 +506,7 @@ export default function SatelliteSurveyPage({
     ],
     [rasterOn, jobDossierCategory, layers.candidates, layers.aoi, rows],
   );
-  const exportLegendTitle = rasterOn
-    ? jobDossierCategory === "hazard_safety"
-      ? "Classified Risk"
-      : "Classified Potential"
-    : "Map Symbols";
+  const exportLegendTitle = rasterOn ? CATEGORY_LEGEND_TITLES[jobDossierCategory] : "Map Symbols";
   const exportBasemap = basemapById(basemap);
 
   const handleDownloadKmz = useCallback(async () => {
@@ -1055,7 +1074,9 @@ export default function SatelliteSurveyPage({
         aoiBounds={surveyBounds}
         candidates={exportCandidates}
         targetDepthLabel={exportTargetDepthLabel}
-        indicatedMineralsText={exportIndicatedMineralsText}
+        fieldTargetLabel={exportFieldTargetLabel}
+        summaryRows={exportSummaryRows}
+        table={exportSystemTable ?? undefined}
         legendItems={exportLegendItems}
         legendTitle={exportLegendTitle}
         opticalSource={opticalSource ?? undefined}

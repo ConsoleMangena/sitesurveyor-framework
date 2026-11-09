@@ -114,10 +114,10 @@ export const CATEGORY_RASTER_PALETTE: Record<DossierCategory, readonly string[]>
   minerals: [
     "#08306b",
     "#e69f00",
-    "#d55e00",
+    "#cc79a7",
     "#0072b2",
     "#009e73",
-    "#cc79a7",
+    "#d55e00",
     "#f0e442",
     "#6d4c41",
     "#56b4e9",
@@ -134,6 +134,12 @@ export const CATEGORY_RASTER_PALETTE: Record<DossierCategory, readonly string[]>
  *
  * Mirrors `ZONE_LABELS` in `apps/engine/src/utils/classification.py`. This is the source
  * of the class names the map legend prints beside the classified raster drape.
+ *
+ * For minerals the code order is the engine's catalogue order, so entry 2 is copper,
+ * zinc and lead and entry 5 is iron ore. The index in both this table and the palette
+ * above is the zone code the engine writes into the raster, and a reader who matched
+ * the legend by colour alone would still read it right -- but a file with no colour
+ * table falls back to these codes, so the two tables have to agree.
  */
 export const CATEGORY_ZONE_LABELS: Record<DossierCategory, readonly string[]> = {
   water: [
@@ -148,14 +154,14 @@ export const CATEGORY_ZONE_LABELS: Record<DossierCategory, readonly string[]> = 
   minerals: [
     "Water body",
     "Gold (Au)",
-    "Iron ore (Fe)",
+    "Copper, zinc and lead (Cu-Zn-Pb)",
     "Nickel and platinum-group elements (Ni-PGM)",
     "Chromium (chromitite) (Cr)",
-    "Copper, zinc and lead (Cu-Zn-Pb)",
+    "Iron ore (Fe)",
     "Lithium (pegmatite) (Li)",
     "Manganese (oxide / supergene) (Mn)",
     "Bauxite (aluminium laterite) (Al)",
-    "Rare earth elements (REE) (REE)",
+    "Rare earth elements (REE)",
     "No mineral system above threshold",
     "Built-up (excluded)",
   ],
@@ -190,6 +196,20 @@ export const CATEGORY_LEGEND_CODES: Record<DossierCategory, readonly number[]> =
   minerals: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11],
   soil_land: [5, 4, 3, 2, 1],
   hazard_safety: [5, 4, 3, 2, 1],
+};
+
+/**
+ * What each category's classification is called on the printed sheet.
+ *
+ * The heading names the thing being classified: water is a potential, soil is a
+ * capability, hazard is a risk, and the mineral map is a catalogue of which system
+ * owns each piece of ground.
+ */
+export const CATEGORY_LEGEND_TITLES: Record<DossierCategory, string> = {
+  water: "Classified potential",
+  minerals: "Dominant mineral system",
+  soil_land: "Classified capability",
+  hazard_safety: "Classified risk",
 };
 
 /**

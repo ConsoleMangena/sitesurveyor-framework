@@ -10,7 +10,9 @@ import {
   type ClassifiedTilesOption,
   type MapExportOptions,
   type SheetLegendItem,
+  type SheetTable,
 } from "../../lib/surveys/mapExport.ts";
+import type { SheetSummaryRow } from "../../lib/surveys/workbench.ts";
 
 export interface ExportBasemapConfig {
   tileUrlTemplate: string;
@@ -32,9 +34,21 @@ interface MapExportModalProps {
     longitude: number;
     color?: string;
     label?: string;
+    /** What the station is, e.g. "Borehole". */
+    kind?: string;
+    /** Its rank inside the category, which is how the sheet names it. */
+    rank?: number;
+    /** The worker's own line for the station, e.g. "Auger · overburden 4-12 m". */
+    readout?: string;
+    /** How far the station sits from the survey centre. */
+    distanceKm?: number | null;
+    /** The engine's score for the station. */
+    score?: number | null;
   }[];
   targetDepthLabel?: string;
-  indicatedMineralsText?: string;
+  fieldTargetLabel?: string;
+  summaryRows?: SheetSummaryRow[];
+  table?: SheetTable;
   legendItems?: SheetLegendItem[];
   legendTitle?: string;
   /** Optical sensor the analysis ran on, printed in the title panel. */
@@ -92,7 +106,9 @@ export default function MapExportModal({
   aoiBounds,
   candidates,
   targetDepthLabel,
-  indicatedMineralsText,
+  fieldTargetLabel,
+  summaryRows,
+  table,
   legendItems,
   legendTitle,
   opticalSource,
@@ -160,7 +176,9 @@ export default function MapExportModal({
         classifiedTiles,
         candidates,
         targetDepthLabel,
-        indicatedMineralsText,
+        fieldTargetLabel,
+        summaryRows,
+        table,
         legendItems,
         legendTitle,
         attribution: basemap.attribution,

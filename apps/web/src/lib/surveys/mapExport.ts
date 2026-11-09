@@ -8,7 +8,7 @@ import {
 } from "pdf-lib";
 import { ImageOverlay as LeafletImageOverlay, type Map as LeafletMap } from "leaflet";
 
-import { metersPerPixel } from "./workbench.ts";
+import { metersPerPixel, type SheetSummaryRow } from "./workbench.ts";
 
 /**
  * A4 landscape sheet geometry in PDF points (72 pt = 1 inch).
@@ -63,6 +63,30 @@ export interface SheetLegendItem {
   kind?: LegendItemKind;
 }
 
+/** One headline figure the sheet states about the survey it belongs to. */
+export type { SheetSummaryRow } from "./workbench.ts";
+
+/** One column of a sheet table: its heading, its width and where the cell sits. */
+export interface SheetTableColumn {
+  label: string;
+  width: number;
+  align?: "left" | "right";
+}
+
+/**
+ * A table of the survey's own numbers, printed in the title block.
+ *
+ * The mineral sheet needs to say which system owns how much ground, and a figure
+ * beside a swatch is not a table a reader can compare down a column.
+ */
+export interface SheetTable {
+  title: string;
+  columns: SheetTableColumn[];
+  rows: string[][];
+  /** Rows printed in the strong ink; the rest in the soft ink. */
+  emphasis?: boolean[];
+}
+
 export interface MapExportOptions {
   title?: string;
   client?: string;
@@ -85,11 +109,27 @@ export interface MapExportOptions {
     color?: string;
     /** Short depth line printed in a chip beside the station dot. */
     label?: string;
+    /** What the station is, e.g. "Mineral target". */
+    kind?: string;
+    /** Its rank inside the category, which is how the sheet names it. */
+    rank?: number;
+    /** The worker's own line for the station, e.g. "Auger · overburden 4-12 m". */
+    readout?: string;
+    /** How far the station sits from the survey centre. */
+    distanceKm?: number | null;
+    /** The engine's score for the station. */
+    score?: number | null;
   }[];
   /** Depth line printed beside the survey centre reticle, e.g. "Water table ~24-31 m". */
   targetDepthLabel?: string;
-  /** Summary line of indicated mineral systems, printed in the title block on mineral sheets. */
-  indicatedMineralsText?: string;
+  /** The one line a crew acts on for this category, e.g. "overburden 4-12 m" or
+   *  "Low hazard". Printed in the title block as the sheet's field target. */
+  fieldTargetLabel?: string;
+  /** The survey's own headline figures, drawn in the title block above the reference
+   *  rows. One per category: score, band, and whatever that category measures. */
+  summaryRows?: SheetSummaryRow[];
+  /** A table of the survey's own numbers, printed in the title block. */
+  table?: SheetTable;
   /** Legend entries; the legend only prints when non-empty. */
   legendItems?: SheetLegendItem[];
   legendTitle?: string;
@@ -1087,7 +1127,7 @@ function safeText(value: string): string {
     .replace(/[^\x20-\x7E\u00B0\u2022\u2122\u00B7]/g, "");
 }
 
-interface SheetCtx {
+export interface SheetCtx {
   page: PDFPage;
   font: PDFFont;
   bold: PDFFont;
@@ -1113,15 +1153,83 @@ function drawTextLine(
   return font.widthOfTextAtSize(clean, size);
 }
 
+/** A line whose right edge, not its left, sits on the given x. */
+function drawTextRight(
+  ctx: SheetCtx,
+  text: string,
+  rightX: number,
+  yTop: number,
+  size: number,
+  options: { font?: PDFFont; color?: ReturnType<typeof rgb> } = {},
+): void {
+  const font = options.font ?? ctx.font;
+  const width = font.widthOfTextAtSize(safeText(text), size);
+  drawTextLine(ctx, text, rightX - width, yTop, size, options);
+}
+
 /** One line that never overflows: shrink with an ellipsis when it would. */
-function fitText(ctx: SheetCtx, text: string, size: number, maxWidth: number): string {
+function fitText(
+  ctx: SheetCtx,
+  text: string,
+  size: number,
+  maxWidth: number,
+  font: PDFFont = ctx.font,
+): string {
   const clean = safeText(text);
-  if (ctx.font.widthOfTextAtSize(clean, size) <= maxWidth) return clean;
+  if (font.widthOfTextAtSize(clean, size) <= maxWidth) return clean;
   let out = clean;
-  while (out.length > 1 && ctx.font.widthOfTextAtSize(`${out}...`, size) > maxWidth) {
+  while (out.length > 1 && font.widthOfTextAtSize(`${out}...`, size) > maxWidth) {
     out = out.slice(0, -1);
   }
   return `${out}...`;
+}
+
+/**
+ * One line that never overflows, and is never cut.
+ *
+ * A truncated mineral name reads as a different mineral, so a cell that is too wide
+ * loses size instead of letters. Below the floor it gives up and truncates.
+ */
+function shrinkText(
+  ctx: SheetCtx,
+  text: string,
+  size: number,
+  maxWidth: number,
+  font: PDFFont = ctx.font,
+  floor = 5.4,
+): string {
+  const clean = safeText(text);
+  if (font.widthOfTextAtSize(clean, size) <= maxWidth) return clean;
+  let fitted = size;
+  while (fitted > floor && font.widthOfTextAtSize(clean, fitted) > maxWidth) {
+    fitted -= 0.2;
+  }
+  if (font.widthOfTextAtSize(clean, fitted) <= maxWidth) return clean;
+  return fitText(ctx, text, floor, maxWidth, font);
+}
+
+/**
+ * A title-block value that must not be cut short.
+ *
+ * A survey sheet that says "Gold · Lithium · Rare earth…" is more useful than one that
+ * says "Gold · Lithium · Rare…", so a long value wraps onto a second line instead of
+ * being truncated. Only a value too long for every line is shortened, and a single word
+ * too wide to fit is shrunk rather than allowed to run past the panel.
+ */
+function wrapValue(
+  ctx: SheetCtx,
+  text: string,
+  size: number,
+  maxWidth: number,
+  font: PDFFont,
+  maxLines = 2,
+): string[] {
+  const lines = wrapText(ctx, text, size, maxWidth, font, maxLines);
+  return lines.map((line) =>
+    font.widthOfTextAtSize(line, size) > maxWidth
+      ? fitText(ctx, line, size, maxWidth, font)
+      : line,
+  );
 }
 
 function wrapText(
@@ -1162,7 +1270,7 @@ function wrapText(
   return lines;
 }
 
-interface PanelData {
+export interface PanelData {
   includeHeader: boolean;
   title: string;
   client: string;
@@ -1173,13 +1281,21 @@ interface PanelData {
   opticalSource: string;
   imageryText: string;
   scaleText: string;
+  scaleRatioText: string;
   sheetNo: string;
   generatedText: string;
   waterTableText: string;
-  indicatedMineralsText: string;
+  fieldTargetText: string;
+  summaryRows: SheetSummaryRow[];
+  table: SheetTable | null;
   includeLegend: boolean;
   legendTitle: string;
   legendItems: SheetLegendItem[];
+  candidates: MapExportOptions["candidates"];
+  /** True when the map sheet already printed the schedule of stations. */
+  scheduleOnPanel: boolean;
+  /** True when the map sheet already printed the classification key. */
+  keyOnPanel: boolean;
   includeScaleBar: boolean;
   scaleBarMeters: number;
   scaleBarWidthPt: number;
@@ -1214,16 +1330,17 @@ function drawLegendSwatch(
   item: SheetLegendItem,
   x: number,
   y: number,
+  scale = 1,
 ): void {
   const { page } = ctx;
   const kind = item.kind ?? "zone";
 
   if (kind === "aoi") {
     page.drawRectangle({
-      x: x + 0.5,
-      y: yFlip(y + 5.8),
-      width: 6,
-      height: 4.4,
+      x: x + 0.5 * scale,
+      y: yFlip(y + 5.8 * scale),
+      width: 6 * scale,
+      height: 4.4 * scale,
       borderColor: ACCENT,
       borderWidth: 0.8,
       borderDashArray: [2.4, 1.8],
@@ -1232,12 +1349,12 @@ function drawLegendSwatch(
   }
 
   if (kind === "target") {
-    const cx = x + 3.4;
-    const cy = y + 3.2;
+    const cx = x + 3.4 * scale;
+    const cy = y + 3.2 * scale;
     page.drawCircle({
       x: cx,
       y: yFlip(cy),
-      size: 1.5,
+      size: 1.5 * scale,
       color: ACCENT,
       borderColor: rgb(1, 1, 1),
       borderWidth: 0.5,
@@ -1250,8 +1367,8 @@ function drawLegendSwatch(
     ];
     for (const [dx0, dy0, dx1, dy1] of arms) {
       page.drawLine({
-        start: { x: cx + dx0, y: yFlip(cy + dy0) },
-        end: { x: cx + dx1, y: yFlip(cy + dy1) },
+        start: { x: cx + dx0 * scale, y: yFlip(cy + dy0 * scale) },
+        end: { x: cx + dx1 * scale, y: yFlip(cy + dy1 * scale) },
         thickness: 0.7,
         color: ACCENT,
       });
@@ -1262,9 +1379,9 @@ function drawLegendSwatch(
   if (kind === "imagery") {
     page.drawRectangle({
       x,
-      y: yFlip(y + 6.4),
-      width: 6.8,
-      height: 6.8,
+      y: yFlip(y + 6.4 * scale),
+      width: 6.8 * scale,
+      height: 6.8 * scale,
       color: rgb(0.16, 0.2, 0.26),
       borderColor: rgb(0.15, 0.18, 0.22),
       borderWidth: 0.4,
@@ -1275,9 +1392,9 @@ function drawLegendSwatch(
   const color = item.color ? hexToPdfRgb(item.color) : null;
   if (color) {
     page.drawCircle({
-      x: x + 3.4,
-      y: yFlip(y + 3.2),
-      size: 2.9,
+      x: x + 3.4 * scale,
+      y: yFlip(y + 3.2 * scale),
+      size: 2.9 * scale,
       color,
       borderColor: rgb(0.15, 0.18, 0.22),
       borderWidth: 0.4,
@@ -1285,14 +1402,225 @@ function drawLegendSwatch(
   }
 }
 
-function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
+const LEGEND_TITLE_H = 13;
+const LEGEND_ROW_H = 12;
+/** How far the key's rows spread when the panel has room to spare. */
+const LEGEND_ROW_MAX = 17;
+/** The tightest the key's rows may get before the key moves to the sheet behind. */
+const LEGEND_ROW_FLOOR = 10;
+/** Height the scale bar and north needle take together, side by side. */
+const FURNITURE_BLOCK_H = 46;
+const TABLE_TITLE_H = 12;
+const TABLE_HEAD_H = 9;
+const TABLE_ROW_H = 11;
+const TABLE_CELL_SIZE = 7.4;
+const TABLE_CELL_FLOOR = 5.2;
+/** How many stations the schedule prints before it counts the rest. */
+const SCHEDULE_MAX_ROWS = 12;
+/** Height of the line that points at the key on the next sheet. */
+const POINTER_H = 15;
+/** Rule and gap a table leaves under itself before the next block starts. */
+const TABLE_GAP_H = 12;
+/** Gap between two blocks of the title block. */
+const BLOCK_GAP_H = 8;
+/** Height of the heading above the list of stations. */
+const STATION_LIST_TITLE_H = 12;
+/** Height of one station in the list. */
+const STATION_LIST_ROW_H = 9.5;
+/** The tightest a station row may get before the stations move to the sheet behind. */
+const STATION_LIST_ROW_FLOOR = 8.5;
+/** Room left between the last block of the title block and the scale bar. */
+const CONTENT_GAP = 6;
+/** Gap and rule that close the key before the next block starts. */
+const KEY_TAIL_H = 12;
+/** Height of a heading on the sheet behind the map. */
+const SHEET2_TITLE_H = 18;
+/** Pitch of one entry of the key on the sheet behind the map. */
+const SHEET2_KEY_ROW_H = 15;
+/** The most the key's rows may spread on the sheet behind the map. */
+const SHEET2_KEY_ROW_MAX = 22;
+/** Pitch of one label and value row on the sheet behind the map. */
+const SHEET2_ROW_PITCH = 13;
+/** The most the label and value rows may spread on the sheet behind the map. */
+const SHEET2_ROW_PITCH_MAX = 18;
+/** Gap between two bands on the sheet behind the map. */
+const SHEET2_BAND_GAP = 14;
+/** Size the schedule of stations prints at on the sheet behind the map. */
+const SHEET2_TARGET_SCALE = 1.4;
+/** The most the schedule of stations may grow on the sheet behind the map. */
+const SHEET2_TARGET_SCALE_MAX = 2;
+
+/**
+ * The survey's domain as the sheet names it.
+ *
+ * The platform spells the domain one way in the queue and another in the result, so
+ * the sheet takes whichever name it is given and prints it in words: a reader must
+ * not meet an underscore on a printed sheet.
+ */
+const DOMAIN_LABELS: Record<string, string> = {
+  water: "WATER",
+  minerals: "MINERALS",
+  soil: "SOIL",
+  soil_land: "SOIL & LAND",
+  hazard: "HAZARD",
+  hazard_safety: "HAZARD & SAFETY",
+};
+
+function domainLabel(name: string): string {
+  const clean = name.trim();
+  return DOMAIN_LABELS[clean.toLowerCase()] ?? clean.replace(/_/g, " ").toUpperCase();
+}
+
+/**
+ * A table of the survey's own figures, drawn in the title block.
+ *
+ * Numbers line up in columns so a reader can compare them down the page; the system
+ * that owns the most ground is printed in the strong ink and the rest in the soft ink.
+ * The scale lets the same table print small in the title block and large on the sheet
+ * behind it.
+ */
+function drawSheetTable(
+  ctx: SheetCtx,
+  table: SheetTable,
+  innerX: number,
+  innerW: number,
+  y: number,
+  scale = 1,
+): number {
+  drawTextLine(ctx, table.title.toUpperCase(), innerX, y, 6.6 * scale, { font: ctx.bold });
+  y += TABLE_TITLE_H * scale;
+
+  // One size for the whole table: a column whose type shrinks row by row reads as a
+  // mistake, so the longest name sets the size for every row.
+  const size = fittedTableSize(ctx, table, scale);
+
+  let x = innerX;
+  for (const column of table.columns) {
+    if (column.align === "right") {
+      drawTextRight(ctx, column.label, x + column.width, y, 5.4 * scale, { color: INK_SOFT });
+    } else {
+      drawTextLine(ctx, column.label, x, y, 5.4 * scale, { color: INK_SOFT });
+    }
+    x += column.width;
+  }
+  y += TABLE_HEAD_H * scale;
+  drawPanelDivider(ctx, innerX, innerW, y);
+  y += 5 * scale;
+
+  table.rows.forEach((row, rowIndex) => {
+    const strong = table.emphasis?.[rowIndex] ?? true;
+    const ink = strong ? INK : INK_SOFT;
+    let cellX = innerX;
+    row.forEach((cell, columnIndex) => {
+      const column = table.columns[columnIndex];
+      if (!column) return;
+      const text = shrinkText(ctx, cell, size, column.width, ctx.bold);
+      if (column.align === "right") {
+        drawTextRight(ctx, text, cellX + column.width, y, size, {
+          font: ctx.bold,
+          color: ink,
+        });
+      } else {
+        drawTextLine(ctx, text, cellX, y, size, { font: ctx.bold, color: ink });
+      }
+      cellX += column.width;
+    });
+    y += TABLE_ROW_H * scale;
+  });
+
+  return y;
+}
+
+/** The largest size at which every cell of the table still fits its column. */
+function fittedTableSize(ctx: SheetCtx, table: SheetTable, scale = 1): number {
+  let size = TABLE_CELL_SIZE * scale;
+  while (size > TABLE_CELL_FLOOR) {
+    const fits = table.rows.every((row) =>
+      row.every((cell, index) => {
+        const column = table.columns[index];
+        if (!column) return true;
+        return ctx.bold.widthOfTextAtSize(safeText(cell), size) <= column.width;
+      }),
+    );
+    if (fits) return size;
+    size -= 0.2;
+  }
+  return TABLE_CELL_FLOOR;
+}
+
+/**
+ * One title-block row: a small label and the figure beside it.
+ *
+ * The value is bold and the label is not, so the reader's eye lands on the number.
+ * A value too long for one line wraps instead of being cut: a sheet that reads
+ * "Gold · Lithium · Rare…" is less use than one that names every system.
+ */
+function drawValueRow(
+  ctx: SheetCtx,
+  label: string,
+  value: string,
+  innerX: number,
+  innerW: number,
+  y: number,
+  size: number,
+  maxLines = 2,
+  labelSize = 5.8,
+): number {
+  const labelW = ctx.font.widthOfTextAtSize(safeText(label), labelSize);
+  const valueX = innerX + labelW + 6;
+  const lines = wrapValue(ctx, value, size, innerX + innerW - valueX, ctx.bold, maxLines);
+  drawTextLine(ctx, label, innerX, y, labelSize, { color: INK_SOFT });
+  const baselineShift = (labelSize - size) * 0.78;
+  lines.forEach((line, index) => {
+    drawTextLine(ctx, line, valueX, y + baselineShift + index * (size + 1.6), size, {
+      font: ctx.bold,
+    });
+  });
+  return y + Math.max(11, lines.length * (size + 1.6) + 1.2);
+}
+
+/**
+ * A block of label and value rows set on one rhythm.
+ *
+ * The sheet's rows share a pitch so the columns read as a grid; a value that needs
+ * two lines takes the room it needs and pushes nothing below it out of place.
+ */
+function drawPacedRows(
+  ctx: SheetCtx,
+  rows: SheetSummaryRow[],
+  x: number,
+  w: number,
+  y: number,
+  pitch: number,
+  size: number,
+  labelSize = 6.6,
+): number {
+  for (const row of rows) {
+    const before = y;
+    y = drawValueRow(ctx, row.label, row.value, x, w, y, size, 3, labelSize);
+    y += Math.max(0, pitch - (y - before));
+  }
+  return y;
+}
+
+function drawPanel(
+  ctx: SheetCtx,
+  rect: SheetMapRect,
+  data: PanelData,
+): { legendDrawn: boolean; schedulePrinted: boolean } {
   const { page } = ctx;
   const px = rect.x;
   const pw = rect.w;
   const ph = rect.h;
   const innerX = px + 14;
   const innerW = pw - 28;
-  const bottomLimit = rect.y + ph - 78;
+
+  const footerLines = wrapText(ctx, data.footerText, 5.6, innerW, ctx.font, 4);
+  const footerTop = rect.y + ph - 12 - (footerLines.length - 1) * 7.5;
+  // Nothing may print below the footer, and the last rule needs a gap above it.
+  const bottomLimit = footerTop - 12;
+  // The scale bar and north needle hold the foot of the panel.
+  const furnitureTop = bottomLimit - FURNITURE_BLOCK_H;
 
   page.drawRectangle({
     x: px,
@@ -1304,18 +1632,19 @@ function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
     borderWidth: 0.8,
   });
 
-  let y = rect.y + 20;
+  let y = rect.y + 18;
 
+  // The brand bar stands beside the wordmark, not above the frame it belongs to.
   page.drawRectangle({
     x: px + 0.8,
-    y: yFlip(y - 4),
+    y: yFlip(y + 18),
     width: 2.6,
-    height: 26,
+    height: 25,
     color: ACCENT,
   });
   let brandX = innerX;
   if (data.logo) {
-    const logoH = 21;
+    const logoH = 20;
     const logoW = (logoH * data.logo.width) / data.logo.height;
     page.drawImage(data.logo, {
       x: innerX,
@@ -1326,33 +1655,38 @@ function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
     brandX = innerX + logoW + 7;
   }
   drawTextLine(ctx, "SITESURVEYOR™", brandX, y, 9.5, { font: ctx.bold });
-  drawTextLine(ctx, "EARTH OBSERVATION MAP SHEET", brandX, y + 13, 5.6, {
+  drawTextLine(ctx, "EARTH OBSERVATION MAP SHEET", brandX, y + 12.5, 5.6, {
     color: INK_SOFT,
   });
-  y += 36;
+  y += 31;
   drawPanelDivider(ctx, innerX, innerW, y);
-  y += 12;
+  y += 11;
 
   if (data.includeHeader) {
     const titleLines = wrapText(ctx, data.title, 12, innerW, ctx.bold, 3);
     for (const line of titleLines) {
       drawTextLine(ctx, line, innerX, y, 12, { font: ctx.bold });
-      y += 14.5;
+      y += 14;
     }
-    y += 6;
+    y += 4;
     drawPanelDivider(ctx, innerX, innerW, y);
-    y += 10;
+    y += 9;
 
-    const depthLabel =
-      data.categoryName.toUpperCase().includes("WATER") || data.categoryName.toUpperCase().includes("GROUNDWATER")
-        ? "WATER TABLE"
-        : "FIELD TARGET";
+    // The survey's own figures, stated before the reference rows.
+    for (const row of data.summaryRows) {
+      y = drawValueRow(ctx, row.label, row.value, innerX, innerW, y, 8.8, 3);
+    }
+    if (data.summaryRows.length > 0) {
+      y += 3;
+      drawPanelDivider(ctx, innerX, innerW, y);
+      y += 9;
+    }
 
     const metaRows = [
       { label: "CLIENT", value: data.client },
-      { label: "SURVEY DOMAIN", value: data.categoryName },
-      { label: "INDICATED MINERALS", value: data.indicatedMineralsText },
-      { label: depthLabel, value: data.waterTableText },
+      { label: "SURVEY DOMAIN", value: domainLabel(data.categoryName) },
+      { label: "WATER TABLE", value: data.waterTableText },
+      { label: "FIELD TARGET", value: data.fieldTargetText },
       { label: "CENTRE", value: data.coords },
       { label: "SHEET COVERAGE", value: data.coverageText },
       { label: "GRID", value: data.gridText },
@@ -1363,68 +1697,510 @@ function drawPanel(ctx: SheetCtx, rect: SheetMapRect, data: PanelData): void {
       { label: "GENERATED", value: data.generatedText },
     ].filter((row) => row.value);
     for (const row of metaRows) {
-      drawTextLine(ctx, row.label, innerX, y, 5.8, { color: INK_SOFT });
-      const labelW = ctx.font.widthOfTextAtSize(safeText(row.label), 5.8);
-      const valueX = innerX + labelW + 6;
-      drawTextLine(ctx, fitText(ctx, row.value, 8.3, innerX + innerW - valueX), valueX, y - 2, 8.3);
-      y += 12;
+      y = drawValueRow(ctx, row.label, row.value, innerX, innerW, y, 8.3, 3);
     }
-    y += 4;
+    y += 3;
     drawPanelDivider(ctx, innerX, innerW, y);
-    y += 11;
+    y += 9;
+
+    // The survey's own table of figures, under the reference rows.
+    if (data.table && data.table.rows.length > 0) {
+      const room = furnitureTop - y - POINTER_H;
+      const cap = Math.floor((room - TABLE_TITLE_H - TABLE_HEAD_H - 5) / TABLE_ROW_H);
+      if (cap >= 1) {
+        const shown = data.table.rows.slice(0, cap);
+        const hidden = data.table.rows.length - shown.length;
+        const table: SheetTable = {
+          ...data.table,
+          rows: hidden > 0 ? [...shown, ["+ " + hidden + " more", "", ""]] : shown,
+          emphasis: data.table.emphasis ? data.table.emphasis.slice(0, shown.length) : undefined,
+        };
+        y = drawSheetTable(ctx, table, innerX, innerW, y);
+        y += 3;
+        drawPanelDivider(ctx, innerX, innerW, y);
+        y += TABLE_GAP_H - 3;
+      }
+    }
   }
 
-  if (data.includeLegend && data.legendItems.length > 0 && y < bottomLimit) {
+  // The key and the list of stations share what the header left of the title block.
+  // Both print whole or not at all, so their rows give up height in steps until the
+  // pair fits; whatever still does not fit moves to the sheet behind.
+  const keyRows = data.legendItems.length;
+  const stations = stationLines(data.candidates ?? []);
+  const listRows = stations.length;
+  const wantKey = data.includeLegend && keyRows > 0;
+  const wantList = listRows > 0;
+  const space = furnitureTop - y;
+
+  let keyRowH = LEGEND_ROW_H;
+  let listRowH = STATION_LIST_ROW_H;
+  const keyHeight = () => LEGEND_TITLE_H + keyRows * keyRowH + KEY_TAIL_H;
+  const listHeight = () => STATION_LIST_TITLE_H + listRows * listRowH;
+  const pairHeight = () =>
+    (wantKey ? keyHeight() : 0) +
+    (wantList ? listHeight() : 0) +
+    (wantKey && wantList ? BLOCK_GAP_H : 0);
+
+  while (pairHeight() + CONTENT_GAP > space) {
+    if (keyRowH <= LEGEND_ROW_FLOOR && listRowH <= STATION_LIST_ROW_FLOOR) break;
+    if (listRowH > STATION_LIST_ROW_FLOOR && (keyRowH <= LEGEND_ROW_FLOOR || listRowH >= keyRowH)) {
+      listRowH -= 0.5;
+    } else {
+      keyRowH -= 0.5;
+    }
+  }
+
+  const keyFits = !wantKey || keyHeight() + CONTENT_GAP <= space;
+  const listFits = !wantList || listHeight() + CONTENT_GAP <= space;
+  const pairFits = pairHeight() + CONTENT_GAP <= space;
+  // The key decodes the colours on the map, so it keeps the panel when the two
+  // cannot both fit; the stations move to the sheet behind with the summary.
+  const printKey = wantKey && (pairFits || keyFits);
+  const printList = wantList && (pairFits || (!keyFits && listFits));
+
+  let legendDrawn = false;
+  let schedulePrinted = false;
+
+  if (printKey) {
+    // The rows spread into whatever the stations did not claim, so the key fills
+    // the space it has instead of trailing off above the scale bar.
+    const spare =
+      space -
+      CONTENT_GAP -
+      keyHeight() -
+      (pairFits ? listHeight() + BLOCK_GAP_H : 0);
+    const rowH = Math.min(LEGEND_ROW_MAX, keyRowH + Math.max(0, spare) / keyRows);
     drawTextLine(ctx, data.legendTitle.toUpperCase(), innerX, y, 7, {
       font: ctx.bold,
     });
-    y += 13;
+    y += LEGEND_TITLE_H;
     for (const item of data.legendItems) {
       drawLegendSwatch(ctx, item, innerX, y);
-      drawTextLine(ctx, item.label, innerX + 11, y, 8);
-      y += 12.5;
+      drawTextLine(ctx, item.label, innerX + 11, y, 8, { font: ctx.bold });
+      y += rowH;
     }
-    y += 8;
+    y += 4;
     drawPanelDivider(ctx, innerX, innerW, y);
-    y += 11;
+    y += KEY_TAIL_H - 4;
+    legendDrawn = true;
   }
 
-  if (data.includeScaleBar && y < bottomLimit) {
-    drawTextLine(ctx, "SCALE BAR", innerX, y, 7, { font: ctx.bold });
-    y += 12;
-    y += drawScaleBarCore(ctx, innerX, y, {
-      meters: data.scaleBarMeters,
-      widthPt: data.scaleBarWidthPt,
-    });
-    drawTextLine(ctx, data.scaleText, innerX, y, 6, { color: INK_SOFT });
-    y += 14;
-    drawPanelDivider(ctx, innerX, innerW, y);
-    y += 11;
+  if (printList) {
+    // The stations the survey picked, so a crew has the list and not only the map.
+    y = drawStationList(ctx, stations, innerX, innerW, y, listRowH);
+    schedulePrinted = true;
   }
 
-  if (data.includeNorthArrow && y < bottomLimit) {
-    drawTextLine(ctx, "ORIENTATION", innerX, y, 7, { font: ctx.bold });
-    y += 12;
-    const cx = innerX + 18;
-    const cy = y + 22;
-    drawNorthNeedle(ctx, cx, cy, false);
-    drawTextLine(
-      ctx,
-      "Map top is grid north (Web Mercator)",
-      innerX + 52,
-      cy - 3,
-      5.8,
-      { color: INK_SOFT },
-    );
-    y += 44;
+  if (wantKey !== legendDrawn || wantList !== schedulePrinted) {
+    // The pointer names what the sheet behind carries, so a reader knows to look.
+    const missing = [
+      legendDrawn ? "" : "CLASSIFICATION LEGEND",
+      schedulePrinted ? "" : "TARGETS",
+    ]
+      .filter(Boolean)
+      .join(" & ");
+    drawTextLine(ctx, `${missing} — SHEET 2`, innerX, y, 6.5, { color: INK_SOFT });
+    y += POINTER_H;
   }
 
-  const footerLines = wrapText(ctx, data.footerText, 5.6, innerW, ctx.font, 4);
-  let footerY = rect.y + ph - 12 - (footerLines.length - 1) * 7.5;
+  if (data.includeScaleBar || data.includeNorthArrow) {
+    // The furniture sits at the foot of the title block, so the panel reads as one
+    // block from the brand mark down to the scale bar rather than trailing off.
+    const furnitureTop = bottomLimit - FURNITURE_BLOCK_H;
+    if (y + FURNITURE_BLOCK_H <= bottomLimit) {
+      const furnitureY = Math.max(y, furnitureTop);
+      if (data.includeScaleBar) {
+        drawTextLine(ctx, "SCALE BAR", innerX, furnitureY, 7, { font: ctx.bold });
+        const barY = furnitureY + 10;
+        const barH = drawScaleBarCore(ctx, innerX, barY, {
+          meters: data.scaleBarMeters,
+          widthPt: data.scaleBarWidthPt,
+        });
+        drawTextLine(ctx, data.scaleRatioText, innerX, barY + barH - 2, 5.8, {
+          color: INK_SOFT,
+        });
+      }
+      if (data.includeNorthArrow) {
+        // The needle sits at the panel's right edge with its letter clear of the frame.
+        drawNorthNeedle(ctx, innerX + innerW - 32, furnitureY + 16, false);
+        drawTextLine(ctx, "GRID NORTH", innerX + innerW - 32, furnitureY + 36, 5, {
+          color: INK_SOFT,
+        });
+      }
+      y = furnitureY + FURNITURE_BLOCK_H;
+      drawPanelDivider(ctx, innerX, innerW, y);
+      y += 9;
+    }
+  }
+
+  let footerY = footerTop;
   for (const line of footerLines) {
     drawTextLine(ctx, line, innerX, footerY, 5.6, { color: INK_SOFT });
     footerY += 7.5;
   }
+
+  return { legendDrawn, schedulePrinted };
+}
+
+/**
+ * The sheet behind the map.
+ *
+ * A mineral survey carries a sixteen-entry classification key, and beside a map it
+ * would shrink the type past legibility or push the scale bar off the page. Rather
+ * than cut the key short, the sheet that cannot hold it prints it here, with the
+ * survey's own figures, its provenance and the schedule of stations, so the pair
+ * stands on its own.
+ *
+ * The page is laid out in bands — the key across the top, the figures and the
+ * schedule of stations side by side, the provenance across the foot — and the rows
+ * spread into whatever room is left, so the sheet reads as a composed page instead
+ * of a list with a blank half under it.
+ */
+function drawLegendSheet(
+  pdf: PDFDocument,
+  ctx: SheetCtx,
+  data: PanelData,
+): void {
+  const page = pdf.addPage([SHEET.widthPt, SHEET.heightPt]);
+  const sheet: SheetCtx = { ...ctx, page };
+  const margin = 18;
+  const leftX = margin;
+  const contentW = SHEET.widthPt - margin * 2;
+  const columnGap = 20;
+  const columnW = (contentW - columnGap) / 2;
+  const rightX = leftX + columnW + columnGap;
+  const keyOnPanel = data.keyOnPanel;
+  const schedule = data.scheduleOnPanel ? null : targetSchedule(data.candidates ?? []);
+
+  page.drawRectangle({
+    x: margin - 6,
+    y: yFlip(SHEET.heightPt - margin + 6),
+    width: SHEET.widthPt - (margin - 6) * 2,
+    height: SHEET.heightPt - (margin - 6) * 2,
+    borderColor: PAPER_LINE,
+    borderWidth: 0.8,
+  });
+
+  let y = margin + 6;
+  page.drawRectangle({
+    x: leftX - 6,
+    y: yFlip(y + 18),
+    width: 2.6,
+    height: 25,
+    color: ACCENT,
+  });
+  let brandX = leftX;
+  if (data.logo) {
+    const logoH = 20;
+    const logoW = (logoH * data.logo.width) / data.logo.height;
+    page.drawImage(data.logo, {
+      x: leftX,
+      y: yFlip(y + logoH + 1),
+      width: logoW,
+      height: logoH,
+    });
+    brandX = leftX + logoW + 7;
+  }
+  drawTextLine(sheet, "SITESURVEYOR™", brandX, y, 9.5, { font: ctx.bold });
+  drawTextLine(
+    sheet,
+    keyOnPanel
+      ? "RECOMMENDED TARGETS & SURVEY RECORD"
+      : "CLASSIFICATION LEGEND & SURVEY RECORD",
+    brandX,
+    y + 12.5,
+    5.6,
+    { color: INK_SOFT },
+  );
+  drawTextRight(sheet, `SHEET NO. ${data.sheetNo}`, SHEET.widthPt - margin, y, 7, {
+    font: ctx.bold,
+  });
+  drawTextRight(sheet, data.generatedText, SHEET.widthPt - margin, y + 11, 6.5, {
+    color: INK_SOFT,
+  });
+
+  y += 34;
+  const titleLines = wrapText(sheet, data.title, 16, SHEET.widthPt - margin * 2, ctx.bold, 2);
+  for (const line of titleLines) {
+    drawTextLine(sheet, line, leftX, y, 16, { font: ctx.bold });
+    y += 19;
+  }
+  const client = data.client ? ` · ${data.client}` : "";
+  drawTextLine(sheet, `${domainLabel(data.categoryName)}${client}`, leftX, y + 1, 9.5, {
+    color: INK_SOFT,
+  });
+  y += 14;
+  sheet.page.drawLine({
+    start: { x: leftX, y: yFlip(y) },
+    end: { x: SHEET.widthPt - margin, y: yFlip(y) },
+    thickness: 0.9,
+    color: INK,
+  });
+  y += 18;
+
+  const bodyTop = y;
+  const bodyBottom = SHEET.heightPt - margin - 18;
+
+  // What the sheet carries.
+  const keyItems = keyOnPanel ? [] : data.legendItems;
+  const summary: SheetSummaryRow[] = [...data.summaryRows];
+  if (data.waterTableText) {
+    summary.push({ label: "WATER TABLE", value: data.waterTableText });
+  }
+  if (data.fieldTargetText) {
+    summary.push({ label: "FIELD TARGET", value: data.fieldTargetText });
+  }
+  const reference: SheetSummaryRow[] = [
+    { label: "CLIENT", value: data.client },
+    { label: "SURVEY DOMAIN", value: domainLabel(data.categoryName) },
+    { label: "CENTRE", value: data.coords },
+    { label: "SHEET COVERAGE", value: data.coverageText },
+    { label: "GRID", value: data.gridText },
+    { label: "OPTICAL SOURCE", value: data.opticalSource },
+    { label: "IMAGERY", value: data.imageryText },
+    { label: "PRINT SCALE", value: data.scaleText },
+    { label: "SHEET NO.", value: data.sheetNo },
+    { label: "GENERATED", value: data.generatedText },
+  ].filter((row) => row.value);
+
+  // A long key reads across the page in two columns, so the mineral names have room
+  // and the sheet keeps its proportions.
+  const keyColumns = keyItems.length > 10 ? 2 : 1;
+  const keyPerColumn = Math.ceil(keyItems.length / keyColumns);
+  let keyRowH = SHEET2_KEY_ROW_H;
+  let rowPitch = SHEET2_ROW_PITCH;
+  let targetScale = SHEET2_TARGET_SCALE;
+
+  const keyHeight = () =>
+    keyItems.length > 0 ? SHEET2_TITLE_H + keyPerColumn * keyRowH : 0;
+  const summaryHeight = () =>
+    summary.length > 0 ? SHEET2_TITLE_H + summary.length * rowPitch : 0;
+  const referenceHeight = () =>
+    reference.length > 0 ? SHEET2_TITLE_H + reference.length * rowPitch : 0;
+  const middleHeight = () =>
+    schedule
+      ? Math.max(summaryHeight(), sheetTableHeight(schedule, targetScale))
+      : Math.max(summaryHeight(), referenceHeight());
+  const footHeight = () =>
+    schedule && reference.length > 0
+      ? SHEET2_TITLE_H + Math.ceil(reference.length / 2) * rowPitch
+      : 0;
+
+  const hasFoot = schedule !== null && reference.length > 0;
+  const bands =
+    (keyItems.length > 0 ? 1 : 0) + (middleHeight() > 0 ? 1 : 0) + (hasFoot ? 1 : 0);
+  const bandGaps = Math.max(0, bands - 1);
+  let slack =
+    bodyBottom -
+    bodyTop -
+    (keyHeight() + middleHeight() + footHeight() + bandGaps * SHEET2_BAND_GAP);
+
+  // The rows spread into what is left, nearest to their natural rhythm first.
+  if (keyItems.length > 0 && slack > 0) {
+    const extra = Math.min(slack, keyPerColumn * (SHEET2_KEY_ROW_MAX - keyRowH));
+    keyRowH += extra / keyPerColumn;
+    slack -= extra;
+  }
+  const pacedRows = summary.length + (schedule ? 0 : reference.length);
+  if (slack > 0 && pacedRows > 0) {
+    const extra = Math.min(slack, pacedRows * (SHEET2_ROW_PITCH_MAX - rowPitch));
+    rowPitch += extra / pacedRows;
+    slack -= extra;
+  }
+  if (slack > 0 && schedule) {
+    const grow = Math.min(
+      slack / Math.max(1, sheetTableHeight(schedule, targetScale)),
+      SHEET2_TARGET_SCALE_MAX - targetScale,
+    );
+    targetScale += grow;
+    slack -= grow * sheetTableHeight(schedule, targetScale);
+  }
+
+  let by = bodyTop;
+
+  // The key, across the top of the sheet.
+  if (keyItems.length > 0) {
+    drawTextLine(sheet, data.legendTitle.toUpperCase(), leftX, by, 9.5, { font: ctx.bold });
+    by += SHEET2_TITLE_H;
+    const keyColumnW = (contentW - (keyColumns - 1) * columnGap) / keyColumns;
+    const split = Math.ceil(keyItems.length / keyColumns);
+    for (let column = 0; column < keyColumns; column += 1) {
+      const x = leftX + column * (keyColumnW + columnGap);
+      let ly = by;
+      for (const item of keyItems.slice(column * split, (column + 1) * split)) {
+        drawLegendSwatch(sheet, item, x, ly, 1.4);
+        drawTextLine(sheet, item.label, x + 16, ly, 10.5, { font: ctx.bold });
+        ly += keyRowH;
+      }
+    }
+    by += keyPerColumn * keyRowH;
+    by += SHEET2_BAND_GAP;
+  }
+
+  // The survey's own figures, and the stations the map sheet had no room for.
+  const sy = by;
+  if (summary.length > 0) {
+    drawTextLine(sheet, "SURVEY SUMMARY", leftX, sy, 9.5, { font: ctx.bold });
+    drawPacedRows(sheet, summary, leftX, columnW, sy + SHEET2_TITLE_H, rowPitch, 10);
+  }
+  if (schedule) {
+    drawSheetTable(sheet, schedule, rightX, columnW, by, targetScale);
+  } else if (reference.length > 0) {
+    drawTextLine(sheet, "SURVEY REFERENCE", rightX, sy, 9.5, { font: ctx.bold });
+    drawPacedRows(sheet, reference, rightX, columnW, sy + SHEET2_TITLE_H, rowPitch, 10);
+  }
+  by += middleHeight();
+  by += SHEET2_BAND_GAP;
+
+  // The provenance, across the foot of the sheet.
+  if (schedule && reference.length > 0) {
+    drawTextLine(sheet, "SURVEY REFERENCE", leftX, by, 9.5, { font: ctx.bold });
+    const half = Math.ceil(reference.length / 2);
+    drawPacedRows(sheet, reference.slice(0, half), leftX, columnW, by + SHEET2_TITLE_H, rowPitch, 10);
+    drawPacedRows(
+      sheet,
+      reference.slice(half),
+      rightX,
+      columnW,
+      by + SHEET2_TITLE_H,
+      rowPitch,
+      10,
+    );
+    by += footHeight();
+  }
+
+  drawTextLine(
+    sheet,
+    keyOnPanel
+      ? "Sheet 2 of 2 · recommended targets and survey record"
+      : "Sheet 2 of 2 · classification legend, targets and survey record",
+    leftX,
+    SHEET.heightPt - margin - 4,
+    6.5,
+    { color: INK_SOFT },
+  );
+}
+
+/** Height a table takes, so the sheet can budget the room before it draws it. */
+function sheetTableHeight(table: SheetTable, scale = 1): number {
+  return (
+    TABLE_TITLE_H * scale +
+    TABLE_HEAD_H * scale +
+    5 * scale +
+    table.rows.length * TABLE_ROW_H * scale
+  );
+}
+
+/**
+ * The map sheet, and the sheet behind it when something did not fit.
+ *
+ * The key and the schedule of stations both have to print whole, so whichever of
+ * them the map sheet could not hold is carried by the sheet behind it.
+ */
+export function drawSurveySheets(
+  pdf: PDFDocument,
+  ctx: SheetCtx,
+  panelRect: SheetMapRect,
+  data: PanelData,
+): void {
+  const panel = drawPanel(ctx, panelRect, data);
+  data.keyOnPanel = panel.legendDrawn;
+  data.scheduleOnPanel = panel.schedulePrinted;
+  const keyMoved = data.includeLegend && data.legendItems.length > 0 && !panel.legendDrawn;
+  const scheduleMoved = stationLines(data.candidates ?? []).length > 0 && !panel.schedulePrinted;
+  if (!keyMoved && !scheduleMoved) return;
+
+  drawLegendSheet(pdf, ctx, data);
+}
+
+/**
+ * The schedule of stations the survey picked.
+ *
+ * The map shows where each station is and what the ground reads there; the schedule
+ * says what the station is, what it reads and how far it sits from the centre, which
+ * is what a crew works from before it goes out.
+ */
+function targetSchedule(
+  candidates: NonNullable<MapExportOptions["candidates"]>,
+): SheetTable | null {
+  const stations = candidates.filter((candidate) => candidate.kind || candidate.readout);
+  if (stations.length === 0) return null;
+
+  const rows = stations.slice(0, SCHEDULE_MAX_ROWS).map((candidate) => [
+    `${candidate.kind ?? "Target"} ${candidate.rank ?? ""}`.trim(),
+    candidate.readout ?? candidate.label ?? "",
+    candidate.distanceKm === null || candidate.distanceKm === undefined
+      ? "—"
+      : `${candidate.distanceKm.toFixed(1)} km`,
+    candidate.score === null || candidate.score === undefined
+      ? "—"
+      : `${candidate.score.toFixed(0)} / 100`,
+  ]);
+  const hidden = stations.length - rows.length;
+  if (hidden > 0) rows.push([`+ ${hidden} more`, "", "", ""]);
+
+  return {
+    title: "Recommended targets",
+    columns: [
+      { label: "TARGET", width: 130 },
+      { label: "READING", width: 134 },
+      { label: "DISTANCE", width: 62, align: "right" },
+      { label: "SCORE", width: 56, align: "right" },
+    ],
+    rows,
+  };
+}
+
+/**
+ * One line per station, for the narrow title block.
+ *
+ * The panel is a fifth of the sheet's width, so four columns of type would have to
+ * shrink past legibility. One line says the same thing: what the station is, what the
+ * ground reads there, how far it sits and how well it scored.
+ */
+function stationLines(
+  candidates: NonNullable<MapExportOptions["candidates"]>,
+): string[] {
+  return candidates
+    .filter((candidate) => candidate.kind || candidate.readout)
+    .slice(0, SCHEDULE_MAX_ROWS)
+    .map((candidate, index) => {
+      const parts: string[] = [];
+      if (candidate.readout ?? candidate.label) parts.push(candidate.readout ?? candidate.label!);
+      if (typeof candidate.distanceKm === "number" && Number.isFinite(candidate.distanceKm)) {
+        parts.push(`${candidate.distanceKm.toFixed(1)} km`);
+      }
+      if (typeof candidate.score === "number" && Number.isFinite(candidate.score)) {
+        parts.push(`${candidate.score.toFixed(0)} / 100`);
+      }
+      return `${candidate.rank ?? index + 1} · ${parts.join(" · ")}`;
+    });
+}
+
+/** The list of stations, drawn in the title block. */
+function drawStationList(
+  ctx: SheetCtx,
+  lines: string[],
+  innerX: number,
+  innerW: number,
+  y: number,
+  rowH = STATION_LIST_ROW_H,
+): number {
+  drawTextLine(ctx, "RECOMMENDED TARGETS", innerX, y, 6.6, { font: ctx.bold });
+  y += STATION_LIST_TITLE_H;
+
+  // One size for the whole list, so the stations read as a column of equal weight.
+  let size = TABLE_CELL_SIZE;
+  while (size > TABLE_CELL_FLOOR) {
+    if (lines.every((line) => ctx.bold.widthOfTextAtSize(safeText(line), size) <= innerW)) break;
+    size -= 0.2;
+  }
+  for (const line of lines) {
+    drawTextLine(ctx, line, innerX, y, size, { font: ctx.bold });
+    y += rowH;
+  }
+  return y;
 }
 
 /** The needle itself: tip at the top, dark west half, light east half. */
@@ -1482,7 +2258,7 @@ function drawScaleBarCore(
   yTop: number,
   bar: { meters: number; widthPt: number },
 ): number {
-  const { page, font } = ctx;
+  const { page } = ctx;
   const segments = 4;
   const segW = bar.widthPt / segments;
   for (let i = 0; i < segments; i += 1) {
@@ -1496,15 +2272,17 @@ function drawScaleBarCore(
       borderWidth: 0.7,
     });
   }
-  drawTextLine(ctx, "0", x - 2, yTop + 8.5, 6, { color: INK_SOFT });
+  drawTextLine(ctx, "0", x - 2, yTop + 8.5, 6, { font: ctx.bold, color: INK_SOFT });
   const midLabel = formatMeters(bar.meters / 2);
-  const midW = font.widthOfTextAtSize(midLabel, 6);
+  const midW = ctx.bold.widthOfTextAtSize(midLabel, 6);
   drawTextLine(ctx, midLabel, x + bar.widthPt / 2 - midW / 2, yTop + 8.5, 6, {
+    font: ctx.bold,
     color: INK_SOFT,
   });
   const fullLabel = formatMeters(bar.meters);
-  const fullW = font.widthOfTextAtSize(fullLabel, 6);
+  const fullW = ctx.bold.widthOfTextAtSize(fullLabel, 6);
   drawTextLine(ctx, fullLabel, x + bar.widthPt - fullW + 2, yTop + 8.5, 6, {
+    font: ctx.bold,
     color: INK_SOFT,
   });
   return 17;
@@ -1834,7 +2612,7 @@ function drawMapFurniture(
     for (const line of drawn) {
       if (!line.anchor) continue;
       const { label } = line;
-      const chipW = font.widthOfTextAtSize(label, GRID_LABEL_SIZE_PT) + 7;
+      const chipW = bold.widthOfTextAtSize(label, GRID_LABEL_SIZE_PT) + 7;
       const place = gridLabelPlacement({
         axis: line.axis,
         anchorPt: line.anchor,
@@ -1861,6 +2639,7 @@ function drawMapFurniture(
         borderOpacity: 0.55,
       });
       drawTextLine(ctx, label, place.text.x, place.text.top, GRID_LABEL_SIZE_PT, {
+        font: bold,
         color: INK,
       });
     }
@@ -1917,10 +2696,10 @@ function drawMapFurniture(
     if (candidate.label) {
       const size = 5.5;
       const text = safeText(candidate.label);
-      const textW = font.widthOfTextAtSize(text, size);
+      const textW = bold.widthOfTextAtSize(text, size);
       let labelX = x + 5;
       if (labelX + textW > mapRect.x + mapRect.w - 4) labelX = x - 5 - textW;
-      drawHaloText(ctx, text, labelX, yPt - 1.6, size, { fill: INK });
+      drawHaloText(ctx, text, labelX, yPt - 1.6, size, { font: bold, fill: INK });
     }
   }
 
@@ -1993,7 +2772,7 @@ function drawMapFurniture(
   const attribution = safeText(options.attribution ?? "");
   if (attribution) {
     const size = 5;
-    const chipW = font.widthOfTextAtSize(attribution, size) + 8;
+    const chipW = bold.widthOfTextAtSize(attribution, size) + 8;
     page.drawRectangle({
       x: mapRect.x + mapRect.w - chipW - 4,
       y: yFlip(mapRect.y + mapRect.h - 12),
@@ -2008,7 +2787,7 @@ function drawMapFurniture(
       mapRect.x + mapRect.w - chipW + 0.5,
       mapRect.y + mapRect.h - 10.6,
       size,
-      { color: rgb(1, 1, 1) },
+      { font: bold, color: rgb(1, 1, 1) },
     );
   }
 
@@ -2150,7 +2929,7 @@ export async function exportMapAsPdf(
         } · X=Easting, Y=Northing (m)`
       : "WGS 84 · geographic (lat/lon)";
 
-  drawPanel(ctx, panelRect, {
+  const panelData: PanelData = {
     includeHeader: options.includeHeader !== false,
     title: options.title || "Earth Observation Survey Sheet",
     client: options.client || "Site Survey",
@@ -2163,13 +2942,19 @@ export async function exportMapAsPdf(
     opticalSource: options.opticalSource ?? "",
     imageryText: `z${compose.tileZoom} · ~${srcMppText} m/px source · sheet ~${sheetMppText} m/px${upscaledNote}`,
     scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
+    scaleRatioText: `1:${rf.toLocaleString("en-US")} (approx.)`,
     sheetNo,
     generatedText,
     waterTableText: options.targetDepthLabel ?? "",
-    indicatedMineralsText: options.indicatedMineralsText ?? "",
+    fieldTargetText: options.fieldTargetLabel ?? "",
+    summaryRows: options.summaryRows ?? [],
+    table: options.table ?? null,
     includeLegend: options.includeLegend !== false,
     legendTitle: options.legendTitle || "Map Symbols",
     legendItems: options.legendItems ?? [],
+    candidates: options.candidates ?? [],
+    scheduleOnPanel: false,
+    keyOnPanel: false,
     includeScaleBar:
       options.includeScaleBar !== false && options.scaleBarPlacement !== "map",
     scaleBarMeters: bar.meters,
@@ -2180,7 +2965,11 @@ export async function exportMapAsPdf(
       `Confidential & proprietary. Generated by SiteSurveyor on ${generatedText}. ` +
       (options.attribution ? `${options.attribution}.` : ""),
     logo,
-  });
+  };
+
+  // The map sheet, plus the sheet behind it when the key or the schedule of stations
+  // had no room beside the map.
+  drawSurveySheets(pdf, ctx, panelRect, panelData);
 
   pdf.setTitle(safeText(options.title || "Earth Observation Survey Sheet"));
   pdf.setAuthor("SiteSurveyor");

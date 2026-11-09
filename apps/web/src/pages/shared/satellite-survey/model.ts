@@ -1,13 +1,23 @@
 import type {
   StartSurveyInput,
   SurveyCategory,
+  SurveyResult,
   SurveyRun,
 } from "../../../lib/repositories/satelliteSurveys.ts";
 import {
   COVERAGE,
   outsideCoverage,
   parseCoordinate,
+  type DossierCategory,
 } from "../../../lib/surveys/labels.ts";
+import {
+  BAND_LABELS,
+  bandFor,
+  scoreValueText,
+  type MapCandidate,
+  type SheetSummaryRow,
+} from "../../../lib/surveys/workbench.ts";
+import type { SheetTable } from "../../../lib/surveys/mapExport.ts";
 
 export const DEFAULT_CATEGORY_IDS: SurveyCategory[] = [
   "water",
@@ -158,4 +168,120 @@ function stampOf(run: SurveyRun): string {
 
 function shortStamp(run: SurveyRun): string {
   return new Date(run.completedAt ?? run.createdAt).toLocaleDateString();
+}
+
+/** What each category's headline number is called on the sheet. */
+const SCORE_LABELS: Record<DossierCategory, string> = {
+  water: "SURVEY SCORE",
+  minerals: "PROSPECTIVITY SCORE",
+  soil_land: "LAND CAPABILITY",
+  hazard_safety: "HAZARD SCORE",
+};
+
+/**
+ * The figures a survey sheet states about itself.
+ *
+ * Each category measures something different, so each one says its own headline: water
+ * its score and how many boreholes were picked, minerals the system that owns the
+ * ground and how much of it, soil and hazard their score. The sheet is the only page
+ * a reader takes away, so it has to carry the number the workbench shows.
+ */
+export function sheetSummaryRows(
+  category: DossierCategory,
+  result: SurveyResult | null,
+  targets: MapCandidate[],
+): SheetSummaryRow[] {
+  if (!result) return [];
+  const rows: SheetSummaryRow[] = [];
+
+  const score = result.scores.find((entry) => entry.category === category);
+  if (score && typeof score.score === "number" && Number.isFinite(score.score)) {
+    const band = bandFor(score.score);
+    rows.push({
+      label: SCORE_LABELS[category],
+      value: `${scoreValueText(score.score)} / 100 · ${
+        score.klass ?? (band ? BAND_LABELS[band] : "Not run")
+      }`,
+    });
+  }
+
+  if (category === "water") {
+    rows.push({ label: "BOREHOLE TARGETS", value: `${targets.length}` });
+  }
+
+  if (category === "minerals") {
+    const commodities = result.commodities ?? [];
+    const dominant = commodities.reduce<(typeof commodities)[number] | null>(
+      (best, commodity) =>
+        best === null || (commodity.mapSharePct ?? 0) > (best.mapSharePct ?? 0)
+          ? commodity
+          : best,
+      null,
+    );
+    if (dominant) {
+      const figures: string[] = [`${dominant.name} (${dominant.symbol})`];
+      if (typeof dominant.mapAreaKm2 === "number" && Number.isFinite(dominant.mapAreaKm2)) {
+        figures.push(`${dominant.mapAreaKm2.toFixed(1)} sq km`);
+      }
+      if (typeof dominant.mapSharePct === "number" && Number.isFinite(dominant.mapSharePct)) {
+        figures.push(`${dominant.mapSharePct.toFixed(1)}% of area`);
+      }
+      rows.push({ label: "DOMINANT SYSTEM", value: figures.join(" · ") });
+    }
+    const indicated = commodities.filter((commodity) => commodity.indicated).length;
+    rows.push({
+      label: "SYSTEMS SCREENED",
+      value: `${indicated} of ${commodities.length} indicated`,
+    });
+  }
+
+  return rows;
+}
+
+/**
+ * The one line a crew acts on, in the worker's own words.
+ *
+ * A drilling depth for water, a stripped-cover thickness for minerals and soil, the
+ * hazard class as it stands: the engine words each one, and the sheet repeats them
+ * rather than inventing a phrasing of its own.
+ */
+export function fieldTargetText(targets: MapCandidate[]): string {
+  return targets[0]?.readout ?? "";
+}
+
+/**
+ * The mineral systems the sheet's table prints.
+ *
+ * The legend says what each colour means; this says how much ground each system owns
+ * and which of them the survey indicated, so a reader can act on the map without
+ * measuring it. Indicated systems are marked with a bullet and printed in the strong
+ * ink; the rest are the systems that were screened and did not carry the ground.
+ */
+export function sheetSystemTable(result: SurveyResult | null): SheetTable | null {
+  const commodities = result?.commodities ?? [];
+  if (commodities.length === 0) return null;
+
+  const ordered = [
+    ...commodities.filter((commodity) => commodity.indicated),
+    ...commodities.filter((commodity) => !commodity.indicated),
+  ];
+
+  return {
+    title: "System ground share · • indicated",
+    columns: [
+      { label: "SYSTEM", width: 104 },
+      { label: "AREA sq km", width: 44, align: "right" },
+      { label: "SHARE %", width: 40, align: "right" },
+    ],
+    rows: ordered.map((commodity) => [
+      `${commodity.indicated ? "• " : ""}${commodity.name}`,
+      numberText(commodity.mapAreaKm2, 1),
+      numberText(commodity.mapSharePct, 1),
+    ]),
+    emphasis: ordered.map((commodity) => commodity.indicated),
+  };
+}
+
+function numberText(value: number | null, digits: number): string {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
 }
