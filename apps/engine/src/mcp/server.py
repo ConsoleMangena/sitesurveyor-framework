@@ -275,6 +275,11 @@ def survey_site(
             },
         },
         "candidates": _candidate_lists(dossier),
+        # The per-category summaries, not just the scorecard drawn from them. The commodity
+        # screen and the depth-to-water read live inside these and nowhere else in this
+        # result, so omitting the block leaves a client able to show a score and unable to
+        # show what the ground is indicated for.
+        "categories": dossier.get("categories", {}),
         "primary_recommendations": {
             "top_borehole_drilling_site": gw.get("primary_borehole_candidate"),
             "top_mineral_exploration_target": minerals.get("primary_mineral_target"),

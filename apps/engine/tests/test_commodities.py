@@ -7,6 +7,7 @@ not need GDAL to be checked, so they run anywhere the engine's pure layers run.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from src.utils import commodities as cm
 
@@ -191,3 +192,29 @@ def test_headline_names_only_the_indicated_commodities() -> None:
 
     cold = cm.rank_commodities(_layers(), target=(0, 0))
     assert cm.headline(cold) == []
+
+
+def test_a_cell_scores_exactly_as_the_area_index_does() -> None:
+    layers = _layers(iron_oxide=0.9, lineament_density=0.3)
+    for commodity in cm.COMMODITIES:
+        index = cm.commodity_index(layers, commodity.weights)
+        for row in range(4):
+            for col in range(4):
+                assert cm.cell_index(layers, commodity.weights, row, col) == pytest.approx(
+                    float(index[row, col])
+                ), f"{commodity.key} disagrees with its own area index at {(row, col)}"
+
+
+def test_a_cell_with_missing_evidence_renormalizes_rather_than_losing_weight() -> None:
+    layers = _layers()
+    layers["endowment"] = np.full((4, 4), np.nan, dtype="float32")
+    # A raw weighted sum would read 47 here; the index scores the evidence present.
+    assert cm.cell_index(layers, cm.GOLD.weights, 1, 1) == pytest.approx(50.0)
+    assert cm.commodity_index(layers, cm.GOLD.weights)[1, 1] == pytest.approx(50.0)
+
+
+def test_a_cell_below_the_weight_coverage_floor_is_not_scored() -> None:
+    layers = {key: np.full((4, 4), np.nan, dtype="float32") for key in cm.EVIDENCE_KEYS}
+    layers["iron_oxide"] = np.full((4, 4), 0.8, dtype="float32")
+    assert cm.cell_index(layers, cm.GOLD.weights, 0, 0) is None
+    assert np.isnan(cm.commodity_index(layers, cm.GOLD.weights)[0, 0])

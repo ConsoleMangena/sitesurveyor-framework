@@ -429,6 +429,34 @@ def commodity_index(
     return np.clip(index, 0.0, 1.0) * 100.0
 
 
+def cell_index(
+    layers: dict[str, np.ndarray],
+    weights: dict[str, float],
+    row: int,
+    col: int,
+) -> float | None:
+    """One cell scored by the same rule `commodity_index` applies to the whole area.
+
+    A candidate read straight off a weighted sum disagrees with the area table wherever
+    an evidence layer is missing: the sum loses that weight, the index renormalizes over
+    the weight it does have. None where the cell has too little evidence to score at all.
+    """
+    total = 0.0
+    mass = 0.0
+    for key, weight in weights.items():
+        layer = layers.get(key)
+        if layer is None or weight == 0:
+            continue
+        value = float(np.asarray(layer)[row, col])
+        if not np.isfinite(value):
+            continue
+        total += value * weight
+        mass += weight
+    if mass < MIN_WEIGHT_COVERAGE:
+        return None
+    return float(np.clip(total / mass, 0.0, 1.0) * 100.0)
+
+
 def band_of(score: float | None) -> str:
     """Class name for one index value."""
     if score is None or not np.isfinite(score):

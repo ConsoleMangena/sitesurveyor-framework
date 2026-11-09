@@ -146,20 +146,23 @@ def run_minerals_survey(
     norm_relief = robust_norm(relief)
     del relief
     norm_endow = robust_norm(endowment)
+    del endowment
 
-    w = cfg.MINERAL_WEIGHTS
-    index_raw = (
-        w["lineament_density"] * norm_lin +
-        w["lineament_intersections"] * norm_inter +
-        w["iron_oxide"] * norm_iron +
-        w["hydroxyl_clay"] * norm_hyd +
-        w["ferrous_mafic"] * norm_fer +
-        w["relative_relief"] * norm_relief +
-        w["endowment"] * norm_endow
-    )
+    evidence_layers = {
+        "lineament_density": norm_lin,
+        "lineament_intersections": norm_inter,
+        "iron_oxide": norm_iron,
+        "hydroxyl_clay": norm_hyd,
+        "ferrous_mafic": norm_fer,
+        "relative_relief": norm_relief,
+        "endowment": norm_endow,
+    }
 
-    gold_index = robust_norm(index_raw) * 100.0
-    del index_raw, endowment
+    # One rule for all nine systems, gold included. Rescaling this overlay to fill 0-100
+    # before handing it to the commodity screen stretched gold roughly 20 points above the
+    # other eight on identical evidence, so gold ranked first and read "indicated" on
+    # ground whose evidence supports iron ore, or nothing at all.
+    gold_index = commodity_screen.commodity_index(evidence_layers, cfg.MINERAL_WEIGHTS)
     gc.collect()
 
     water_mask = (lc == 80)
@@ -238,16 +241,9 @@ def run_minerals_survey(
     # ------------------------------------------------------------------
     print("[5/6] Screening the mineral systems this ground can support...")
     commodity_screen.validate()
-    evidence_layers = {
-        "lineament_density": norm_lin,
-        "lineament_intersections": norm_inter,
-        "iron_oxide": norm_iron,
-        "hydroxyl_clay": norm_hyd,
-        "ferrous_mafic": norm_fer,
-        "relative_relief": norm_relief,
-        "endowment": norm_endow,
-    }
     excluded = water_mask | builtup_mask
+    # The map's own raster is gold's entry, so the sheet, the area table and the candidate
+    # rows cannot disagree about the same metal.
     ranked_commodities = commodity_screen.rank_commodities(
         evidence_layers,
         mask=excluded,
@@ -261,23 +257,29 @@ def run_minerals_survey(
               f"| {item['share_high_pct']:5.2f}% of area in the top class | {flag}")
     print("      Indicated: " + (", ".join(indicated) if indicated else "none of the screened systems"))
 
-    # Enrich candidates with commodity scores and primary mineral affinity
+    # Enrich candidates with commodity scores and primary mineral affinity, read by the
+    # same rule the area table uses so a target's score for a system is the number that
+    # system reports for this cell.
     for cand in candidates:
         cr, cc = cand["row"], cand["col"]
         best_comm_name = None
         best_comm_score = -1.0
         for comm in commodity_screen.COMMODITIES:
-            c_score = sum(comm.weights[k] * evidence_layers[k][cr, cc] for k in comm.weights if k in evidence_layers) * 100.0
-            cand[f"{comm.key}_score"] = safe_round(c_score, 1)
-            if c_score > best_comm_score:
+            c_score = commodity_screen.cell_index(evidence_layers, comm.weights, cr, cc)
+            cand[f"{comm.key}_score"] = safe_round(c_score, 1) if c_score is not None else None
+            if c_score is not None and c_score > best_comm_score:
                 best_comm_score = c_score
                 best_comm_name = comm.name
         cand["primary_commodity"] = best_comm_name
-        cand["primary_commodity_score"] = safe_round(best_comm_score, 1)
+        cand["primary_commodity_score"] = safe_round(best_comm_score, 1) if best_comm_name else None
         cand["indicated_minerals"] = ", ".join(indicated) if indicated else "None indicated"
 
         # Prepend mineral affinity and indicated commodities to field notes
-        cand["field_notes"].insert(0, f"Primary mineral affinity: {cand['primary_commodity']} ({cand['primary_commodity_score']}/100)")
+        affinity = (
+            f"{cand['primary_commodity']} ({cand['primary_commodity_score']}/100)"
+            if best_comm_name else "not resolvable at this cell"
+        )
+        cand["field_notes"].insert(0, f"Primary mineral affinity: {affinity}")
         cand["field_notes"].insert(1, f"Indicated minerals in area: {cand['indicated_minerals']}")
 
     # Snapshot the target before the layers it is read from are released

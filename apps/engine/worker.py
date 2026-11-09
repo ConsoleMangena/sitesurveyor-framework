@@ -300,6 +300,22 @@ def run_payload(run: dict) -> dict:
     }
 
 
+def reset_outputs() -> None:
+    """Clear the shared output directory before a run writes into it.
+
+    `cfg.OUT` is one directory for the whole process, and both `survey_files()` and
+    `generate_site_dossier()` read it by existence alone. Left alone, a minerals-only run
+    publishes the previous run's water map under its own id and workspace, and the dossier
+    heads this site's numbers with the last site's scores. The per-AOI coverage cache in
+    `cfg.RAW` is untouched, so nothing is re-downloaded.
+    """
+    if not cfg.OUT.is_dir():
+        return
+    for path in cfg.OUT.iterdir():
+        if path.is_file():
+            path.unlink()
+
+
 def execute(payload: dict) -> dict:
     """Configure the AOI and survey it, exactly as the HTTP path did.
 
@@ -309,6 +325,7 @@ def execute(payload: dict) -> dict:
     earlier selection makes those differ, and a reader of this result needs what produced
     the score.
     """
+    reset_outputs()
     cfg.set_target_site(
         payload["latitude"],
         payload["longitude"],
