@@ -85,6 +85,8 @@ export interface SheetTable {
   rows: string[][];
   /** Rows printed in the strong ink; the rest in the soft ink. */
   emphasis?: boolean[];
+  /** The map colour of each row, drawn as the key symbol beside its name. */
+  swatches?: (string | null)[];
 }
 
 export interface MapExportOptions {
@@ -1415,6 +1417,8 @@ const TABLE_HEAD_H = 9;
 const TABLE_ROW_H = 11;
 const TABLE_CELL_SIZE = 7.4;
 const TABLE_CELL_FLOOR = 5.2;
+/** Room the key symbol takes beside a row's name. */
+const TABLE_SWATCH_W = 10;
 /** How many stations the schedule prints before it counts the rest. */
 const SCHEDULE_MAX_ROWS = 12;
 /** Height of the line that points at the key on the next sheet. */
@@ -1490,19 +1494,27 @@ function drawSheetTable(
   drawTextLine(ctx, table.title.toUpperCase(), innerX, y, 6.6 * scale, { font: ctx.bold });
   y += TABLE_TITLE_H * scale;
 
+  // The key symbol takes a column of its own, so every name starts on the same line
+  // and a reader can match a row to the colour on the map without the key beside it.
+  const gutter = table.swatches?.some((color) => Boolean(color)) ? TABLE_SWATCH_W * scale : 0;
+  const declared = table.columns.reduce((sum, column) => sum + column.width, 0);
+  const fit = declared > 0 ? Math.min(1, (innerW - gutter) / declared) : 1;
+  const widths = table.columns.map((column) => column.width * fit);
+  const textX = innerX + gutter;
+
   // One size for the whole table: a column whose type shrinks row by row reads as a
   // mistake, so the longest name sets the size for every row.
-  const size = fittedTableSize(ctx, table, scale);
+  const size = fittedTableSize(ctx, table, widths, scale);
 
-  let x = innerX;
-  for (const column of table.columns) {
+  let x = textX;
+  table.columns.forEach((column, index) => {
     if (column.align === "right") {
-      drawTextRight(ctx, column.label, x + column.width, y, 5.4 * scale, { color: INK_SOFT });
+      drawTextRight(ctx, column.label, x + widths[index], y, 5.4 * scale, { color: INK_SOFT });
     } else {
       drawTextLine(ctx, column.label, x, y, 5.4 * scale, { color: INK_SOFT });
     }
-    x += column.width;
-  }
+    x += widths[index];
+  });
   y += TABLE_HEAD_H * scale;
   drawPanelDivider(ctx, innerX, innerW, y);
   y += 5 * scale;
@@ -1510,20 +1522,35 @@ function drawSheetTable(
   table.rows.forEach((row, rowIndex) => {
     const strong = table.emphasis?.[rowIndex] ?? true;
     const ink = strong ? INK : INK_SOFT;
-    let cellX = innerX;
+    const swatch = table.swatches?.[rowIndex];
+    if (swatch) {
+      const color = hexToPdfRgb(swatch);
+      if (color) {
+        ctx.page.drawCircle({
+          x: innerX + 2.6 * scale,
+          y: yFlip(y + 3.4 * scale),
+          size: 2.2 * scale,
+          color,
+          borderColor: rgb(0.15, 0.18, 0.22),
+          borderWidth: 0.3,
+        });
+      }
+    }
+    let cellX = textX;
     row.forEach((cell, columnIndex) => {
       const column = table.columns[columnIndex];
       if (!column) return;
-      const text = shrinkText(ctx, cell, size, column.width, ctx.bold);
+      const width = widths[columnIndex];
+      const text = shrinkText(ctx, cell, size, width, ctx.bold);
       if (column.align === "right") {
-        drawTextRight(ctx, text, cellX + column.width, y, size, {
+        drawTextRight(ctx, text, cellX + width, y, size, {
           font: ctx.bold,
           color: ink,
         });
       } else {
         drawTextLine(ctx, text, cellX, y, size, { font: ctx.bold, color: ink });
       }
-      cellX += column.width;
+      cellX += width;
     });
     y += TABLE_ROW_H * scale;
   });
@@ -1532,14 +1559,19 @@ function drawSheetTable(
 }
 
 /** The largest size at which every cell of the table still fits its column. */
-function fittedTableSize(ctx: SheetCtx, table: SheetTable, scale = 1): number {
+function fittedTableSize(
+  ctx: SheetCtx,
+  table: SheetTable,
+  widths: number[],
+  scale = 1,
+): number {
   let size = TABLE_CELL_SIZE * scale;
   while (size > TABLE_CELL_FLOOR) {
     const fits = table.rows.every((row) =>
       row.every((cell, index) => {
-        const column = table.columns[index];
-        if (!column) return true;
-        return ctx.bold.widthOfTextAtSize(safeText(cell), size) <= column.width;
+        const width = widths[index];
+        if (width === undefined) return true;
+        return ctx.bold.widthOfTextAtSize(safeText(cell), size) <= width;
       }),
     );
     if (fits) return size;
@@ -1714,6 +1746,11 @@ function drawPanel(
           ...data.table,
           rows: hidden > 0 ? [...shown, ["+ " + hidden + " more", "", ""]] : shown,
           emphasis: data.table.emphasis ? data.table.emphasis.slice(0, shown.length) : undefined,
+          swatches: data.table.swatches
+            ? hidden > 0
+              ? [...data.table.swatches.slice(0, shown.length), null]
+              : data.table.swatches.slice(0, shown.length)
+            : undefined,
         };
         y = drawSheetTable(ctx, table, innerX, innerW, y);
         y += 3;

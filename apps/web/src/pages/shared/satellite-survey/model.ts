@@ -1,10 +1,13 @@
 import type {
   StartSurveyInput,
   SurveyCategory,
+  SurveyCommodity,
   SurveyResult,
   SurveyRun,
 } from "../../../lib/repositories/satelliteSurveys.ts";
 import {
+  CATEGORY_RASTER_PALETTE,
+  CATEGORY_ZONE_LABELS,
   COVERAGE,
   outsideCoverage,
   parseCoordinate,
@@ -254,8 +257,10 @@ export function fieldTargetText(targets: MapCandidate[]): string {
  *
  * The legend says what each colour means; this says how much ground each system owns
  * and which of them the survey indicated, so a reader can act on the map without
- * measuring it. Indicated systems are marked with a bullet and printed in the strong
- * ink; the rest are the systems that were screened and did not carry the ground.
+ * measuring it. Each row carries the colour the map paints that system in, so the
+ * table on the first sheet is the key without a turn of the page. Indicated systems are
+ * printed in the strong ink; the rest are the systems that were screened and did not
+ * carry the ground.
  */
 export function sheetSystemTable(result: SurveyResult | null): SheetTable | null {
   const commodities = result?.commodities ?? [];
@@ -267,19 +272,37 @@ export function sheetSystemTable(result: SurveyResult | null): SheetTable | null
   ];
 
   return {
-    title: "System ground share · • indicated",
+    title: "System ground share · indicated in bold",
     columns: [
-      { label: "SYSTEM", width: 104 },
-      { label: "AREA sq km", width: 44, align: "right" },
-      { label: "SHARE %", width: 40, align: "right" },
+      { label: "SYSTEM", width: 116 },
+      { label: "AREA sq km", width: 34, align: "right" },
+      { label: "SHARE %", width: 28, align: "right" },
     ],
     rows: ordered.map((commodity) => [
-      `${commodity.indicated ? "• " : ""}${commodity.name}`,
+      commodity.name,
       numberText(commodity.mapAreaKm2, 1),
       numberText(commodity.mapSharePct, 1),
     ]),
     emphasis: ordered.map((commodity) => commodity.indicated),
+    swatches: ordered.map((commodity) => mineralSwatch(commodity)),
   };
+}
+
+/**
+ * The colour the map paints a mineral system in.
+ *
+ * The engine publishes the catalogue colour with every commodity, which is the colour
+ * the map and the panel already use. A result published before that field existed
+ * still has to print the right symbol, so the system is matched to the legend label
+ * the map's own palette is built from.
+ */
+function mineralSwatch(commodity: SurveyCommodity): string | null {
+  if (commodity.color) return commodity.color;
+  const index = CATEGORY_ZONE_LABELS.minerals.findIndex((label) =>
+    label.startsWith(`${commodity.name} (`),
+  );
+  if (index < 0) return null;
+  return CATEGORY_RASTER_PALETTE.minerals[index] ?? null;
 }
 
 function numberText(value: number | null, digits: number): string {

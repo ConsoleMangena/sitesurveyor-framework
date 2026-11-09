@@ -22,6 +22,10 @@ interface Mark {
   text?: string;
   top: number;
   bottom: number;
+  /** Where the text starts, for the marks that carry a line of type. */
+  left?: number;
+  /** How wide the mark is, for the marks that carry a shape. */
+  width?: number;
 }
 
 /**
@@ -39,7 +43,12 @@ function trackInk(page: PDFPage): Mark[] {
     const y = options?.y;
     if (typeof y === "number") {
       const size = options?.size ?? 10;
-      marks.push({ text: value, top: height - y - size, bottom: height - y });
+      marks.push({
+        text: value,
+        top: height - y - size,
+        bottom: height - y,
+        left: options?.x,
+      });
     }
     return originalText(value, options);
   }) as PDFPage["drawText"];
@@ -71,10 +80,13 @@ function trackInk(page: PDFPage): Mark[] {
   page.drawCircle = ((options: Parameters<PDFPage["drawCircle"]>[0]) => {
     const y = options?.y;
     const size = options?.size;
-    if (typeof y === "number" && typeof size === "number") {
+    const x = options?.x;
+    if (typeof y === "number" && typeof size === "number" && typeof x === "number") {
       marks.push({
         top: height - (y + size),
         bottom: height - (y - size),
+        left: x,
+        width: size * 2,
       });
     }
     return originalCircle(options);
@@ -105,17 +117,17 @@ function legendFor(category: DossierCategory): SheetLegendItem[] {
 }
 
 const MINERAL_TABLE: SheetTable = {
-  title: "System ground share · • indicated",
+  title: "System ground share · indicated in bold",
   columns: [
-    { label: "SYSTEM", width: 104 },
-    { label: "AREA sq km", width: 44, align: "right" },
-    { label: "SHARE %", width: 40, align: "right" },
+    { label: "SYSTEM", width: 116 },
+    { label: "AREA sq km", width: 34, align: "right" },
+    { label: "SHARE %", width: 28, align: "right" },
   ],
   rows: [
-    ["• Gold (Au)", "42.3", "18.4"],
-    ["• Lithium (pegmatite)", "12.1", "5.3"],
-    ["• Rare earth elements (REE)", "8.4", "3.7"],
-    ["• Nickel and platinum-group elements", "6.2", "2.7"],
+    ["Gold", "42.3", "18.4"],
+    ["Lithium (pegmatite)", "12.1", "5.3"],
+    ["Rare earth elements (REE)", "8.4", "3.7"],
+    ["Nickel and platinum-group elements", "6.2", "2.7"],
     ["Copper, zinc and lead", "3.1", "1.3"],
     ["Iron ore (Fe)", "2.4", "1.0"],
     ["Chromium (chromitite)", "1.2", "0.5"],
@@ -123,6 +135,17 @@ const MINERAL_TABLE: SheetTable = {
     ["Manganese (oxide / supergene)", "0.2", "0.1"],
   ],
   emphasis: [true, true, true, true, false, false, false, false, false],
+  swatches: [
+    "#e69f00",
+    "#f0e442",
+    "#7b5ea7",
+    "#0072b2",
+    "#cc79a7",
+    "#d55e00",
+    "#009e73",
+    "#56b4e9",
+    "#6d4c41",
+  ],
 };
 
 const CATEGORY_SUMMARY: Record<DossierCategory, { label: string; value: string }[]> = {
@@ -284,10 +307,30 @@ describe("survey sheet layout", () => {
   it("prints the mineral system's own table of figures on the map sheet", async () => {
     const { marks } = await render("minerals");
     const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
-    expect(texts).toContain("SYSTEM GROUND SHARE · • INDICATED");
-    expect(texts).toContain("• Gold (Au)");
+    expect(texts).toContain("SYSTEM GROUND SHARE · INDICATED IN BOLD");
+    expect(texts).toContain("Gold");
     expect(texts).toContain("42.3");
     expect(texts).toContain("18.4");
+  });
+
+  it("puts the map's key symbol beside every system in the first table", async () => {
+    const { marks } = await render("minerals");
+    const names = MINERAL_TABLE.rows.map((row) => row[0]);
+    const nameMarks = names.map((name) => marks.find((mark) => mark.text === name));
+
+    // Every system prints its name on the same line, so the column reads as a column.
+    for (const mark of nameMarks) {
+      expect(mark?.left).toBe(nameMarks[0]?.left);
+    }
+
+    // And every system carries the symbol the map paints it in, left of the name.
+    const swatches = marks.filter(
+      (mark) => mark.width !== undefined && mark.width < 6 && mark.left !== undefined,
+    );
+    expect(swatches.length).toBe(names.length);
+    for (const mark of swatches) {
+      expect(mark.left).toBeLessThan(nameMarks[0]?.left ?? 0);
+    }
   });
 
   it("keeps the sheet's own furniture on the map sheet", async () => {

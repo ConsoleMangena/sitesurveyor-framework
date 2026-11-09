@@ -4,6 +4,7 @@ import {
   DEFAULT_CATEGORY,
   DEFAULT_HALF_DEG,
   resultsNote,
+  sheetSystemTable,
   sourceText,
   validateForm,
   type SurveyFormValues,
@@ -141,5 +142,60 @@ describe("resultsNote", () => {
       "withdrawn before a worker started",
     );
     expect(resultsNote(run(), "r2")).toMatch(/^Saved result from /);
+  });
+});
+
+describe("sheetSystemTable", () => {
+  const result = {
+    commodities: [
+      {
+        key: "gold",
+        name: "Gold",
+        group: "Precious",
+        indicated: true,
+        confidence: "Medium",
+        areaTopDecile: 82,
+        areaBand: "Strong",
+        targetScore: 71,
+        symbol: "Au",
+        color: "#e69f00",
+        mapAreaKm2: 42.3,
+        mapSharePct: 18.4,
+      },
+      {
+        key: "iron_ore",
+        name: "Iron ore",
+        group: "Ferro-alloy",
+        indicated: false,
+        confidence: "High",
+        areaTopDecile: 41,
+        areaBand: "Weak",
+        targetScore: 38,
+        symbol: "Fe",
+        color: "",
+        mapAreaKm2: 2.4,
+        mapSharePct: 1,
+      },
+    ],
+  } as never;
+
+  it("prints the map's own colour beside every system", () => {
+    const table = sheetSystemTable(result);
+
+    // Gold carries the colour the engine published; iron ore falls back to the
+    // palette the map itself is drawn from.
+    expect(table?.swatches).toEqual(["#e69f00", "#d55e00"]);
+  });
+
+  it("keeps the names clear of the symbols, so the column lines up", () => {
+    const table = sheetSystemTable(result);
+
+    expect(table?.rows.map((row) => row[0])).toEqual(["Gold", "Iron ore"]);
+    expect(table?.emphasis).toEqual([true, false]);
+  });
+
+  it("says nothing when the run screened no minerals", () => {
+    expect(sheetSystemTable(null)).toBeNull();
+    expect(sheetSystemTable({ commodities: [] } as never)).toBeNull();
   });
 });
