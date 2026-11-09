@@ -36,26 +36,32 @@ function trackInk(page: PDFPage): Mark[] {
 
   const originalText = page.drawText.bind(page);
   page.drawText = ((value: string, options?: Parameters<PDFPage["drawText"]>[1]) => {
-    if (options && typeof options.y === "number") {
-      const size = options.size ?? 10;
-      marks.push({ text: value, top: height - options.y - size, bottom: height - options.y });
+    const y = options?.y;
+    if (typeof y === "number") {
+      const size = options?.size ?? 10;
+      marks.push({ text: value, top: height - y - size, bottom: height - y });
     }
     return originalText(value, options);
   }) as PDFPage["drawText"];
 
   const originalLine = page.drawLine.bind(page);
   page.drawLine = ((options: Parameters<PDFPage["drawLine"]>[0]) => {
-    const ys = [options.start.y, options.end.y];
-    marks.push({ top: height - Math.max(...ys), bottom: height - Math.min(...ys) });
+    const startY = options.start?.y;
+    const endY = options.end?.y;
+    if (typeof startY === "number" && typeof endY === "number") {
+      marks.push({ top: height - Math.max(startY, endY), bottom: height - Math.min(startY, endY) });
+    }
     return originalLine(options);
   }) as PDFPage["drawLine"];
 
   const originalRectangle = page.drawRectangle.bind(page);
   page.drawRectangle = ((options?: Parameters<PDFPage["drawRectangle"]>[0]) => {
-    if (options) {
+    const y = options?.y;
+    const boxHeight = options?.height;
+    if (typeof y === "number" && typeof boxHeight === "number") {
       marks.push({
-        top: height - (options.y + options.height),
-        bottom: height - options.y,
+        top: height - (y + boxHeight),
+        bottom: height - y,
       });
     }
     return originalRectangle(options);
@@ -63,16 +69,21 @@ function trackInk(page: PDFPage): Mark[] {
 
   const originalCircle = page.drawCircle.bind(page);
   page.drawCircle = ((options: Parameters<PDFPage["drawCircle"]>[0]) => {
-    marks.push({
-      top: height - (options.y + options.size),
-      bottom: height - (options.y - options.size),
-    });
+    const y = options?.y;
+    const size = options?.size;
+    if (typeof y === "number" && typeof size === "number") {
+      marks.push({
+        top: height - (y + size),
+        bottom: height - (y - size),
+      });
+    }
     return originalCircle(options);
   }) as PDFPage["drawCircle"];
 
   const originalPath = page.drawSvgPath.bind(page);
   page.drawSvgPath = ((path: string, options?: Parameters<PDFPage["drawSvgPath"]>[1]) => {
-    if (options) marks.push({ top: height - (options.y + 15), bottom: height - (options.y - 11) });
+    const y = options?.y;
+    if (typeof y === "number") marks.push({ top: height - (y + 15), bottom: height - (y - 11) });
     return originalPath(path, options);
   }) as PDFPage["drawSvgPath"];
 
@@ -272,7 +283,7 @@ describe("survey sheet layout", () => {
 
   it("prints the mineral system's own table of figures on the map sheet", async () => {
     const { marks } = await render("minerals");
-    const texts = marks.map((mark) => mark.text).filter(Boolean);
+    const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
     expect(texts).toContain("SYSTEM GROUND SHARE · • INDICATED");
     expect(texts).toContain("• Gold (Au)");
     expect(texts).toContain("42.3");
@@ -281,7 +292,7 @@ describe("survey sheet layout", () => {
 
   it("keeps the sheet's own furniture on the map sheet", async () => {
     const { marks } = await render("water");
-    const texts = marks.map((mark) => mark.text).filter(Boolean);
+    const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
     expect(texts).toContain("SCALE BAR");
     expect(texts).toContain("GRID NORTH");
     expect(texts).toContain("SITESURVEYOR™");
@@ -298,14 +309,14 @@ describe("survey sheet layout", () => {
 
   it("names the survey domain in words, not in the platform's key", async () => {
     const { marks } = await render("hazard_safety");
-    const texts = marks.map((mark) => mark.text).filter(Boolean);
+    const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
     expect(texts).toContain("HAZARD & SAFETY");
     expect(texts.some((text) => text.includes("_"))).toBe(false);
   });
 
   it("carries the survey record on the sheet behind the map", async () => {
     const { secondMarks } = await render("minerals");
-    const texts = secondMarks.map((mark) => mark.text).filter(Boolean);
+    const texts = secondMarks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
     expect(texts).toContain("SURVEY SUMMARY");
     expect(texts).toContain("SURVEY REFERENCE");
     expect(texts).toContain("RECOMMENDED TARGETS");

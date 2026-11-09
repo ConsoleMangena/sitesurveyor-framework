@@ -7,7 +7,7 @@ import { DRAPE_Z_INDEX } from "../../lib/surveys/workbench.ts";
 import type { SurveyTilesSource } from "../../lib/repositories/satelliteSurveys.ts";
 
 const { leafletRasterLayer } = vi.hoisted(() => ({
-  leafletRasterLayer: vi.fn(() => ({
+  leafletRasterLayer: vi.fn((_archive: unknown, _options?: { zIndex?: number }) => ({
     addTo: vi.fn(),
     setOpacity: vi.fn(),
   })),
