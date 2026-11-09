@@ -21,6 +21,8 @@ interface GeoTiffOverlayProps {
   opacity: number;
   /** Colours used when the file carries no colour table. */
   palette?: readonly string[];
+  /** Class codes the drape leaves see-through: ground the survey did not find on. */
+  transparentCodes?: readonly number[];
   zIndex?: number;
 }
 
@@ -48,6 +50,7 @@ export default function GeoTiffOverlay({
   bounds,
   opacity,
   palette,
+  transparentCodes = [],
   zIndex = 200,
 }: GeoTiffOverlayProps) {
   const map = useMap();
@@ -60,7 +63,7 @@ export default function GeoTiffOverlay({
     if (!url) return;
 
     const controller = new AbortController();
-    void decodeGeoTiff(url, palette, controller.signal)
+    void decodeGeoTiff(url, palette, transparentCodes, controller.signal)
       .then((raster) => {
         if (!controller.signal.aborted) setDecodedState({ url, raster });
       })
@@ -70,7 +73,7 @@ export default function GeoTiffOverlay({
       });
 
     return () => controller.abort();
-  }, [url, palette]);
+  }, [url, palette, transparentCodes]);
 
   useEffect(() => {
     const layer = layerRef.current;
@@ -122,6 +125,7 @@ export default function GeoTiffOverlay({
 async function decodeGeoTiff(
   url: string,
   palette: readonly string[] | undefined,
+  transparentCodes: readonly number[],
   signal: AbortSignal,
 ): Promise<DecodedRaster> {
   const response = await fetch(url, { signal });
@@ -151,6 +155,8 @@ async function decodeGeoTiff(
   makeTransparent(table, RASTER_NODATA_CLASS);
   const nodata = image.getGDALNoData();
   if (nodata !== null) makeTransparent(table, nodata);
+  // A GTiff colour table is RGB-only, so the engine cannot store this alpha in the file.
+  for (const code of transparentCodes) makeTransparent(table, code);
 
   const canvas = document.createElement("canvas");
   canvas.width = width;

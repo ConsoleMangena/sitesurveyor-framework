@@ -127,6 +127,45 @@ def test_pmtiles_archive_roundtrips(zone_tif: Path, tmp_path: Path) -> None:
                 ).any(), "class-5 ground must carry its colour-table colour"
 
 
+def test_mineral_tiles_leave_below_threshold_ground_transparent(tmp_path: Path) -> None:
+    """Cold ground is not a finding: the drape must show the basemap through it.
+
+    A GTiff colour table cannot carry alpha, so the archive is where the transparency
+    has to be baked in — the browser drape and the PNG overlay apply it separately.
+    """
+    from src.utils.classification import ZONE_TRANSPARENT_CODES
+
+    height, width = 120, 140
+    classes = np.full((height, width), NODATA_CLASS, dtype="uint8")
+    classes[15:55, :] = 1    # gold
+    classes[55:85, :] = 10   # below the indicated threshold
+    path = tmp_path / "mineral_zones.tif"
+    with rasterio.open(
+        path, "w", driver="GTiff", height=height, width=width,
+        count=1, dtype="uint8", crs=UTM_35S,
+        transform=from_origin(295980.0, 7837440.0, 30.0, 30.0),
+        nodata=NODATA_CLASS, compress="deflate",
+    ) as dst:
+        dst.write(classes, 1)
+
+    out = tmp_path / "mineral_zones_tiles.pmtiles"
+    write_zone_pmtiles(
+        path, out, ZONE_PALETTES["minerals"], "Dominant mineral system",
+        transparent_codes=ZONE_TRANSPARENT_CODES["minerals"],
+    )
+    with open(out, "r+b") as handle:
+        reader = Reader(MmapSource(handle))
+        for row, opaque in ((30, True), (70, False)):
+            x, y = _tile_xy_over_cell(path, MAX_ZOOM, 60, row)
+            with rasterio.io.MemoryFile(reader.get(MAX_ZOOM, x, y)) as mem:
+                with mem.open(driver="PNG") as tile:
+                    alpha = tile.read(4)
+                    if opaque:
+                        assert (alpha == 255).any(), "a mineral system must stay visible"
+                    else:
+                        assert (alpha == 0).all(), "below-threshold ground must stay see-through"
+
+
 def _centre_tile(zone_tif: Path, zoom: int) -> tuple[int, int]:
     """XYZ tile index at `zoom` over the class-5 patch centre, for sample reads.
 

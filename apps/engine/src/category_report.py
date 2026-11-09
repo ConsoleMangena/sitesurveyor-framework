@@ -23,7 +23,12 @@ import numpy as np
 import src.config as cfg
 from src import fetch_data
 from src.report import _img_to_base64_src, _load_category, _survey_identity
-from src.utils.classification import NODATA_CLASS, NODATA_HEX
+from src.utils.classification import (
+    MINERAL_ZONE_LABELS,
+    MINERAL_ZONE_PALETTE,
+    NODATA_CLASS,
+    NODATA_HEX,
+)
 
 NO_DATA_LABEL = "No satellite coverage"
 
@@ -68,6 +73,13 @@ class Category:
     zone_labels: dict[int, str] = field(default_factory=dict)
     zone_colors: dict[int, str] = field(default_factory=dict)
     cand_labels: dict[int, str] = field(default_factory=dict)
+    #: Candidates are ranked on their own class domain, which for minerals is the
+    #: prospectivity ramp the targets were picked on, not the draped mineral palette.
+    cand_colors: dict[int, str] = field(default_factory=dict)
+    #: The summary's Jenks edges classify this, which is not always the draped raster:
+    #: the mineral map is a catalogue of systems, ranked on a separate score ramp.
+    breaks_title: str = "Natural breaks"
+    breaks_scope: str = "this survey's own index"
     hazard_raster: bool = False
     detail_columns: tuple[DetailColumn, ...] = ()
 
@@ -101,6 +113,12 @@ _MINERAL_COLORS, _MINERAL_LABELS = _ramp(
         6: "Built-up (excluded)",
     },
 )
+# The draped mineral raster is a catalogue, not a ramp: one code per mineral system. Read
+# from the engine's own table so the viewer, the report legend and the map sheet cannot
+# disagree about what a colour means.
+_MINERAL_ZONE_COLORS = {i: c for i, c in enumerate(MINERAL_ZONE_PALETTE)}
+_MINERAL_ZONE_COLORS[NODATA_CLASS] = NODATA_HEX
+_MINERAL_ZONE_LABELS = {**MINERAL_ZONE_LABELS, NODATA_CLASS: NO_DATA_LABEL}
 _SOIL_COLORS, _SOIL_LABELS = _ramp(
     ["#2166ac", "#d73027", "#fc8d59", "#fee08b", "#91cf60", "#1a9850", "#808080"],
     {
@@ -158,7 +176,8 @@ WATER = Category(
     zones_tif="groundwater_potential_zones.tif", index_tif="gwpz_index.tif",
     index_label="Groundwater Potential Index (0-100)",
     vector_base="candidate_borehole_sites",
-    zone_labels=_WATER_LABELS, zone_colors=_WATER_COLORS, cand_labels=_WATER_LABELS,
+    zone_labels=_WATER_LABELS, zone_colors=_WATER_COLORS,
+    cand_labels=_WATER_LABELS, cand_colors=_WATER_COLORS,
     detail_columns=(
         DetailColumn("Depth to water (wet–dry)", "range_m",
                      ("depth_to_water_wet_m", "depth_to_water_dry_m")),
@@ -179,17 +198,23 @@ MINERALS = Category(
                 "support. It is not mineral grade, tonnage or economic viability, and it "
                 "does not licence excavation.",
     maps=(
-        ("mineral_prospectivity_map.png", "Multi-mineral prospectivity and structural zoning",
-         "Survey area shaded by mineral prospectivity class, with the client "
-         "target starred and ranked exploration targets labelled by rank."),
+        ("mineral_prospectivity_map.png", "Mineral systems identified across the survey area",
+         "Every cell coloured by the mineral system that scores highest there, with the area "
+         "each system owns in the legend. The client target is starred and each ranked field "
+         "target is labelled with its two strongest minerals, their scores, and the cover "
+         "and first test-hole depths."),
         ("mineral_evidence_layers.png", "Evidence layers behind the prospectivity index",
          "The lineament, alteration, relief and endowment rasters the mineral model combines."),
     ),
-    zones_tif="mineral_prospectivity_zones.tif", index_tif="mineral_prospectivity_index.tif",
-    index_label="Mineral Prospectivity Index (0-100)",
+    zones_tif="mineral_commodity_zones.tif", index_tif="mineral_commodity_index.tif",
+    index_label="Dominant mineral system index (0-100)",
     vector_base="candidate_mineral_targets",
-    zone_labels=_MINERAL_LABELS, zone_colors=_MINERAL_COLORS, cand_labels=_MINERAL_LABELS,
+    zone_labels=_MINERAL_ZONE_LABELS, zone_colors=_MINERAL_ZONE_COLORS,
+    cand_labels=_MINERAL_LABELS, cand_colors=_MINERAL_COLORS,
+    breaks_title="Target-ranking breaks",
+    breaks_scope="the prospectivity ramp that ranks field targets, not the mineral map",
     detail_columns=(
+        DetailColumn("Strongest mineral system", "text", ("primary_commodity",)),
         DetailColumn("Cover to fresh rock", "range_m",
                      ("overburden_min_m", "overburden_max_m")),
         DetailColumn("First test hole", "m", ("test_hole_depth_m",)),
@@ -219,7 +244,8 @@ SOIL = Category(
     zones_tif="soil_capability_zones.tif", index_tif="soil_capability_index.tif",
     index_label="Soil & Land Capability Index (0-100)",
     vector_base="candidate_land_zones",
-    zone_labels=_SOIL_LABELS, zone_colors=_SOIL_COLORS, cand_labels=_SOIL_LABELS,
+    zone_labels=_SOIL_LABELS, zone_colors=_SOIL_COLORS,
+    cand_labels=_SOIL_LABELS, cand_colors=_SOIL_COLORS,
 )
 
 HAZARD = Category(
@@ -245,7 +271,8 @@ HAZARD = Category(
     zones_tif="hazard_risk_zones.tif", index_tif="hazard_composite_index.tif",
     index_label="Composite Hazard Index (0-100)",
     vector_base="safest_buildable_sites",
-    zone_labels=_HAZARD_LABELS, zone_colors=_HAZARD_COLORS, cand_labels=_SAFETY_LABELS,
+    zone_labels=_HAZARD_LABELS, zone_colors=_HAZARD_COLORS,
+    cand_labels=_SAFETY_LABELS, cand_colors=_HAZARD_COLORS,
     hazard_raster=True,
 )
 
@@ -296,8 +323,11 @@ def decode_raster(cat: Category) -> dict | None:
     except Exception:
         return None
 
+    # The class domain is the category's own: a five-step ramp for water, a twelve-code
+    # mineral catalogue for minerals. Counting to six would silently drop most of them.
+    codes = sorted(code for code in cat.zone_colors if code != NODATA_CLASS)
     rgb = np.zeros((height, width, 3), dtype="uint8")
-    for code in range(0, 7):
+    for code in codes:
         rgb[classes == code] = _hex_rgb(cat.zone_colors[code])
     rgb[classes == NODATA_CLASS] = _hex_rgb(NODATA_HEX)
 
@@ -329,8 +359,9 @@ def decode_raster(cat: Category) -> dict | None:
         grid.append(line)
 
     total = int(classes.size)
+    cell_km2 = cell_x * cell_y / 1e6
     classes_out = []
-    for code in list(range(0, 7)) + [NODATA_CLASS]:
+    for code in codes + [NODATA_CLASS]:
         count = int(np.count_nonzero(classes == code))
         if not count and code == NODATA_CLASS:
             continue
@@ -340,6 +371,7 @@ def decode_raster(cat: Category) -> dict | None:
             "color": cat.zone_colors.get(code, NODATA_HEX),
             "count": count,
             "pct": round(count / total * 100.0, 2) if total else 0.0,
+            "area_km2": round(count * cell_km2, 2),
         })
 
     return {
@@ -735,9 +767,9 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
         <p class="hint" id="sites-empty" hidden>No site cleared the screening threshold for this category.</p>
       </div>
       <div>
-        <h2>Natural breaks</h2>
+        <h2>{{BREAKS_TITLE}}</h2>
         <dl class="facts" id="breaks"></dl>
-        <p class="hint">Class edges come from Jenks natural breaks on this survey's own index, so two surveys are not comparable.</p>
+        <p class="hint">Class edges come from Jenks natural breaks on {{BREAKS_SCOPE}}, so two surveys are not comparable.</p>
       </div>
     </aside>
   </div>
@@ -978,6 +1010,11 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
     if (p < 0.05) { return "<0.1%"; }
     return p.toFixed(1) + "%";
   }
+  function areaText(km2) {
+    if (!(km2 > 0)) { return "0 km²"; }
+    if (km2 < 0.005) { return "<0.01 km²"; }
+    return km2.toFixed(2) + " km²";
+  }
   function buildLegend() {
     var host = document.getElementById("legend");
     DATA.legend.forEach(function (row) {
@@ -987,7 +1024,7 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
       b.setAttribute("aria-pressed", "false");
       b.innerHTML = '<i style="background:' + row.color + '"></i><span></span><b></b>';
       b.querySelector("span").textContent = row.label;
-      b.querySelector("b").textContent = pctText(row.pct);
+      b.querySelector("b").textContent = areaText(row.area_km2) + " · " + pctText(row.pct);
       b.title = row.count.toLocaleString() + " cells · select to isolate this class";
       b.dataset.code = String(row.code);
       b.addEventListener("click", function () {
@@ -1847,7 +1884,7 @@ def _raster_section(cat: Category) -> str:
     )
     shares = "".join(
         f'<li><i style="background:{row["color"]}"></i><span>{_e(row["label"])}</span>'
-        f'<b>{_pct(row["pct"])}</b></li>'
+        f'<b>{row["area_km2"]:.2f} km&sup2; &bull; {_pct(row["pct"])}</b></li>'
         for row in legend
     )
     area_km2 = round(dec["width"] * dec["height"] * dec["cell_x"] * dec["cell_y"] / 1e6, 1)
@@ -1985,6 +2022,10 @@ def _commodities_section(cat: Category, data: dict) -> str:
         return ""
 
     rows = []
+    areas = data.get("commodity_area_distribution")
+    area_by_key = {
+        str(row.get("key")): row for row in areas if isinstance(row, dict)
+    } if isinstance(areas, list) else {}
     for item in items:
         score = item.get("area_top_decile")
         color = band(score)
@@ -1992,6 +2033,22 @@ def _commodities_section(cat: Category, data: dict) -> str:
         drivers = item.get("top_evidence") or []
         driver_text = ", ".join(_weight_name(d.get("evidence", "")) for d in drivers[:2])
         support = "Indicated" if indicated else "Not indicated"
+        owned = area_by_key.get(str(item.get("key")))
+        if owned and owned.get("cells"):
+            dot = _e(str(owned.get("color") or color))
+            share = float(owned.get("share_pct") or 0)
+            share_text = f"{share:.1f}" if share >= 0.05 else "&lt;0.1"
+            map_cell = (
+                f'<i style="display:inline-block;width:11px;height:11px;border-radius:2px;'
+                f'border:1px solid rgba(15,23,42,.25);background:{dot};vertical-align:-1px;"></i> '
+                f'<span class="mono">{float(owned.get("area_km2") or 0):.2f} km&sup2;</span>'
+                f'<div class="cap">{share_text}% of area &bull; '
+                f'peak {_fmt_out_of(owned.get("peak_score"))}</div>'
+            )
+        elif owned:
+            map_cell = '<span class="cap">Never the strongest system here</span>'
+        else:
+            map_cell = '<span class="cap">not recorded</span>'
         rows.append(
             '<tr>'
             f'<td><strong>{_e(str(item.get("name") or ""))}</strong>'
@@ -2000,6 +2057,7 @@ def _commodities_section(cat: Category, data: dict) -> str:
             f'<div class="cap">Confidence that orbit can see this: '
             f'{_e(str(item.get("confidence") or ""))}</div></td>'
             f'<td><span class="badge" style="background:{color};">{_e(support)}</span></td>'
+            f'<td>{map_cell}</td>'
             f'<td class="mono" style="color:{color};">{_fmt_out_of(score)}</td>'
             f'<td class="mono">{item.get("share_high_pct", 0):.1f}%</td>'
             f'<td class="mono">{_fmt_out_of(item.get("target_score"))}</td>'
@@ -2010,6 +2068,7 @@ def _commodities_section(cat: Category, data: dict) -> str:
     table = (
         '<div class="table-wrap"><table class="grid">'
         "<thead><tr><th>Mineral system</th><th>Screened for</th><th>Verdict</th>"
+        "<th>Dominant on the map</th>"
         "<th>Area top decile</th><th>Area in top class</th><th>At target</th>"
         "<th>Strongest evidence</th></tr></thead><tbody>"
         + "".join(rows)
@@ -2062,6 +2121,11 @@ def _commodities_section(cat: Category, data: dict) -> str:
         "score is a percentile of evidence strength inside <em>this</em> area — not a grade, not "
         "a tonnage, and not comparable between properties. Confidence says how well a satellite "
         "can see that deposit style at all.</div>"
+        + '<div class="note"><strong>Dominant on the map</strong> is the ground each system owns '
+        "on the mineral map: every cell is coloured by the system that scores highest there, and "
+        "only cells at or above the indication threshold are coloured at all. A system can be "
+        "indicated across the area yet own no cell, because another system scores higher on all "
+        "of them — the two columns answer different questions.</div>"
         + table
         + (f'<ul class="weights">{caveats}</ul>' if caveats else "")
         + unscreened_html
@@ -2170,7 +2234,7 @@ def build_report_html(cat: Category, data: dict) -> str:
         rows = []
         for item in ranked:
             code = item.get("class_code")
-            color = cat.zone_colors.get(code, NODATA_HEX)
+            color = cat.cand_colors.get(code, NODATA_HEX)
             name = item.get("class_name") or cat.cand_labels.get(code, "Unclassified")
             if cat.hazard_raster:
                 name = cat.cand_labels.get(code, name)
@@ -2243,7 +2307,7 @@ def build_report_html(cat: Category, data: dict) -> str:
     if isinstance(breaks, list) and breaks:
         edges = [_fmt_score(b) for b in breaks]
         breaks_html = (
-            '<div class="note"><strong>Class edges on this survey\'s index:</strong> '
+            f'<div class="note"><strong>Class edges on {_e(cat.breaks_scope)}:</strong> '
             '<span class="mono">&lt; ' + " · ".join(edges) + " · &gt;</span> — "
             "below the first edge is the lowest class, above the last is the highest.</div>"
         )
@@ -2371,7 +2435,7 @@ def build_viewer_html(cat: Category, dec: dict, files: dict, data: dict | None) 
             "score": _number(item.get("potential_score")) or 0.0,
             "dist_km": _number(item.get("distance_from_target_km")) or 0.0,
             "label": cat.cand_labels.get(code, item.get("class_name") or "Unclassified"),
-            "color": cat.zone_colors.get(code, NODATA_HEX),
+            "color": cat.cand_colors.get(code, NODATA_HEX),
             "facts": [[label, text] for label, text in _detail_cells(cat, item)],
         })
 
@@ -2425,6 +2489,8 @@ def build_viewer_html(cat: Category, dec: dict, files: dict, data: dict | None) 
         "{{NODATA_SHARE}}": f"{nodata['pct']:.1f}% of cells" if nodata else "none",
         "{{SOURCES}}": _e(chosen) or "engine defaults",
         "{{INDEX_LABEL}}": _e(cat.index_label),
+        "{{BREAKS_TITLE}}": _e(cat.breaks_title),
+        "{{BREAKS_SCOPE}}": _e(cat.breaks_scope),
         "{{CAND_NOUN}}": _e(cat.candidate_noun),
         "{{TIFF_HREF}}": f"./{cat.zones_tif}",
         "{{TIFF_NAME}}": _e(cat.zones_tif),

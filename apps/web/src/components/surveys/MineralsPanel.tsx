@@ -94,7 +94,17 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-[11.5px] font-semibold text-foreground">{item.name}</p>
+          <p className="truncate text-[11.5px] font-semibold text-foreground">
+            {item.color ? (
+              <span
+                aria-hidden="true"
+                className="mr-1.5 inline-block size-2.5 rounded-[3px] border border-black/25 align-[-1px]"
+                style={{ background: item.color }}
+              />
+            ) : null}
+            {item.name}
+            {item.symbol ? <span className="text-muted-foreground"> ({item.symbol})</span> : null}
+          </p>
           <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
             {item.group ? `${item.group} · ` : ""}
             {confidence}
@@ -110,6 +120,16 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
           /100 top decile
         </span>
       </p>
+      {item.mapAreaKm2 !== null ? (
+        <p className="sw-mono mt-1 text-[10.5px] leading-snug text-muted-foreground tabular-nums">
+          {item.mapAreaKm2 > 0
+            ? `owns ${item.mapAreaKm2.toFixed(2)} km² on the map`
+            : "never the strongest system on the map"}
+          {item.mapSharePct !== null && item.mapAreaKm2 > 0
+            ? ` · ${item.mapSharePct < 0.05 ? "<0.1" : item.mapSharePct.toFixed(1)}% of area`
+            : ""}
+        </p>
+      ) : null}
     </article>
   );
 }

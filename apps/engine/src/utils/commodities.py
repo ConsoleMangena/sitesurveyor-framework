@@ -73,6 +73,11 @@ class Commodity:
     key: str
     name: str
     group: str
+    #: Short label the map prints beside a target, where the full name will not fit.
+    symbol: str
+    #: This system's colour on the dominant-mineral map, the GeoTIFF colour table and
+    #: the web legend. One authority, so the three cannot drift apart.
+    color: str
     #: What the model is actually screening for, in the report's own words.
     systems: str
     deposit_style: str
@@ -112,6 +117,8 @@ GOLD = Commodity(
     key="gold",
     name="Gold",
     group="Precious",
+    symbol="Au",
+    color="#e69f00",
     systems="Orogenic / shear-zone hosted gold with quartz-carbonate veining",
     deposit_style="Structurally controlled lode gold in greenstone and granite-greenstone terrane",
     # Deliberately identical to the historic model weights, so the gold index
@@ -140,6 +147,8 @@ BASE_METALS = Commodity(
     key="base_metals",
     name="Copper, zinc and lead",
     group="Base",
+    symbol="Cu-Zn-Pb",
+    color="#cc79a7",
     systems="Volcanogenic massive sulphide and skarn-style base-metal alteration",
     deposit_style="Sulphide-bearing alteration zones along structures and lithological contacts",
     weights={
@@ -165,6 +174,8 @@ NICKEL_PGM = Commodity(
     key="nickel_pgm",
     name="Nickel and platinum-group elements",
     group="Battery / precious",
+    symbol="Ni-PGM",
+    color="#0072b2",
     systems="Magmatic sulphide in mafic and ultramafic bodies",
     deposit_style="Mafic-ultramafic hosted sulphide, often in layered complexes or greenstone belts",
     weights={
@@ -190,6 +201,8 @@ CHROMIUM = Commodity(
     key="chromium",
     name="Chromium (chromitite)",
     group="Ferro-alloy",
+    symbol="Cr",
+    color="#009e73",
     systems="Stratiform chromitite seams in ultramafic sequences",
     deposit_style="Layered ultramafic seams, commonly on ridgelines where they crop out",
     weights={
@@ -215,6 +228,8 @@ IRON_ORE = Commodity(
     key="iron_ore",
     name="Iron ore",
     group="Ferro-alloy",
+    symbol="Fe",
+    color="#d55e00",
     systems="Banded iron formation and iron-enriched laterite or gossan",
     deposit_style="BIF-hosted or supergene iron enrichment",
     weights={
@@ -239,6 +254,8 @@ LITHIUM = Commodity(
     key="lithium",
     name="Lithium (pegmatite)",
     group="Battery",
+    symbol="Li",
+    color="#f0e442",
     systems="LCT pegmatite swarms and their greisen alteration",
     deposit_style="Intrusion-related pegmatites, structurally controlled, often in greenstone margins",
     weights={
@@ -264,6 +281,8 @@ MANGANESE = Commodity(
     key="manganese",
     name="Manganese (oxide / supergene)",
     group="Ferro-alloy / battery",
+    symbol="Mn",
+    color="#6d4c41",
     systems="Sedimentary and supergene manganese oxide enrichment",
     deposit_style="Stratiform or supergene wad/psilomelane blankets on weathering plateaus",
     weights={
@@ -288,6 +307,8 @@ BAUXITE = Commodity(
     key="bauxite",
     name="Bauxite (aluminium laterite)",
     group="Base / industrial",
+    symbol="Al",
+    color="#56b4e9",
     systems="Residual lateritic weathering profiles over aluminous parent rock",
     deposit_style="Plateau-capping residual laterite and gibbsite/kaolinite enrichment",
     weights={
@@ -312,6 +333,8 @@ RARE_EARTHS = Commodity(
     key="rare_earths",
     name="Rare earth elements (REE)",
     group="Critical / tech",
+    symbol="REE",
+    color="#7b5ea7",
     systems="Carbonatite complexes, alkaline intrusions and ion-adsorption clays",
     deposit_style="Hydrothermally altered alkaline ring complexes and weathered clay blankets",
     weights={
@@ -345,6 +368,24 @@ COMMODITIES: tuple[Commodity, ...] = (
 )
 
 BY_KEY: dict[str, Commodity] = {c.key: c for c in COMMODITIES}
+
+# ---------------------------------------------------------------------------
+# The dominant-mineral raster's class domain
+# ---------------------------------------------------------------------------
+# Unlike the other categories, minerals is not a five-step ramp: a cell is coloured
+# by whichever system scores highest there. These codes are what the GeoTIFF, the
+# PMTiles drape, the PNG map and the web legend all agree on.
+ZONE_WATER = 0
+#: Catalogue order, so code 1 is gold and code 9 is REE. Adding a commodity adds a code.
+COMMODITY_ZONE_CODES: dict[str, int] = {c.key: i + 1 for i, c in enumerate(COMMODITIES)}
+BY_ZONE_CODE: dict[int, Commodity] = {code: BY_KEY[key] for key, code in COMMODITY_ZONE_CODES.items()}
+#: Scored ground whose best system still reads below the indicated threshold. It stays
+#: grey rather than taking the colour of a winner nobody should act on.
+ZONE_BELOW_THRESHOLD = len(COMMODITIES) + 1
+ZONE_BUILTUP = len(COMMODITIES) + 2
+#: Matches `NODATA_CLASS` in utils/classification.py, which cannot be imported here:
+#: this module is deliberately readable without GDAL.
+ZONE_NODATA = 255
 
 #: Commodities a client may ask about that this pipeline must not pretend to score.
 #: Listing them is the honest half of the answer: silence reads as "nothing there".
@@ -395,9 +436,17 @@ def validate() -> None:
             raise ValueError(f"{commodity.key}: weights sum to {total:.6f}, not 1.0")
         if not commodity.confidence_note or not commodity.verification:
             raise ValueError(f"{commodity.key}: every commodity needs its caveat")
+        if not commodity.symbol or not commodity.color:
+            raise ValueError(f"{commodity.key}: the map needs a symbol and a colour")
     keys = [c.key for c in COMMODITIES] + [u.key for u in UNSCREENED]
     if len(keys) != len(set(keys)):
         raise ValueError("duplicate commodity key in the catalogue")
+    # Two systems sharing a colour or a symbol would be one zone wearing two names on
+    # the map, which is the exact failure the dominant-mineral sheet exists to avoid.
+    for field_name in ("color", "symbol"):
+        values = [getattr(c, field_name) for c in COMMODITIES]
+        if len(values) != len(set(values)):
+            raise ValueError(f"duplicate commodity {field_name} in the catalogue")
 
 
 def commodity_index(
@@ -455,6 +504,91 @@ def cell_index(
     if mass < MIN_WEIGHT_COVERAGE:
         return None
     return float(np.clip(total / mass, 0.0, 1.0) * 100.0)
+
+
+def dominant_zones(
+    layers: dict[str, np.ndarray],
+    water_mask: np.ndarray | None = None,
+    builtup_mask: np.ndarray | None = None,
+    threshold: float = INDICATED_P90,
+    commodities: tuple[Commodity, ...] = COMMODITIES,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Race every mineral system cell by cell: (class raster, winning score raster).
+
+    The map answers "what is this ground most prospective for here", not "how prospective
+    is it for one metal". Every system is raced on every cell, including ones the area as
+    a whole reads cold on: a local high is still a target, and the area table beside the
+    map is where the reader learns how much of the area supports it.
+
+    Only the running best is held, never nine index rasters at once - at a regional AOI
+    that is the difference between two arrays and several hundred megabytes. Ties go to
+    the earlier commodity in the catalogue, so the raster is reproducible.
+
+    Cells whose best score is below `threshold` are classed `ZONE_BELOW_THRESHOLD` but
+    keep their score, so a grey cell can still be read rather than merely dismissed.
+    """
+    height, width = next(iter(layers.values())).shape
+    best = np.full((height, width), -np.inf, dtype="float64")
+    zones = np.full((height, width), ZONE_NODATA, dtype="uint8")
+
+    for commodity in commodities:
+        index = commodity_index(layers, commodity.weights)
+        wins = np.isfinite(index) & (index > best)
+        best[wins] = index[wins]
+        zones[wins] = COMMODITY_ZONE_CODES[commodity.key]
+        del index, wins
+
+    observed = np.isfinite(best)
+    scores = np.where(observed, best, np.nan).astype("float32")
+    zones[observed & (best < threshold)] = ZONE_BELOW_THRESHOLD
+
+    if water_mask is not None:
+        water = np.asarray(water_mask, dtype=bool)
+        zones[water] = ZONE_WATER
+        scores[water] = np.nan
+    if builtup_mask is not None:
+        builtup = np.asarray(builtup_mask, dtype=bool)
+        zones[builtup] = ZONE_BUILTUP
+        scores[builtup] = np.nan
+
+    return zones, scores
+
+
+def dominant_area_stats(
+    zones: np.ndarray,
+    scores: np.ndarray,
+    cell_km2: float,
+    commodities: tuple[Commodity, ...] = COMMODITIES,
+) -> list[dict]:
+    """The figures the map legend prints: how much ground each system owns, and how hot.
+
+    `share_pct` is of the whole raster, water and built-up included, so the shares add to
+    the area the reader sees on the sheet rather than to a silently reduced denominator.
+    """
+    total = int(zones.size)
+    rows: list[dict] = []
+    for commodity in commodities:
+        code = COMMODITY_ZONE_CODES[commodity.key]
+        owned = zones == code
+        count = int(np.count_nonzero(owned))
+        values = np.asarray(scores, dtype="float64")[owned]
+        finite = values[np.isfinite(values)]
+        rows.append(
+            {
+                "key": commodity.key,
+                "code": code,
+                "name": commodity.name,
+                "symbol": commodity.symbol,
+                "color": commodity.color,
+                "cells": count,
+                "area_km2": round(count * cell_km2, 2),
+                "share_pct": round(count / total * 100.0, 2) if total else 0.0,
+                "peak_score": round(float(finite.max()), 1) if finite.size else None,
+                "mean_score": round(float(finite.mean()), 1) if finite.size else None,
+            }
+        )
+    rows.sort(key=lambda row: (row["area_km2"], row["peak_score"] or 0.0), reverse=True)
+    return rows
 
 
 def band_of(score: float | None) -> str:
@@ -547,6 +681,9 @@ def rank_commodities(
                 "key": commodity.key,
                 "name": commodity.name,
                 "group": commodity.group,
+                "symbol": commodity.symbol,
+                "color": commodity.color,
+                "zone_code": COMMODITY_ZONE_CODES[commodity.key],
                 "systems": commodity.systems,
                 "deposit_style": commodity.deposit_style,
                 "confidence": commodity.confidence,

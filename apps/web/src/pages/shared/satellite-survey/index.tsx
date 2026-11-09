@@ -38,7 +38,9 @@ import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteS
 import { useSurveyQuote } from "../../../lib/hooks/useSurveyQuote.ts";
 import {
   CATEGORY_EXPORTS,
+  CATEGORY_LEGEND_CODES,
   CATEGORY_RASTER_PALETTE,
+  CATEGORY_TRANSPARENT_CODES,
   CATEGORY_ZONE_LABELS,
   outsideCoverage,
   parseCoordinate,
@@ -458,7 +460,7 @@ export default function SatelliteSurveyPage({
   const exportLegendItems = useMemo(
     () => [
       ...(rasterOn
-        ? [5, 4, 3, 2, 1].map((code) => ({
+        ? CATEGORY_LEGEND_CODES[jobDossierCategory].map((code) => ({
             kind: "zone" as const,
             color: CATEGORY_RASTER_PALETTE[jobDossierCategory][code],
             label: CATEGORY_ZONE_LABELS[jobDossierCategory][code] ?? `Zone ${code}`,
@@ -922,6 +924,7 @@ export default function SatelliteSurveyPage({
             classifiedTilesSource={tilesSource}
             onTilesUnavailable={handleTilesUnavailable}
             rasterPalette={CATEGORY_RASTER_PALETTE[jobDossierCategory]}
+            rasterTransparentCodes={CATEGORY_TRANSPARENT_CODES[jobDossierCategory]}
             classifiedOpacity={rasterOpacity}
             basemap={basemap}
             outside={outside}

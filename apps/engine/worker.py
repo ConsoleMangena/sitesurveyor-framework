@@ -76,11 +76,11 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     "soil_geojson": "candidate_land_zones.geojson",
     "safest_sites_geojson": "safest_buildable_sites.geojson",
     "groundwater_tif": "groundwater_potential_zones.tif",
-    "minerals_tif": "mineral_prospectivity_zones.tif",
+    "minerals_tif": "mineral_commodity_zones.tif",
     "soil_tif": "soil_capability_zones.tif",
     "hazard_tif": "hazard_risk_zones.tif",
     "groundwater_index_tif": "gwpz_index.tif",
-    "minerals_index_tif": "mineral_prospectivity_index.tif",
+    "minerals_index_tif": "mineral_commodity_index.tif",
     "soil_index_tif": "soil_capability_index.tif",
     "hazard_index_tif": "hazard_composite_index.tif",
     "groundwater_overlay": "groundwater_overlay.png",
@@ -93,11 +93,11 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     # real tiles. Written the same way as everything above (existence is the
     # only test), so an older run without them simply offers no map layer.
     "groundwater_webtif": "groundwater_potential_zones_web.tif",
-    "minerals_webtif": "mineral_prospectivity_zones_web.tif",
+    "minerals_webtif": "mineral_commodity_zones_web.tif",
     "soil_webtif": "soil_capability_zones_web.tif",
     "hazard_webtif": "hazard_risk_zones_web.tif",
     "groundwater_tiles": "groundwater_potential_zones_tiles.pmtiles",
-    "minerals_tiles": "mineral_prospectivity_zones_tiles.pmtiles",
+    "minerals_tiles": "mineral_commodity_zones_tiles.pmtiles",
     "soil_tiles": "soil_capability_zones_tiles.pmtiles",
     "hazard_tiles": "hazard_risk_zones_tiles.pmtiles",
 }

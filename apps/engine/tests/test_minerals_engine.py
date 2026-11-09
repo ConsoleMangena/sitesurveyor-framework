@@ -101,41 +101,107 @@ def test_gold_is_scored_by_the_same_rule_as_every_other_system(mineral_run) -> N
     assert cm.GOLD.weights == cfg.MINERAL_WEIGHTS
 
 
-def test_the_map_raster_and_the_table_agree_about_gold(mineral_run) -> None:
-    summary, out = mineral_run
-    gold = next(c for c in summary["mineral_commodities"] if c["key"] == "gold")
-    with rasterio.open(out / "mineral_prospectivity_index.tif") as src:
+def test_the_map_raster_classes_every_cell_by_the_winning_system(mineral_run) -> None:
+    from src.utils import commodities as cm
+    from src.utils.classification import ZONE_PALETTES
+
+    _, out = mineral_run
+    with rasterio.open(out / "mineral_commodity_zones.tif") as src:
+        zones = src.read(1)
+        colours = src.colormap(1)
+    with rasterio.open(out / "mineral_commodity_index.tif") as src:
         index = src.read(1).astype("float64")
 
-    # The table masks open water and built-up ground; the raster keeps them as no-data.
-    landcover = out / "mineral_prospectivity_zones.tif"
-    with rasterio.open(landcover) as src:
-        zones = src.read(1)
-    scored = index[np.isfinite(index) & (zones != 0) & (zones != 6)]
-    assert scored.size, "the index raster has no scored ground"
-    assert np.percentile(scored, 90) == pytest.approx(gold["area_top_decile"], abs=0.15)
+    allowed = {cm.ZONE_WATER, cm.ZONE_BELOW_THRESHOLD, cm.ZONE_BUILTUP, cm.ZONE_NODATA}
+    allowed |= set(cm.COMMODITY_ZONE_CODES.values())
+    assert set(np.unique(zones).tolist()) <= allowed, "the raster holds a code no legend can name"
+
+    threshold = cm.INDICATED_P90
+    for key, code in cm.COMMODITY_ZONE_CODES.items():
+        owned = zones == code
+        assert np.all(index[owned] >= threshold - 0.05), (
+            f"{key} is painted on ground whose best score is below the indicated threshold"
+        )
+    cold = zones == cm.ZONE_BELOW_THRESHOLD
+    assert np.all(index[cold] < threshold + 0.05), "cold ground took a mineral's colour"
+    for code in (cm.ZONE_WATER, cm.ZONE_BUILTUP, cm.ZONE_NODATA):
+        assert not np.any(np.isfinite(index[zones == code])), (
+            "excluded or unobserved ground was given a score"
+        )
+
+    # The file's own colour table is what desktop GIS and the browser drape paint from,
+    # so it has to be the palette the web legend mirrors, code for code.
+    for code, hex_colour in enumerate(ZONE_PALETTES["minerals"]):
+        clean = hex_colour.lstrip("#")
+        expected = tuple(int(clean[i:i + 2], 16) for i in (0, 2, 4))
+        assert tuple(colours[code][:3]) == expected, f"code {code} is painted a different colour in the file"
+
+    # A GeoTIFF colour table is RGB-only, so the drape's transparency lives in the PNG
+    # fallback and the tile lookup instead. Cold ground must not hide the imagery.
+    from PIL import Image
+
+    with Image.open(out / "minerals_overlay.png") as overlay:
+        alpha = np.asarray(overlay.convert("RGBA"))[..., 3]
+    assert np.all(alpha[zones == cm.ZONE_BELOW_THRESHOLD] == 0), "cold ground washes out the basemap"
+    assert np.all(alpha[zones == cm.ZONE_NODATA] == 0)
+    painted = alpha[zones == cm.COMMODITY_ZONE_CODES["gold"]]
+    assert painted.size == 0 or np.all(painted > 0), "a mineral zone draped transparent"
 
 
-def test_a_candidate_carries_the_index_the_map_shows_for_that_cell(mineral_run) -> None:
+def test_a_candidate_carries_the_mineral_the_map_shows_for_that_cell(mineral_run) -> None:
     from rasterio.warp import transform as transform_coords
+
+    from src.utils import commodities as cm
 
     summary, out = mineral_run
     candidates = summary["candidate_targets"]
     assert candidates, "the synthetic AOI produced no targets to check"
-    with rasterio.open(out / "mineral_prospectivity_index.tif") as src:
+    with rasterio.open(out / "mineral_commodity_index.tif") as src:
         index = src.read(1).astype("float64")
-        for candidate in candidates:
-            xs, ys = transform_coords(
-                "EPSG:4326", src.crs,
-                [candidate["longitude"]], [candidate["latitude"]],
-            )
-            row, col = src.index(xs[0], ys[0])
-            cell = index[row, col]
-            if not np.isfinite(cell):
-                continue
-            assert candidate["gold_score"] == pytest.approx(round(float(cell), 1), abs=0.15), (
-                "the candidate's gold score is not the number the map raster holds there"
-            )
+        crs = src.crs
+        index_of = src.index
+    with rasterio.open(out / "mineral_commodity_zones.tif") as zsrc:
+        zones = zsrc.read(1)
+
+    for candidate in candidates:
+        xs, ys = transform_coords("EPSG:4326", crs,
+                                  [candidate["longitude"]], [candidate["latitude"]])
+        row, col = index_of(xs[0], ys[0])
+        cell = float(index[row, col])
+        code = int(zones[row, col])
+        assert np.isfinite(cell), "a field target landed on unscored ground"
+        assert candidate["primary_commodity_score"] == pytest.approx(round(cell, 1), abs=0.15), (
+            "the candidate's headline score is not the number the map raster holds there"
+        )
+        scores = [candidate[f"{c['key']}_score"] for c in summary["mineral_commodities"]]
+        assert cell == pytest.approx(max(v for v in scores if v is not None), abs=0.15), (
+            "the map raced the systems differently from the candidate row"
+        )
+        if code == cm.ZONE_BELOW_THRESHOLD:
+            assert cell < cm.INDICATED_P90
+        else:
+            assert candidate["primary_commodity_key"] == cm.BY_ZONE_CODE[code].key
+
+
+def test_the_legend_figures_cover_the_whole_survey_area(mineral_run) -> None:
+    from src.utils import commodities as cm
+
+    summary, out = mineral_run
+    rows = summary["commodity_area_distribution"]
+    assert {row["key"] for row in rows} == set(cm.COMMODITY_ZONE_CODES), (
+        "a screened system is missing from the map's figures"
+    )
+    with rasterio.open(out / "mineral_commodity_zones.tif") as src:
+        zones = src.read(1)
+    cell_km2 = (cfg.CELL * cfg.CELL) / 1e6
+    for row in rows:
+        assert row["cells"] == int(np.count_nonzero(zones == row["code"]))
+        assert row["area_km2"] == pytest.approx(row["cells"] * cell_km2, abs=0.011)
+    # Every cell is accounted for exactly once: mineral, cold, water, built-up or void.
+    assert sum(row["cells"] for row in rows) + sum(
+        int(np.count_nonzero(zones == code))
+        for code in (cm.ZONE_WATER, cm.ZONE_BELOW_THRESHOLD, cm.ZONE_BUILTUP, cm.ZONE_NODATA)
+    ) == zones.size
 
 
 def test_the_summary_publishes_as_strict_json(mineral_run) -> None:

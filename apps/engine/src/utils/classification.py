@@ -14,6 +14,13 @@ import src.config as cfg
 import numpy as np
 from scipy.ndimage import maximum_filter
 
+from src.utils.commodities import (
+    COMMODITIES,
+    COMMODITY_ZONE_CODES,
+    ZONE_BELOW_THRESHOLD,
+    ZONE_BUILTUP,
+    ZONE_WATER,
+)
 from src.utils.raster import pixel_to_lonlat
 
 # Zone raster class domain. 255 is reserved for pixels with no usable satellite
@@ -119,12 +126,35 @@ CLASS_NAMES = {
 NODATA_HEX = "#b8b8b8"
 NODATA_RGB = tuple(184 / 255 for _ in range(3))
 
-# Ranked class colours, indexed by zone code 0-6. One table serves the GeoTIFF
+# The minerals category is not a five-step ramp: a cell takes the colour of whichever
+# mineral system scores highest there. Codes come from the catalogue, so the GeoTIFF colour
+# table, the PNG sheet and the web legend are painted from one list.
+MINERAL_ZONE_PALETTE = [
+    "#08306b",
+    *(c.color for c in COMMODITIES),
+    "#e8e8e8",
+    "#7f7f7f",
+]
+MINERAL_ZONE_LABELS = {
+    ZONE_WATER: "Water body",
+    **{COMMODITY_ZONE_CODES[c.key]: f"{c.name} ({c.symbol})" for c in COMMODITIES},
+    ZONE_BELOW_THRESHOLD: "No mineral system above threshold",
+    ZONE_BUILTUP: "Built-up (excluded)",
+}
+
+#: Cold ground is a result, not a zone to paint over the imagery. The PNG sheet shades it
+#: grey with the terrain; the draped copies leave it clear so the reader can see what is
+#: actually there and judge the screen against it. A GeoTIFF colour table is RGB-only, so
+#: this cannot ride in the palette - every surface that drapes applies it explicitly.
+MINERAL_TRANSPARENT_CODES = (ZONE_BELOW_THRESHOLD,)
+ZONE_TRANSPARENT_CODES: dict[str, tuple[int, ...]] = {"minerals": MINERAL_TRANSPARENT_CODES}
+
+# Ranked class colours, indexed by zone code. One table serves the GeoTIFF
 # colour table, the PNG overlay, and the web fallback, so a class painted in the
 # browser is the same class a desktop GIS paints from the file itself.
 ZONE_PALETTES: dict[str, list[str]] = {
     "water": ["#1f77b4", "#d73027", "#f46d43", "#fdae61", "#a6d96a", "#1a9850", "#7f7f7f"],
-    "minerals": ["#1f77b4", "#4575b4", "#74add1", "#fee090", "#f46d43", "#d73027", "#7f7f7f"],
+    "minerals": MINERAL_ZONE_PALETTE,
     "soil": ["#2166ac", "#d73027", "#fc8d59", "#fee08b", "#91cf60", "#1a9850", "#808080"],
     "hazard": ["#2166ac", "#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027", "#808080"],
 }
@@ -142,15 +172,7 @@ ZONE_LABELS: dict[str, dict[int, str]] = {
         5: "Very high potential",
         6: "Built-up (excluded)",
     },
-    "minerals": {
-        0: "Water body",
-        1: "Very low prospectivity",
-        2: "Low prospectivity",
-        3: "Moderate prospectivity",
-        4: "High prospectivity",
-        5: "Very high prospectivity",
-        6: "Built-up (excluded)",
-    },
+    "minerals": MINERAL_ZONE_LABELS,
     "soil": {
         0: "Water body",
         1: "Very low capability",
@@ -209,11 +231,13 @@ def paint_zones(
     """
     Paint a classified zone raster as (H, W, 3) float RGB.
 
-    Ranked palettes clamp out-of-range values to their extreme colour, so a 255
-    no-data cell would otherwise print as the top class. Voids are painted flat
-    gray and unobserved terrain is shaded neutrally.
+    The divisor is the palette's own length, so a five-step prospectivity ramp and a
+    twelve-class mineral catalogue both land their codes on their own colours. Ranked
+    palettes clamp out-of-range values to their extreme colour, so a 255 no-data cell
+    would otherwise print as the top class; voids are painted flat gray instead.
     """
-    rgb = np.asarray(cmap(np.clip(classes / 6.0, 0.0, 1.0))[..., :3], dtype="float32")
+    steps = max(getattr(cmap, "N", 7) - 1, 1)
+    rgb = np.asarray(cmap(np.clip(classes / steps, 0.0, 1.0))[..., :3], dtype="float32")
     rgb[classes == NODATA_CLASS] = NODATA_RGB
 
     if hillshade is not None:
@@ -336,10 +360,12 @@ def export_classified_overlay(
     classes: np.ndarray,
     path: Path,
     colors: list[str] | None = None,
+    transparent_codes: tuple[int, ...] = (),
 ) -> None:
     """Export a clean RGBA PNG overlay with 100% transparent nodata.
 
     No axes, no borders, no text labels -- pure pixel classification ready for web map draping.
+    `transparent_codes` clears classes that should leave the imagery beneath them visible.
     """
     from PIL import Image
 
@@ -352,6 +378,8 @@ def export_classified_overlay(
 
     rgba = np.zeros((classes.shape[0], classes.shape[1], 4), dtype=np.uint8)
     for code, hex_c in enumerate(colors):
+        if code in transparent_codes:
+            continue
         rgb = hex_to_rgb(hex_c)
         rgba[classes == code] = (rgb[0], rgb[1], rgb[2], 215)
 

@@ -260,6 +260,7 @@ def write_zone_pmtiles(
     name: str,
     min_zoom: int = MIN_ZOOM,
     max_zoom: int = MAX_ZOOM,
+    transparent_codes: Sequence[int] = (),
 ) -> dict:
     """Cut a classified zone raster into a single-file raster PMTiles archive.
 
@@ -268,11 +269,17 @@ def write_zone_pmtiles(
     it covers, coloured through the class lookup, and stored as PNG with
     transparent alpha wherever the ground was unobserved.
 
+    `transparent_codes` clears classes that must leave the basemap visible. The
+    source colour table cannot carry that: GDAL stores RGB only.
+
     Returns a small stats dict for the worker log.
     """
     with rasterio.open(zone_tif) as src:
         classes = src.read(1)
         lut = _colour_lut(src, ranked_fallback)
+        for code in transparent_codes:
+            if 0 <= int(code) <= 255:
+                lut[int(code), 3] = 0
         src_transform, src_crs = src.transform, src.crs
         # One warp feeds every tile: low zooms read far fewer source pixels
         # than zone-raster pixels, so cutting from the Mercator copy beats
@@ -361,7 +368,7 @@ def rasterio_open_bounds(zone_tif: Path) -> tuple[float, float, float, float]:
 
 ZONE_TIF_BY_CATEGORY: dict[str, tuple[str, str]] = {
     "water": ("groundwater_potential_zones.tif", "Groundwater potential zones"),
-    "minerals": ("mineral_prospectivity_zones.tif", "Mineral prospectivity zones"),
+    "minerals": ("mineral_commodity_zones.tif", "Dominant mineral system"),
     "soil": ("soil_capability_zones.tif", "Land capability and erosion zones"),
     "hazard": ("hazard_risk_zones.tif", "Composite hazard and safety zones"),
 }
@@ -378,7 +385,7 @@ def build_survey_tiles(categories: Sequence[str]) -> list[str]:
     """
     # Imported here so this module can be exercised without pulling the full
     # classification stack into utilities that only need its class domain.
-    from src.utils.classification import ZONE_PALETTES
+    from src.utils.classification import ZONE_PALETTES, ZONE_TRANSPARENT_CODES
 
     built: list[str] = []
     for category in categories:
@@ -390,11 +397,13 @@ def build_survey_tiles(categories: Sequence[str]) -> list[str]:
         if not zone_tif.is_file():
             continue
         palette = ZONE_PALETTES[category]
+        clear = ZONE_TRANSPARENT_CODES.get(category, ())
         web_out = zone_tif.with_name(zone_tif.stem + "_web.tif")
         tiles_out = zone_tif.with_name(zone_tif.stem + "_tiles.pmtiles")
         for out_path, render in (
             (web_out, lambda p=web_out: write_web_geotiff(zone_tif, p, palette)),
-            (tiles_out, lambda p=tiles_out: write_zone_pmtiles(zone_tif, p, palette, display)),
+            (tiles_out, lambda p=tiles_out: write_zone_pmtiles(zone_tif, p, palette, display,
+                                                              transparent_codes=clear)),
         ):
             try:
                 render()

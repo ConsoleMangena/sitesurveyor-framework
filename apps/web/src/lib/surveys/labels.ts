@@ -101,7 +101,9 @@ export const CATEGORY_EXPORTS: Record<
 };
 
 /**
- * Class colours, in zone-code order (0 water, 1 very low, …, 5 very high, 6 built-up).
+ * Class colours, in zone-code order. Water/soil/hazard run 0 water, 1 very low, …,
+ * 5 very high, 6 built-up; minerals is a catalogue instead — 0 water, 1-9 one code per
+ * mineral system, 10 below threshold, 11 built-up.
  *
  * Mirrors `ZONE_PALETTES` in `apps/engine/src/utils/classification.py`. The engine writes
  * the same table into the GeoTIFF as a colour map; this copy is the fallback for files
@@ -109,7 +111,20 @@ export const CATEGORY_EXPORTS: Record<
  */
 export const CATEGORY_RASTER_PALETTE: Record<DossierCategory, readonly string[]> = {
   water: ["#1f77b4", "#d73027", "#f46d43", "#fdae61", "#a6d96a", "#1a9850", "#7f7f7f"],
-  minerals: ["#1f77b4", "#4575b4", "#74add1", "#fee090", "#f46d43", "#d73027", "#7f7f7f"],
+  minerals: [
+    "#08306b",
+    "#e69f00",
+    "#d55e00",
+    "#0072b2",
+    "#009e73",
+    "#cc79a7",
+    "#f0e442",
+    "#6d4c41",
+    "#56b4e9",
+    "#7b5ea7",
+    "#e8e8e8",
+    "#7f7f7f",
+  ],
   soil_land: ["#2166ac", "#d73027", "#fc8d59", "#fee08b", "#91cf60", "#1a9850", "#808080"],
   hazard_safety: ["#2166ac", "#1a9850", "#91cf60", "#fee08b", "#fc8d59", "#d73027", "#808080"],
 };
@@ -132,11 +147,16 @@ export const CATEGORY_ZONE_LABELS: Record<DossierCategory, readonly string[]> = 
   ],
   minerals: [
     "Water body",
-    "Very low prospectivity",
-    "Low prospectivity",
-    "Moderate prospectivity",
-    "High prospectivity",
-    "Very high prospectivity",
+    "Gold (Au)",
+    "Iron ore (Fe)",
+    "Nickel and platinum-group elements (Ni-PGM)",
+    "Chromium (chromitite) (Cr)",
+    "Copper, zinc and lead (Cu-Zn-Pb)",
+    "Lithium (pegmatite) (Li)",
+    "Manganese (oxide / supergene) (Mn)",
+    "Bauxite (aluminium laterite) (Al)",
+    "Rare earth elements (REE) (REE)",
+    "No mineral system above threshold",
     "Built-up (excluded)",
   ],
   soil_land: [
@@ -157,6 +177,32 @@ export const CATEGORY_ZONE_LABELS: Record<DossierCategory, readonly string[]> = 
     "Very high hazard",
     "Built-up (excluded)",
   ],
+};
+
+/**
+ * The zone codes each category's legend lists, in reading order.
+ *
+ * A ramp reads best highest-first; the mineral map is a catalogue of systems, so its
+ * legend lists every mineral and then the ground that is excluded or below threshold.
+ */
+export const CATEGORY_LEGEND_CODES: Record<DossierCategory, readonly number[]> = {
+  water: [5, 4, 3, 2, 1],
+  minerals: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11],
+  soil_land: [5, 4, 3, 2, 1],
+  hazard_safety: [5, 4, 3, 2, 1],
+};
+
+/**
+ * Zone codes the drape must leave see-through.
+ *
+ * Mirrors `ZONE_TRANSPARENT_CODES` in the engine. A GTiff colour table cannot carry
+ * alpha, so the browser applies it here; the PMTiles archive already bakes it in.
+ */
+export const CATEGORY_TRANSPARENT_CODES: Record<DossierCategory, readonly number[]> = {
+  water: [],
+  minerals: [10],
+  soil_land: [],
+  hazard_safety: [],
 };
 
 /**

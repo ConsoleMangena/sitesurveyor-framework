@@ -39,6 +39,8 @@ interface SurveyMapProps {
   classifiedTilesSource?: SurveyTilesSource | null;
   /** Class colours used when the GeoTIFF has no embedded colour table. */
   rasterPalette?: readonly string[];
+  /** Class codes the drape leaves see-through: ground the survey did not find on. */
+  rasterTransparentCodes?: readonly number[];
   classifiedOpacity?: number;
   basemap: string;
   /** Outside the coverage the worker can read: the pin goes amber before the money does. */
@@ -143,6 +145,7 @@ export default function SurveyMap({
   classifiedTiffUrl,
   classifiedTilesSource,
   rasterPalette,
+  rasterTransparentCodes,
   classifiedOpacity = 0.65,
   basemap,
   outside,
@@ -217,6 +220,7 @@ export default function SurveyMap({
           bounds={bounds}
           opacity={classifiedOpacity}
           palette={rasterPalette}
+          transparentCodes={rasterTransparentCodes}
           zIndex={200}
         />
       ) : null}

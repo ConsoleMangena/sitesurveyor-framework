@@ -55,11 +55,17 @@ describe("parseSurveyResult commodity screen", () => {
             {
               key: "iron_ore", name: "Iron ore", group: "Ferro-alloy", indicated: true,
               confidence: "High", area_top_decile: 88.2, area_band: "High", target_score: 74.1,
+              symbol: "Fe", color: "#d55e00",
             },
             {
               key: "lithium", name: "Lithium (pegmatite)", group: "Battery", indicated: false,
               confidence: "Low", area_top_decile: 41, area_band: "Low", target_score: null,
+              symbol: "Li", color: "#f0e442",
             },
+          ],
+          commodity_area_distribution: [
+            { key: "iron_ore", area_km2: 5.03, share_pct: 6.5 },
+            { key: "lithium", area_km2: 0, share_pct: 0 },
           ],
           unscreenable_commodities: [
             { name: "Diamonds (kimberlite)", reason: "Too small to see", needs: "Airborne magnetics" },
@@ -71,8 +77,11 @@ describe("parseSurveyResult commodity screen", () => {
     expect(parsed?.commodities).toHaveLength(2);
     expect(parsed?.commodities[0]).toMatchObject({
       key: "iron_ore", indicated: true, areaTopDecile: 88.2, confidence: "High",
+      symbol: "Fe", color: "#d55e00", mapAreaKm2: 5.03, mapSharePct: 6.5,
     });
-    expect(parsed?.commodities[1]).toMatchObject({ key: "lithium", indicated: false });
+    expect(parsed?.commodities[1]).toMatchObject({
+      key: "lithium", indicated: false, mapAreaKm2: 0, mapSharePct: 0,
+    });
     expect(parsed?.unscreenableCommodities[0]).toMatchObject({
       name: "Diamonds (kimberlite)", needs: "Airborne magnetics",
     });

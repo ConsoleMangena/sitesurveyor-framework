@@ -80,7 +80,7 @@ python -m src.mcp_server --transport sse     # Cloud SSE transport (port 8000)
 | Category | Engine | Core Satellite Inputs | Primary Deliverables |
 |:---|:---|:---|:---|
 | **Cat 1: WATER** | [`src/engines/water.py`](src/engines/water.py) | ALOS PALSAR HV, Copernicus DEM 30m, ESA WorldCover, Sentinel-2, CHIRPS | `groundwater_potential_map.png`, `candidate_borehole_sites.csv/.geojson/.kmz`, `gwpz_index.tif` |
-| **Cat 2: MINERALS** | [`src/engines/minerals.py`](src/engines/minerals.py) | Sentinel-2 GeoMAD (SWIR/NIR/Red/Blue), ALOS PALSAR, DEM | `mineral_prospectivity_map.png`, `candidate_mineral_targets.csv/.geojson/.kmz`, `mineral_prospectivity_index.tif` |
+| **Cat 2: MINERALS** | [`src/engines/minerals.py`](src/engines/minerals.py) | Sentinel-2 GeoMAD (SWIR/NIR/Red/Blue), ALOS PALSAR, DEM | `mineral_prospectivity_map.png` (dominant-mineral sheet), `candidate_mineral_targets.csv/.geojson/.kmz`, `mineral_commodity_zones.tif`, `mineral_commodity_index.tif` |
 | **Cat 3: SOIL & LAND** | [`src/engines/soil.py`](src/engines/soil.py) | Sentinel-2 (NDVI, NDMI, BSI), Copernicus DEM, ESA WorldCover, CHIRPS | `soil_capability_map.png`, `candidate_land_zones.csv/.geojson/.kmz`, `soil_capability_index.tif` |
 | **Cat 5: HAZARD & RISK** | [`src/engines/hazard.py`](src/engines/hazard.py) | Landsat WOfS 1984-2024 water frequency, DEM slope/ponding, Sentinel-2 dry biomass fuel | `hazard_risk_map.png`, `safest_buildable_sites.csv/.geojson/.kmz`, `hazard_composite_index.tif` |
 | **WEB MAP LAYERS** | [`src/utils/webtiles.py`](src/utils/webtiles.py) | Each category's classified zone raster | `<zones>_web.tif` (north-up EPSG:4326 for the browser drape) and `<zones>_tiles.pmtiles` (single-file raster tile archive the workbench map pans/zooms at native 30 m density) |

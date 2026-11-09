@@ -8,7 +8,7 @@ import { BlockTitle } from "./BlockTitle.tsx";
 import type { SurveyRun } from "../../lib/repositories/satelliteSurveys.ts";
 import type { JobWithProject } from "../../lib/repositories/jobs.ts";
 import { SurveyStatusChip } from "../../components/surveys/SurveyStatusChip.tsx";
-import { coordText, type DossierCategory, CATEGORY_RASTER_PALETTE, CATEGORY_ZONE_LABELS } from "../../lib/surveys/labels.ts";
+import { coordText, type DossierCategory, CATEGORY_LEGEND_CODES, CATEGORY_RASTER_PALETTE, CATEGORY_ZONE_LABELS } from "../../lib/surveys/labels.ts";
 import {
   BAND_RANGES,
   BASEMAPS,
@@ -82,7 +82,7 @@ export default function ContentsPanel({
   const legendCategories = activeDossierCategory ? [activeDossierCategory] : DOSSIER_ORDER;
   const rasterCategory = activeDossierCategory ?? "water";
   const rasterPalette = CATEGORY_RASTER_PALETTE[rasterCategory];
-  const rasterLegend = [5, 4, 3, 2, 1].map((code) => ({
+  const rasterLegend = CATEGORY_LEGEND_CODES[rasterCategory].map((code) => ({
     code,
     label: CATEGORY_ZONE_LABELS[rasterCategory][code],
   }));
@@ -236,7 +236,11 @@ export default function ContentsPanel({
           {hasRaster && layers.raster !== false ? (
             <div className="mt-3 border-t border-border pt-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground block mb-1.5">
-                {rasterCategory === "hazard_safety" ? "Classified Risk" : "Classified Potential"}
+                {rasterCategory === "hazard_safety"
+                  ? "Classified Risk"
+                  : rasterCategory === "minerals"
+                    ? "Dominant mineral system"
+                    : "Classified Potential"}
               </span>
               <div className="space-y-1 text-[11px]">
                 {rasterLegend.map((entry) => (

@@ -115,6 +115,12 @@ export interface SurveyCommodity {
   areaTopDecile: number | null;
   areaBand: string;
   targetScore: number | null;
+  /** Map symbol and colour from the engine catalogue; empty on results predating it. */
+  symbol: string;
+  color: string;
+  /** Ground this system owns on the dominant-mineral map; null when not recorded. */
+  mapAreaKm2: number | null;
+  mapSharePct: number | null;
 }
 
 /** A commodity the engine deliberately does not score, and what would be needed. */
@@ -322,6 +328,16 @@ function commoditiesOf(categories: unknown): {
   if (!minerals || typeof minerals !== "object") return empty;
   const doc = minerals as Record<string, unknown>;
 
+  const areaByKey = new Map<string, Record<string, unknown>>();
+  for (const entry of Array.isArray(doc.commodity_area_distribution)
+    ? doc.commodity_area_distribution
+    : []) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const key = asText(row.key);
+    if (key) areaByKey.set(key, row);
+  }
+
   const commodities = (Array.isArray(doc.mineral_commodities) ? doc.mineral_commodities : [])
     .map((entry): SurveyCommodity | null => {
       if (!entry || typeof entry !== "object") return null;
@@ -329,6 +345,7 @@ function commoditiesOf(categories: unknown): {
       const key = asText(item.key);
       const name = asText(item.name);
       if (!key || !name) return null;
+      const owned = areaByKey.get(key);
       return {
         key,
         name,
@@ -338,6 +355,10 @@ function commoditiesOf(categories: unknown): {
         areaTopDecile: item.area_top_decile === undefined ? null : num(item.area_top_decile),
         areaBand: asText(item.area_band) ?? "Not indicated",
         targetScore: item.target_score === undefined ? null : num(item.target_score),
+        symbol: asText(item.symbol) ?? "",
+        color: asText(item.color) ?? "",
+        mapAreaKm2: owned?.area_km2 === undefined ? null : num(owned.area_km2),
+        mapSharePct: owned?.share_pct === undefined ? null : num(owned.share_pct),
       };
     })
     .filter((item): item is SurveyCommodity => item !== null);
