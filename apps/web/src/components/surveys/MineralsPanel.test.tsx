@@ -52,16 +52,8 @@ describe("MineralsPanel", () => {
     render(<MineralsPanel commodities={[iron]} unscreenable={[diamond]} />);
 
     expect(screen.getByText(/Not screened by this dataset \(1\)/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/That is not a judgement that they are absent/),
-    ).toBeInTheDocument();
     expect(screen.getByText("Diamonds (kimberlite)")).toBeInTheDocument();
     expect(screen.getByText(/Would need: Airborne magnetics/)).toBeInTheDocument();
-  });
-
-  it("states the ceiling in the panel, not only in the report", () => {
-    render(<MineralsPanel commodities={[iron]} unscreenable={[]} />);
-    expect(screen.getByText(/not grade, not tonnage/i)).toBeInTheDocument();
   });
 
   it("renders nothing for a run that screened no commodities", () => {

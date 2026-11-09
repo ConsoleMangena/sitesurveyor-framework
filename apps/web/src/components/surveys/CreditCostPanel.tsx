@@ -94,9 +94,8 @@ export default function CreditCostPanel({
       ) : loading ? (
         <p className="mt-1.5 text-[11.5px] text-muted-foreground">Pricing this survey…</p>
       ) : (
-        <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-          The price of this survey cannot be shown right now. The platform prices it from
-          the survey type and the ground covered when the job is queued.
+        <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+          Price unavailable.
         </p>
       )}
 

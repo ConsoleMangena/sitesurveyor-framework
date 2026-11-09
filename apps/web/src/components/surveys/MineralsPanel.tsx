@@ -5,12 +5,6 @@ import type {
 import { bandFor } from "../../lib/surveys/workbench.ts";
 import { BlockTitle } from "./BlockTitle.tsx";
 
-const CONFIDENCE_NOTE: Record<string, string> = {
-  High: "Orbit sees this style well",
-  Moderate: "Partly visible from orbit",
-  Low: "Structural screen only",
-};
-
 /**
  * Which minerals this ground is indicated for.
  *
@@ -36,19 +30,6 @@ export default function MineralsPanel({
       <BlockTitle count={`${indicated.length} / ${commodities.length}`}>
         Minerals indicated
       </BlockTitle>
-      <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-        Ranked by evidence strength inside this survey area only — not grade, not tonnage,
-        and not comparable between properties. A system is indicated when its top decile
-        clears the moderate band and the index actually varies across the ground.
-      </p>
-
-      {indicated.length > 0 ? (
-        <div className="mt-2 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 text-[11.5px] text-amber-900 dark:text-amber-200">
-          <span className="font-semibold">Indicated in survey area: </span>
-          {indicated.map((item) => item.name).join(" · ")}
-        </div>
-      ) : null}
-
       <div className="mt-2.5 grid gap-2">
         {[...indicated, ...rest].map((item) => (
           <CommodityRow key={item.key} item={item} />
@@ -60,9 +41,6 @@ export default function MineralsPanel({
           <summary className="cursor-pointer text-[11.5px] font-semibold text-muted-foreground">
             Not screened by this dataset ({unscreenable.length})
           </summary>
-          <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-            These were not scored. That is not a judgement that they are absent.
-          </p>
           <ul className="mt-1.5 space-y-1.5">
             {unscreenable.map((item) => (
               <li key={item.name} className="text-[11px] leading-snug">
@@ -84,7 +62,6 @@ export default function MineralsPanel({
 
 function CommodityRow({ item }: { item: SurveyCommodity }) {
   const band = bandFor(item.areaTopDecile);
-  const confidence = CONFIDENCE_NOTE[item.confidence] ?? item.confidence;
   return (
     <article
       className={`sw-accent-left rounded-lg border border-input bg-card px-2.5 py-2 ${
@@ -107,7 +84,7 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
           </p>
           <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
             {item.group ? `${item.group} · ` : ""}
-            {confidence}
+            {item.confidence}
           </p>
         </div>
         <span className={`sw-band sw-band--${band ?? "none"} shrink-0`}>

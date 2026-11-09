@@ -33,7 +33,9 @@ export default function IndicatorsPanel({
   return (
     <section className="sw-block px-4 py-3.5">
       <BlockTitle count={`${scored} / ${categoriesToShow.length}`}>Indicators</BlockTitle>
-      <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{note}</p>
+      {note ? (
+        <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{note}</p>
+      ) : null}
 
       <div aria-live="polite" className="mt-2.5 grid gap-2">
         {categoriesToShow.map((category) => (

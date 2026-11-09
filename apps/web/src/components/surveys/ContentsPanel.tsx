@@ -386,8 +386,7 @@ export default function ContentsPanel({
             </div>
           ) : runs.length === 0 ? (
             <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-              No survey has run in this workspace yet. Anything queued from this screen
-              lands here and stays readable after the tab closes.
+              No survey has run in this workspace yet.
             </p>
           ) : (
             <ul className="mt-1.5 space-y-1">

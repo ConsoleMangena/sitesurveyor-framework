@@ -24,7 +24,6 @@ import { Badge } from "@/components/ui/badge.tsx";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
@@ -48,7 +47,6 @@ import {
   DEFAULT_COMPOSITE,
   FIXED_SOURCES,
   OPTICAL_PRODUCTS,
-  imageryChip,
   productById,
   windowOptions,
   yearOptions,
@@ -268,10 +266,6 @@ export default function EarthObservationSetupForm({
   /** Whether the workspace can pay for the job as it is currently specified. */
   const affordable = canAfford(quote, balance);
 
-  function selectCategory(id: SurveyCategory) {
-    onChange({ categories: [id] });
-  }
-
   function handleProceed() {
     if (!currentJob) {
       setValidationProblems(["A job must be opened before entering the Earth Observation UI."]);
@@ -320,9 +314,6 @@ export default function EarthObservationSetupForm({
               <h1 className="text-xl font-bold tracking-tight text-foreground">
                 Earth Observation
               </h1>
-              <p className="text-xs text-muted-foreground">
-                Select an active job to open Earth Observation screening, or create a new job to start.
-              </p>
             </div>
           </div>
         </div>
@@ -374,7 +365,6 @@ export default function EarthObservationSetupForm({
 
       {validationProblems.length > 0 ? (
         <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3.5 text-xs text-destructive">
-          <p className="font-semibold mb-1">Please address the following items before proceeding:</p>
           <ul className="list-disc space-y-0.5 pl-4">
             {validationProblems.map((p) => (
               <li key={p}>{p}</li>
@@ -391,10 +381,6 @@ export default function EarthObservationSetupForm({
               <Briefcase className="size-4 text-primary" />
               Create New Job for Earth Observation
             </CardTitle>
-            <CardDescription className="text-xs">
-              Every Earth Observation session is tied to a workspace job record. The survey
-              type and the ground it covers set what the job costs in AI credits.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -449,13 +435,7 @@ export default function EarthObservationSetupForm({
 
             {/* ── The ground this job covers ─────────────────────────────── */}
             <div className="space-y-3 rounded-lg border border-border/70 bg-background/60 p-3">
-              <div>
-                <p className="text-xs font-semibold text-foreground">Area to be analysed</p>
-                <p className="text-[11.5px] text-muted-foreground">
-                  The coordinate and the extent are what the job costs. A job cannot be
-                  created without them.
-                </p>
-              </div>
+              <p className="text-xs font-semibold text-foreground">Area to be analysed</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -603,9 +583,6 @@ export default function EarthObservationSetupForm({
                     {jobs.length}
                   </Badge>
                 </div>
-                <CardDescription className="text-xs">
-                  Choose a recent job to launch or resume multi-spectral satellite screening.
-                </CardDescription>
               </div>
             </div>
 
@@ -634,11 +611,6 @@ export default function EarthObservationSetupForm({
               <Briefcase className="size-8 mx-auto text-muted-foreground/60" />
               <p className="text-xs font-medium text-foreground">
                 {filterQuery.trim() ? "No jobs match your filter." : "No jobs found in this workspace yet."}
-              </p>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                {filterQuery.trim()
-                  ? "Try clearing the search query or create a new job."
-                  : "To open the Earth Observation UI, create your first job record."}
               </p>
               <Button
                 type="button"
@@ -775,10 +747,7 @@ export default function EarthObservationSetupForm({
                   1
                 </span>
                 <div>
-                  <CardTitle className="text-base">Survey Type (Select One)</CardTitle>
-                  <CardDescription className="text-xs">
-                    Choose the domain of interest to calibrate observation models and analytical indicators.
-                  </CardDescription>
+                  <CardTitle className="text-base">Survey Type</CardTitle>
                 </div>
               </div>
             </CardHeader>
@@ -807,12 +776,9 @@ export default function EarthObservationSetupForm({
                           <Badge variant="default" className="text-[10px] uppercase font-bold tracking-wider">
                             {option.id}
                           </Badge>
-                          <span className="text-[11px] text-muted-foreground font-medium">
-                            · Category selected for this job
-                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          {meta.name} — calibrated multi-spectral indicators for {meta.noun}. Strictly configured for this job.
+                          {meta.name}
                         </p>
                       </div>
                     </div>
@@ -832,9 +798,6 @@ export default function EarthObservationSetupForm({
                   </span>
                   <div>
                     <CardTitle className="text-base">Earth Observation Data Inputs</CardTitle>
-                    <CardDescription className="text-xs">
-                      Satellite imagery and surface coverage feeds used to score the terrain.
-                    </CardDescription>
                   </div>
                 </div>
                 <Button
@@ -994,10 +957,6 @@ export default function EarthObservationSetupForm({
                 </span>
                 <div>
                   <CardTitle className="text-base">Site Coordinates & Extent</CardTitle>
-                  <CardDescription className="text-xs">
-                    Decimal-degrees target coordinate and the observation extent (AOI)
-                    the job covers. These are the inputs the credit quote is priced on.
-                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -1085,9 +1044,6 @@ export default function EarthObservationSetupForm({
                 </span>
                 <div>
                   <CardTitle className="text-base">Credit cost</CardTitle>
-                  <CardDescription className="text-xs">
-                    The survey type and the ground it covers set what this job costs.
-                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -1162,7 +1118,7 @@ export default function EarthObservationSetupForm({
         </div>
       ) : (
         <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center text-xs text-muted-foreground">
-          Select a job from Recent Jobs above or click &ldquo;Create New Job&rdquo; to configure and open Earth Observation.
+          No job selected.
         </div>
       )}
     </div>

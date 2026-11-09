@@ -43,7 +43,7 @@ export default function CandidateTable({
             {displayRows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-muted-foreground">
-                  No candidates yet. Run a survey to rank field-verification sites.
+                  No candidates yet.
                 </td>
               </tr>
             ) : (

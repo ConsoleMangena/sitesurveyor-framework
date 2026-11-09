@@ -124,12 +124,12 @@ describe("sourceText", () => {
 });
 
 describe("resultsNote", () => {
-  it("keeps the comparison warning on the survey the operator just paid for", () => {
-    expect(resultsNote(run(), "r1")).toContain("not comparable");
+  it("stays quiet about methodology on the survey the operator just paid for", () => {
+    expect(resultsNote(run(), "r1")).toBe("");
   });
 
   it("tells a reader what a run that scored nothing actually did", () => {
-    expect(resultsNote(null, null)).toContain("Indicators populate");
+    expect(resultsNote(null, null)).toBe("No survey has run in this workspace.");
     expect(resultsNote(run({ status: "surveying", active: true }), null)).toBe(
       "The worker is still scoring this area.",
     );
@@ -140,6 +140,6 @@ describe("resultsNote", () => {
     expect(resultsNote(run({ status: "cancelled" }), null)).toContain(
       "withdrawn before a worker started",
     );
-    expect(resultsNote(run(), "r2")).toContain("Run a survey for your own coordinate.");
+    expect(resultsNote(run(), "r2")).toMatch(/^Saved result from /);
   });
 });

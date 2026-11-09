@@ -135,9 +135,9 @@ export function sourceText(run: SurveyRun | null, queued: string | null): string
   return `Saved survey · ${shortStamp(run)}`;
 }
 
-/** What a score is worth, in the engine's own words rather than a softer paraphrase. */
+/** Status of the run behind the panel, in one line. Empty when a saved result stands on its own. */
 export function resultsNote(run: SurveyRun | null, queued: string | null): string {
-  if (!run) return "No survey has run in this workspace. Indicators populate when one finishes.";
+  if (!run) return "No survey has run in this workspace.";
   if (run.active) return "The worker is still scoring this area.";
   if (run.status === "failed") {
     return (
@@ -148,10 +148,8 @@ export function resultsNote(run: SurveyRun | null, queued: string | null): strin
   if (run.status === "cancelled") {
     return "This survey was withdrawn before a worker started, and its credits went back to the workspace.";
   }
-  if (run.id === queued) {
-    return "Scores are percentile ranks within this AOI, not absolute measurements. Two surveys are not comparable.";
-  }
-  return `Saved result from ${stampOf(run)}. Run a survey for your own coordinate.`;
+  if (run.id === queued) return "";
+  return `Saved result from ${stampOf(run)}.`;
 }
 
 function stampOf(run: SurveyRun): string {
