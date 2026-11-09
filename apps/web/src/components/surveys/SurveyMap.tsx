@@ -186,7 +186,6 @@ export default function SurveyMap({
       className="h-full w-full"
     >
       <TileLayer
-        key={tile.id}
         url={tile.url}
         attribution={tile.attribution}
         maxZoom={20}

@@ -85,6 +85,12 @@ export function bandFor(score: number | null | undefined): Band | null {
   return "low";
 }
 
+/** One headline figure a survey sheet states about the survey it belongs to. */
+export interface SheetSummaryRow {
+  label: string;
+  value: string;
+}
+
 /** A candidate as the map and the attribute table need it, in one shape. */
 export interface MapCandidate {
   key: string;
@@ -227,6 +233,16 @@ export interface Basemap {
   /** The swatch the Contents panel shows beside the name. */
   swatch: string;
 }
+
+/**
+ * The classified drape's z-index inside Leaflet's tile pane.
+ *
+ * Leaflet orders layers inside one pane by z-index and, at equal z-index, by the order
+ * they were added. The basemap tiles and the survey drape both sat at Leaflet's default
+ * tile z-index of 1, so swapping the basemap appended its tiles after the drape and
+ * covered the survey. The drape now claims an explicit index above the tiles.
+ */
+export const DRAPE_Z_INDEX = 200;
 
 export const BASEMAPS: Basemap[] = [
   {

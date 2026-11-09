@@ -3,6 +3,7 @@ import { useMap } from "react-leaflet";
 import type { Layer as LeafletLayer } from "leaflet";
 
 import type { SurveyTilesSource } from "../../lib/repositories/satelliteSurveys.ts";
+import { DRAPE_Z_INDEX } from "../../lib/surveys/workbench.ts";
 
 interface PmtilesOverlayProps {
   /** One archive reader wired to the deliverable-range edge function. */
@@ -87,6 +88,10 @@ export default function PmtilesOverlay({
         if (cancelled) return;
         const layer = leafletRasterLayer(archive, {
           opacity,
+          // The drape must stay above the basemap tiles: Leaflet's tile pane orders
+          // equal z-index layers by when they were added, so a basemap swap would
+          // otherwise lay its tiles over the survey.
+          zIndex: DRAPE_Z_INDEX,
           maxNativeZoom: MAX_NATIVE_ZOOM,
           minZoom: MIN_ZOOM,
           attribution: "SiteSurveyor AI · classified DE Africa coverage data",

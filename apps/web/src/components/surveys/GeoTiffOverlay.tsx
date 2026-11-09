@@ -4,6 +4,7 @@ import { ImageOverlay, useMap } from "react-leaflet";
 import type { GeoTIFFImage } from "geotiff";
 
 import type { LatLngTuple } from "../../lib/surveys/workbench.ts";
+import { DRAPE_Z_INDEX } from "../../lib/surveys/workbench.ts";
 import {
   RASTER_NODATA_CLASS,
   colorMapToRgba,
@@ -51,7 +52,7 @@ export default function GeoTiffOverlay({
   opacity,
   palette,
   transparentCodes = [],
-  zIndex = 200,
+  zIndex = DRAPE_Z_INDEX,
 }: GeoTiffOverlayProps) {
   const map = useMap();
   const layerRef = useRef<LeafletImageOverlay | null>(null);
