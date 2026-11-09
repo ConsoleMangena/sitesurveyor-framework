@@ -940,10 +940,7 @@ export default function PublicMarketPage() {
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
           <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
             <div className="max-w-xl">
-              <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
-                Equipment, people and work for surveying teams
-              </h1>
-              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+              <p className="max-w-lg text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
                 Instruments, professionals, jobs, firms and training, published by
                 working survey firms. Search the registry for a named item, or ask
                 the concierge when you only know what the job needs.
