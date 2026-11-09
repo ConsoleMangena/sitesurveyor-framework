@@ -38,6 +38,7 @@ import { useSurveyDetail, useSurveyRuns } from "../../../lib/hooks/useSatelliteS
 import { useSurveyQuote } from "../../../lib/hooks/useSurveyQuote.ts";
 import {
   CATEGORY_EXPORTS,
+  CATEGORY_LABELS,
   CATEGORY_LEGEND_CODES,
   CATEGORY_LEGEND_TITLES,
   CATEGORY_RASTER_PALETTE,
@@ -741,7 +742,7 @@ export default function SatelliteSurveyPage({
         description={
           isFullscreen
             ? undefined
-            : "Screen a coordinate for groundwater, minerals, soil capability and site safety using multi-spectral Earth Observation."
+            : "Screen a coordinate for groundwater, mineral prospectivity, soil capability and site safety using multi-spectral Earth Observation."
         }
         meta={
           openedJob
@@ -1069,7 +1070,7 @@ export default function SatelliteSurveyPage({
               }
             : null
         }
-        categoryName={jobCategory.toUpperCase()}
+        categoryName={CATEGORY_LABELS[jobDossierCategory].sheet}
         clientName={values.clientName}
         aoiBounds={surveyBounds}
         candidates={exportCandidates}

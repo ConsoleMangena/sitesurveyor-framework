@@ -100,6 +100,7 @@ type JobFilter =
   | "all"
   | "Groundwater"
   | "Minerals"
+  | "Mineral Prospectivity"
   | "Soil"
   | "Hazard"
   | "Topographical"
@@ -110,9 +111,15 @@ type JobFilter =
 
 const jobTypeIcons: Record<string, LucideIcon> = {
   Groundwater: Droplets,
+  "Groundwater & Boreholes": Droplets,
   Minerals: Pickaxe,
+  "Mineral Prospectivity": Pickaxe,
+  "Mineral Exploration & Prospectivity": Pickaxe,
   Soil: Sprout,
+  "Soil & Land Capability": Sprout,
   Hazard: ShieldAlert,
+  "Multi-Hazard & Safety": ShieldAlert,
+  "Multi-Hazard & Site Safety": ShieldAlert,
   Topographical: Mountain,
   Cadastral: MapPinned,
   Engineering: HardHat,
@@ -122,7 +129,7 @@ const jobTypeIcons: Record<string, LucideIcon> = {
 
 const JOB_TYPE_OPTIONS = [
   { value: "Groundwater", label: "Groundwater & Boreholes (Earth Observation)" },
-  { value: "Minerals", label: "Mineral Exploration & Prospectivity (Earth Observation)" },
+  { value: "Mineral Exploration & Prospectivity", label: "Mineral Exploration & Prospectivity (Earth Observation)" },
   { value: "Soil", label: "Soil & Land Capability (Earth Observation)" },
   { value: "Hazard", label: "Multi-Hazard & Site Safety (Earth Observation)" },
   { value: "Topographical", label: "Topographical Survey" },
@@ -134,9 +141,15 @@ const JOB_TYPE_OPTIONS = [
 
 const jobTypeColors: Record<string, string> = {
   Groundwater: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
+  "Groundwater & Boreholes": "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
   Minerals: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  "Mineral Prospectivity": "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  "Mineral Exploration & Prospectivity": "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   Soil: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  "Soil & Land Capability": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
   Hazard: "bg-rose-500/15 text-rose-700 dark:text-rose-400",
+  "Multi-Hazard & Safety": "bg-rose-500/15 text-rose-700 dark:text-rose-400",
+  "Multi-Hazard & Site Safety": "bg-rose-500/15 text-rose-700 dark:text-rose-400",
   Topographical: "bg-primary/10 text-primary",
   Cadastral: "bg-success/15 text-success",
   Engineering: "bg-warning/15 text-warning",
@@ -309,11 +322,21 @@ export default function JobsPage({
   };
 
   const filtered = jobs.filter((job) => {
-    if (
-      typeFilter !== "all" &&
-      (job.job_type ?? "").toLowerCase() !== typeFilter.toLowerCase()
-    )
-      return false;
+    if (typeFilter !== "all") {
+      const jt = (job.job_type ?? "").toLowerCase();
+      const tf = typeFilter.toLowerCase();
+      const matches =
+        jt === tf ||
+        ((tf === "groundwater" || tf.includes("water")) &&
+          (jt.includes("groundwater") || jt.includes("water") || jt.includes("borehole"))) ||
+        ((tf === "minerals" || tf.includes("mineral") || tf.includes("prospectivity")) &&
+          (jt.includes("mineral") || jt.includes("prospectivity") || jt.includes("gold"))) ||
+        ((tf === "soil" || tf.includes("soil")) &&
+          (jt.includes("soil") || jt.includes("land capability"))) ||
+        ((tf === "hazard" || tf.includes("hazard")) &&
+          (jt.includes("hazard") || jt.includes("safety")));
+      if (!matches) return false;
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       return [job.title, job.project_name ?? "", job.location ?? "", job.description ?? ""]
@@ -348,7 +371,7 @@ export default function JobsPage({
   const filterTabs: { label: string; value: JobFilter }[] = [
     { label: "All", value: "all" },
     { label: "Groundwater", value: "Groundwater" },
-    { label: "Minerals", value: "Minerals" },
+    { label: "Mineral Prospectivity", value: "Minerals" },
     { label: "Soil", value: "Soil" },
     { label: "Hazard", value: "Hazard" },
     { label: "Topographical", value: "Topographical" },

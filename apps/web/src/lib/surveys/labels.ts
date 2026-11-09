@@ -21,12 +21,32 @@ export type DossierCategory = "water" | "minerals" | "soil_land" | "hazard_safet
 
 export const CATEGORY_LABELS: Record<
   DossierCategory,
-  { name: string; short: string; noun: string }
+  { name: string; short: string; noun: string; sheet: string }
 > = {
-  water: { name: "Groundwater", short: "Water", noun: "borehole targets" },
-  minerals: { name: "Mineral exploration & prospectivity", short: "Minerals", noun: "exploration targets" },
-  soil_land: { name: "Soil & land capability", short: "Soil", noun: "land zones" },
-  hazard_safety: { name: "Hazard & site safety", short: "Hazard", noun: "safe build sites" },
+  water: {
+    name: "Groundwater",
+    short: "Water",
+    noun: "borehole targets",
+    sheet: "WATER",
+  },
+  minerals: {
+    name: "Mineral exploration & prospectivity",
+    short: "Mineral Prospectivity",
+    noun: "exploration targets",
+    sheet: "MINERAL PROSPECTIVITY",
+  },
+  soil_land: {
+    name: "Soil & land capability",
+    short: "Soil",
+    noun: "land zones",
+    sheet: "SOIL & LAND",
+  },
+  hazard_safety: {
+    name: "Hazard & site safety",
+    short: "Hazard",
+    noun: "safe build sites",
+    sheet: "HAZARD & SAFETY",
+  },
 };
 
 /**

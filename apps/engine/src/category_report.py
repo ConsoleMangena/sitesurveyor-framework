@@ -187,7 +187,7 @@ WATER = Category(
 )
 
 MINERALS = Category(
-    key="minerals", slug="minerals", name="Mineral Exploration & Prospectivity", short="Minerals",
+    key="minerals", slug="minerals", name="Mineral Exploration & Prospectivity", short="Mineral Prospectivity",
     hue="#f59e0b", accent="#a16207", accent_dark="#eab44a",
     summary_file="mineral_summary.json", candidates_key="candidate_targets",
     candidate_noun="Target",

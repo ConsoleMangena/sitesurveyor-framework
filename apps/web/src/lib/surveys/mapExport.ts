@@ -1463,8 +1463,11 @@ const SHEET2_TARGET_SCALE_MAX = 2;
  */
 const DOMAIN_LABELS: Record<string, string> = {
   water: "WATER",
-  minerals: "MINERALS",
-  soil: "SOIL",
+  minerals: "MINERAL PROSPECTIVITY",
+  prospectivity: "MINERAL PROSPECTIVITY",
+  "mineral prospectivity": "MINERAL PROSPECTIVITY",
+  "mineral exploration": "MINERAL PROSPECTIVITY",
+  soil: "SOIL & LAND",
   soil_land: "SOIL & LAND",
   hazard: "HAZARD",
   hazard_safety: "HAZARD & SAFETY",

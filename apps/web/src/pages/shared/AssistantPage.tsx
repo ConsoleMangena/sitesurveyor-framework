@@ -75,7 +75,7 @@ const ASSISTANT_CAPABILITIES = [
   {
     label: "Earth Observation",
     detail:
-      "Runs single-domain satellite surveys (groundwater & boreholes, minerals, hazard risk, or soil capability) with upfront credit quotes and active job locks.",
+      "Runs single-domain satellite surveys (groundwater & boreholes, mineral prospectivity, hazard risk, or soil capability) with upfront credit quotes and active job locks.",
   },
 
   {

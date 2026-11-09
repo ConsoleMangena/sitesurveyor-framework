@@ -28,7 +28,7 @@ export default function MineralsPanel({
   return (
     <section className="sw-block px-4 py-3.5">
       <BlockTitle count={`${indicated.length} / ${commodities.length}`}>
-        Minerals indicated
+        Mineral systems indicated
       </BlockTitle>
       <div className="mt-2.5 grid gap-2">
         {[...indicated, ...rest].map((item) => (
