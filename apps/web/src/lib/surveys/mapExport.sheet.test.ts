@@ -357,6 +357,21 @@ describe("survey sheet layout", () => {
     expect(texts.some((text) => text.includes("_"))).toBe(false);
   });
 
+  it("prints MINERAL PROSPECTIVITY as the domain and title name on the exported sheet", async () => {
+    const { marks, secondMarks } = await render("minerals");
+    const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
+    const secondTexts = secondMarks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
+
+    // Survey domain metadata on Sheet 1
+    expect(texts).toContain("MINERAL PROSPECTIVITY");
+    // Never prints the raw key or legacy name
+    expect(texts.some((text) => text.includes("MINERALS"))).toBe(false);
+
+    // Sheet 2 title and domain subtitle
+    expect(secondTexts.some((text) => text.includes("MINERAL PROSPECTIVITY"))).toBe(true);
+    expect(secondTexts.some((text) => text.includes("MINERALS"))).toBe(false);
+  });
+
   it("carries the survey record on the sheet behind the map", async () => {
     const { secondMarks } = await render("minerals");
     const texts = secondMarks.map((mark) => mark.text).filter((text): text is string => text !== undefined);

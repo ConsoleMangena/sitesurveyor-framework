@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Download, FileText, Loader, X } from "lucide-react";
 import type { Map as LeafletMap } from "leaflet";
 
@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 import type { MapViewInfo } from "./SurveyMap.tsx";
 import {
+  domainLabel,
   exportMapAsPdf,
+  normalizePdfTitle,
   type ClassifiedTilesOption,
   type MapExportOptions,
   type SheetLegendItem,
@@ -115,9 +117,13 @@ export default function MapExportModal({
   classifiedTiles,
   basemap,
 }: MapExportModalProps) {
-  const [title, setTitle] = useState(
-    `${categoryName.toUpperCase()} — ${clientName || "SITE AREA"}`
-  );
+  const domain = domainLabel(categoryName);
+  const defaultTitle = `${domain} — ${clientName || "SITE AREA"}`;
+  const [title, setTitle] = useState(defaultTitle);
+
+  useEffect(() => {
+    setTitle(defaultTitle);
+  }, [defaultTitle]);
   const [includeLegend, setIncludeLegend] = useState(true);
   const [includeHeader, setIncludeHeader] = useState(true);
   const [includeNorthArrow, setIncludeNorthArrow] = useState(true);
@@ -161,9 +167,9 @@ export default function MapExportModal({
       const timestamp = new Date().toISOString().slice(0, 10);
 
       const options: MapExportOptions = {
-        title,
+        title: normalizePdfTitle(title),
         client: clientName,
-        categoryName,
+        categoryName: domain,
         coords: viewInfo.coords || `${target.latitude.toFixed(4)}°, ${target.longitude.toFixed(4)}°`,
         includeLegend,
         includeHeader,

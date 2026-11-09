@@ -1461,7 +1461,7 @@ const SHEET2_TARGET_SCALE_MAX = 2;
  * the sheet takes whichever name it is given and prints it in words: a reader must
  * not meet an underscore on a printed sheet.
  */
-const DOMAIN_LABELS: Record<string, string> = {
+export const DOMAIN_LABELS: Record<string, string> = {
   water: "WATER",
   minerals: "MINERAL PROSPECTIVITY",
   prospectivity: "MINERAL PROSPECTIVITY",
@@ -1473,9 +1473,23 @@ const DOMAIN_LABELS: Record<string, string> = {
   hazard_safety: "HAZARD & SAFETY",
 };
 
-function domainLabel(name: string): string {
+export function domainLabel(name: string | undefined): string {
+  if (!name) return "EARTH OBSERVATION";
   const clean = name.trim();
   return DOMAIN_LABELS[clean.toLowerCase()] ?? clean.replace(/_/g, " ").toUpperCase();
+}
+
+/**
+ * Normalizes title block headings to professional domain nomenclature.
+ * Prevents standalone or prefixed "MINERALS" from appearing as the domain name on exported sheets.
+ */
+export function normalizePdfTitle(title: string | undefined): string {
+  if (!title) return "MINERAL PROSPECTIVITY — SITE AREA";
+  let clean = title.trim();
+  if (/^minerals\b/i.test(clean)) {
+    clean = clean.replace(/^minerals\b/i, "MINERAL PROSPECTIVITY");
+  }
+  return clean;
 }
 
 /**
@@ -1698,7 +1712,8 @@ function drawPanel(
   y += 11;
 
   if (data.includeHeader) {
-    const titleLines = wrapText(ctx, data.title, 12, innerW, ctx.bold, 3);
+    const cleanTitle = normalizePdfTitle(data.title);
+    const titleLines = wrapText(ctx, cleanTitle, 12, innerW, ctx.bold, 3);
     for (const line of titleLines) {
       drawTextLine(ctx, line, innerX, y, 12, { font: ctx.bold });
       y += 14;
@@ -1961,7 +1976,8 @@ function drawLegendSheet(
   });
 
   y += 34;
-  const titleLines = wrapText(sheet, data.title, 16, SHEET.widthPt - margin * 2, ctx.bold, 2);
+  const cleanTitle = normalizePdfTitle(data.title);
+  const titleLines = wrapText(sheet, cleanTitle, 16, SHEET.widthPt - margin * 2, ctx.bold, 2);
   for (const line of titleLines) {
     drawTextLine(sheet, line, leftX, y, 16, { font: ctx.bold });
     y += 19;
@@ -2969,11 +2985,16 @@ export async function exportMapAsPdf(
         } · X=Easting, Y=Northing (m)`
       : "WGS 84 · geographic (lat/lon)";
 
+  const domain = domainLabel(options.categoryName);
+  const cleanTitle = normalizePdfTitle(
+    options.title || `${domain} — ${options.client || "SITE AREA"}`,
+  );
+
   const panelData: PanelData = {
     includeHeader: options.includeHeader !== false,
-    title: options.title || "Earth Observation Survey Sheet",
+    title: cleanTitle,
     client: options.client || "Site Survey",
-    categoryName: options.categoryName || "Earth Observation",
+    categoryName: domain,
     coords: options.coords || "—",
     coverageText: `${formatMeters(compose.groundWidthM)} E-W x ${formatMeters(
       compose.groundHeightM,
@@ -3011,7 +3032,7 @@ export async function exportMapAsPdf(
   // had no room beside the map.
   drawSurveySheets(pdf, ctx, panelRect, panelData);
 
-  pdf.setTitle(safeText(options.title || "Earth Observation Survey Sheet"));
+  pdf.setTitle(safeText(cleanTitle));
   pdf.setAuthor("SiteSurveyor");
   pdf.setSubject("Earth Observation Map Sheet");
   pdf.setCreator("SiteSurveyor");
