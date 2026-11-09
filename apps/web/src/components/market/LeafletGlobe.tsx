@@ -9,7 +9,7 @@ import {
 } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { RotateCcw, X } from "lucide-react";
+import { Minus, Move, Plus, RotateCcw, X } from "lucide-react";
 import { Button } from "../ui/button.tsx";
 import {
   BASEMAP_ATTRIBUTION,
@@ -159,6 +159,15 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
           const base = matched
             ? { radius: 6.5, weight: 1.8, opacity: 1, fillOpacity: 0.85 }
             : { radius: 5, weight: 1.2, opacity: 0.35, fillOpacity: 0.2 };
+          const halo = L.circleMarker([dot.lat, dot.lng], {
+            radius: base.radius * 2.2,
+            color: MARKET_DOT_COLORS[dot.kind],
+            weight: 0,
+            fillColor: MARKET_DOT_COLORS[dot.kind],
+            fillOpacity: 0.16,
+          });
+          halo.addTo(layer);
+
           const marker = L.circleMarker([dot.lat, dot.lng], {
             ...base,
             fillColor: MARKET_DOT_COLORS[dot.kind],
@@ -169,12 +178,17 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
           const location = escapeHtml(dot.location);
           marker.bindTooltip(
             `<div style="font-family: inherit; font-size: 12px; line-height: 1.35; padding: 2px;">
-              <div style="font-weight: 650; color: #111827;">${name}</div>
-              <div style="font-size: 11px; color: #6b7280; text-transform: capitalize; margin-top: 2px;">
+              <div style="font-weight: 650; color: var(--foreground);">${name}</div>
+              <div style="font-size: 11px; color: var(--muted-foreground); text-transform: capitalize; margin-top: 2px;">
                 ${dot.kind}${location ? ` · ${location}` : ""}
               </div>
             </div>`,
-            { direction: "top", offset: [0, -7], opacity: 0.96 },
+            {
+              direction: "top",
+              offset: [0, -7],
+              opacity: 0.96,
+              className: "market-tooltip-shell",
+            },
           );
 
           const hover = matched
@@ -290,8 +304,6 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
         noWrap: false,
       }).addTo(map);
 
-      L.control.zoom({ position: "bottomright" }).addTo(map);
-
       markerLayerRef.current = L.layerGroup().addTo(map);
       map.on("zoomend", drawMarkers);
       map.on("movestart", () => setOpenCluster(null));
@@ -369,6 +381,12 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
       }),
       [],
     );
+
+    const zoomBy = useCallback((delta: number) => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.setZoom(map.getZoom() + delta);
+    }, []);
 
     const toggleKind = (kind: MarketDotKind) => {
       setHiddenKinds((previous) => {
@@ -470,7 +488,32 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
             </div>
 
             {/* Map Controls (top-right) */}
-            <div className="pointer-events-auto absolute right-3 top-3 sm:right-6 sm:top-6">
+            <div className="pointer-events-auto absolute right-3 top-3 flex flex-col items-end gap-1.5 sm:right-6 sm:top-6">
+              <div className="flex flex-col overflow-hidden rounded-xl border border-border/80 bg-background/92 shadow-sm backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={() => zoomBy(1)}
+                  title="Zoom in"
+                  aria-label="Zoom in"
+                  className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                </button>
+                <span className="h-px w-full bg-border/70" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => zoomBy(-1)}
+                  title="Zoom out"
+                  aria-label="Zoom out"
+                  className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                >
+                  <Minus className="size-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            {/* Map Controls (bottom-right) */}
+            <div className="pointer-events-auto absolute bottom-8 right-3 z-10 sm:bottom-6 sm:right-6">
               <button
                 type="button"
                 onClick={() => {
@@ -483,6 +526,14 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                 <RotateCcw className="size-3 text-muted-foreground" />
                 Fit pins
               </button>
+            </div>
+
+            {/* Drag hint (mobile) */}
+            <div className="pointer-events-auto absolute bottom-8 left-3 z-10 sm:hidden">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/88 px-2.5 py-1 text-micro font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
+                <Move className="size-3" aria-hidden="true" />
+                Drag to pan · scroll to zoom
+              </span>
             </div>
 
             {/* Cluster contents, for pins stacked on the same coordinate */}

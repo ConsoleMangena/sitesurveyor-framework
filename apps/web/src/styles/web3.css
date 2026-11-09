@@ -771,30 +771,37 @@
   /* ── Transport map markers & pins ─────────────────────────────── */
 
   .leaflet-container .transport-pin {
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
     background: transparent !important;
     border: 0 !important;
   }
 
   .transport-vehicle-pin {
     position: relative;
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
+    padding-bottom: 6px;
     cursor: pointer;
+    transform-origin: 50% 100%;
     transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .transport-vehicle-pin:hover {
-    transform: scale(1.1);
+    transform: scale(1.08);
     z-index: 999;
   }
 
   .transport-vehicle-pin.is-selected {
-    transform: scale(1.15);
+    transform: scale(1.14);
     z-index: 1000;
   }
 
   .transport-vehicle-bubble {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -802,24 +809,72 @@
     border-radius: 9999px;
     background: var(--background);
     border: 2px solid var(--tier-dot, var(--border));
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2), 0 1px 3px rgba(15, 23, 42, 0.1);
+    box-shadow: 0 5px 16px rgba(15, 23, 42, 0.2), 0 1px 3px rgba(15, 23, 42, 0.1);
     transition: box-shadow 0.18s ease, border-color 0.18s ease;
   }
 
+  /* A small rotated square turns the pill into a proper map pin. */
+  .transport-vehicle-bubble::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    width: 8px;
+    height: 8px;
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 1px;
+    background: var(--background);
+    border-right: 2px solid var(--tier-dot, var(--border));
+    border-bottom: 2px solid var(--tier-dot, var(--border));
+    transition: border-color 0.18s ease;
+  }
+
   .transport-vehicle-pin.is-selected .transport-vehicle-bubble {
-    box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.3), 0 8px 24px rgba(15, 23, 42, 0.28);
     border-color: var(--primary);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent),
+      0 10px 26px rgba(15, 23, 42, 0.28);
+  }
+
+  .transport-vehicle-pin.is-selected .transport-vehicle-bubble::after {
+    border-color: var(--primary);
+  }
+
+  .transport-vehicle-pin.is-selected .transport-vehicle-bubble::before {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 9999px;
+    border: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    pointer-events: none;
+    animation: transport-pulse 1.8s infinite cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+
+  @keyframes transport-pulse {
+    0% {
+      transform: scale(0.9);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1.45);
+      opacity: 0;
+    }
   }
 
   .transport-vehicle-icon {
     display: grid;
     place-items: center;
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     border-radius: 9999px;
-    background: color-mix(in srgb, var(--tier-dot) 16%, transparent);
+    background: color-mix(in srgb, var(--tier-dot) 15%, transparent);
     color: var(--tier-dot);
     flex-shrink: 0;
+  }
+
+  .transport-vehicle-glyph {
+    width: 16px;
+    height: 16px;
   }
 
   .transport-vehicle-eta {
@@ -832,25 +887,11 @@
     white-space: nowrap;
   }
 
-  .transport-pulse-ring {
-    position: absolute;
-    inset: -6px;
-    border-radius: 9999px;
-    border: 2px solid var(--tier-dot, var(--primary));
-    opacity: 0.8;
-    pointer-events: none;
-    animation: transport-pulse 1.8s infinite cubic-bezier(0.2, 0.8, 0.4, 1);
-  }
-
-  @keyframes transport-pulse {
-    0% {
-      transform: scale(0.85);
-      opacity: 0.9;
-    }
-    100% {
-      transform: scale(1.6);
-      opacity: 0;
-    }
+  .transport-vehicle-eta-unit {
+    margin-left: 1px;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--muted-foreground);
   }
 
   .transport-waypoint-container {
@@ -860,6 +901,7 @@
     align-items: center;
     cursor: grab;
     user-select: none;
+    filter: drop-shadow(0 5px 10px rgba(15, 23, 42, 0.2));
   }
 
   .transport-waypoint-container:active {
@@ -869,35 +911,45 @@
   .transport-waypoint-tag {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 7px;
+    gap: 5px;
+    padding: 3px 9px;
     border-radius: 9999px;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     background: var(--background);
     color: var(--foreground);
-    border: 1px solid var(--border);
-    margin-bottom: 2px;
+    border: 1px solid
+      color-mix(in srgb, var(--waypoint-color, var(--border)) 32%, var(--border));
+    margin-bottom: 3px;
     white-space: nowrap;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.16);
+  }
+
+  .transport-waypoint-tag-dot {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: var(--waypoint-color, var(--primary));
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--waypoint-color, var(--primary)) 18%, transparent);
   }
 
   .transport-waypoint-pin {
     display: grid;
     place-items: center;
     position: relative;
-    filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.28));
   }
 
   .transport-radar-ring {
     position: absolute;
-    bottom: -6px;
+    bottom: -4px;
     left: 50%;
     transform: translateX(-50%);
-    width: 28px;
-    height: 12px;
+    width: 30px;
+    height: 11px;
     border-radius: 50%;
     background: radial-gradient(ellipse at center, var(--ring-color, #059669) 0%, transparent 70%);
     opacity: 0.7;
@@ -916,12 +968,173 @@
     }
   }
 
+  /* ── Fleet cluster callout (national zoom) ───────────────────── */
+
+  .transport-fleet-cluster {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 5px;
+    border-radius: 9999px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.08);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .transport-fleet-cluster:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(15, 23, 42, 0.08);
+  }
+
+  .transport-fleet-cluster::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 8px;
+    height: 8px;
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 1px;
+    background: var(--background);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .transport-fleet-cluster-count {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9999px;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+  }
+
+  .transport-fleet-cluster-copy {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  .transport-fleet-cluster-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--foreground);
+  }
+
+  .transport-fleet-cluster-title-compact {
+    display: none;
+  }
+
+  .transport-fleet-cluster-meta {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 640px) {
+    .transport-fleet-cluster {
+      gap: 6px;
+      padding: 4px 10px 4px 4px;
+    }
+
+    .transport-fleet-cluster-count {
+      width: 26px;
+      height: 26px;
+      font-size: 11px;
+    }
+
+    .transport-fleet-cluster-title {
+      font-size: 10px;
+    }
+
+    .transport-fleet-cluster-title-full {
+      display: none;
+    }
+
+    .transport-fleet-cluster-title-compact {
+      display: inline;
+    }
+
+    .transport-fleet-cluster-meta {
+      display: none;
+    }
+  }
+
+  /* ── Route line motion ───────────────────────────────────────── */
+
+  .transport-route-line {
+    animation: transport-route-dash 2.6s linear infinite;
+  }
+
+  @keyframes transport-route-dash {
+    to {
+      stroke-dashoffset: -44;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .transport-route-line,
+    .transport-radar-ring,
+    .transport-vehicle-pin.is-selected .transport-vehicle-bubble::before {
+      animation: none;
+    }
+  }
+
   .transport-tooltip {
     font-family: inherit;
     font-size: 12px;
     line-height: 1.35;
-    padding: 4px;
-    min-width: 170px;
+    padding: 9px 11px;
+    min-width: 180px;
+  }
+
+  .leaflet-tooltip.transport-tooltip-shell {
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+  }
+
+  .leaflet-tooltip.transport-tooltip-shell::before {
+    border-top-color: var(--background);
+  }
+
+  .leaflet-tooltip.market-tooltip-shell {
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+  }
+
+  .leaflet-tooltip.market-tooltip-shell::before {
+    border-top-color: var(--background);
+  }
+
+  .leaflet-container .leaflet-popup-content-wrapper {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+  }
+
+  .leaflet-container .leaflet-popup-tip {
+    border: 1px solid var(--border);
+    background: var(--background);
   }
 
   @media (max-width: 540px) {

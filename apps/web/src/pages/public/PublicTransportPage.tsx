@@ -5,10 +5,14 @@ import {
   IconArrowsExchange,
   IconBuildingStore,
   IconChevronDown,
+  IconClock,
   IconCrosshair,
   IconCurrentLocation,
   IconHistory,
+  IconLayoutGrid,
   IconMapPin,
+  IconMapPins,
+  IconRoad,
   IconRoute,
   IconSearch,
   IconSettings,
@@ -376,27 +380,40 @@ export default function PublicTransportPage() {
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
           <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
             <div className="max-w-xl">
-              <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-micro font-semibold uppercase tracking-[0.14em] text-primary">
+                <IconSteeringWheel className="size-3.5" aria-hidden="true" />
+                Field vehicle hire
+              </span>
+              <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
                 Hire a vehicle for a survey run
               </h1>
-              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-                Enter pickup and destination coordinates and this page prices the
-                road distance against a sample fleet. It is a planning preview: no
-                operator is contacted, nothing is charged, and bookings last only
-                for this tab.
-              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background px-2.5 py-1 text-micro font-semibold text-muted-foreground">
+                  <IconCurrentLocation className="size-3.5 text-success" aria-hidden="true" />
+                  GPS pickup
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background px-2.5 py-1 text-micro font-semibold text-muted-foreground">
+                  <IconRoute className="size-3.5 text-primary" aria-hidden="true" />
+                  Road-distance fares
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background px-2.5 py-1 text-micro font-semibold text-muted-foreground">
+                  <IconTruck className="size-3.5 text-info" aria-hidden="true" />
+                  {TIER_IDS.length} vehicle classes
+                </span>
+              </div>
+
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <button type="button" onClick={scrollToFleet} className="web3-btn gap-1.5">
                   Browse the sample fleet
                   <IconChevronDown className="size-4" aria-hidden="true" />
                 </button>
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  Fares priced by road distance
+                  <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
+                  {baseFleet.length} sample vehicles nearby
                 </span>
               </div>
-              <p className="mt-4 text-sm font-medium text-muted-foreground">
-                {baseFleet.length} sample vehicles around this pickup — illustrative
-                only, not live availability
+              <p className="mt-3 text-micro font-medium text-muted-foreground">
+                Illustrative only — not live availability.
               </p>
             </div>
 
@@ -419,7 +436,8 @@ export default function PublicTransportPage() {
                 <button
                   type="button"
                   onClick={handleSwapCoordinates}
-                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                  title="Swap pickup and destination"
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
                 >
                   <IconArrowsExchange className="size-3.5" aria-hidden="true" />
                   Swap
@@ -429,9 +447,13 @@ export default function PublicTransportPage() {
               <div className="flex-1 space-y-4 px-4 py-4 sm:px-5">
                 <div className="flex items-start gap-3">
                   <div className="mt-1.5 flex shrink-0 flex-col items-center">
-                    <span className="size-2.5 rounded-full bg-success ring-4 ring-success/15" aria-hidden="true" />
-                    <span className="my-1 h-16 w-px border-l border-dashed border-border" aria-hidden="true" />
-                    <span className="size-2.5 rounded-xs bg-primary ring-4 ring-primary/15" aria-hidden="true" />
+                    <span className="flex size-6 items-center justify-center rounded-full bg-success/12 text-[10px] font-bold text-success ring-1 ring-success/25" aria-hidden="true">
+                      A
+                    </span>
+                    <span className="my-1.5 h-14 w-px border-l border-dashed border-border" aria-hidden="true" />
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/12 text-[10px] font-bold text-primary ring-1 ring-primary/25" aria-hidden="true">
+                      B
+                    </span>
                   </div>
 
                   <div className="min-w-0 flex-1 space-y-4">
@@ -467,28 +489,38 @@ export default function PublicTransportPage() {
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          aria-label="Pickup latitude"
-                          value={pickup.lat}
-                          onChange={(event) => {
-                            const value = Number.parseFloat(event.target.value);
-                            if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lat: value }));
-                          }}
-                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
-                        />
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          aria-label="Pickup longitude"
-                          value={pickup.lng}
-                          onChange={(event) => {
-                            const value = Number.parseFloat(event.target.value);
-                            if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lng: value }));
-                          }}
-                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Lat
+                          </span>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            aria-label="Pickup latitude"
+                            value={pickup.lat}
+                            onChange={(event) => {
+                              const value = Number.parseFloat(event.target.value);
+                              if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lat: value }));
+                            }}
+                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
+                          />
+                        </div>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Lng
+                          </span>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            aria-label="Pickup longitude"
+                            value={pickup.lng}
+                            onChange={(event) => {
+                              const value = Number.parseFloat(event.target.value);
+                              if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lng: value }));
+                            }}
+                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
+                          />
+                        </div>
                       </div>
                       <p className="truncate text-micro text-muted-foreground">{pickup.label}</p>
                     </div>
@@ -514,28 +546,38 @@ export default function PublicTransportPage() {
                         </button>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          aria-label="Destination latitude"
-                          value={dropoff.lat}
-                          onChange={(event) => {
-                            const value = Number.parseFloat(event.target.value);
-                            if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lat: value }));
-                          }}
-                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
-                        />
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          aria-label="Destination longitude"
-                          value={dropoff.lng}
-                          onChange={(event) => {
-                            const value = Number.parseFloat(event.target.value);
-                            if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lng: value }));
-                          }}
-                          className="h-10 rounded-xl border-border/80 bg-background font-mono text-sm tabular-nums shadow-none"
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Lat
+                          </span>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            aria-label="Destination latitude"
+                            value={dropoff.lat}
+                            onChange={(event) => {
+                              const value = Number.parseFloat(event.target.value);
+                              if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lat: value }));
+                            }}
+                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
+                          />
+                        </div>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Lng
+                          </span>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            aria-label="Destination longitude"
+                            value={dropoff.lng}
+                            onChange={(event) => {
+                              const value = Number.parseFloat(event.target.value);
+                              if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lng: value }));
+                            }}
+                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
+                          />
+                        </div>
                       </div>
                       <p className="truncate text-micro text-muted-foreground">{dropoff.label}</p>
                     </div>
@@ -552,7 +594,10 @@ export default function PublicTransportPage() {
                 ) : null}
 
                 <div className="space-y-2 border-t border-border/70 pt-3">
-                  <p className="text-xs font-semibold text-foreground">Survey baselines</p>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <IconMapPins className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    Survey baselines
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {SURVEY_GPS_PRESETS.slice(0, 6).map((preset) => (
                       <button
@@ -576,17 +621,26 @@ export default function PublicTransportPage() {
 
               <div className="web3-ticker shrink-0 border-t border-border/80">
                 <div className="web3-ticker-cell">
-                  <span className="web3-ticker-label">Road distance</span>
+                  <span className="web3-ticker-label">
+                    <IconRoad className="size-3.5" aria-hidden="true" />
+                    Road distance
+                  </span>
                   <span className="web3-ticker-value">{distanceKm.toLocaleString()} km</span>
                 </div>
                 <div className="web3-ticker-cell">
-                  <span className="web3-ticker-label">Drive time</span>
+                  <span className="web3-ticker-label">
+                    <IconClock className="size-3.5" aria-hidden="true" />
+                    Drive time
+                  </span>
                   <span className="web3-ticker-value">{formatDriveDuration(durationMinutes)}</span>
                 </div>
                 <div className="web3-ticker-cell">
-                  <span className="web3-ticker-label">Dispatch</span>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-success">
+                  <span className="web3-ticker-label">
                     <IconSparkles className="size-3.5" aria-hidden="true" />
+                    Dispatch
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-success">
+                    <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
                     Fleet ready
                   </span>
                 </div>
@@ -606,12 +660,13 @@ export default function PublicTransportPage() {
                 <div>
                   <h2 className="market-map-title text-foreground">Route and sample fleet</h2>
                   <p className="text-micro text-muted-foreground">
-                    Drag a marker or click the map to move the route
+                    Sample availability along the route
                   </p>
                 </div>
               </div>
-              <span className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
-                {filteredFleet.length} vehicles mapped
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-success/20 bg-success/8 px-2.5 py-1 text-micro font-semibold text-success">
+                <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
+                {filteredFleet.length} nearby
               </span>
             </div>
 
@@ -625,13 +680,25 @@ export default function PublicTransportPage() {
                 activePinMode={activePinMode}
                 onSelectVehicle={handleSelectVehicle}
                 onCoordinatesChange={handleCoordinatesChange}
-                className="h-[360px] sm:h-[440px] lg:h-full lg:min-h-[500px]"
+                className="h-[400px] sm:h-[460px] lg:h-full lg:min-h-[500px]"
               />
             </div>
 
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground sm:px-5">
-              <span>Two-way map and fleet discovery</span>
-              <span className="shrink-0 font-mono tabular-nums">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground sm:px-5">
+              <span className="hidden items-center gap-2 sm:flex">
+                <span className="font-medium text-muted-foreground">Fleet mix</span>
+                {TIER_IDS.map((tierId) => (
+                  <span key={tierId} className="inline-flex items-center gap-1">
+                    <span
+                      className="size-1.5 rounded-full"
+                      style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
+                      aria-hidden="true"
+                    />
+                    {VEHICLE_TIERS[tierId].shortName}
+                  </span>
+                ))}
+              </span>
+              <span className="font-mono tabular-nums">
                 {distanceKm.toLocaleString()} km · {formatDriveDuration(durationMinutes)}
               </span>
             </div>
@@ -640,11 +707,24 @@ export default function PublicTransportPage() {
 
         <section ref={fleetRef} className="market-registry mt-10 scroll-mt-16 sm:mt-12">
           <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-11 sm:px-6 sm:py-14">
-            <div className="max-w-2xl">
-              <h2 className="market-section-title text-balance text-foreground">Browse the fleet</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-                Every fare is recalculated for your route. Pick a class, or search to see every match in one list.
-              </p>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="max-w-2xl">
+                <span className="inline-flex items-center gap-1.5 text-micro font-semibold uppercase tracking-[0.14em] text-primary">
+                  <IconTruck className="size-3.5" aria-hidden="true" />
+                  Fleet registry
+                </span>
+                <h2 className="market-section-title mt-2 text-balance text-foreground">
+                  Browse the fleet
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+                  Every fare is recalculated for your route. Pick a class, or search to
+                  see every match in one list.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+                {baseFleet.length} vehicles · {TIER_IDS.length} classes
+              </span>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-background shadow-[0_1px_2px_rgba(15,23,20,0.05)]">
@@ -795,41 +875,45 @@ export default function PublicTransportPage() {
                   aria-pressed={selectedTier === "all"}
                   onClick={() => setSelectedTier("all")}
                   className={cn(
-                    "shrink-0 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm font-medium transition-colors sm:px-4",
+                    "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm font-medium transition-colors sm:px-4",
                     selectedTier === "all"
                       ? "border-primary text-foreground"
                       : "border-transparent text-muted-foreground hover:text-foreground",
                   )}
                 >
+                  <IconLayoutGrid className="size-4 shrink-0" aria-hidden="true" />
                   Everything
-                  <span className="ml-1.5 font-mono text-micro tabular-nums text-muted-foreground">
+                  <span className="font-mono text-micro tabular-nums text-muted-foreground">
                     {tierCounts.all}
                   </span>
                 </button>
-                {TIER_IDS.map((tierId) => (
-                  <button
-                    key={tierId}
-                    type="button"
-                    aria-pressed={selectedTier === tierId}
-                    onClick={() => setSelectedTier(tierId)}
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm font-medium transition-colors sm:px-4",
-                      selectedTier === tierId
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
-                      aria-hidden="true"
-                    />
-                    {VEHICLE_TIERS[tierId].shortName}
-                    <span className="font-mono text-micro tabular-nums text-muted-foreground">
-                      {tierCounts[tierId]}
-                    </span>
-                  </button>
-                ))}
+                {TIER_IDS.map((tierId) => {
+                  const TierIcon = VEHICLE_TIER_THEME[tierId].icon;
+                  return (
+                    <button
+                      key={tierId}
+                      type="button"
+                      aria-pressed={selectedTier === tierId}
+                      onClick={() => setSelectedTier(tierId)}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm font-medium transition-colors sm:px-4",
+                        selectedTier === tierId
+                          ? "border-primary text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <TierIcon
+                        className="size-4 shrink-0"
+                        style={{ color: VEHICLE_TIER_THEME[tierId].dot }}
+                        aria-hidden="true"
+                      />
+                      {VEHICLE_TIERS[tierId].shortName}
+                      <span className="font-mono text-micro tabular-nums text-muted-foreground">
+                        {tierCounts[tierId]}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1009,25 +1093,28 @@ export default function PublicTransportPage() {
                     {tierCounts.all}
                   </span>
                 </Button>
-                {TIER_IDS.map((tierId) => (
-                  <Button
-                    key={tierId}
-                    type="button"
-                    variant={selectedTier === tierId ? "default" : "outline"}
-                    className="h-10 justify-start gap-2 rounded-xl px-3 text-xs"
-                    onClick={() => setSelectedTier(tierId)}
-                  >
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
-                      aria-hidden="true"
-                    />
-                    <span className="truncate">{VEHICLE_TIERS[tierId].shortName}</span>
-                    <span className="ml-auto font-mono text-micro tabular-nums opacity-70">
-                      {tierCounts[tierId]}
-                    </span>
-                  </Button>
-                ))}
+                {TIER_IDS.map((tierId) => {
+                  const TierIcon = VEHICLE_TIER_THEME[tierId].icon;
+                  return (
+                    <Button
+                      key={tierId}
+                      type="button"
+                      variant={selectedTier === tierId ? "default" : "outline"}
+                      className="h-10 justify-start gap-2 rounded-xl px-3 text-xs"
+                      onClick={() => setSelectedTier(tierId)}
+                    >
+                      <TierIcon
+                        className="size-4 shrink-0"
+                        style={{ color: VEHICLE_TIER_THEME[tierId].dot }}
+                        aria-hidden="true"
+                      />
+                      <span className="truncate">{VEHICLE_TIERS[tierId].shortName}</span>
+                      <span className="ml-auto font-mono text-micro tabular-nums opacity-70">
+                        {tierCounts[tierId]}
+                      </span>
+                    </Button>
+                  );
+                })}
               </div>
             </fieldset>
 

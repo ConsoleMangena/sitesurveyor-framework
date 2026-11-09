@@ -1,11 +1,26 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   IconArrowsMaximize,
+  IconArrowsMove,
+  IconArrowRight,
+  IconClock,
+  IconCurrentLocation,
+  IconMapPin,
   IconMinus,
   IconPlus,
+  IconRoad,
   IconRotate,
+  IconRoute,
 } from "@tabler/icons-react";
 import {
   BASEMAP_ATTRIBUTION,
@@ -58,37 +73,40 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Crisply crafted vehicle tier SVG silhouettes designed for 24x24 viewboxes.
+ * Tabler-style vehicle glyphs, drawn at 24×24 with a consistent 1.9 stroke.
+ * They match the tier icons used on the fleet cards, so a pin and a card read
+ * as the same vehicle class at a glance.
  */
 const VEHICLE_TIER_SVGS: Record<VehicleTierId, string> = {
-  bakkie_4x4: '<svg viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="currentColor"><path d="M2 13v-2c0-.6.4-1 1-1h9.2l1.6-3.2c.2-.4.6-.7 1.1-.7h4.1c.6 0 1.1.4 1.3 1l1 3.4c.1.4.5.7.9.7h.8c.6 0 1 .4 1 1v2.8h-1.6c-.3-1.4-1.5-2.5-3-2.5s-2.7 1.1-3 2.5h-5.8c-.3-1.4-1.5-2.5-3-2.5s-2.7 1.1-3 2.5H2zm16 0c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5zm-12 0c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5zm8.5-4h-3.2l-1.2 2.5h4.4V9zm1.5 0v2.5h3.2l-.7-2.5H16z"/></svg>',
-  crew_van: '<svg viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="currentColor"><path d="M3.5 14v-6c0-1.1.9-2 2-2h11.5c1.1 0 2 .9 2 2l1.5 3.5c.3.7.5 1.5.5 2.3v2.2h-1.6c-.3-1.4-1.5-2.5-3-2.5s-2.7 1.1-3 2.5h-4.8c-.3-1.4-1.5-2.5-3-2.5s-2.7 1.1-3 2.5H3.5zm14 0c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5zm-11 0c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5zM5.5 8v3H9V8H5.5zm5 0v3h3.5V8h-3.5zm5 0v3h2.3l-1.3-3H15.5z"/></svg>',
-  heavy_truck: '<svg viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="currentColor"><path d="M1.5 13.5v-2.2c0-.7.6-1.3 1.3-1.3H13V6.5c0-.8.7-1.5 1.5-1.5H18c.8 0 1.5.7 1.5 1.5v2.8l2.2 2.6c.5.6.8 1.3.8 2.1v2.5h-1.7c-.3-1.4-1.5-2.5-3-2.5s-2.7 1.1-3 2.5h-4.6c-.3-1.4-1.5-2.5-3-2.5s-2.7 1.1-3 2.5H1.5zm16.3 0c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5zm-11.5 0c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5zM14.5 7.5v4h4.2l-1.8-4h-2.4z"/></svg>',
-  executive_suv: '<svg viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="currentColor"><path d="M2.5 13.2v-1.8c0-.6.4-1.1 1-1.2l4.8-.8 3.5-3.2c.4-.4.9-.6 1.4-.6h4.6c.7 0 1.3.4 1.6 1l1.6 3.8h1c.6 0 1.1.5 1.1 1.1v2.7h-1.7c-.3-1.3-1.5-2.2-2.9-2.2s-2.6.9-2.9 2.2H8.3c-.3-1.3-1.5-2.2-2.9-2.2s-2.6.9-2.9 2.2H2.5zm16.4 0c.7 0 1.3.6 1.3 1.3s-.6 1.3-1.3 1.3-1.3-.6-1.3-1.3.6-1.3 1.3-1.3zm-12.2 0c.7 0 1.3.6 1.3 1.3s-.6 1.3-1.3 1.3-1.3-.6-1.3-1.3.6-1.3 1.3-1.3zm6.6-4.9l-2.6 2.5 4.8-.3V8.3h-2.2zm3.7 0v2.4l3.1-.2-1-2.2h-2.1z"/></svg>',
-  rapid_runner: '<svg viewBox="0 0 24 24" class="size-3.5 shrink-0" fill="currentColor"><path d="M3 13v-1.5c0-.6.4-1.1 1-1.2l5.5-.8 3-3.2c.3-.3.8-.5 1.2-.5h3.6c.6 0 1.2.3 1.5.9l1.8 3.6h1.4c.6 0 1 .4 1 1v2.7h-1.6c-.3-1.3-1.4-2.2-2.8-2.2s-2.5.9-2.8 2.2h-5.8c-.3-1.3-1.4-2.2-2.8-2.2s-2.5.9-2.8 2.2H3zm15.1 0c.7 0 1.2.5 1.2 1.2s-.5 1.2-1.2 1.2-1.2-.5-1.2-1.2.5-1.2 1.2-1.2zm-11.4 0c.7 0 1.2.5 1.2 1.2s-.5 1.2-1.2 1.2-1.2-.5-1.2-1.2.5-1.2 1.2-1.2zm6.2-4.8l-2.2 2.4 4-.2V8.2h-1.8zm3.2 0v2.3l2.2-.2-.8-2.1h-1.4z"/></svg>',
+  bakkie_4x4:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="transport-vehicle-glyph" aria-hidden="true"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5"/></svg>',
+  crew_van:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="transport-vehicle-glyph" aria-hidden="true"><path d="M4 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M16 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M4 17h-2v-11a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0h-8"/><path d="M16 5l1.5 7l4.5 0"/><path d="M2 10l15 0"/><path d="M7 5l0 5"/><path d="M12 5l0 5"/></svg>',
+  heavy_truck:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="transport-vehicle-glyph" aria-hidden="true"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-4m-1 -8h11v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5"/><path d="M3 9l4 0"/></svg>',
+  executive_suv:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="transport-vehicle-glyph" aria-hidden="true"><path d="M5 17a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M16 17a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M5 9l2 -4h7.438a2 2 0 0 1 1.94 1.515l.622 2.485h3a2 2 0 0 1 2 2v3"/><path d="M10 9v-4"/><path d="M2 7v4"/><path d="M22.001 14.001a4.992 4.992 0 0 0 -4.001 -2.001a4.992 4.992 0 0 0 -4 2h-3a4.998 4.998 0 0 0 -8.003 .003"/><path d="M5 12v-3h13"/></svg>',
+  rapid_runner:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="transport-vehicle-glyph" aria-hidden="true"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/></svg>',
 };
 
 function createWaypointHtml(type: "pickup" | "dropoff"): string {
   const isPickup = type === "pickup";
   const color = isPickup ? PICKUP_COLOR : DROPOFF_COLOR;
-  const dotClass = isPickup ? "bg-emerald-500" : "bg-red-500";
+  const letter = isPickup ? "A" : "B";
   const title = isPickup ? "Pickup" : "Destination";
 
-  const innerIcon = isPickup
-    ? '<circle cx="15" cy="15" r="4.5" fill="' + color + '"/>'
-    : '<path d="M11 11h8v8h-8z" fill="' + color + '" rx="1.5"/><circle cx="15" cy="15" r="2.2" fill="#fff"/>';
-
   return [
-    '<div class="transport-waypoint-container" style="--ring-color:' + color + ';">',
+    '<div class="transport-waypoint-container" style="--waypoint-color:' + color + '; --ring-color:' + color + ';">',
     '  <div class="transport-waypoint-tag">',
-    '    <span class="size-1.5 rounded-full ' + dotClass + '"></span>',
+    '    <span class="transport-waypoint-tag-dot"></span>',
     '    <span>' + title + '</span>',
     '  </div>',
     '  <div class="transport-waypoint-pin">',
-    '    <svg width="30" height="38" viewBox="0 0 30 38" fill="none" xmlns="http://www.w3.org/2000/svg">',
-    '      <path d="M15 37.5C15 37.5 28 23.5 28 15C28 7.8203 22.1797 2 15 2C7.8203 2 2 7.8203 2 15C2 23.5 15 37.5 15 37.5Z" fill="' + color + '" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>',
-    '      <circle cx="15" cy="15" r="7.5" fill="#ffffff"/>',
-    '      ' + innerIcon,
+    '    <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">',
+    '      <path d="M16 40.5C16 40.5 30 25.5 30 16.5C30 8.8 23.7 2.5 16 2.5C8.3 2.5 2 8.8 2 16.5C2 25.5 16 40.5 16 40.5Z" fill="' + color + '" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round"/>',
+    '      <circle cx="16" cy="16.5" r="9" fill="#ffffff"/>',
+    '      <text x="16" y="20.4" text-anchor="middle" font-size="11" font-weight="700" fill="' + color + '" font-family="Inter, ui-sans-serif, system-ui, sans-serif">' + letter + '</text>',
     '    </svg>',
     '  </div>',
     isPickup ? '  <span class="transport-radar-ring"></span>' : '',
@@ -103,14 +121,58 @@ function createVehicleHtml(vehicle: HireVehicle, isSelected: boolean): string {
   return [
     '<div class="transport-vehicle-pin ' + (isSelected ? "is-selected" : "") + '" style="--tier-dot:' + theme.dot + ';">',
     '  <div class="transport-vehicle-bubble">',
-    '    <div class="transport-vehicle-icon">',
+    '    <span class="transport-vehicle-icon">',
     '      ' + svg,
-    '    </div>',
-    '    <span class="transport-vehicle-eta">' + vehicle.etaMinutes + 'm</span>',
+    '    </span>',
+    '    <span class="transport-vehicle-eta">' + vehicle.etaMinutes + '<span class="transport-vehicle-eta-unit">m</span></span>',
     '  </div>',
-    isSelected ? '  <span class="transport-pulse-ring"></span>' : '',
     '</div>',
   ].join("");
+}
+
+function createClusterHtml(count: number, minEta: number): string {
+  return [
+    '<div class="transport-fleet-cluster">',
+    '  <span class="transport-fleet-cluster-count">' + count + '</span>',
+    '  <span class="transport-fleet-cluster-copy">',
+    '    <span class="transport-fleet-cluster-title">',
+    '      <span class="transport-fleet-cluster-title-full">Vehicles nearby</span>',
+    '      <span class="transport-fleet-cluster-title-compact">Nearby</span>',
+    '    </span>',
+    '    <span class="transport-fleet-cluster-meta">from ' + minEta + ' min</span>',
+    '  </span>',
+    '</div>',
+  ].join("");
+}
+
+function buildRoutePoints(
+  pickup: LocationCoordinate,
+  dropoff: LocationCoordinate,
+): L.LatLngTuple[] {
+  const start = L.latLng(pickup.lat, pickup.lng);
+  const end = L.latLng(dropoff.lat, dropoff.lng);
+  const dx = end.lng - start.lng;
+  const dy = end.lat - start.lat;
+  const span = Math.hypot(dx, dy);
+  if (span === 0) return [[start.lat, start.lng]];
+
+  // A gentle quadratic bow keeps the preview from reading as a ruler line.
+  const bow = 0.07;
+  const controlLat = (start.lat + end.lat) / 2 - dx * bow;
+  const controlLng = (start.lng + end.lng) / 2 + dy * bow;
+  const points: L.LatLngTuple[] = [];
+  const steps = 48;
+
+  for (let index = 0; index <= steps; index += 1) {
+    const t = index / steps;
+    const inverse = 1 - t;
+    points.push([
+      inverse * inverse * start.lat + 2 * inverse * t * controlLat + t * t * end.lat,
+      inverse * inverse * start.lng + 2 * inverse * t * controlLng + t * t * end.lng,
+    ]);
+  }
+
+  return points;
 }
 
 export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
@@ -130,10 +192,12 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const didFitRef = useRef(false);
+    const [zoomLevel, setZoomLevel] = useState(DEFAULT_ZOOM);
     const layersRef = useRef<{
       baseLayer?: L.TileLayer;
       labelsLayer?: L.TileLayer;
       routeCasingLayer?: L.Polyline;
+      routeGlowLayer?: L.Polyline;
       routeLayer?: L.Polyline;
       pickupMarker?: L.Marker;
       dropoffMarker?: L.Marker;
@@ -185,6 +249,12 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       if (!map) return;
       map.setView([lat, lng], 13, { animate: true });
     }, []);
+
+    const centerOnPickup = useCallback(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.setView([pickup.lat, pickup.lng], 13, { animate: true });
+    }, [pickup]);
 
     const resetView = useCallback(() => {
       const map = mapRef.current;
@@ -259,6 +329,21 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       };
     }, []);
 
+    // Track zoom so the fleet can collapse into one readable callout at
+    // national scale, then fan out into individual vehicle pins up close.
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map) return;
+
+      const handleZoom = () => setZoomLevel(map.getZoom());
+      map.on("zoomend", handleZoom);
+      handleZoom();
+
+      return () => {
+        map.off("zoomend", handleZoom);
+      };
+    }, []);
+
     // Handle Map Clicks for Active Pin Placement
     useEffect(() => {
       const map = mapRef.current;
@@ -291,6 +376,10 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
         map.removeLayer(layersRef.current.routeCasingLayer);
         layersRef.current.routeCasingLayer = undefined;
       }
+      if (layersRef.current.routeGlowLayer) {
+        map.removeLayer(layersRef.current.routeGlowLayer);
+        layersRef.current.routeGlowLayer = undefined;
+      }
       if (layersRef.current.routeLayer) {
         map.removeLayer(layersRef.current.routeLayer);
         layersRef.current.routeLayer = undefined;
@@ -309,9 +398,9 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       const pIcon = L.divIcon({
         className: "transport-pin custom-pickup-pin",
         html: pickupHtml,
-        iconSize: [80, 58],
-        iconAnchor: [40, 58],
-        popupAnchor: [0, -56],
+        iconSize: [140, 66],
+        iconAnchor: [70, 66],
+        popupAnchor: [0, -60],
       });
 
       const pMarker = L.marker([pickup.lat, pickup.lng], {
@@ -348,9 +437,9 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       const dIcon = L.divIcon({
         className: "transport-pin custom-dropoff-pin",
         html: dropoffHtml,
-        iconSize: [80, 58],
-        iconAnchor: [40, 58],
-        popupAnchor: [0, -56],
+        iconSize: [140, 66],
+        iconAnchor: [70, 66],
+        popupAnchor: [0, -60],
       });
 
       const dMarker = L.marker([dropoff.lat, dropoff.lng], {
@@ -382,33 +471,41 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
       layersRef.current.dropoffMarker = dMarker;
 
-      // Draw Dual-Layer Route Polyline Corridor
-      const polylineCoords: L.LatLngTuple[] = [
-        [pickup.lat, pickup.lng],
-        [dropoff.lat, dropoff.lng],
-      ];
+      // Draw the route as a soft bowed corridor. Three stacked strokes give
+      // the line a crisp white casing, a faint brand glow, and a marching
+      // dashed centre that reads well over both light and satellite tiles.
+      const polylineCoords = buildRoutePoints(pickup, dropoff);
 
-      // 1. Outer casing halo for sharp terrain contrast
+      const routeGlow = L.polyline(polylineCoords, {
+        color: DROPOFF_COLOR,
+        weight: 13,
+        opacity: 0.14,
+        lineCap: "round",
+        lineJoin: "round",
+      }).addTo(map);
+
       const routeCasing = L.polyline(polylineCoords, {
         color: "#ffffff",
         weight: 8,
-        opacity: 0.9,
+        opacity: 0.95,
         lineCap: "round",
         lineJoin: "round",
       }).addTo(map);
 
-      // 2. High-contrast inner navigation route path
       const routeLine = L.polyline(polylineCoords, {
         color: DROPOFF_COLOR,
-        weight: 4,
+        weight: 4.5,
         opacity: 0.95,
-        dashArray: "8, 12",
+        dashArray: "9, 13",
         lineCap: "round",
         lineJoin: "round",
       }).addTo(map);
+
+      routeLine.getElement()?.classList.add("transport-route-line");
 
       layersRef.current.routeCasingLayer = routeCasing;
       layersRef.current.routeLayer = routeLine;
+      layersRef.current.routeGlowLayer = routeGlow;
 
       if (!didFitRef.current) {
         didFitRef.current = true;
@@ -421,13 +518,40 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       }
     }, [pickup, dropoff, onCoordinatesChange]);
 
-    // Update Fleet Vehicle Markers with Tier Glyphs & Modern Cards
+    // Update Fleet Vehicle Markers. At national zoom the vehicles all sit
+    // within a few pixels of the pickup, so collapse them into one callout
+    // stacked above the pickup pin; up close they fan out into individual
+    // tier-glyph pins.
     useEffect(() => {
       const map = mapRef.current;
       const group = layersRef.current.vehicleMarkersGroup;
       if (!map || !group) return;
 
       group.clearLayers();
+
+      if (vehicles.length === 0) return;
+
+      if (zoomLevel < 10) {
+        const minEta = Math.min(...vehicles.map((vehicle) => vehicle.etaMinutes));
+        const clusterIcon = L.divIcon({
+          className: "transport-pin transport-cluster-pin",
+          html: createClusterHtml(vehicles.length, minEta),
+          iconSize: [160, 46],
+          iconAnchor: [80, 118],
+        });
+
+        const clusterMarker = L.marker([pickup.lat, pickup.lng], {
+          icon: clusterIcon,
+          zIndexOffset: 700,
+        });
+
+        clusterMarker.on("click", () => {
+          map.setView([pickup.lat, pickup.lng], 13, { animate: true });
+        });
+
+        group.addLayer(clusterMarker);
+        return;
+      }
 
       vehicles.forEach((vehicle) => {
         const isSelected = selectedVehicleId === vehicle.id;
@@ -437,8 +561,8 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
         const vIcon = L.divIcon({
           className: "transport-pin fleet-vehicle-pin-" + vehicle.id,
           html: vehicleHtml,
-          iconSize: [72, 34],
-          iconAnchor: [36, 17],
+          iconSize: [84, 42],
+          iconAnchor: [42, 42],
         });
 
         const vMarker = L.marker([vehicle.currentLat, vehicle.currentLng], {
@@ -470,12 +594,17 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
             </div>
           </div>
         `,
-          { direction: "top", offset: [0, -20], opacity: 0.98 },
+          {
+            direction: "top",
+            offset: [0, -24],
+            opacity: 0.98,
+            className: "transport-tooltip-shell",
+          },
         );
 
         group.addLayer(vMarker);
       });
-    }, [vehicles, selectedVehicleId, onSelectVehicle]);
+    }, [vehicles, selectedVehicleId, onSelectVehicle, zoomLevel, pickup]);
 
     return (
       <div
@@ -487,68 +616,83 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       >
         <p className="sr-only">
           Interactive dispatch map. Drag the pickup and destination markers, or click the map to
-          place them. Nearby vehicles appear with their vehicle class icon and arrival time; choose
-          one to highlight it in the fleet below.
+          place them. At the national view nearby vehicles are grouped in one callout; zoom in or
+          choose the callout to see each vehicle class icon and arrival time. Selecting a vehicle
+          highlights it in the fleet below.
         </p>
 
         <div ref={containerRef} className="absolute inset-0 z-0 min-h-[360px]" />
 
         <div className="pointer-events-none absolute inset-0 z-10">
-          <div className="pointer-events-auto absolute left-3 top-3 max-w-[calc(100%-7.5rem)] sm:left-6 sm:top-6">
-            <div className="rounded-xl border border-border/80 bg-background/92 px-3.5 py-2.5 shadow-sm backdrop-blur-md">
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-micro tabular-nums text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
-                  <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                  {pickup.lat.toFixed(3)}, {pickup.lng.toFixed(3)}
+          <div className="pointer-events-auto absolute left-3 top-3 hidden w-[min(19rem,calc(100%-4.75rem))] sm:left-5 sm:top-5 sm:block">
+            <div className="overflow-hidden rounded-2xl border border-border/80 bg-background/92 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-md">
+              <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3.5 py-2">
+                <span className="inline-flex items-center gap-1.5 text-micro font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <IconRoute className="size-3.5 text-primary" aria-hidden="true" />
+                  Route preview
                 </span>
-                <span aria-hidden="true" className="text-muted-foreground/60">→</span>
-                <span className="inline-flex items-center gap-1.5 font-semibold text-primary">
-                  <span className="size-2 rounded-full bg-primary" aria-hidden="true" />
-                  {dropoff.lat.toFixed(3)}, {dropoff.lng.toFixed(3)}
-                </span>
-              </p>
-
-              <div className="mt-2 flex items-center gap-3 border-t border-border/60 pt-2">
-                <span className="flex flex-col">
-                  <span className="text-micro text-muted-foreground">Road distance</span>
-                  <span className="font-mono text-xs font-bold tabular-nums text-foreground">
-                    {routeDistance.toLocaleString()} km
-                  </span>
-                </span>
-                <span className="h-6 w-px shrink-0 bg-border/70" aria-hidden="true" />
-                <span className="flex flex-col">
-                  <span className="text-micro text-muted-foreground">Drive time</span>
-                  <span className="font-mono text-xs font-bold tabular-nums text-foreground">
-                    {formatDriveDuration(routeDuration)}
-                  </span>
+                <span className="inline-flex items-center gap-1.5 text-micro font-semibold text-success">
+                  <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
+                  Sample
                 </span>
               </div>
 
-              {tierCounts.length > 0 ? (
-                <div className="mt-2 hidden flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/60 pt-2 sm:flex">
-                  {tierCounts.map(([tierId, count]) => (
-                    <span
-                      key={tierId}
-                      className="inline-flex items-center gap-1.5 text-micro font-medium text-foreground"
-                    >
-                      <span
-                        className="size-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
-                        aria-hidden="true"
-                      />
-                      {count} {VEHICLE_TIERS[tierId].shortName}
-                    </span>
-                  ))}
+              <div className="space-y-2 px-3.5 py-2.5">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success/12 text-[9px] font-bold text-success ring-1 ring-success/25">
+                    A
+                  </span>
+                  <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+                    {pickup.lat.toFixed(3)}, {pickup.lng.toFixed(3)}
+                  </span>
+                  <IconArrowRight className="size-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[9px] font-bold text-primary ring-1 ring-primary/25">
+                    B
+                  </span>
+                  <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+                    {dropoff.lat.toFixed(3)}, {dropoff.lng.toFixed(3)}
+                  </span>
                 </div>
-              ) : (
-                <p className="mt-2 border-t border-border/60 pt-2 font-mono text-micro text-muted-foreground">
-                  No vehicles match the current filters
-                </p>
-              )}
+
+                <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-2">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <IconRoad className="size-3.5" aria-hidden="true" />
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Road
+                      </span>
+                      <span className="truncate font-mono text-xs font-bold tabular-nums text-foreground">
+                        {routeDistance.toLocaleString()} km
+                      </span>
+                    </span>
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <IconClock className="size-3.5" aria-hidden="true" />
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Drive
+                      </span>
+                      <span className="truncate font-mono text-xs font-bold tabular-nums text-foreground">
+                        {formatDriveDuration(routeDuration)}
+                      </span>
+                    </span>
+                  </span>
+                </div>
+
+                {tierCounts.length === 0 ? (
+                  <p className="border-t border-border/60 pt-2 text-micro font-medium text-muted-foreground">
+                    No vehicles match the current filters
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          <div className="pointer-events-auto absolute right-3 top-3 flex flex-col items-end gap-2 sm:right-6 sm:top-6">
+          <div className="pointer-events-auto absolute right-3 top-3 flex flex-col items-end gap-1.5 sm:right-5 sm:top-5">
             <div className="flex flex-col overflow-hidden rounded-xl border border-border/80 bg-background/92 shadow-sm backdrop-blur-md">
               <button
                 type="button"
@@ -570,36 +714,79 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 <IconMinus className="size-4" aria-hidden="true" />
               </button>
             </div>
+          </div>
 
-            <div className="flex flex-col items-end gap-1.5">
+          <div
+            className={cn(
+              "pointer-events-auto absolute right-3 flex flex-col items-end gap-1.5 sm:right-5",
+              activePinMode ? "bottom-16" : "bottom-8",
+            )}
+          >
+            <div className="flex items-center overflow-hidden rounded-full border border-border/80 bg-background/92 shadow-sm backdrop-blur-md">
+              <button
+                type="button"
+                onClick={centerOnPickup}
+                title="Center on the pickup"
+                aria-label="Center on the pickup"
+                className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+              >
+                <IconCurrentLocation className="size-3.5" aria-hidden="true" />
+              </button>
+              <span className="h-4 w-px shrink-0 bg-border/70" aria-hidden="true" />
               <button
                 type="button"
                 onClick={fitRoute}
                 title="Fit the map to the route"
-                className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/92 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:bg-background hover:shadow"
+                aria-label="Fit the map to the route"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
               >
-                <IconArrowsMaximize className="size-3 text-muted-foreground" aria-hidden="true" />
-                Fit route
+                <IconArrowsMaximize className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span className="hidden sm:inline">Fit route</span>
               </button>
+              <span className="h-4 w-px shrink-0 bg-border/70" aria-hidden="true" />
               <button
                 type="button"
                 onClick={resetView}
                 title="Reset the map to the national view"
-                className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/92 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:bg-background hover:shadow"
+                aria-label="Reset the map to the national view"
+                className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
               >
-                <IconRotate className="size-3 text-muted-foreground" aria-hidden="true" />
-                Reset
+                <IconRotate className="size-3.5" aria-hidden="true" />
               </button>
             </div>
+
+            {tierCounts.length > 0 ? (
+              <div className="hidden rounded-xl border border-border/80 bg-background/92 px-2.5 py-2 shadow-sm backdrop-blur-md md:block">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Fleet nearby
+                </p>
+                <div className="mt-1.5 flex flex-col gap-1">
+                  {tierCounts.map(([tierId, count]) => (
+                    <span
+                      key={tierId}
+                      className="flex items-center gap-1.5 text-[10px] font-medium text-foreground"
+                    >
+                      <span
+                        className="size-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-[72px]">{VEHICLE_TIERS[tierId].shortName}</span>
+                      <span className="font-mono tabular-nums text-muted-foreground">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {activePinMode ? (
             <div className="pointer-events-auto absolute bottom-5 left-1/2 z-10 -translate-x-1/2">
               <div className="flex items-center gap-2 whitespace-nowrap rounded-full border border-border/80 bg-background/95 px-4 py-2 text-xs font-semibold text-foreground shadow-lg backdrop-blur-md">
-                <span
+                <IconMapPin
                   className={cn(
-                    "size-2 shrink-0 rounded-full",
-                    activePinMode === "pickup" ? "bg-emerald-500" : "bg-primary",
+                    "size-3.5 shrink-0",
+                    activePinMode === "pickup" ? "text-success" : "text-primary",
                   )}
                   aria-hidden="true"
                 />
@@ -607,12 +794,14 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
               </div>
             </div>
           ) : (
-            <div className="absolute bottom-3 left-3 hidden sm:block">
-              <span className="rounded-none border border-border/60 bg-background/85 px-2.5 py-1 text-micro font-medium tracking-wide text-muted-foreground shadow-sm backdrop-blur-sm">
-                Drag a marker or click the map to move the route
+            <div className="absolute bottom-8 left-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/88 px-2.5 py-1 text-micro font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
+                <IconArrowsMove className="size-3" aria-hidden="true" />
+                Drag a marker or click the map
               </span>
             </div>
           )}
+
         </div>
       </div>
     );
