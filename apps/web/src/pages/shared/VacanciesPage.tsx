@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   Briefcase,
   Building2,
@@ -8,6 +8,7 @@ import {
   DollarSign,
   CheckCircle2,
   Plus,
+  ImagePlus,
   Search,
   Pencil,
   Trash2,
@@ -36,6 +37,11 @@ import {
   SENIORITY_LEVELS,
 } from "../../lib/repositories/vacancies.ts";
 import { createMarketInquiry } from "../../lib/repositories/marketInquiries.ts";
+import {
+  assetMediaUrl,
+  uploadAssetPhoto,
+  removeAssetPhotos,
+} from "../../lib/repositories/assetMedia.ts";
 import type { UiUser } from "../../features/workspace/types.ts";
 import { DashboardShell, DashboardHeader } from "../../components/dashboard/DashboardShell.tsx";
 import { MetricStrip } from "../../components/dashboard/MetricStrip.tsx";
@@ -159,6 +165,25 @@ export default function VacanciesPage({
   const [fApplyUrl, setFApplyUrl] = useState("");
   const [fClosesAt, setFClosesAt] = useState("");
   const [fStartsOn, setFStartsOn] = useState("");
+  const [fPhotoPath, setFPhotoPath] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  // A photo uploaded in this editor session is removed if the editor closes
+  // without saving it; persistedPhoto holds the path the row already references
+  // (or the one just saved) so cleanup never deletes a live object.
+  const sessionUpload = useRef<string | null>(null);
+  const persistedPhoto = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+    return () => {
+      const abandoned = sessionUpload.current;
+      if (abandoned && abandoned !== persistedPhoto.current) {
+        void removeAssetPhotos([abandoned]);
+      }
+      sessionUpload.current = null;
+    };
+  }, [editorOpen]);
 
   const loadData = useCallback(async () => {
     try {
@@ -240,6 +265,10 @@ export default function VacanciesPage({
     setFApplyUrl("");
     setFClosesAt("");
     setFStartsOn("");
+    setFPhotoPath("");
+    setPhotoError(null);
+    persistedPhoto.current = null;
+    sessionUpload.current = null;
     setEditorOpen(true);
   };
 
@@ -262,6 +291,10 @@ export default function VacanciesPage({
     setFApplyUrl(v.apply_url ?? "");
     setFClosesAt(v.closes_at ? v.closes_at.split("T")[0] : "");
     setFStartsOn(v.starts_on ?? "");
+    setFPhotoPath(v.photo_path ?? "");
+    setPhotoError(null);
+    persistedPhoto.current = v.photo_path ?? null;
+    sessionUpload.current = null;
     setEditorOpen(true);
     setSelectedVacancy(null);
   };
@@ -298,6 +331,7 @@ export default function VacanciesPage({
         apply_url: fApplyUrl.trim() || null,
         closes_at: fClosesAt ? new Date(fClosesAt).toISOString() : null,
         starts_on: fStartsOn || null,
+        photo_path: fPhotoPath || null,
       };
 
       if (editingId) {
@@ -305,6 +339,8 @@ export default function VacanciesPage({
       } else {
         await createVacancy(workspaceId, payload);
       }
+      persistedPhoto.current = fPhotoPath || null;
+      sessionUpload.current = null;
       setEditorOpen(false);
       await loadData();
     } catch (e) {
@@ -324,6 +360,34 @@ export default function VacanciesPage({
       await loadData();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete vacancy.");
+    }
+  };
+
+  // Cover photo upload — one photo per vacancy, stored in the asset-media bucket.
+  const handlePhotoPick = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const path = await uploadAssetPhoto(file, workspaceId);
+      const previous = sessionUpload.current;
+      sessionUpload.current = path;
+      setFPhotoPath(path);
+      if (previous && previous !== path) void removeAssetPhotos([previous]);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Failed to upload photo.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const handlePhotoRemove = () => {
+    const current = fPhotoPath;
+    setFPhotoPath("");
+    if (current && current === sessionUpload.current) {
+      sessionUpload.current = null;
+      void removeAssetPhotos([current]);
     }
   };
 
@@ -598,6 +662,65 @@ export default function VacanciesPage({
             <aside className="h-fit space-y-6 lg:sticky lg:top-0">
               <Card>
                 <CardHeader>
+                  <CardTitle className="text-base">Cover Photo</CardTitle>
+                  <CardDescription>
+                    Shown on the vacancy card and in the detail view.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <input
+                    id="v-photo-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    disabled={photoBusy}
+                    onChange={(e) => {
+                      void handlePhotoPick(e.target.files);
+                      e.target.value = "";
+                    }}
+                    className="hidden"
+                  />
+                  {fPhotoPath ? (
+                    <div className="relative">
+                      <img
+                        src={assetMediaUrl(fPhotoPath) ?? undefined}
+                        alt="Vacancy cover"
+                        className="aspect-video w-full rounded-md border object-cover"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="absolute right-1 top-1 h-7 w-7 bg-background/80"
+                        onClick={handlePhotoRemove}
+                        aria-label="Remove cover photo"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                      <ImagePlus size={26} className="mb-2" />
+                      <p className="text-sm">No cover photo yet.</p>
+                    </div>
+                  )}
+                  <Label
+                    htmlFor="v-photo-input"
+                    className={cn(
+                      "flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-transparent text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+                      photoBusy && "pointer-events-none opacity-50",
+                    )}
+                  >
+                    <ImagePlus size={14} />
+                    {photoBusy ? "Uploading…" : fPhotoPath ? "Change photo" : "Upload photo"}
+                  </Label>
+                  {photoError && (
+                    <p className="text-xs text-destructive">{photoError}</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
                   <CardTitle className="text-base">Vacancy Preview</CardTitle>
                   <CardDescription>Live summary of the vacancy post.</CardDescription>
                 </CardHeader>
@@ -754,10 +877,14 @@ export default function VacanciesPage({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((v) => {
             const IconComponent = DISCIPLINE_ICONS[v.discipline] ?? Briefcase;
+            const photoUrl = assetMediaUrl(v.photo_path);
             return (
               <Card
                 key={v.id}
-                className="group flex flex-col justify-between cursor-pointer transition-all hover:border-primary/60 hover:shadow-sm"
+                className={cn(
+                  "group flex flex-col justify-between cursor-pointer transition-all hover:border-primary/60 hover:shadow-sm",
+                  photoUrl && "overflow-hidden pt-0",
+                )}
                 onClick={() => {
                   setSelectedVacancy(v);
                   setShowApplyModal(false);
@@ -776,6 +903,17 @@ export default function VacanciesPage({
                   }
                 }}
               >
+                {photoUrl && (
+                  <img
+                    src={photoUrl}
+                    alt={v.title}
+                    loading="lazy"
+                    className="h-36 w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
                 <CardHeader className="space-y-3 pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
@@ -933,6 +1071,16 @@ export default function VacanciesPage({
       >
         {selectedVacancy && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            {assetMediaUrl(selectedVacancy.photo_path) && (
+              <img
+                src={assetMediaUrl(selectedVacancy.photo_path) ?? undefined}
+                alt={selectedVacancy.title}
+                className="h-56 w-full rounded-xl border border-border/80 object-cover lg:col-span-2"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
             <div className="min-w-0 space-y-6">
               {/* Application Form Drawer (when clicked) */}
               {showApplyModal && (

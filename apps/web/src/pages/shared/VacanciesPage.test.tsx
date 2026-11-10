@@ -30,6 +30,13 @@ vi.mock("../../lib/repositories/marketInquiries.ts", () => ({
   createMarketInquiry: vi.fn(),
 }));
 
+vi.mock("../../lib/repositories/assetMedia.ts", () => ({
+  assetMediaUrl: (path: string | null | undefined) =>
+    path ? `https://cdn.test/${path}` : null,
+  uploadAssetPhoto: vi.fn(),
+  removeAssetPhotos: vi.fn(),
+}));
+
 const mockUser: UiUser = {
   id: "u-1",
   workspaceId: "ws-123",
@@ -211,5 +218,31 @@ describe("VacanciesPage", () => {
     expect(
       await screen.findByText(/Application submitted successfully/i),
     ).toBeInTheDocument();
+  });
+
+  it("renders the cover photo on a vacancy card when one is set", async () => {
+    vi.mocked(listVacancies).mockResolvedValue([
+      { ...mockVacancies[0], photo_path: "ws-123/cover.jpg" },
+    ]);
+
+    render(<VacanciesPage workspaceId="ws-123" user={mockUser} />);
+
+    const img = await screen.findByRole("img", {
+      name: "Licensed Cadastral Surveyor",
+    });
+    expect(img).toHaveAttribute("src", "https://cdn.test/ws-123/cover.jpg");
+  });
+
+  it("shows the cover photo upload field when posting a vacancy", async () => {
+    const user = userEvent.setup();
+    render(
+      <VacanciesPage workspaceId="ws-123" user={mockUser} isPlatformAdmin />,
+    );
+
+    await screen.findByText("Licensed Cadastral Surveyor");
+    await user.click(screen.getByRole("button", { name: /Post Vacancy/i }));
+
+    expect(await screen.findByText("Cover Photo")).toBeInTheDocument();
+    expect(screen.getByText("Upload photo")).toBeInTheDocument();
   });
 });

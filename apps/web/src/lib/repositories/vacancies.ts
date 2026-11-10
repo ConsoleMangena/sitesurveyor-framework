@@ -56,6 +56,7 @@ export type VacancyCreateInput = {
   starts_on?: string | null;
   seniority?: string | null;
   apply_url?: string | null;
+  photo_path?: string | null;
   status?: string;
 };
 
@@ -149,6 +150,7 @@ export async function createVacancy(
     starts_on: payload.starts_on || null,
     seniority: payload.seniority || null,
     apply_url: payload.apply_url || null,
+    photo_path: payload.photo_path ?? null,
     status: payload.status || "open",
   };
 
