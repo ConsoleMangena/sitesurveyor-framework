@@ -17,6 +17,8 @@ export const WORKSPACE_VIEWS = [
   "professionals",
   "team",
   "jobs",
+  "vacancies",
+  "fieldJobs",
   "profile",
   "schedule",
   "invoices",

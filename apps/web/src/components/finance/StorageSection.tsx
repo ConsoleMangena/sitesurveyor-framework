@@ -85,8 +85,8 @@ export default function StorageSection({
 
   return (
     <DashboardSection title="Workspace storage">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="gap-4 border-border sm:col-span-2 lg:col-span-1">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="gap-4 border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Used of total quota</CardTitle>
           </CardHeader>
@@ -151,22 +151,6 @@ export default function StorageSection({
             </dl>
           </CardContent>
         </Card>
-
-        <Card className="gap-4 border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">What happens when a plan ends</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs leading-relaxed text-muted-foreground">
-            Storage packages are timed. When one expires its gigabytes leave the
-            quota; files already uploaded are never deleted. New uploads pause once
-            usage exceeds the remaining quota until you buy more storage.
-            {usage?.over_quota ? (
-              <span className="mt-2 block font-medium text-destructive">
-                This workspace is currently over quota.
-              </span>
-            ) : null}
-          </CardContent>
-        </Card>
       </div>
 
       <PackageCatalog
@@ -210,7 +194,7 @@ export default function StorageSection({
               ) : purchases.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-6 text-sm text-muted-foreground">
-                    No storage packages purchased yet. The base allowance applies from the first upload.
+                    No storage packages purchased yet.
                   </TableCell>
                 </TableRow>
               ) : (

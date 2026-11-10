@@ -24,7 +24,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import {
   Empty,
@@ -725,11 +724,6 @@ export default function BillingPage({
     return (
       <PageForm
         title={railsMode ? "Make a payment" : "Record an offline payment"}
-        description={
-          railsMode
-            ? "Pay an invoice from a Solana wallet or your PesePay balance."
-            : "Add a cash, bank, or card payment to the ledger."
-        }
         onBack={() => setIsPaymentOpen(false)}
         footer={
           railsMode ? undefined : (
@@ -763,11 +757,6 @@ export default function BillingPage({
                     </span>
                     <div className="min-w-0">
                       <CardTitle className="text-base">Invoice</CardTitle>
-                      <CardDescription>
-                        {railsMode
-                          ? "Choose the invoice to settle. The rail you pick sends the full total."
-                          : "Choose the invoice this payment belongs to."}
-                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -822,9 +811,6 @@ export default function BillingPage({
                         </span>
                         <div className="min-w-0">
                           <CardTitle className="text-base">Payment rail</CardTitle>
-                          <CardDescription>
-                            Wallets settle in USDC; the PesePay balance settles in USD.
-                          </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
@@ -1153,9 +1139,6 @@ export default function BillingPage({
                         </span>
                         <div className="min-w-0">
                           <CardTitle className="text-base">Offline payment</CardTitle>
-                          <CardDescription>
-                            Cash, bank transfer, or a card taken outside SiteSurveyor.
-                          </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
@@ -1230,7 +1213,6 @@ export default function BillingPage({
               <Card className="gap-4 border-border">
                 <CardHeader className="space-y-0 pb-2">
                   <CardTitle className="text-base">Payment</CardTitle>
-                  <CardDescription>Summary at a glance.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <dl className="space-y-2 text-sm">
@@ -1276,12 +1258,6 @@ export default function BillingPage({
                       </div>
                     ) : null}
                   </dl>
-                  {railsMode ? (
-                    <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
-                      Crypto payments settle wallet to wallet. PesePay checkout returns to
-                      Treasury once the network confirms.
-                    </p>
-                  ) : null}
                 </CardContent>
               </Card>
             </aside>
@@ -1296,14 +1272,10 @@ export default function BillingPage({
       {/* ── Page header ──────────────────────────────────── */}
       <DashboardHeader
         title="Billing"
-        subtitle="AI credits, workspace storage and invoice payments, with the ledger behind all of them."
         meta={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-0.5 font-medium text-foreground">
-              <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
-              {activeSectionMeta.label}
-            </span>
-            <span>{activeSectionMeta.description}</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-0.5 font-medium text-foreground">
+            <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
+            {activeSectionMeta.label}
           </span>
         }
         actions={
@@ -1473,10 +1445,6 @@ export default function BillingPage({
                     <EmptyTitle>No saved methods yet</EmptyTitle>
                   </EmptyHeader>
                   <EmptyContent>
-                    <p className="max-w-[46ch] text-sm text-muted-foreground">
-                      Connect a wallet above to save its address for invoices and
-                      marketplace payouts.
-                    </p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -1630,12 +1598,6 @@ export default function BillingPage({
                   </dd>
                 </div>
               </dl>
-
-              <p className="flex items-start gap-2 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                SiteSurveyor never holds funds. Payments move wallet to wallet; this
-                ledger keeps the record.
-              </p>
             </CardContent>
           </Card>
         </aside>

@@ -183,9 +183,6 @@ export default function PaymentRails({
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Payment rails
         </p>
-        <p className="text-sm text-muted-foreground">
-          Pay an invoice from a Solana wallet or your prepaid PesePay balance.
-        </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -302,11 +299,6 @@ export default function PaymentRails({
               unit="USD"
               loading={pesepayLoading}
             />
-
-            <p className="flex items-start gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              Deposits are final. Use for invoices and storage only.
-            </p>
 
             <ActionButtonRow>
               <Button

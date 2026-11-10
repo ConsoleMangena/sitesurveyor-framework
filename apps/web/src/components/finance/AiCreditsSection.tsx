@@ -130,11 +130,6 @@ export default function AiCreditsSection({
           icon={<Coins />}
         />
       </KpiGrid>
-      <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-        Credits appear only after PesePay confirms the payment. A declined or
-        cancelled checkout never changes your balance, and a failed AI call is
-        refunded to the same ledger.
-      </p>
 
       <PackageCatalog
         workspaceId={workspaceId}
@@ -183,7 +178,7 @@ export default function AiCreditsSection({
               ) : entries.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columnCount} className="py-6 text-sm text-muted-foreground">
-                    No credit activity yet. Buy a package above to start using AI features.
+                    No credit activity yet.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -257,14 +252,6 @@ export default function AiCreditsSection({
           </Table>
         </ResponsiveTable>
       </div>
-      {!loading && entries.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Showing the {entries.length} most recent ledger entries. The ledger is
-          append-only: purchases, usage, refunds and administrator reversals are
-          added as new rows and never edited. A reversal corrects credits only —
-          money PesePay already captured is not moved by it.
-        </p>
-      )}
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={() => void load()}>
           Refresh

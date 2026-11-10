@@ -128,10 +128,6 @@ export default function MarketplaceWalletCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Solana address that receives sale and hire payments from the marketplace.
-        </p>
-
         {loading ? (
           <Skeleton className="h-9 w-full rounded-md" aria-busy="true" />
         ) : (

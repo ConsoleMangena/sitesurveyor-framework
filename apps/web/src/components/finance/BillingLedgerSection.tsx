@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
   Empty,
   EmptyContent,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -293,10 +291,6 @@ export default function BillingLedgerSection({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Financial history</CardTitle>
-          <CardDescription>
-            Every deposit, package purchase, invoice payment and refund, with the
-            provider reference and the fee recorded at the time of purchase.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -383,10 +377,6 @@ export default function BillingLedgerSection({
                   <Wallet />
                 </EmptyMedia>
                 <EmptyTitle className="text-base">No transactions match</EmptyTitle>
-                <EmptyDescription>
-                  Deposits, credit and storage purchases, invoice payments and refunds all
-                  land here once PesePay confirms them.
-                </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 {(kind !== "all" || status !== "all" || search.trim()) && (

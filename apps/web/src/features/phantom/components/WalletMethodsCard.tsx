@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -337,10 +336,6 @@ export default function WalletMethodsCard({
               </Badge>
             </div>
             <CardTitle className="mt-1 text-base">Wallet methods</CardTitle>
-            <CardDescription>
-              The same wallets that sign you in. Connect one to receive USDC and pay
-              invoices from this workspace.
-            </CardDescription>
           </div>
         </div>
       </CardHeader>

@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -163,9 +162,6 @@ export default function FinancialInsightsSection({
           <Card className="gap-4 border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Where the money went</CardTitle>
-              <CardDescription>
-                Confirmed spend only. Deposits sit in your balance and are not spending.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {summary.byKind.length === 0 ? (
@@ -243,9 +239,6 @@ export default function FinancialInsightsSection({
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle className="text-sm font-medium">Platform revenue report</CardTitle>
-              <CardDescription>
-                Every workspace, aggregated at purchase time.
-              </CardDescription>
             </div>
             <TrendingUp className="h-5 w-5 text-muted-foreground" />
           </CardHeader>

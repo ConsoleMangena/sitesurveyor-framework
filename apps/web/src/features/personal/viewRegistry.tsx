@@ -9,6 +9,7 @@ import SchedulePage from "../../pages/personal/SchedulePage";
 import ContactsPage from "../../pages/shared/ContactsPage";
 import InvoicesPage from "../../pages/shared/InvoicesPage";
 import JobsPage from "../../pages/shared/JobsPage";
+import VacanciesPage from "../../pages/shared/VacanciesPage";
 import NotificationsPage from "../../pages/shared/NotificationsPage";
 import ProfileSettingsPage from "../../pages/shared/ProfileSettingsPage";
 import QuotesPage from "../../pages/shared/QuotesPage";
@@ -144,6 +145,17 @@ export function renderPersonalView(
       );
 
     case "jobs":
+    case "vacancies":
+      return (
+        <VacanciesPage
+          workspaceId={user.workspaceId}
+          isPlatformAdmin={user.isPlatformAdmin}
+          user={user}
+          onNavigate={onNavigate}
+        />
+      );
+
+    case "fieldJobs":
       return (
         <JobsPage
           workspaceId={user.workspaceId}

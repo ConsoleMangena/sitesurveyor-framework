@@ -74,7 +74,7 @@ export default function BillingOverviewSection({
   if (!overview) {
     return (
       <p className="text-sm text-muted-foreground">
-        Nothing to show yet. Buy a package or top up your balance and this page fills in.
+        Nothing to show yet.
       </p>
     );
   }
@@ -192,12 +192,8 @@ export default function BillingOverviewSection({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Buy</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Packages and prices come from the platform catalog, so they change without an
-              app release. Every purchase is confirmed by PesePay before it lands.
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => onSection("credits")}>
                 <Sparkles />
                 AI credits
