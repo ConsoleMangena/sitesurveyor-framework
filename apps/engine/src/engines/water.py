@@ -340,7 +340,11 @@ def run_water_survey(
         "class_area_distribution": area_stats,
         "candidate_sites": candidates,
     }
-    (cfg.OUT / "summary.json").write_text(json.dumps(summary, indent=2))
+    from src.utils.provenance import capture_provenance
+    summary["provenance"] = capture_provenance(
+        "water", ["dem.tif", "landcover.tif", "alos.tif", "rain_mean.tif", "optical.tif"]
+    )
+    (cfg.OUT / "summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
 
     # G. Export Mobile KML and KMZ for Smartphone GPS
     from src.utils.export import export_candidates_kml, export_kmz

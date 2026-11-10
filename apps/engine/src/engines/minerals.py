@@ -430,7 +430,11 @@ def run_minerals_survey(
         "indicated_commodities": indicated,
         "unscreenable_commodities": commodity_screen.unscreened_payload(),
     }
-    (cfg.OUT / "mineral_summary.json").write_text(json.dumps(summary, indent=2))
+    from src.utils.provenance import capture_provenance
+    summary["provenance"] = capture_provenance(
+        "minerals", ["dem.tif", "landcover.tif", "alos.tif", "optical.tif"]
+    )
+    (cfg.OUT / "mineral_summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
 
     # Export Mobile KML and KMZ for Smartphone GPS
     kml_path = cfg.OUT / "candidate_mineral_targets.kml"

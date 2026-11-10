@@ -31,6 +31,7 @@ if str(ROOT_DIR) not in sys.path:
 
 # Always import config first to configure PROJ paths before rasterio loads
 import src.config as cfg
+from src.utils.provenance import CLAIM_CEILING
 
 from mcp.server.mcpserver import MCPServer
 
@@ -40,7 +41,7 @@ mcp = MCPServer(
     title="SiteSurveyor AI — Satellite Geospatial Intelligence Engine",
     description=(
         "Autonomous multi-sensor satellite Earth observation intelligence engine. "
-        "Provides probabilistic groundwater potential, mineral prospectivity, soil capability, "
+        "Provides relative groundwater potential, mineral prospectivity, soil capability, "
         "and natural hazard safety screening from orbital data (Sentinel-2, DEM 30m, ALOS PALSAR, Landsat WOfS)."
     ),
     version="2.0.0",
@@ -98,12 +99,15 @@ def _cached_summary(path: Path, latitude: float, longitude: float) -> dict | Non
         "latitude": cached.get("target_lat"),
         "longitude": cached.get("target_lon"),
     }
+    if not isinstance(tc, dict):
+        print(f"[cache] {path.name} records invalid target coordinates -- re-running survey")
+        return None
     lat, lon = tc.get("latitude"), tc.get("longitude")
     if lat is None or lon is None:
         print(f"[cache] {path.name} records no target coordinates -- re-running survey")
         return None
-    if abs(float(lat) - latitude) > 0.001 or abs(float(lon) - longitude) > 0.001:
-        print(f"[cache] {path.name} is for ({lat:.5f}, {lon:.5f}), not ({latitude:.5f}, {longitude:.5f})")
+    if lat != latitude or lon != longitude:
+        print(f"[cache] {path.name} is for ({lat}, {lon}), not ({latitude}, {longitude})")
         return None
 
     # A cached score is only honest while the coverages behind it are the selected ones.
@@ -114,12 +118,10 @@ def _cached_summary(path: Path, latitude: float, longitude: float) -> dict | Non
               f"({', '.join(stale)} differ) -- re-running survey")
         return None
 
-    # One category refetching a layer leaves every other summary scored from the raster it
-    # replaced, and the selection alone cannot show that -- the file mtimes can.
-    newer = [p.name for p in (cfg.RAW / f"{spec['layer']}.tif" for spec in cfg.DATA_SOURCES.values())
-             if p.exists() and p.stat().st_mtime > path.stat().st_mtime]
-    if newer:
-        print(f"[cache] {path.name} predates the {' and '.join(newer)} on disk -- re-running survey")
+    from src.utils.provenance import cache_mismatch
+    reason = cache_mismatch(cached.get("provenance"), latitude, longitude)
+    if reason:
+        print(f"[cache] {path.name}: {reason} -- re-running survey")
         return None
     return cached
 
@@ -234,7 +236,7 @@ def survey_site(
     # Generate or refresh Master Executive Dossier
     _report_progress("Building executive dossier", 92)
     from src.report import generate_site_dossier
-    dossier = generate_site_dossier()
+    dossier = generate_site_dossier(category_results=results)
     scorecard = dossier.get("executive_scorecard", {})
 
     gw = scorecard.get("groundwater", {})
@@ -247,7 +249,7 @@ def survey_site(
         "executive_summary": (
             f"Survey completed for ({latitude:.5f}, {longitude:.5f}). "
             f"Groundwater potential is {gw.get('cell_score', 'N/A')}/100 ({gw.get('cell_class', 'N/A')}) "
-            f"with top borehole site {gw.get('primary_borehole_candidate', {}).get('distance_km', 'N/A')} km away. "
+            f"with top borehole site {(gw.get('primary_borehole_candidate') or {}).get('distance_km', 'N/A')} km away. "
             f"Mineral prospectivity is {minerals.get('cell_score', 'N/A')}/100 ({minerals.get('cell_class', 'N/A')}). "
             f"Soil capability is {soil.get('cell_score', 'N/A')}/100 ({soil.get('cell_class', 'N/A')}). "
             f"Site safety score is {haz.get('safety_score', 'N/A')}/100 with hazard index {haz.get('hazard_score', 'N/A')}/100."
@@ -286,13 +288,10 @@ def survey_site(
             "top_agricultural_zone": soil.get("primary_agricultural_zone"),
             "safest_building_site": haz.get("primary_safe_build_site"),
         },
-        # A caller must be able to tell whether a 61.4 is comparable to another site's
-        # 61.4. It is not: the index is a percentile rank inside this AOI only.
-        "score_basis": "relative_to_aoi_percentile",
-        "claim_ceiling": (
-            "Prioritisation of investigation sites only. Not a statement of water yield, "
-            "mineral grade, or buildability. Ground truthing is required before capital spend."
-        ),
+        "score_basis": dossier.get("score_basis", "aoi_relative_weighted_index"),
+        "provenance": dossier.get("provenance", {}),
+        "data_sources": dossier.get("data_sources", {}),
+        "claim_ceiling": dossier.get("claim_ceiling", CLAIM_CEILING),
         "deliverables": {
             "master_json_dossier": str(cfg.OUT / "master_site_dossier.json"),
             "maps": {

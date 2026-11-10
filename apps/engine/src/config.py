@@ -6,6 +6,7 @@ grid extents, and AHP model weights are managed here.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 
@@ -397,7 +398,9 @@ def set_target_site(
     lat_h = 'S' if TARGET_LAT < 0 else 'N'
     lon_h = 'E' if TARGET_LON >= 0 else 'W'
     AOI_SLUG = f"{abs(TARGET_LAT):.2f}{lat_h}_{abs(TARGET_LON):.2f}{lon_h}"
-    RAW = RAW_BASE / AOI_SLUG
+    geometry = repr((BBOX_WGS84, CELL, EPSG)).encode("ascii")
+    cache_key = hashlib.sha256(geometry).hexdigest()[:20]
+    RAW = RAW_BASE / f"{AOI_SLUG}_{cache_key}"
     RAW.mkdir(parents=True, exist_ok=True)
 
 

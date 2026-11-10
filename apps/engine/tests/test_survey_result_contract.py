@@ -12,6 +12,7 @@ run's maps under its own id.
 from __future__ import annotations
 
 import json
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
@@ -105,6 +106,124 @@ def _isolated_out(tmp_path: Path):
     cfg.OUT = tmp_path
     yield tmp_path
     cfg.OUT = saved
+
+
+@pytest.mark.parametrize("categories", [["water"], ["all"]], ids=["water-only", "all-categories"])
+def test_survey_assembles_current_results_with_no_borehole_candidate(
+    _isolated_out: Path, categories: list[str],
+) -> None:
+    """Keep dossier assembly real: absent disk outputs must not lose engine results."""
+    from src.mcp import server
+
+    summaries = {
+        "water": {
+            "target_coordinates": {"latitude": -19.5, "longitude": 29.8},
+            "target_assessment": {"coordinate_cell_score": 31.0, "coordinate_cell_class": "Low"},
+            "candidate_sites": [],
+        },
+        "minerals": {
+            "target_coordinates": {"latitude": -19.5, "longitude": 29.8},
+            "target_assessment": {"coordinate_cell_score": 72.0},
+            "candidate_targets": [],
+        },
+        "soil": {"target_lat": -19.5, "target_lon": 29.8, "target_sci_score": 55.0},
+        "hazard": {
+            "target_coordinates": {"latitude": -19.5, "longitude": 29.8},
+            "target_assessment": {"hazard_index_score": 20.0, "safety_index_score": 80.0},
+        },
+    }
+    fixed_layers = {"water": "rainfall", "minerals": "alos", "soil": "crop_mask", "hazard": "wofs"}
+    for key, summary in summaries.items():
+        summary["provenance"] = {
+            "category": key,
+            "target": cfg.target_block(-19.5, 29.8, 0.12),
+            "data_sources": {
+                "selectable": {}, "fixed": {fixed_layers[key]: f"{key}-source"},
+            },
+        }
+    # A skipped mineral category must not come back through the shared output directory.
+    (_isolated_out / "mineral_summary.json").write_text(json.dumps({
+        "target_coordinates": {"latitude": -20.0, "longitude": 30.0},
+        "target_assessment": {"coordinate_cell_score": 99.0},
+    }), encoding="utf-8")
+
+    with ExitStack() as stack:
+        # Restore all geometry globals after running the real site setter; keep its
+        # cache directory and the real dossier JSON inside the temporary directory.
+        stack.enter_context(patch.dict(vars(cfg), {"RAW_BASE": _isolated_out}))
+        stack.enter_context(patch.object(server, "_ensure_data_present"))
+        engines = {
+            key: stack.enter_context(patch(
+                f"src.engines.{key}.run_{key}_survey", return_value=summary,
+            ))
+            for key, summary in summaries.items()
+        }
+        result = server.survey_site(
+            latitude=-19.5, longitude=29.8, categories=categories,
+            client_name="Test", address="", half_deg=0.12,
+        )
+
+    selected = list(summaries) if categories == ["all"] else categories
+    for key, engine in engines.items():
+        if key in selected:
+            engine.assert_called_once_with()
+        else:
+            engine.assert_not_called()
+    dossier_keys = {"water": "water", "minerals": "minerals", "soil": "soil_land", "hazard": "hazard_safety"}
+    expected_categories = {dossier_keys[key]: summaries[key] for key in selected}
+    assert result["status"] == "success"
+    assert result["categories"] == expected_categories
+    assert result["provenance"] == {
+        key: summary["provenance"] for key, summary in expected_categories.items()
+    }
+    assert result["data_sources"] == {
+        "selectable": {},
+        "fixed": {fixed_layers[key]: f"{key}-source" for key in selected},
+    }
+    assert result["score_basis"] == "aoi_relative_weighted_index"
+    assert result["scores"]["groundwater"]["cell_score"] == 31.0
+    assert result["primary_recommendations"]["top_borehole_drilling_site"] is None
+    assert result["candidates"]["water"] == []
+    assert "top borehole site N/A km away" in result["executive_summary"]
+    stored = json.loads((_isolated_out / "master_site_dossier.json").read_text(encoding="utf-8"))
+    assert stored["categories"] == expected_categories
+    assert stored["executive_scorecard"]["groundwater"]["primary_borehole_candidate"] is None
+    assert result["provenance"] == stored["provenance"]
+    assert result["data_sources"] == stored["data_sources"]
+    json.dumps(result, allow_nan=False)
+
+
+def test_worker_preserves_recorded_sources_and_serializes_configuration(_isolated_out: Path) -> None:
+    import worker
+    from src.mcp.server import _SITE_LOCK
+
+    recorded = {"selectable": {}, "fixed": {"rainfall": "recorded-rain-source"}}
+    result = {"data_sources": recorded}
+    payload = {
+        "latitude": -19.5, "longitude": 29.8, "half_deg": 0.08,
+        "client_name": "Synthetic", "address": "", "categories": ["soil"],
+        "data_sources": {}, "composite": {},
+    }
+
+    def check_configuration_lock(*args, **kwargs):
+        from concurrent.futures import ThreadPoolExecutor
+
+        def attempt_lock():
+            acquired = _SITE_LOCK.acquire(blocking=False)
+            if acquired:
+                _SITE_LOCK.release()
+            return acquired
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            assert not pool.submit(attempt_lock).result()
+
+    with patch.object(cfg, "set_target_site", side_effect=check_configuration_lock), \
+         patch.object(cfg, "set_data_sources", return_value={}), \
+         patch.object(cfg, "set_composite"), \
+         patch.object(worker, "survey_site", return_value=result):
+        actual = worker.execute(payload)
+    assert actual["data_sources"] is recorded
+    assert actual["target"] == cfg.target_block(-19.5, 29.8, 0.08)
 
 
 def test_reset_outputs_removes_the_previous_runs_deliverables(_isolated_out: Path) -> None:

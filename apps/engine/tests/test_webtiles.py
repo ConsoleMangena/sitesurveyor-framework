@@ -127,6 +127,49 @@ def test_pmtiles_archive_roundtrips(zone_tif: Path, tmp_path: Path) -> None:
                 ).any(), "class-5 ground must carry its colour-table colour"
 
 
+def test_palette_class255_without_nodata_is_transparent_in_published_tiles(tmp_path: Path) -> None:
+    """GDAL drops palette alpha without a nodata tag; class 255 is still a void."""
+    classes = np.full((64, 64), NODATA_CLASS, dtype="uint8")
+    classes[:32, :] = 1
+    colour = (23, 117, 209, 255)  # deliberately different from the fallback palette
+    path = tmp_path / "palette_without_nodata.tif"
+    with rasterio.open(
+        path, "w", driver="GTiff", height=64, width=64, count=1, dtype="uint8",
+        crs=CRS.from_epsg(3857), transform=from_origin(100.0, 500.0, 4.0, 4.0),
+    ) as dst:
+        dst.write(classes, 1)
+        dst.write_colormap(1, {1: colour, NODATA_CLASS: (0, 0, 0, 0)})
+    with rasterio.open(path) as src:
+        assert src.nodata is None
+        assert src.dtypes == ("uint8",)
+        assert set(np.unique(src.read(1))) == {1, NODATA_CLASS}
+        assert src.colormap(1)[NODATA_CLASS] == (0, 0, 0, 255)
+
+    # The inset Mercator raster fits within one tile: exercise the actual PNG
+    # publication path without building a whole zoom pyramid.
+    out = tmp_path / "palette_without_nodata.pmtiles"
+    stats = write_zone_pmtiles(
+        path, out, ZONE_PALETTES["water"], "Palette without nodata",
+        min_zoom=MAX_ZOOM, max_zoom=MAX_ZOOM,
+    )
+    assert stats["tiles"] == 1
+    with open(out, "r+b") as handle:
+        x, y = _tile_xy_over_cell(path, MAX_ZOOM, 32, 48)
+        data = Reader(MmapSource(handle)).get(MAX_ZOOM, x, y)
+    with rasterio.io.MemoryFile(data) as mem:
+        with mem.open(driver="PNG") as tile:
+            rgba = tile.read()
+
+    assert rgba.shape == (4, 256, 256)
+    alpha = rgba[3]
+    black = (rgba[:3] == 0).all(axis=0)
+    assert black.any(), "the tile must include class-255 voids"
+    assert (alpha[black] == 0).all(), "class 255 must never publish opaque black pixels"
+    painted = alpha == 255
+    assert painted.any(), "valid classes must remain visible"
+    assert (rgba[:3, painted].T == colour[:3]).all(), "tiles must preserve the file's palette"
+
+
 def test_mineral_tiles_leave_below_threshold_ground_transparent(tmp_path: Path) -> None:
     """Cold ground is not a finding: the drape must show the basemap through it.
 

@@ -98,7 +98,6 @@ def run_hazard_survey(
     red = warp(cfg.RAW / "optical.tif", "red", scale=10000.0)
     nir = warp(cfg.RAW / "optical.tif", "nir", scale=10000.0)
     swir1 = warp(cfg.RAW / "optical.tif", "swir_1", scale=10000.0)
-    swir2 = warp(cfg.RAW / "optical.tif", "swir_2", scale=10000.0)
 
     # DE Africa Fractional Cover: band 6 = npv_pc_90, band 8 = bs_pc_50
     # (verified order: pv 10/50/90, npv 10/50/90, bs 10/50/90, count_valid)
@@ -342,8 +341,13 @@ def run_hazard_survey(
         },
         "safest_candidate_sites": safest_sites,
     }
+    from src.utils.provenance import capture_provenance
+    inputs = ["dem.tif", "landcover.tif", "rain_mean.tif", "optical.tif", "wofs.tif"]
+    if fc_bs is not None and fc_npv_peak is not None:
+        inputs.append("fc_ls_2023.tif")
+    summary["provenance"] = capture_provenance("hazard", inputs)
     with open(cfg.OUT / "hazard_summary.json", "w", encoding="utf-8") as fh:
-        json.dump(summary, fh, indent=2)
+        json.dump(summary, fh, indent=2, allow_nan=False)
 
     print("\n[OK] Category 5 HAZARD complete. Outputs in:", cfg.OUT)
     return summary

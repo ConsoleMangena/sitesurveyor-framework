@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.report import _img_to_base64_src, _load_category
+from src.report import _img_to_base64_src, _load_category, generate_site_dossier
 from src.utils.spectral import (
     bare_soil_index, gossan_index, hydroxyl_index, ndvi, ndwi, residual_index,
 )
@@ -125,6 +125,32 @@ def test_residual_index_preserves_unobserved_cells():
     assert np.isfinite(out[2:]).all()
 
 
+@pytest.mark.parametrize("missing", [np.nan, np.inf, -np.inf])
+def test_constant_detrend_preserves_missing_inputs(missing):
+    nd = np.full(200, 0.5, dtype="float32")
+    ix = np.linspace(-0.2, 0.4, 200, dtype="float32")
+    nd[0] = missing
+    ix[1] = missing
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = residual_index(ix, nd)
+
+    assert np.isnan(out[:2]).all()
+    np.testing.assert_allclose(out[2:], ix[2:] - np.mean(ix[2:], dtype="float64"), atol=1e-7)
+
+
+def test_two_ndvi_levels_fit_without_rank_deficiency():
+    nd = np.repeat([0.2, 0.7], 100)
+    ix = 0.3 + 0.4 * nd
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = residual_index(ix, nd)
+
+    np.testing.assert_allclose(out, 0, atol=1e-7)
+
+
 def test_too_few_jointly_observed_pixels_reports_no_data(capsys):
     """Returning the raw index here would label an undetrended ratio as a residual."""
     sparse = np.full(400, np.nan, dtype="float32")
@@ -179,30 +205,247 @@ def test_map_embedding_states_why_a_panel_is_blank(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Dossier assembly: only this run's results and provenance may be published
+# ---------------------------------------------------------------------------
+
+_SUMMARY_FILES = {
+    "water": "summary.json",
+    "minerals": "mineral_summary.json",
+    "soil": "soil_summary.json",
+    "hazard": "hazard_summary.json",
+}
+
+
+@pytest.fixture
+def dossier_results():
+    """Small engine-shaped summaries, including soil's flat coordinate fields."""
+    import src.config as cfg
+
+    results = {
+        "water": {
+            "target_coordinates": {"latitude": -19.5, "longitude": 29.8},
+            "target_assessment": {"coordinate_cell_score": 31.0},
+            "candidate_sites": [],
+        },
+        "minerals": {
+            "target_coordinates": {"latitude": -19.5, "longitude": 29.8},
+            "target_assessment": {"coordinate_cell_score": 72.0},
+            "candidate_targets": [],
+        },
+        "soil": {
+            "target_lat": -19.5, "target_lon": 29.8,
+            "target_sci_score": 55.0, "candidate_areas": [],
+        },
+        "hazard": {
+            "target_coordinates": {"latitude": -19.5, "longitude": 29.8},
+            "target_assessment": {"hazard_index_score": 20.0, "safety_index_score": 80.0},
+            "safest_candidate_sites": [],
+        },
+    }
+    sources = {
+        "water": {"selectable": {}, "fixed": {"rainfall": "rainfall-source"}},
+        "minerals": {
+            "selectable": {"optical": {"coverage": "s2_l2a", "label": "Sentinel-2 L2A"}},
+            "fixed": {"alos": "radar-source"},
+        },
+        "soil": {
+            "selectable": {"landcover": {"coverage": "esa_worldcover", "label": "WorldCover"}},
+            "fixed": {"crop_mask": "crop-source"},
+        },
+        "hazard": {"selectable": {}, "fixed": {"wofs": "surface-water-source"}},
+    }
+    for category, data in results.items():
+        data["client"] = "Current client"
+        data["provenance"] = {
+            "schema_version": 1,
+            "category": category,
+            "target": cfg.target_block(-19.5, 29.8, 0.12),
+            "data_sources": sources[category],
+        }
+    return results
+
+
+@pytest.mark.parametrize(("category", "dossier_key", "scorecard_key"), [
+    ("water", "water", "groundwater"),
+    ("minerals", "minerals", "minerals"),
+    ("soil", "soil_land", "soil_land"),
+    ("hazard", "hazard_safety", "hazard_safety"),
+    (None, None, None),
+])
+def test_dossier_passed_results_ignore_all_stale_category_files(
+    tmp_path, monkeypatch, dossier_results, category, dossier_key, scorecard_key,
+):
+    import src.config as cfg
+
+    monkeypatch.setattr(cfg, "OUT", tmp_path)
+    stale = {
+        "client": "Previous client",
+        "target_coordinates": {"latitude": -20.0, "longitude": 30.0},
+        "provenance": {
+            "target": cfg.target_block(-20.0, 30.0, 0.08),
+            "data_sources": {"selectable": {}, "fixed": {"alos": "stale-radar-source"}},
+        },
+    }
+    for filename in _SUMMARY_FILES.values():
+        (tmp_path / filename).write_text(json.dumps(stale), encoding="utf-8")
+    # Even an explicitly empty result map must not fall back to existing files.
+    passed = {category: dossier_results[category]} if category else {}
+
+    dossier = generate_site_dossier(category_results=passed)
+
+    expected_categories = {dossier_key: passed[category]} if category else {}
+    assert dossier["categories"] == expected_categories
+    assert set(dossier["executive_scorecard"]) == ({scorecard_key} if category else set())
+    statuses = dict.fromkeys(("groundwater", "minerals", "soil_land", "hazard_safety"), "not_run")
+    if category:
+        statuses[scorecard_key] = "loaded"
+        assert dossier["client"] == "Current client"
+        assert dossier["target_coordinates"] == {"latitude": -19.5, "longitude": 29.8}
+    assert dossier["category_status"] == statuses
+    assert dossier["provenance"] == {
+        key: data["provenance"] for key, data in expected_categories.items()
+    }
+    assert dossier["data_sources"] == (
+        passed[category]["provenance"]["data_sources"] if category
+        else {"selectable": {}, "fixed": {}}
+    )
+    assert dossier["score_basis"] == "aoi_relative_weighted_index"
+    assert json.loads((tmp_path / "master_site_dossier.json").read_text(encoding="utf-8")) == dossier
+
+
+def test_dossier_aggregates_provenance_from_every_passed_category(
+    tmp_path, monkeypatch, dossier_results,
+):
+    import src.config as cfg
+
+    monkeypatch.setattr(cfg, "OUT", tmp_path)
+    dossier = generate_site_dossier(category_results=dossier_results)
+
+    expected_categories = {
+        "water": dossier_results["water"],
+        "minerals": dossier_results["minerals"],
+        "soil_land": dossier_results["soil"],
+        "hazard_safety": dossier_results["hazard"],
+    }
+    assert dossier["categories"] == expected_categories
+    assert dossier["provenance"] == {
+        key: data["provenance"] for key, data in expected_categories.items()
+    }
+    assert dossier["data_sources"] == {
+        "selectable": {
+            "optical": {"coverage": "s2_l2a", "label": "Sentinel-2 L2A"},
+            "landcover": {"coverage": "esa_worldcover", "label": "WorldCover"},
+        },
+        "fixed": {
+            "rainfall": "rainfall-source", "alos": "radar-source",
+            "crop_mask": "crop-source", "wofs": "surface-water-source",
+        },
+    }
+    assert dossier["score_basis"] == "aoi_relative_weighted_index"
+    assert json.loads((tmp_path / "master_site_dossier.json").read_text(encoding="utf-8")) == dossier
+
+
+@pytest.mark.parametrize("from_disk", [False, True], ids=["passed-results", "disk-summaries"])
+@pytest.mark.parametrize(("category", "coordinate"), [
+    ("minerals", "latitude"), ("minerals", "longitude"),
+    ("soil", "target_lat"), ("soil", "target_lon"),
+])
+def test_dossier_rejects_category_summaries_from_different_sites(
+    tmp_path, monkeypatch, dossier_results, from_disk, category, coordinate,
+):
+    import src.config as cfg
+
+    monkeypatch.setattr(cfg, "OUT", tmp_path)
+    results = {"water": dossier_results["water"], category: dossier_results[category]}
+    # Legacy summaries lack provenance: coordinates alone must prevent a mixed site.
+    for data in results.values():
+        data.pop("provenance")
+    coords = results[category] if category == "soil" else results[category]["target_coordinates"]
+    coords[coordinate] += 1.0
+    if from_disk:
+        for key, data in results.items():
+            (tmp_path / _SUMMARY_FILES[key]).write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="different sites"):
+        generate_site_dossier(category_results=None if from_disk else results)
+
+    assert not (tmp_path / "master_site_dossier.json").exists()
+
+
+@pytest.mark.parametrize("from_disk", [False, True], ids=["passed-results", "disk-summaries"])
+def test_dossier_rejects_different_extents_at_the_same_coordinates(
+    tmp_path, monkeypatch, dossier_results, from_disk,
+):
+    import src.config as cfg
+
+    monkeypatch.setattr(cfg, "OUT", tmp_path)
+    results = {"water": dossier_results["water"], "hazard": dossier_results["hazard"]}
+    assert results["water"]["target_coordinates"] == results["hazard"]["target_coordinates"]
+    results["hazard"]["provenance"]["target"] = cfg.target_block(-19.5, 29.8, 0.04)
+    if from_disk:
+        for key, data in results.items():
+            (tmp_path / _SUMMARY_FILES[key]).write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="different survey extents"):
+        generate_site_dossier(category_results=None if from_disk else results)
+
+    assert not (tmp_path / "master_site_dossier.json").exists()
+
+
+# ---------------------------------------------------------------------------
 # MCP cached-survey reuse: a skipped cache must be explained
 # ---------------------------------------------------------------------------
 
-def test_cached_summary_matches_only_the_requested_point(tmp_path):
+@pytest.mark.parametrize("difference", ["model", "inputs"])
+def test_dossier_rejects_incompatible_model_or_input_versions(tmp_path, monkeypatch, dossier_results, difference):
+    import src.config as cfg
+
+    monkeypatch.setattr(cfg, "OUT", tmp_path)
+    water = dossier_results["water"]["provenance"]
+    soil = dossier_results["soil"]["provenance"]
+    water["model"] = soil["model"] = {"version": "model-a"}
+    water["inputs"] = soil["inputs"] = {"dem.tif": {"sha256": "raster-a"}}
+    soil[difference] = {"version": "model-b"} if difference == "model" else {"dem.tif": {"sha256": "raster-b"}}
+    with pytest.raises(ValueError, match="Category summaries use different"):
+        generate_site_dossier(category_results={"water": dossier_results["water"], "soil": dossier_results["soil"]})
+    assert not (tmp_path / "master_site_dossier.json").exists()
+
+
+@pytest.fixture
+def cached_provenance(tmp_path, monkeypatch):
+    import src.config as cfg
+    from src.utils.provenance import capture_provenance
+
+    monkeypatch.setattr(cfg, "RAW", tmp_path)
+    monkeypatch.setattr(cfg, "TARGET_LAT", -19.0)
+    monkeypatch.setattr(cfg, "TARGET_LON", 29.9)
+    return capture_provenance("soil", [])
+
+
+def test_cached_summary_matches_only_the_requested_point(tmp_path, cached_provenance):
     from src.mcp.server import _cached_summary
 
     path = tmp_path / "summary.json"
-    path.write_text(json.dumps({"target_coordinates": {"latitude": -19.0, "longitude": 29.9}}),
-                    encoding="utf-8")
+    path.write_text(json.dumps({
+        "target_coordinates": {"latitude": -19.0, "longitude": 29.9},
+        "provenance": cached_provenance,
+    }), encoding="utf-8")
 
-    hit = _cached_summary(path, -19.0001, 29.9001)
+    hit = _cached_summary(path, -19.0, 29.9)
     assert hit is not None and hit["target_coordinates"]["latitude"] == -19.0
-
+    assert _cached_summary(path, -19.0001, 29.9001) is None
     assert _cached_summary(path, -20.5, 30.5) is None
     assert _cached_summary(tmp_path / "absent.json", -19.0, 29.9) is None
 
 
-def test_cached_summary_reads_flat_coordinate_keys(tmp_path):
-    """soil_summary.json stores target_lat/target_lon instead of a nested object."""
+def test_cached_summary_reads_flat_coordinate_keys(tmp_path, cached_provenance):
     from src.mcp.server import _cached_summary
 
     path = tmp_path / "soil_summary.json"
-    path.write_text(json.dumps({"target_lat": -19.0, "target_lon": 29.9}), encoding="utf-8")
-    assert _cached_summary(path, -19.0002, 29.9) is not None
+    path.write_text(json.dumps({
+        "target_lat": -19.0, "target_lon": 29.9, "provenance": cached_provenance,
+    }), encoding="utf-8")
+    assert _cached_summary(path, -19.0, 29.9) is not None
 
 
 def test_cached_summary_reports_corruption_instead_of_silently_rerunning(tmp_path, capsys):

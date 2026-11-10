@@ -147,6 +147,7 @@ def _colour_lut(
                 int(clean[4:6], 16),
                 255,
             )
+    lut[255, 3] = 0
     return lut
 
 

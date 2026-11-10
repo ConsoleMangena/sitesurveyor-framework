@@ -8,9 +8,15 @@ deliberately has no `.content` attribute, so reading the body in one piece fails
 """
 from __future__ import annotations
 
+import warnings
+
+import numpy as np
 import pytest
 
+import src.config as cfg
 import src.fetch_data as fd
+
+import rasterio
 
 
 class _StreamedResponse:
@@ -73,6 +79,17 @@ def test_body_is_streamed_to_disk_and_moved_into_place(tmp_path, monkeypatch):
     assert not list(tmp_path.glob("*.part")), "part file survived a successful download"
 
 
+def test_corrupt_tiff_does_not_replace_a_valid_cached_layer(tmp_path, monkeypatch):
+    out = tmp_path / "dem.tif"
+    original = _valid_geotiff_bytes(tmp_path)
+    out.write_bytes(original)
+    _install(monkeypatch, [_StreamedResponse(200, b"II*\x00" + b"broken raster")])
+
+    assert fd._download("https://example/wcs", out, retries=1, optional=True) is False
+    assert out.read_bytes() == original
+    assert not list(tmp_path.glob("*.part"))
+
+
 def test_a_missing_optional_layer_is_skipped_not_retried(tmp_path, monkeypatch):
     out = tmp_path / "wq_annual.tif"
     calls = _install(monkeypatch, [_StreamedResponse(404, b"NoCoverage")])
@@ -92,6 +109,77 @@ def test_a_200_that_is_not_a_geotiff_is_retried_then_fails_loudly(tmp_path, monk
     assert len(calls) == 3
     assert not out.exists(), "an invalid body must never be published as a layer"
     assert not list(tmp_path.glob("*.part")), "failed attempt left a partial file behind"
+
+
+@pytest.mark.parametrize("mismatched_grid", [False, True])
+def test_rainfall_mean_masks_nodata_and_records_actual_months(tmp_path, monkeypatch, mismatched_grid):
+    monkeypatch.setattr(cfg, "RAW", tmp_path)
+    transform = rasterio.transform.from_origin(29.8, -19.5, 0.001, 0.001)
+    for name, data in {
+        "rain_202301": [[10, -9999], [-9999, 40]],
+        "rain_202302": [[30, 20], [-9999, -9999]],
+    }.items():
+        with rasterio.open(
+            tmp_path / f"{name}.tif", "w", driver="GTiff", width=2, height=2,
+            count=1, dtype="float32", crs="EPSG:4326", nodata=-9999,
+            transform=transform if not mismatched_grid or name.endswith("01") else
+            rasterio.transform.from_origin(30.8, -19.5, 0.001, 0.001),
+        ) as dst:
+            dst.write(np.asarray(data, dtype="float32"), 1)
+
+    def fetch_month(name, *args, **kwargs):
+        path = tmp_path / f"{name}.tif"
+        return path if path.exists() else None
+
+    monkeypatch.setattr(fd, "fetch", fetch_month)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        result = fd.fetch_all(layers=["rain"])
+    with rasterio.open(result["rain_mean"]) as ds:
+        expected = [[10, np.nan], [np.nan, 40]] if mismatched_grid else [[20, 20], [np.nan, 40]]
+        np.testing.assert_allclose(ds.read(1), expected, equal_nan=True)
+        assert ds.transform == transform
+    record = fd.provenance_detail("rain_mean")
+    months = "2023-01" if mismatched_grid else "2023-01, 2023-02"
+    assert record == (
+        f"rainfall_chirps_monthly included_months={months} "
+        "requested_months=24 reduction=observed_monthly_mean"
+    )
+
+    with rasterio.open(tmp_path / "rain_202301.tif", "r+") as dst:
+        dst.write(np.full((2, 2), 50, dtype="float32"), 1)
+    fd.fetch_all(layers=["rain"])
+    with rasterio.open(result["rain_mean"]) as ds:
+        assert ds.read(1)[0, 0] == (50 if mismatched_grid else 40)
+
+
+def test_rainfall_all_nodata_stays_missing_without_runtime_warnings(tmp_path, monkeypatch):
+    monkeypatch.setattr(cfg, "RAW", tmp_path)
+    monthly = tmp_path / "rain_202301.tif"
+    with rasterio.open(
+        monthly, "w", driver="GTiff", width=2, height=2, count=1, dtype="float32",
+        nodata=-9999, crs="EPSG:4326",
+        transform=rasterio.transform.from_origin(29.8, -19.5, 0.001, 0.001),
+    ) as dst:
+        dst.write(np.full((2, 2), -9999, dtype="float32"), 1)
+    monkeypatch.setattr(fd, "fetch", lambda name, *a, **k: monthly if name == "rain_202301" else None)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        result = fd.fetch_all(layers=["rain"])
+    with rasterio.open(result["rain_mean"]) as ds:
+        assert np.isnan(ds.read(1)).all()
+
+
+def test_fetch_cache_requires_the_requested_timestamp(tmp_path, monkeypatch):
+    monkeypatch.setattr(cfg, "RAW", tmp_path)
+    (tmp_path / "alos.tif").write_bytes(_valid_geotiff_bytes(tmp_path))
+    (tmp_path / "alos.src").write_text("alos_palsar_mosaic 2007-01-01", encoding="utf-8")
+    calls = _install(monkeypatch, [_StreamedResponse(200, _valid_geotiff_bytes(tmp_path))])
+    fd.fetch("alos", "alos_palsar_mosaic", "2008-01-01")
+    assert calls == [1]
+    assert fd.provenance_detail("alos") == "alos_palsar_mosaic 2008-01-01"
+    fd.fetch("alos", "alos_palsar_mosaic", "2008-01-01")
+    assert calls == [1]
 
 
 def test_a_dead_connection_is_retried_and_the_partial_is_discarded(tmp_path, monkeypatch):

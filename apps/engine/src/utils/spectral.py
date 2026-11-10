@@ -81,8 +81,8 @@ def residual_index(index_arr: np.ndarray, ndvi_arr: np.ndarray, deg: int = 2) ->
               f"no vegetation detrend fitted, residual returned as no-data")
         return np.full(index_arr.shape, np.nan, dtype="float32")
 
-    x = ndvi_arr[valid]
-    y = index_arr[valid]
+    x = np.asarray(ndvi_arr[valid], dtype="float64")
+    y = np.asarray(index_arr[valid], dtype="float64")
 
     # Sample for robust polynomial fitting if array is large
     if len(x) > 50000:
@@ -98,14 +98,14 @@ def residual_index(index_arr: np.ndarray, ndvi_arr: np.ndarray, deg: int = 2) ->
     scale = float(np.ptp(xs))
     tolerance = np.finfo("float32").eps * max(1.0, float(np.max(np.abs(xs))))
     if scale <= tolerance:
-        pred = np.full(ndvi_arr.shape, np.mean(ys, dtype="float64"), dtype="float64")
+        pred = np.full(x.shape, np.mean(y), dtype="float64")
     else:
-        # Raw quadratic Vandermonde columns lose their rank when NDVI is nearly
-        # constant. Fit in a centred, scaled coordinate and apply the same transform
-        # at prediction so low-contrast ground keeps a conditioned least-squares fit.
-        coeffs = np.polyfit((xs - centre) / scale, ys, deg=deg)
-        pred = np.polyval(coeffs, (ndvi_arr - centre) / scale)
+        # Quantized scenes may contain fewer distinct NDVI values than coefficients.
+        fit_degree = min(deg, np.unique(xs).size - 1)
+        coeffs = np.polyfit((xs - centre) / scale, ys, deg=fit_degree)
+        pred = np.polyval(coeffs, (x - centre) / scale)
 
-    residual = index_arr - pred
-    return residual.astype("float32")
+    residual = np.full(index_arr.shape, np.nan, dtype="float32")
+    residual[valid] = y - pred
+    return residual
 

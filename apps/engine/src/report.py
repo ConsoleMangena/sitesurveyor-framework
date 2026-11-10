@@ -84,6 +84,7 @@ def generate_site_dossier(
     half_deg: float = 0.12,
     client: str | None = None,
     address: str | None = None,
+    category_results: dict[str, dict] | None = None,
 ) -> dict:
     """Consolidate all category survey outputs into a master site dossier."""
     if target_lat is not None and target_lon is not None:
@@ -94,10 +95,35 @@ def generate_site_dossier(
     print(f"Target: ({cfg.TARGET_LAT:.5f}, {cfg.TARGET_LON:.5f}) | Client: {cfg.CLIENT}")
     print("=" * 65)
 
-    water_data, water_status = _load_category(cfg.OUT / "summary.json")
-    minerals_data, minerals_status = _load_category(cfg.OUT / "mineral_summary.json")
-    soil_data, soil_status = _load_category(cfg.OUT / "soil_summary.json")
-    hazard_data, hazard_status = _load_category(cfg.OUT / "hazard_summary.json")
+    def load(key: str, filename: str) -> tuple[dict | None, str]:
+        if category_results is None:
+            return _load_category(cfg.OUT / filename)
+        data = category_results.get(key)
+        return data, "loaded" if data is not None else "not_run"
+
+    water_data, water_status = load("water", "summary.json")
+    minerals_data, minerals_status = load("minerals", "mineral_summary.json")
+    soil_data, soil_status = load("soil", "soil_summary.json")
+    hazard_data, hazard_status = load("hazard", "hazard_summary.json")
+    sections = [water_data, minerals_data, soil_data, hazard_data]
+    identities = [_survey_identity([data]) for data in sections if data]
+    coordinates = {(item["latitude"], item["longitude"]) for item in identities if item}
+    if len(coordinates) > 1:
+        raise ValueError("Category summaries belong to different sites; run a fresh survey")
+    targets = [data["provenance"]["target"] for data in sections
+               if data and data.get("provenance", {}).get("target")]
+    if any(target != targets[0] for target in targets[1:]):
+        raise ValueError("Category summaries cover different survey extents; run a fresh survey")
+    records = [(data.get("provenance") or {}) for data in sections if data]
+    models = [record["model"] for record in records if record.get("model")]
+    if any(model != models[0] for model in models[1:]):
+        raise ValueError("Category summaries use different models; run a fresh survey")
+    inputs = {}
+    for record in records:
+        for name, fingerprint in record.get("inputs", {}).items():
+            if name in inputs and inputs[name] != fingerprint:
+                raise ValueError(f"Category summaries use different {name} inputs; run a fresh survey")
+            inputs[name] = fingerprint
 
     # A restarted engine holds its compiled default AOI while the survey files on disk
     # still belong to the previous client. Reporting the surveyed site rather than the
@@ -216,10 +242,23 @@ def generate_site_dossier(
         }
         dossier["categories"]["hazard_safety"] = hazard_data
 
+    from src.utils.provenance import CLAIM_CEILING, SCORE_BASIS
+    dossier["score_basis"] = SCORE_BASIS
+    dossier["claim_ceiling"] = CLAIM_CEILING
+    dossier["provenance"] = {
+        key: data.get("provenance") for key, data in dossier["categories"].items()
+    }
+    sources = {"selectable": {}, "fixed": {}}
+    for data in dossier["categories"].values():
+        recorded = (data.get("provenance") or {}).get("data_sources", {})
+        for group in sources:
+            sources[group].update(recorded.get(group, {}))
+    dossier["data_sources"] = sources
+
     # Save Master JSON
     json_path = cfg.OUT / "master_site_dossier.json"
     with open(json_path, "w", encoding="utf-8") as fh:
-        json.dump(dossier, fh, indent=2)
+        json.dump(dossier, fh, indent=2, allow_nan=False)
     print("  [OK] master_site_dossier.json")
 
     print("\n[OK] Master Site Dossier successfully generated!")

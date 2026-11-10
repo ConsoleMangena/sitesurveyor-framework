@@ -43,8 +43,7 @@ from pathlib import Path
 import requests
 
 from src import config as cfg
-from src import fetch_data
-from src.mcp.server import set_progress_callback, survey_site
+from src.mcp.server import _single_site, set_progress_callback, survey_site
 from src.utils import webtiles
 
 logger = logging.getLogger("sitesurveyor.worker")
@@ -316,6 +315,7 @@ def reset_outputs() -> None:
             path.unlink()
 
 
+@_single_site
 def execute(payload: dict) -> dict:
     """Configure the AOI and survey it, exactly as the HTTP path did.
 
@@ -344,7 +344,6 @@ def execute(payload: dict) -> dict:
         address=payload["address"],
         half_deg=payload["half_deg"],
     )
-    result["data_sources"] = fetch_data.used_sources()
     result["target"] = cfg.target_block(
         payload["latitude"], payload["longitude"], payload["half_deg"]
     )

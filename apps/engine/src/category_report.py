@@ -21,7 +21,6 @@ from pathlib import Path
 import numpy as np
 
 import src.config as cfg
-from src import fetch_data
 from src.report import _img_to_base64_src, _load_category, _survey_identity
 from src.utils.classification import (
     MINERAL_ZONE_LABELS,
@@ -1852,16 +1851,19 @@ def _attribution_block(used: dict) -> str:
     those pixels, and appending its composite label would read as a second dataset.
     """
     selectable = used.get("selectable", {})
-    credit = selectable["optical"]["credit"]
-    named = ", ".join(v["label"] + " (CC BY 4.0)"
-                      for key, v in selectable.items() if key != "optical")
-    lead = f"{credit} and {named}" if named else credit
-    return (
-        '<div class="attribution"><strong>Data attribution:</strong> '
-        f"{lead} via Digital Earth Africa; JAXA ALOS PALSAR mosaic (&copy; JAXA/METI); "
-        "the Landsat-derived water and fractional-cover layers courtesy of USGS/NASA; "
-        "CHIRPS precipitation courtesy of the Climate Hazards Center, UC Santa Barbara.</div>"
-    )
+    credits = [v.get("credit") or v["label"] for v in selectable.values() if v.get("coverage")]
+    providers = {
+        "alos_palsar_mosaic": "JAXA ALOS PALSAR mosaic (© JAXA/METI)",
+        "wofs_ls_summary_alltime": "Landsat water observations (USGS/NASA)",
+        "fc_ls_summary_annual": "Landsat fractional cover (USGS/NASA)",
+        "rainfall_chirps_monthly": "CHIRPS precipitation (Climate Hazards Center, UC Santa Barbara)",
+    }
+    for record in used.get("fixed", {}).values():
+        coverage = record.split()[0] if record else ""
+        if coverage in providers:
+            credits.append(providers[coverage])
+    lead = "; ".join(credits) if credits else "Input provenance not recorded for this survey."
+    return '<div class="attribution"><strong>Data attribution:</strong> ' + _e(lead) + "</div>"
 
 
 def _raster_section(cat: Category) -> str:
@@ -2117,10 +2119,11 @@ def _commodities_section(cat: Category, data: dict) -> str:
         '<div class="section-title">Available & Screened Minerals in This Survey Area</div>'
         + summary_banner
         + '<div class="note"><strong>Read the verdict column first.</strong> A mineral system is '
-        "indicated when its top decile across this survey area reaches the moderate band. The "
-        "score is a percentile of evidence strength inside <em>this</em> area — not a grade, not "
-        "a tonnage, and not comparable between properties. Confidence says how well a satellite "
-        "can see that deposit style at all.</div>"
+        "indicated when its top decile reaches the moderate band and the index varies enough "
+        "across the area to distinguish targets. The score is a weighted evidence index inside "
+        "<em>this</em> area — not a percentile, grade or tonnage, and not comparable between "
+        "properties. Confidence describes sensor suitability for that deposit style, not a "
+        "measured discovery probability.</div>"
         + '<div class="note"><strong>Dominant on the map</strong> is the ground each system owns '
         "on the mineral map: every cell is coloured by the system that scores highest there, and "
         "only cells at or above the indication threshold are coloured at all. A system can be "
@@ -2220,9 +2223,9 @@ def build_report_html(cat: Category, data: dict) -> str:
         survey area, in rank order, with coordinates you can navigate to.</p>
         <p><span class="limit-no">No:</span> {_e(cat.claim_limit)}</p>
         <h3>How the number is built</h3>
-        <p>Every score is a percentile within <em>this</em> AOI. Class edges come from Jenks natural
-        breaks on the index produced for this property, so a 62 here is not a 62 on another site, and
-        two reports for the same land only compare if they share one survey area.</p>
+        <p>Scores combine weighted evidence scaled within <em>this</em> survey area; they are not
+        percentiles or probabilities. Comparisons require the same area, input data and model.</p>
+        <p>These screening predictions have not been validated against field measurements.</p>
       </div>
     </div>"""
 
@@ -2317,7 +2320,7 @@ def build_report_html(cat: Category, data: dict) -> str:
         banner = ('<div class="banner"><strong>No ranked sites.</strong> The index was computed, '
                   "but nothing in this survey area cleared the siting threshold for this category.</div>")
 
-    used = fetch_data.used_sources()
+    used = (data.get("provenance") or {}).get("data_sources", {})
     attribution = _attribution_block(used)
     sources_html = _sources_note(used)
 
@@ -2389,7 +2392,7 @@ def build_report_html(cat: Category, data: dict) -> str:
     {attribution}
     <div class="disclaimer"><strong>SCREENING-LEVEL INTELLIGENCE DISCLAIMER.</strong> Produced by
     SiteSurveyor AI from multi-sensor satellite Earth Observation. This report is pre-feasibility
-    probability zoning, not a certified geotechnical, hydrogeological or mining engineering
+    relative evidence zoning, not a certified geotechnical, hydrogeological or mining engineering
     investigation. Ground confirmation — {_sentence(cat.verification)} — is required before drilling,
     excavation, construction or capital commitment.</div>
   </div>
@@ -2471,7 +2474,7 @@ def build_viewer_html(cat: Category, dec: dict, files: dict, data: dict | None) 
         return f"./{path.name}" if path else "#"
 
     html = VIEWER_TEMPLATE
-    chosen = _inputs_line(fetch_data.used_sources())
+    chosen = _inputs_line(((data or {}).get("provenance") or {}).get("data_sources", {}))
     filled = {
         "{{NAME}}": _e(cat.name),
         "{{CLIENT}}": _e(str(identity["client"] or cfg.DEFAULT_CLIENT)),
@@ -2487,7 +2490,7 @@ def build_viewer_html(cat: Category, dec: dict, files: dict, data: dict | None) 
         "{{CRS_LABEL}}": f"EPSG:{dec['epsg']}" if dec["epsg"] else "local grid",
         "{{EXTENT}}": f"{xmin:.0f}–{xmax:.0f} E · {ymin:.0f}–{ymax:.0f} N",
         "{{NODATA_SHARE}}": f"{nodata['pct']:.1f}% of cells" if nodata else "none",
-        "{{SOURCES}}": _e(chosen) or "engine defaults",
+        "{{SOURCES}}": _e(chosen) or "input provenance not recorded",
         "{{INDEX_LABEL}}": _e(cat.index_label),
         "{{BREAKS_TITLE}}": _e(cat.breaks_title),
         "{{BREAKS_SCOPE}}": _e(cat.breaks_scope),

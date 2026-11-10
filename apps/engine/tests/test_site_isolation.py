@@ -23,7 +23,8 @@ SITE_B = (-20.210000, 30.410000)
 
 _STATE = ("AOI_SLUG", "RAW", "BBOX_WGS84", "TARGET_ROW", "TARGET_COL", "TARGET_LAT",
           "TARGET_LON", "HALF_DEG", "WIDTH", "HEIGHT", "LOCAL_CRS", "EPSG", "UTM_ZONE",
-          "CLIENT", "CLIENT_ADDRESS", "OUT")
+          "CLIENT", "CLIENT_ADDRESS", "OUT", "TO_LOCAL", "TO_WGS", "TO_6933",
+          "XMIN", "XMAX", "YMIN", "YMAX", "TRANSFORM", "TARGET_X", "TARGET_Y")
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +46,20 @@ def _snapshot() -> dict:
         "height": cfg.HEIGHT,
         "width": cfg.WIDTH,
     }
+
+
+def test_raw_cache_distinguishes_nearby_points_and_aoi_sizes(tmp_path, monkeypatch):
+    monkeypatch.setattr(cfg, "RAW_BASE", tmp_path)
+    cfg.set_target_site(-19.5001, 29.8001, half_deg=0.04)
+    first = cfg.RAW
+    cfg.set_target_site(-19.5002, 29.8002, half_deg=0.04)
+    nearby = cfg.RAW
+    cfg.set_target_site(-19.5001, 29.8001, half_deg=0.08)
+    larger = cfg.RAW
+    assert len({first, nearby, larger}) == 3
+
+    cfg.set_target_site(-19.5001, 29.8001, half_deg=0.04)
+    assert cfg.RAW == first
 
 
 def test_switching_sites_re_derives_every_geometry_field():

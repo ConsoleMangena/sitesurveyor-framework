@@ -118,10 +118,13 @@ def _download(url: str, out: Path, retries: int = 4, optional: bool = False) -> 
                         tmp.unlink(missing_ok=True)
                         print(f"[retry {attempt}] {out.stem}: not a GeoTIFF: {head!r}")
                     else:
-                        os.replace(tmp, out)
-                        with rasterio.open(out) as ds:
+                        with rasterio.open(tmp) as ds:
+                            for band in range(1, ds.count + 1):
+                                for _, window in ds.block_windows(band):
+                                    ds.read(band, window=window)
                             print(f"[ok] {out.stem:12s} {ds.count:2d} band(s)  "
                                   f"{ds.width}x{ds.height}  {ds.crs}")
+                        os.replace(tmp, out)
                         return True
         except Exception as exc:
             tmp.unlink(missing_ok=True)
@@ -147,10 +150,11 @@ def fetch(name: str, coverage: str, stamp: str | None = None, projected: bool = 
         # The cache is keyed by layer name, so the sidecar is the only record of which
         # coverage produced it: without the match, switching the elevation model would
         # keep analysing the DEM downloaded for the previous one.
-        cached_from = provenance(name)
-        if cached_from != coverage:
+        cached_from = provenance_detail(name)
+        wanted = f"{coverage} {stamp}" if stamp else coverage
+        if cached_from != wanted:
             print(f"[cache] {name:12s} cached from '{cached_from or 'unknown'}', "
-                  f"not '{coverage}' - re-fetching")
+                  f"not '{wanted}' - re-fetching")
         else:
             try:
                 with rasterio.open(out) as ds:
@@ -163,7 +167,7 @@ def fetch(name: str, coverage: str, stamp: str | None = None, projected: bool = 
     url = _url(coverage, cfg.BBOX_WGS84, stamp, projected, target_crs)
     success = _download(url, out, retries, optional)
     if success:
-        src.write_text(coverage, encoding="utf-8")
+        src.write_text(f"{coverage} {stamp}" if stamp else coverage, encoding="utf-8")
         return out
     return None
 
@@ -173,9 +177,6 @@ def provenance(name: str) -> str:
     detail = provenance_detail(name)
     if detail:
         return detail.split()[0]
-    for spec in cfg.DATA_SOURCES.values():
-        if spec["layer"] == name:
-            return spec["default"]
     return ""
 
 
@@ -187,9 +188,6 @@ def provenance_detail(name: str) -> str:
             return src.read_text(encoding="utf-8").strip()
         except OSError:
             return ""
-    for spec in cfg.DATA_SOURCES.values():
-        if spec["layer"] == name:
-            return spec["default"]
     return ""
 
 
@@ -365,7 +363,7 @@ def scenes_used() -> list[str]:
 
 
 
-def used_sources() -> dict:
+def used_sources(layers: list[str] | None = None) -> dict:
     """Name the coverages the rasters on disk came from, for anywhere that discloses inputs.
 
     The sidecars are the authority rather than ``cfg.ACTIVE_SOURCES``: a report that named the
@@ -374,9 +372,11 @@ def used_sources() -> dict:
     """
     selectable = {}
     for key, spec in cfg.DATA_SOURCES.items():
-        coverage = provenance(spec["layer"]) or cfg.ACTIVE_SOURCES[key]
-        label = spec["options"].get(coverage, coverage)
-        if key == "optical":
+        if layers is not None and spec["layer"] not in layers:
+            continue
+        coverage = provenance(spec["layer"]) if (cfg.RAW / f"{spec['layer']}.tif").is_file() else ""
+        label = spec["options"].get(coverage, coverage) if coverage else "Source not recorded"
+        if key == "optical" and coverage:
             detail = provenance_detail("optical")
             if len(detail.split()) == 3:
                 label = cfg.composite_label(detail)
@@ -384,12 +384,23 @@ def used_sources() -> dict:
         if key == "optical":
             # The agency behind the pixels, carried with the entry so a dossier credits Landsat
             # for a Landsat median instead of assuming Copernicus produced every optical run.
-            entry["credit"] = cfg.optical_credit(coverage)
-            scenes = scenes_used()
-            if scenes:
-                entry["scenes"] = scenes
+            entry["credit"] = cfg.OPTICAL_PRODUCTS.get(coverage, {}).get("credit", "Source not recorded")
+            if coverage:
+                scenes = scenes_used()
+                if scenes:
+                    entry["scenes"] = scenes
+                parts = provenance_detail("optical").split()
+                if len(parts) == 3 and parts[1].isascii() and parts[1].isdigit():
+                    entry["composite"] = {"year": int(parts[1]), "window": parts[2]}
         selectable[key] = entry
-    return {"selectable": selectable, "fixed": dict(cfg.FIXED_SOURCES)}
+    fixed = {}
+    for key, layer in {"alos": "alos", "wofs": "wofs", "rainfall": "rain_mean",
+                       "crop_mask": "crop_mask", "fc_ls": "fc_ls_2023"}.items():
+        if layers is not None and layer not in layers:
+            continue
+        if (cfg.RAW / f"{layer}.tif").is_file():
+            fixed[key] = provenance_detail(layer) or "Source not recorded"
+    return {"selectable": selectable, "fixed": fixed}
 
 
 def stale_layers() -> list[str]:
@@ -477,6 +488,7 @@ def fetch_all(
     if want is None or "rain" in want or "rain_mean" in want:
         months = [(y, m) for y in (2023, 2024) for m in range(1, 13)]
         cube, transform, crs = [], None, None
+        months_used = []
         unreadable_months = []
         for y, m in months:
             f = fetch(f"rain_{y}{m:02d}", "rainfall_chirps_monthly",
@@ -485,7 +497,12 @@ def fetch_all(
             if f is not None and f.exists():
                 try:
                     with rasterio.open(f) as ds:
-                        cube.append(ds.read(1).astype("float32"))
+                        monthly = ds.read(1, masked=True).astype("float32").filled(np.nan)
+                        monthly[~np.isfinite(monthly)] = np.nan
+                        if cube and (monthly.shape != cube[0].shape or ds.transform != transform or ds.crs != crs):
+                            raise ValueError("Monthly rainfall grids differ")
+                        cube.append(monthly)
+                        months_used.append(f"{y}-{m:02d}")
                         transform, crs = ds.transform, ds.crs
                 except Exception as exc:
                     unreadable_months.append(f"{y}-{m:02d} ({type(exc).__name__})")
@@ -494,16 +511,26 @@ def fetch_all(
                   f"excluded from the rainfall mean: {', '.join(unreadable_months)}")
 
         rain_mean_path = cfg.RAW / "rain_mean.tif"
-        if cube and (force or not rain_mean_path.exists()):
-            arr = np.nanmean(np.stack(cube), axis=0)
+        if cube:
+            stack = np.stack(cube)
+            counts = np.isfinite(stack).sum(axis=0)
+            arr = np.full(stack.shape[1:], np.nan, dtype="float32")
+            np.divide(np.nansum(stack, axis=0, dtype="float64"), counts, out=arr, where=counts > 0)
+            temp = rain_mean_path.with_suffix(".tif.part")
             with rasterio.open(
-                rain_mean_path, "w", driver="GTiff",
+                temp, "w", driver="GTiff",
                 height=arr.shape[0], width=arr.shape[1], count=1,
                 dtype="float32", crs=crs, transform=transform,
                 nodata=np.nan,
             ) as dst:
                 dst.write(arr, 1)
-            print(f"[ok] rain_mean   Aggregated {len(cube)} months; ~{np.nanmean(arr) * 12:.0f} mm/yr")
+            os.replace(temp, rain_mean_path)
+            (cfg.RAW / "rain_mean.src").write_text(
+                "rainfall_chirps_monthly included_months=" + ", ".join(months_used)
+                + f" requested_months={len(months)} reduction=observed_monthly_mean",
+                encoding="utf-8",
+            )
+            print(f"[ok] rain_mean   Aggregated {len(cube)}/{len(months)} months; missing cells remain no-data")
         elif rain_mean_path.exists():
             print("[cache] rain_mean")
 

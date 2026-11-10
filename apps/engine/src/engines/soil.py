@@ -61,18 +61,6 @@ from src.utils.raster import pixel_to_lonlat, robust_norm, safe_savefig, warp, w
 from src.utils.spectral import bare_soil_index, ndmi, ndvi
 from src.utils.terrain import fill_sinks, slope_degrees, twi
 
-# ---------------------------------------------------------------------------
-# Weights — versioned in src/config.py but mirrored here for standalone run
-# ---------------------------------------------------------------------------
-SOIL_WEIGHTS = {
-    "erosion_risk":   0.25,
-    "soil_moisture":  0.20,
-    "vegetation":     0.18,
-    "landcover":      0.15,
-    "wetness":        0.12,
-    "rainfall":       0.10,
-}
-
 # WorldCover class-to-land-capability mapping (0 = excluded, 1–5 = very low–very high)
 # Score represents agricultural / land-use suitability potential
 _LC_SUITABILITY = {
@@ -135,7 +123,6 @@ def run_soil_survey(
     red      = warp(cfg.RAW / "optical.tif", "red", scale=10000.0)
     nir      = warp(cfg.RAW / "optical.tif", "nir", scale=10000.0)
     swir1    = warp(cfg.RAW / "optical.tif", "swir_1", scale=10000.0)
-    swir2    = warp(cfg.RAW / "optical.tif", "swir_2", scale=10000.0)
 
     # Check for DE Africa Sandbox Fractional Cover & Cropland Extent
     fc_path = cfg.RAW / "fc_ls_2023.tif"
@@ -239,12 +226,12 @@ def run_soil_survey(
     # ------------------------------------------------------------------
     print("[5/6] Computing Soil Capability Index (AHP weighted sum)...")
     sci = (
-        SOIL_WEIGHTS["erosion_risk"]  * erosion_cap  * 100 +
-        SOIL_WEIGHTS["soil_moisture"] * moisture_norm * 100 +
-        SOIL_WEIGHTS["vegetation"]    * veg_norm      * 100 +
-        SOIL_WEIGHTS["landcover"]     * lc_suit       * 100 +
-        SOIL_WEIGHTS["wetness"]       * wetness_cap   * 100 +
-        SOIL_WEIGHTS["rainfall"]      * rain_norm     * 100
+        cfg.SOIL_WEIGHTS["erosion_risk"]  * erosion_cap  * 100 +
+        cfg.SOIL_WEIGHTS["soil_moisture"] * moisture_norm * 100 +
+        cfg.SOIL_WEIGHTS["vegetation"]    * veg_norm      * 100 +
+        cfg.SOIL_WEIGHTS["landcover"]     * lc_suit       * 100 +
+        cfg.SOIL_WEIGHTS["wetness"]       * wetness_cap   * 100 +
+        cfg.SOIL_WEIGHTS["rainfall"]      * rain_norm     * 100
     ).astype("float32")
 
     sci[water_mask | builtup_mask] = 0.0
@@ -353,7 +340,7 @@ def run_soil_survey(
         "local_150m_mean_score": safe_round(local_mean, 1),
         "local_150m_class": class_names.get(local_class, "?"),
         "candidate_areas": candidates,
-        "weights_used": SOIL_WEIGHTS,
+        "weights_used": cfg.SOIL_WEIGHTS,
         "jenks_breaks": [round(float(b), 2) for b in breaks],
         "deafrica_sandbox": {
             "fractional_cover_integrated": fc_bs is not None and fc_pv is not None,
@@ -369,8 +356,15 @@ def run_soil_survey(
         "aoi_grid_px": f"{cfg.WIDTH}×{cfg.HEIGHT}",
         "cell_size_m": cfg.CELL,
     }
+    from src.utils.provenance import capture_provenance
+    inputs = ["dem.tif", "landcover.tif", "rain_mean.tif", "optical.tif"]
+    if fc_bs is not None and fc_pv is not None:
+        inputs.append("fc_ls_2023.tif")
+    if crop_prob is not None:
+        inputs.append("crop_mask.tif")
+    summary["provenance"] = capture_provenance("soil", inputs)
     with open(cfg.OUT / "soil_summary.json", "w") as fh:
-        json.dump(summary, fh, indent=2)
+        json.dump(summary, fh, indent=2, allow_nan=False)
 
     print("\n[OK] Category 3 SOIL complete. Outputs in:", cfg.OUT)
     return summary
