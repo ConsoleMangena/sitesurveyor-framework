@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  CalendarClock,
   Check,
   ChevronDown,
   ChevronRight,
+  FileText,
+  FolderPlus,
   Globe,
   Loader2,
   MessageSquarePlus,
   PanelLeft,
   Pencil,
+  Receipt,
   SendHorizontal,
   Trash2,
   User,
@@ -65,44 +69,17 @@ interface AgentStep {
   count: number;
 }
 
-const SUGGESTIONS = [
-  "/borehole",
-  "Summarise overdue invoices across workspaces",
-  "/minerals",
-  "Which asset calibrations are due within the next 14 days?",
-  "/hazard",
-];
-
-/** What the assistant claims about itself — one line per tool group the
- *  ai-chat runtime actually exposes, so nothing here promises a tool that
- *  is not wired. */
-const ASSISTANT_CAPABILITIES = [
-  {
-    label: "Earth Observation",
-    detail:
-      "Runs single-domain satellite surveys (groundwater & boreholes, mineral prospectivity, hazard risk, or soil capability) with upfront credit quotes and active job locks, and reads completed surveys back — scores, mineral systems, water depth and ranked targets.",
-  },
-
-  {
-    label: "Query",
-    detail:
-      "Counts and reports read from your own records — projects, jobs and dispatch, quotes, invoices and payments, assets and calibrations, time, contacts, and the public market.",
-  },
-  {
-    label: "Act",
-    detail:
-      "Creates and updates records inside this conversation. Every write is read back and verified before it is reported, and a permanent delete waits for your confirmation.",
-  },
-  {
-    label: "Inspect drawings",
-    detail:
-      "Reads project drawings, lists layers, counts entities and reports an entity's recorded properties. It cannot change a drawing: there is no command executor in this client yet.",
-  },
-  {
-    label: "Remember",
-    detail:
-      "Keeps durable facts such as your datum, working layer and standing defaults across chats.",
-  },
+/** Empty-state action starters. Each prefills a plain-language request the
+ *  agent carries out with a real tool — a writable table or a named workflow —
+ *  so the first screen launches work instead of touring features. Clicking
+ *  fills the composer without sending, so a credit-spending survey or a record
+ *  write is always reviewed before it runs. */
+const STARTER_ACTIONS = [
+  { label: "Create a quote", prompt: "Create a quote", icon: FileText },
+  { label: "Start a project", prompt: "Start a new project", icon: FolderPlus },
+  { label: "Schedule a job", prompt: "Schedule a job", icon: CalendarClock },
+  { label: "Run a satellite survey", prompt: "Run a satellite survey", icon: Globe },
+  { label: "Summarise overdue invoices", prompt: "Summarise overdue invoices", icon: Receipt },
 ];
 
 let idCounter = 0;
@@ -601,7 +578,7 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
               SiteSurveyor AI
             </h1>
             <p className="truncate text-[11px] text-muted-foreground">
-              Your virtual assistant — works on this workspace&apos;s records
+              Run quotes, projects, jobs and satellite surveys by chat
             </p>
           </div>
           <span
@@ -629,47 +606,35 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
               <div className="flex gap-2.5">
                 <BrandMark className="mt-1 size-8" />
                 <div className={cn(BUBBLE_AGENT, "max-w-[62ch]")}>
-                  <p className="font-medium text-card-foreground">
-                    I&apos;m SiteSurveyor AI, the virtual assistant for this
-                    workspace — your surveying reference point.
+                  <p className="text-[13px] leading-relaxed text-card-foreground">
+                    Describe a task and I&apos;ll run it in this workspace — quotes,
+                    projects, jobs, invoices, or a satellite survey from a
+                    plain-language brief. I verify every record I write, and ask
+                    before spending credits or deleting anything.
                   </p>
-                  <ul className="mt-2.5 space-y-2">
-                    {ASSISTANT_CAPABILITIES.map((capability) => (
-                      <li key={capability.label} className="flex gap-2">
-                        <span
-                          aria-hidden
-                          className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary"
-                        />
-                        <span className="text-[13px] leading-relaxed text-muted-foreground">
-                          <span className="font-medium text-card-foreground">
-                            {capability.label}:
-                          </span>{" "}
-                          {capability.detail}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               </div>
 
               <div className="flex gap-2.5">
                 <span aria-hidden className="size-8 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-muted-foreground">
-                    Start with one of these
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {SUGGESTIONS.map((suggestion) => (
+                <div className="flex min-w-0 flex-wrap gap-2">
+                  {STARTER_ACTIONS.map((action) => {
+                    const Icon = action.icon;
+                    return (
                       <button
-                        key={suggestion}
+                        key={action.label}
                         type="button"
-                        onClick={() => setDraft(suggestion)}
-                        className="rounded-md border border-border/60 bg-background px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        onClick={() => {
+                          setDraft(action.prompt);
+                          inputRef.current?.focus();
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted hover:text-foreground"
                       >
-                        {suggestion}
+                        <Icon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                        {action.label}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -945,7 +910,7 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
               placeholder={
                 streaming
                   ? "SiteSurveyor is working…"
-                  : "Ask SiteSurveyor or type /borehole, /minerals, /hazard, /soil…"
+                  : "Tell SiteSurveyor what to do — or type / for survey commands"
               }
               disabled={streaming}
               className="h-9 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
