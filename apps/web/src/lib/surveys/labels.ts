@@ -120,6 +120,13 @@ export const CATEGORY_EXPORTS: Record<
   },
 };
 
+/** Deliverables that are not per-category, keyed as the worker keys them. The commodity
+ *  table only exists on a minerals run, so it is offered there and nowhere else. */
+export const SHARED_EXPORTS = {
+  dossier: "master_json_dossier",
+  commoditiesCsv: "mineral_commodities_csv",
+} as const;
+
 /**
  * Class colours, in zone-code order. Water/soil/hazard run 0 water, 1 very low, …,
  * 5 very high, 6 built-up; minerals is a catalogue instead — 0 water, 1-9 one code per

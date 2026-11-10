@@ -183,23 +183,69 @@ export function imageryChip(sources: Record<string, string>, composite: { year: 
   return `${product.family} · ${stamp}`;
 }
 
-/** The coverages a finished run names in its provenance, joined for the snapshot line.
- *
- * A result only ever carries what the worker proved fed the numbers, so an absent layer
- * reads as a dash rather than as the coverage the form happened to be showing — the two
- * differ whenever a cached raster predates a switch, and the snapshot is where that shows.
- */
-export function inputsText(provenance: SurveyProvenance | null | undefined): string {
-  const labels = ["dem", "landcover"]
-    .map((layer) => provenance?.selectable[layer]?.label)
-    .filter((label): label is string => Boolean(label));
-  return labels.length ? labels.join(" · ") : "—";
-}
-
 /** One layer's provenance label, for the places that name a single coverage. */
 export function coverageLabel(
   provenance: SurveyProvenance | null | undefined,
   layer: string,
 ): string | null {
   return provenance?.selectable[layer]?.label ?? null;
+}
+
+/** The pinned inputs, under the names `used_sources` files them by in the provenance. */
+const FIXED_COVERAGE_NAMES: Record<string, string> = {
+  alos: "Radar backscatter",
+  wofs: "Surface water history",
+  rainfall: "Rainfall",
+  crop_mask: "Cropland extent",
+  fc_ls: "Fractional cover",
+  gravimetry: "Gravimetry",
+};
+
+/** A coverage's reader-facing name. The selectable ones already have it in the field
+ *  table; an unrecognised key keeps its own spelling rather than being guessed at. */
+export function coverageName(key: string): string {
+  return (
+    DATA_SOURCES.find((field) => field.id === key)?.label ??
+    FIXED_COVERAGE_NAMES[key] ??
+    key
+  );
+}
+
+export interface CoverageRow {
+  key: string;
+  name: string;
+  /** What the run recorded, verbatim — including "Source not recorded". */
+  label: string;
+  coverage: string | null;
+  credit: string | null;
+  /** True for an input the form chose, false for one the engine pins. */
+  chosen: boolean;
+}
+
+/**
+ * The data browser: one row per coverage the run actually read.
+ *
+ * Built from the recorded provenance and nothing else. A catalogue of everything the
+ * platform *could* read would list coverages this survey never touched, which is the
+ * same false attribution the engine's sidecars exist to prevent.
+ */
+export function coverageRows(provenance: SurveyProvenance | null | undefined): CoverageRow[] {
+  if (!provenance) return [];
+  const chosen = Object.entries(provenance.selectable).map(([key, entry]) => ({
+    key,
+    name: coverageName(key),
+    label: entry.label,
+    coverage: entry.coverage || null,
+    credit: entry.credit ?? null,
+    chosen: true,
+  }));
+  const pinned = Object.entries(provenance.fixed).map(([key, label]) => ({
+    key,
+    name: coverageName(key),
+    label,
+    coverage: null,
+    credit: null,
+    chosen: false,
+  }));
+  return [...chosen, ...pinned];
 }

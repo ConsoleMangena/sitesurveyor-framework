@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { BlockTitle } from "./BlockTitle.tsx";
 
-import type { SurveyRun } from "../../lib/repositories/satelliteSurveys.ts";
+import type { SurveyProvenance, SurveyRun } from "../../lib/repositories/satelliteSurveys.ts";
 import type { JobWithProject } from "../../lib/repositories/jobs.ts";
+import type { ContentsTab } from "./WorkbenchBar.tsx";
 import { SurveyStatusChip } from "../../components/surveys/SurveyStatusChip.tsx";
 import { coordText, type DossierCategory, CATEGORY_LEGEND_CODES, CATEGORY_RASTER_PALETTE, CATEGORY_ZONE_LABELS } from "../../lib/surveys/labels.ts";
+import { coverageRows, type CoverageRow } from "../../lib/surveys/sources.ts";
 import {
   BAND_RANGES,
   BASEMAPS,
@@ -23,13 +25,20 @@ export interface SurveySnapshot {
   grid: string;
   /** Which survey the numbers on this screen came from, in the reader's terms. */
   source: string;
-  inputs: string;
   basis: string;
-  /** What the gravity field is and whether it scored. Minerals only. */
-  gravimetry?: string | null;
 }
 
+const PANE_TABS: { id: ContentsTab; label: string }[] = [
+  { id: "layers", label: "Layers" },
+  { id: "data", label: "Data" },
+  { id: "jobs", label: "Jobs" },
+];
+
 interface ContentsPanelProps {
+  tab: ContentsTab;
+  onTab: (tab: ContentsTab) => void;
+  /** What the run recorded it read. Null until a survey has published a result. */
+  provenance: SurveyProvenance | null;
   layers: { aoi: boolean; candidates: boolean; raster?: boolean };
   onLayer: (id: "aoi" | "candidates" | "raster", value: boolean) => void;
   rasterOpacity?: number;
@@ -58,6 +67,9 @@ interface ContentsPanelProps {
 
 /** What is on the map, what it is drawn over, and which survey the numbers came from. */
 export default function ContentsPanel({
+  tab,
+  onTab,
+  provenance,
   layers,
   onLayer,
   rasterOpacity,
@@ -119,7 +131,25 @@ export default function ContentsPanel({
         </Button>
       </div>
 
+      <div className="sw-pane-tabs" role="tablist" aria-label="Contents sections">
+        {PANE_TABS.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === entry.id}
+            onClick={() => onTab(entry.id)}
+            className="sw-pane-tab"
+            data-active={tab === entry.id}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </div>
+
       <div className="sw-panel__body flex-1">
+        {tab === "layers" ? (
+          <>
         <section className="sw-block px-3.5 py-3">
           <BlockTitle>Layers</BlockTitle>
           <ul className="mt-1 list-none p-0">
@@ -266,14 +296,15 @@ export default function ContentsPanel({
             <SnapshotRow label="CRS" value={snapshot.crs} />
             <SnapshotRow label="Grid" value={snapshot.grid} />
             <SnapshotRow label="Source" value={snapshot.source} />
-            <SnapshotRow label="Inputs" value={snapshot.inputs} title="Coverages the scores were computed from" />
-            {snapshot.gravimetry ? (
-              <SnapshotRow label="Gravimetry" value={snapshot.gravimetry} />
-            ) : null}
             <SnapshotRow label="Basis" value={snapshot.basis} />
           </dl>
         </section>
+          </>
+        ) : null}
 
+        {tab === "data" ? <DataBrowser provenance={provenance} /> : null}
+
+        {tab === "jobs" ? (
         <section className="sw-block px-3.5 py-3">
           <div className="flex items-center justify-between">
             <BlockTitle count={jobs ? jobs.length : runs.length}>
@@ -436,24 +467,78 @@ export default function ContentsPanel({
             </ul>
           )}
         </section>
+        ) : null}
       </div>
     </div>
+  );
+}
+
+/** The data browser: the coverages this run read, as it recorded them. */
+function DataBrowser({ provenance }: { provenance: SurveyProvenance | null }) {
+  const rows = coverageRows(provenance);
+
+  if (rows.length === 0) {
+    return (
+      <section className="sw-block px-3.5 py-3">
+        <BlockTitle>EO coverages</BlockTitle>
+        <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+          No survey has recorded its inputs yet. Run one and every coverage it read appears
+          here, named by the worker rather than by the form.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <CoverageGroup title="Chosen for this run" rows={rows.filter((row) => row.chosen)} />
+      <CoverageGroup title="Pinned by the engine" rows={rows.filter((row) => !row.chosen)} />
+    </>
+  );
+}
+
+function CoverageGroup({ title, rows }: { title: string; rows: CoverageRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <section className="sw-block px-3.5 py-3">
+      <BlockTitle count={rows.length}>{title}</BlockTitle>
+      <ul className="mt-1.5 list-none space-y-1.5 p-0">
+        {rows.map((row) => (
+          <li key={row.key} className="border-b border-border/50 pb-1.5 last:border-0 last:pb-0">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[11.5px] font-medium text-foreground">{row.name}</span>
+              {row.coverage ? (
+                <span className="sw-mono truncate text-[10px] text-muted-foreground" title={row.coverage}>
+                  {row.coverage}
+                </span>
+              ) : null}
+            </div>
+            {/* Wrapped, not truncated: a provenance record is the one string on this pane
+                a reader must be able to finish reading. */}
+            <p className="sw-mono mt-0.5 break-words text-[10.5px] leading-snug text-muted-foreground">
+              {row.label}
+            </p>
+            {row.credit ? (
+              <p className="mt-0.5 text-[10px] text-muted-foreground/80">{row.credit}</p>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
 function SnapshotRow({
   label,
   value,
-  title,
 }: {
   label: string;
   value: string;
-  title?: string;
 }) {
   return (
     <div className="grid grid-cols-[62px_minmax(0,1fr)] items-baseline gap-2">
       <dt className="text-[10.5px] uppercase tracking-[0.05em] text-muted-foreground">{label}</dt>
-      <dd className="sw-mono truncate text-[11px]" title={title ?? value}>
+      <dd className="sw-mono truncate text-[11px]" title={value}>
         {value}
       </dd>
     </div>

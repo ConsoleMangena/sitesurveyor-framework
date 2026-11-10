@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Briefcase, ChevronLeft, Coins, Maximize2, Minimize2, LogOut } from "lucide-react";
+import { ChevronLeft, Coins } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import type { Map as LeafletMap } from "leaflet";
 
@@ -12,12 +12,18 @@ import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 
 import CandidateTable from "@/components/surveys/CandidateTable.tsx";
 import ContentsPanel, { type SurveySnapshot } from "@/components/surveys/ContentsPanel.tsx";
-import ExportsPanel from "@/components/surveys/ExportsPanel.tsx";
 import IndicatorsPanel from "@/components/surveys/IndicatorsPanel.tsx";
 import MineralsPanel from "@/components/surveys/MineralsPanel.tsx";
 import SurveyMap, { type MapViewInfo } from "@/components/surveys/SurveyMap.tsx";
 import MapExportModal from "@/components/surveys/MapExportModal.tsx";
-import { StatusStrip, WorkbenchBar } from "@/components/surveys/WorkbenchBar.tsx";
+import {
+  StatusStrip,
+  WorkbenchBar,
+  type ContentsTab,
+  type MapTool,
+  type PublishItem,
+  type RibbonTab,
+} from "@/components/surveys/WorkbenchBar.tsx";
 
 import {
   InsufficientCreditsError,
@@ -44,6 +50,8 @@ import {
   CATEGORY_RASTER_PALETTE,
   CATEGORY_TRANSPARENT_CODES,
   CATEGORY_ZONE_LABELS,
+  SHARED_EXPORTS,
+  fromDossierCategory,
   outsideCoverage,
   parseCoordinate,
   getJobCategory,
@@ -73,7 +81,6 @@ import {
   DEFAULT_COMPOSITE,
   coverageLabel,
   imageryChip,
-  inputsText,
 } from "../../../lib/surveys/sources.ts";
 import TargetForm from "./TargetForm.tsx";
 import EarthObservationSetupForm from "./EarthObservationSetupForm.tsx";
@@ -284,6 +291,11 @@ export default function SatelliteSurveyPage({
     token: number;
   } | null>(null);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const [ribbonTab, setRibbonTab] = useState<RibbonTab>("home");
+  const [contentsTab, setContentsTab] = useState<ContentsTab>("layers");
+  const [mapTool, setMapTool] = useState<MapTool>("pan");
+  const [tableOpen, setTableOpen] = useState(false);
+  const [measureText, setMeasureText] = useState<string | null>(null);
 
   const selected = runs.find((run) => run.id === selectedId) ?? runs[0] ?? null;
   const running = runs.find((run) => run.active) ?? null;
@@ -371,11 +383,6 @@ export default function SatelliteSurveyPage({
     () => candidateRows(detail?.targets ?? [], [jobDossierCategory]),
     [detail?.targets, jobDossierCategory],
   );
-
-  const kmzDeliverable = useMemo(() => {
-    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
-    return (detail?.deliverables ?? []).find((d) => d.kind === kinds.kmz) ?? null;
-  }, [detail?.deliverables, jobDossierCategory]);
 
   const overlayDeliverable = useMemo(() => {
     const kinds = CATEGORY_EXPORTS[jobDossierCategory];
@@ -533,20 +540,39 @@ export default function SatelliteSurveyPage({
   const exportLegendTitle = rasterOn ? CATEGORY_LEGEND_TITLES[jobDossierCategory] : "Map Symbols";
   const exportBasemap = basemapById(basemap);
 
-  const handleDownloadKmz = useCallback(async () => {
-    if (!kmzDeliverable) return;
-    const url = await deliverableUrl(kmzDeliverable);
-    if (url) window.open(url, "_blank", "noreferrer");
-  }, [kmzDeliverable]);
+  /** The files a survey of this category publishes. A disabled button says the run did
+   *  not write that one; a button that is simply absent says nothing at all. */
+  const downloads = useMemo<PublishItem[]>(() => {
+    const kinds = CATEGORY_EXPORTS[jobDossierCategory];
+    const available = new Set((detail?.deliverables ?? []).map((file) => file.kind));
+    const files = [
+      { kind: kinds.kmz, label: "KMZ" },
+      { kind: kinds.geojson, label: "GeoJSON" },
+      { kind: kinds.tif, label: "GeoTIFF" },
+      { kind: SHARED_EXPORTS.dossier, label: "Dossier JSON" },
+      ...(jobDossierCategory === "minerals"
+        ? [{ kind: SHARED_EXPORTS.commoditiesCsv, label: "Commodity CSV" }]
+        : []),
+    ];
+    return files.map((file) => ({ ...file, available: available.has(file.kind) }));
+  }, [detail?.deliverables, jobDossierCategory]);
+
+  const handleDownload = useCallback(
+    async (kind: string) => {
+      const file = (detail?.deliverables ?? []).find((entry) => entry.kind === kind);
+      if (!file) return;
+      const url = await deliverableUrl(file);
+      if (url) window.open(url, "_blank", "noreferrer");
+    },
+    [detail?.deliverables],
+  );
 
   const snapshot: SurveySnapshot = {
     target: dmsText(target.latitude, target.longitude),
     crs: detail?.run.result?.target?.crs ?? "—",
     grid: gridText(detail?.run.result?.target?.cellM),
     source: sourceText(selected, queuedThisSession),
-    inputs: inputsText(provenance),
     basis: basisText(detail?.run.result?.scoreBasis ?? null),
-    gravimetry: provenance?.fixed.gravimetry ?? null,
   };
 
   const pill = listError
@@ -574,6 +600,33 @@ export default function SatelliteSurveyPage({
     // Leaflet sizes its canvas once, and the grid columns animate over 220 ms.
     setResizeToken((token) => token + 1);
   }
+
+  /** The ribbon can send the reader to a pane tab; a folded pane has to unfold to show it. */
+  const openContents = useCallback(
+    (next: ContentsTab) => {
+      setContentsTab(next);
+      if (!leftOpen) {
+        setLeftOpen(true);
+        setResizeToken((token) => token + 1);
+      }
+    },
+    [leftOpen],
+  );
+
+  function toggleTable() {
+    setTableOpen((open) => !open);
+    // The dock takes a row off the canvas, so Leaflet has to measure itself again.
+    setResizeToken((token) => token + 1);
+  }
+
+  /** Placing the pin writes the same fields the form does, to the same five decimals. */
+  const handleMoveTarget = useCallback((latitude: number, longitude: number) => {
+    setValues((current) => ({
+      ...current,
+      latitude: latitude.toFixed(5),
+      longitude: longitude.toFixed(5),
+    }));
+  }, []);
 
   /** The drape is the classified map layer, so its switch is remembered separately:
    *  unchecking it once must not uncheck it for every survey. */
@@ -776,79 +829,36 @@ export default function SatelliteSurveyPage({
             ? `Job: ${openedJob.title}${openedJob.location ? ` · ${openedJob.location}` : ""}`
             : undefined
         }
-        actions={
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-8 gap-1.5 text-xs font-medium transition-colors",
-                isFullscreen && "bg-primary/10 border-primary/40 text-primary"
-              )}
-              onClick={toggleFullscreen}
-              title={
-                isFullscreen
-                  ? "Exit Fill Dashboard (show sidebar and navigation)"
-                  : "Fill dashboard with Earth Observation UI"
-              }
-            >
-              {isFullscreen ? (
-                <>
-                  <Minimize2 className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span>Exit Full View</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span>Fill Dashboard</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-              onClick={handleExitProject}
-              title="Exit current project and return to job selection"
-            >
-              <LogOut className="size-3.5 shrink-0" aria-hidden="true" />
-              <span>Exit Project</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-medium"
-              onClick={handleExitProject}
-              title="Switch to another job"
-            >
-              <Briefcase className="size-3.5 text-primary" aria-hidden="true" />
-              <span className="hidden sm:inline">Switch Job</span>
-            </Button>
-          </div>
-        }
       />
 
       <WorkbenchBar
+        tab={ribbonTab}
+        onTab={setRibbonTab}
+        pill={pill}
         onRun={() => void submit()}
         running={queueing || running !== null}
-        onResetView={() => setFitToken((token) => token + 1)}
         onReload={() => void refresh()}
         onClear={clearBoard}
-        onExportView={() => setExportModalOpen(true)}
         onAskAi={selected && onNavigate ? handleAskAi : undefined}
+        process={toDossierCategory(values.categories[0] ?? "water")}
+        onProcess={(category) => patch({ categories: [fromDossierCategory(category)] })}
+        onOpenContents={openContents}
+        onResetView={() => setFitToken((token) => token + 1)}
+        mapTool={mapTool}
+        onMapTool={setMapTool}
+        tableOpen={tableOpen}
+        onToggleTable={toggleTable}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => togglePanel("left")}
         onToggleRight={() => togglePanel("right")}
-        pill={pill}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         onExitProject={handleExitProject}
+        published={selected !== null && !selected.active}
+        onExportPdf={() => setExportModalOpen(true)}
+        downloads={downloads}
+        onDownload={(kind) => void handleDownload(kind)}
       />
 
       {listError ? (
@@ -912,8 +922,12 @@ export default function SatelliteSurveyPage({
         )}
         data-left={leftOpen ? undefined : "collapsed"}
         data-right={rightOpen ? undefined : "collapsed"}
+        data-table={tableOpen ? "open" : undefined}
       >
         <ContentsPanel
+          tab={contentsTab}
+          onTab={setContentsTab}
+          provenance={provenance}
           layers={{ ...layers, raster: rasterOn }}
           onLayer={setLayer}
           rasterOpacity={rasterOpacity}
@@ -976,12 +990,14 @@ export default function SatelliteSurveyPage({
             classifiedOpacity={rasterOpacity}
             basemap={basemap}
             outside={outside}
-            showHint={false}
             crs={detail?.run.result?.target?.crs ?? null}
             imagery={imagery}
             fitToken={fitToken}
             resizeToken={resizeToken}
             focus={focus}
+            tool={mapTool}
+            onMeasureText={setMeasureText}
+            onMoveTarget={handleMoveTarget}
             onView={(info) => {
               setView(info);
               setMapViewInfo(info);
@@ -990,6 +1006,18 @@ export default function SatelliteSurveyPage({
             onOpenExportView={() => setExportModalOpen(true)}
           />
         </section>
+
+        {tableOpen ? (
+          <div className="sw-dock sw-panel" aria-label="Attribute table">
+            <CandidateTable
+              rows={rows}
+              selectedKey={focusedKey}
+              onFocus={focusCandidate}
+              activeDossierCategory={jobDossierCategory}
+              onClose={toggleTable}
+            />
+          </div>
+        ) : null}
 
         <div className="sw-panel sw-panel--right" aria-label="Analysis">
           <div className="sw-panel__header">
@@ -1043,16 +1071,14 @@ export default function SatelliteSurveyPage({
               commodities={detail?.run.result?.commodities ?? []}
               unscreenable={detail?.run.result?.unscreenableCommodities ?? []}
             />
-            <CandidateTable
-              rows={rows}
-              selectedKey={focusedKey}
-              onFocus={focusCandidate}
-              activeDossierCategory={jobDossierCategory}
-            />
-            <ExportsPanel
-              surveyed={selected !== null && !selected.active}
-              onOpenExportPdf={() => setExportModalOpen(true)}
-            />
+            {tableOpen ? null : (
+              <CandidateTable
+                rows={rows}
+                selectedKey={focusedKey}
+                onFocus={focusCandidate}
+                activeDossierCategory={jobDossierCategory}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1062,6 +1088,7 @@ export default function SatelliteSurveyPage({
         crs={detail?.run.result?.target?.crs ?? "No survey scored yet"}
         job={jobText(running ?? selected, queueing)}
         basis={snapshot.basis}
+        measure={measureText}
       />
 
       <MapExportModal

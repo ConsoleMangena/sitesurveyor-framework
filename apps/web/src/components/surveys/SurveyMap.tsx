@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMap, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Circle, MapContainer, Marker, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import { FileText } from "lucide-react";
+import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, Rectangle, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { FileText, Undo2, X } from "lucide-react";
 import GeoTiffOverlay from "./GeoTiffOverlay.tsx";
 import PmtilesOverlay from "./PmtilesOverlay.tsx";
 import { candidateIcon, targetIcon } from "./mapIcons.ts";
+import type { MapTool } from "./WorkbenchBar.tsx";
 import {
   basemapById,
   dmsText,
@@ -14,11 +15,19 @@ import {
   type LatLngTuple,
   type MapCandidate,
 } from "../../lib/surveys/workbench.ts";
+import {
+  measureAreaText,
+  measureDistanceText,
+  pathDistanceM,
+  polygonAreaM2,
+  type MeasurePoint,
+} from "../../lib/surveys/measure.ts";
 import { coordText, distanceText, scoreText } from "../../lib/surveys/labels.ts";
 import type { SurveyTilesSource } from "../../lib/repositories/satelliteSurveys.ts";
 
 const BRAND = "#D14141";
 const OUTSIDE = "#f59e0b";
+const MEASURE = "#7c3aed";
 const START_ZOOM = 13;
 
 export interface MapViewInfo {
@@ -45,7 +54,6 @@ interface SurveyMapProps {
   basemap: string;
   /** Outside the coverage the worker can read: the pin goes amber before the money does. */
   outside: boolean;
-  showHint?: boolean;
   crs: string | null;
   imagery: string | null;
   /** Bumped when a survey publishes or another run is opened — the map follows it. */
@@ -53,6 +61,10 @@ interface SurveyMapProps {
   /** Bumped by the panels' collapse buttons, because Leaflet cannot measure a resized box. */
   resizeToken: number;
   focus: { latitude: number; longitude: number; token: number } | null;
+  /** What a click on the canvas does. Pan is the default. */
+  tool?: MapTool;
+  /** Reports the live measurement so the status strip can carry it too. */
+  onMeasureText?: (text: string | null) => void;
   onMoveTarget?: (latitude: number, longitude: number) => void;
   onView: (info: MapViewInfo) => void;
   onMapReady?: (map: LeafletMap) => void;
@@ -88,7 +100,6 @@ function Controller({
   }, [bounds]);
 
   useMapEvents({
-    // Coordinates are only set via the form inputs, not modified by clicking the map canvas.
     mousemove: (event: LeafletMouseEvent) => reportView(map, event.latlng.lat, event.latlng.lng, onView),
     mouseout: () => reportView(map, null, null, onView),
     zoomend: () => reportView(map, null, null, onView),
@@ -136,6 +147,35 @@ function reportView(
   });
 }
 
+/** The canvas tool: what a click means while one is armed. Panning keeps Leaflet's own
+ *  behaviour, so nothing is bound until the operator asks for a measurement or a pin. */
+function CanvasTool({
+  tool,
+  onPoint,
+}: {
+  tool: MapTool;
+  onPoint: (point: MeasurePoint) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    container.style.cursor = tool === "pan" ? "" : "crosshair";
+    return () => {
+      container.style.cursor = "";
+    };
+  }, [map, tool]);
+
+  useMapEvents({
+    click: (event: LeafletMouseEvent) => {
+      if (tool === "pan") return;
+      onPoint({ latitude: event.latlng.lat, longitude: event.latlng.lng });
+    },
+  });
+
+  return null;
+}
+
 export default function SurveyMap({
   target,
   bounds,
@@ -149,12 +189,13 @@ export default function SurveyMap({
   classifiedOpacity = 0.65,
   basemap,
   outside,
-  showHint,
   crs,
   imagery,
   fitToken,
   resizeToken,
   focus,
+  tool = "pan",
+  onMeasureText,
   onMoveTarget,
   onView,
   onMapReady,
@@ -178,126 +219,188 @@ export default function SurveyMap({
   }, [onTilesUnavailable]);
   const useTiles = layers.raster !== false && Boolean(classifiedTilesSource) && !tilesUnavailable;
 
+  const [vertices, setVertices] = useState<MeasurePoint[]>([]);
+  // A measurement belongs to the tool, not the session: leaving Measure puts the canvas
+  // back to a clean slate rather than stranding a half-drawn polygon over the next job.
+  useEffect(() => {
+    if (tool !== "measure") setVertices([]);
+  }, [tool]);
+
+  const handlePoint = useCallback(
+    (point: MeasurePoint) => {
+      if (tool === "target") onMoveTarget?.(point.latitude, point.longitude);
+      else setVertices((current) => [...current, point]);
+    },
+    [tool, onMoveTarget],
+  );
+
+  const measureText = useMemo(() => {
+    if (vertices.length < 2) return null;
+    const length = measureDistanceText(pathDistanceM(vertices));
+    if (vertices.length < 3) return length;
+    return `${length} · ${measureAreaText(polygonAreaM2(vertices))}`;
+  }, [vertices]);
+
+  useEffect(() => {
+    onMeasureText?.(measureText);
+  }, [measureText, onMeasureText]);
+
+  const measurePath = useMemo(
+    () => vertices.map((point) => [point.latitude, point.longitude] as LatLngTuple),
+    [vertices],
+  );
+
   return (
-    <MapContainer
-      center={[target.latitude, target.longitude]}
-      zoom={START_ZOOM}
-      maxZoom={20}
-      className="h-full w-full"
-    >
-      <TileLayer
-        url={tile.url}
-        attribution={tile.attribution}
+    <>
+      <MapContainer
+        center={[target.latitude, target.longitude]}
+        zoom={START_ZOOM}
         maxZoom={20}
-        maxNativeZoom={tile.maxNativeZoom ?? 19}
-        crossOrigin="anonymous"
-      />
-
-      {layers.aoi ? (
-        <Rectangle
-          bounds={bounds}
-          pathOptions={{
-            color: BRAND,
-            weight: 1.6,
-            dashArray: "7 5",
-            fillColor: BRAND,
-            fillOpacity: 0.05,
-          }}
-        />
-      ) : null}
-
-      {useTiles ? (
-        <PmtilesOverlay
-          source={classifiedTilesSource ?? null}
-          opacity={classifiedOpacity}
-          onUnavailable={handleTilesUnavailable}
-        />
-      ) : layers.raster !== false && (classifiedTiffUrl || classifiedImageUrl) ? (
-        <GeoTiffOverlay
-          url={classifiedTiffUrl}
-          fallbackUrl={classifiedImageUrl}
-          bounds={bounds}
-          opacity={classifiedOpacity}
-          palette={rasterPalette}
-          transparentCodes={rasterTransparentCodes}
-          zIndex={200}
-        />
-      ) : null}
-
-      <Marker
-        position={[target.latitude, target.longitude]}
-        icon={pin}
+        className="h-full w-full"
       >
-        <Popup>
-          <div className="sw-popup__title">Target site</div>
-          <div className="sw-popup__line">
-            {coordText(target.latitude)}, {coordText(target.longitude)}
-          </div>
-          {outside ? <div className="sw-popup__line">Outside satellite coverage.</div> : null}
-        </Popup>
-      </Marker>
+        <TileLayer
+          url={tile.url}
+          attribution={tile.attribution}
+          maxZoom={20}
+          maxNativeZoom={tile.maxNativeZoom ?? 19}
+          crossOrigin="anonymous"
+        />
 
-      {layers.candidates
-        ? candidates.map((candidate) => (
-            <span key={`layer_${candidate.key}`}>
-              <Circle
-                center={[candidate.latitude, candidate.longitude]}
-                radius={50}
-                pathOptions={{
-                  color: candidate.color,
-                  weight: 1.5,
-                  fillColor: candidate.color,
-                  fillOpacity: 0.18,
-                }}
-              />
-              <Circle
-                center={[candidate.latitude, candidate.longitude]}
-                radius={150}
-                pathOptions={{
-                  color: candidate.color,
-                  weight: 1,
-                  dashArray: "4 4",
-                  fillColor: candidate.color,
-                  fillOpacity: 0.04,
-                }}
-              />
-              <Marker
-                position={[candidate.latitude, candidate.longitude]}
-                icon={candidateIcon(candidate.color, candidate.letter)}
-              >
-                <Popup>
-                  <div className="sw-popup__title" style={{ color: candidate.color }}>
-                    {candidate.kind} {candidate.rank}
-                  </div>
-                  <div className="sw-popup__line">
-                    Score {scoreText(candidate.score)} / 100
-                  </div>
-                  <div className="sw-popup__line">
-                    {candidate.distanceKm === null
-                      ? "Distance not recorded"
-                      : `${distanceText(candidate.distanceKm)} from target`}
-                  </div>
-                  {candidate.readout ? (
-                    <div className="sw-popup__line">{candidate.readout}</div>
-                  ) : null}
-                  <div className="sw-popup__line">
-                    GPS {coordText(candidate.latitude)}, {coordText(candidate.longitude)}
-                  </div>
-                </Popup>
-              </Marker>
-            </span>
-          ))
-        : null}
+        {layers.aoi ? (
+          <Rectangle
+            bounds={bounds}
+            pathOptions={{
+              color: BRAND,
+              weight: 1.6,
+              dashArray: "7 5",
+              fillColor: BRAND,
+              fillOpacity: 0.05,
+            }}
+          />
+        ) : null}
 
-      <Controller
-        bounds={bounds}
-        fitToken={fitToken}
-        resizeToken={resizeToken}
-        focus={focus}
-        onView={onView}
-        onMapReady={onMapReady}
-      />
+        {useTiles ? (
+          <PmtilesOverlay
+            source={classifiedTilesSource ?? null}
+            opacity={classifiedOpacity}
+            onUnavailable={handleTilesUnavailable}
+          />
+        ) : layers.raster !== false && (classifiedTiffUrl || classifiedImageUrl) ? (
+          <GeoTiffOverlay
+            url={classifiedTiffUrl}
+            fallbackUrl={classifiedImageUrl}
+            bounds={bounds}
+            opacity={classifiedOpacity}
+            palette={rasterPalette}
+            transparentCodes={rasterTransparentCodes}
+            zIndex={200}
+          />
+        ) : null}
 
+        <Marker
+          position={[target.latitude, target.longitude]}
+          icon={pin}
+        >
+          <Popup>
+            <div className="sw-popup__title">Target site</div>
+            <div className="sw-popup__line">
+              {coordText(target.latitude)}, {coordText(target.longitude)}
+            </div>
+            {outside ? <div className="sw-popup__line">Outside satellite coverage.</div> : null}
+          </Popup>
+        </Marker>
+
+        {layers.candidates
+          ? candidates.map((candidate) => (
+              <span key={`layer_${candidate.key}`}>
+                <Circle
+                  center={[candidate.latitude, candidate.longitude]}
+                  radius={50}
+                  pathOptions={{
+                    color: candidate.color,
+                    weight: 1.5,
+                    fillColor: candidate.color,
+                    fillOpacity: 0.18,
+                  }}
+                />
+                <Circle
+                  center={[candidate.latitude, candidate.longitude]}
+                  radius={150}
+                  pathOptions={{
+                    color: candidate.color,
+                    weight: 1,
+                    dashArray: "4 4",
+                    fillColor: candidate.color,
+                    fillOpacity: 0.04,
+                  }}
+                />
+                <Marker
+                  position={[candidate.latitude, candidate.longitude]}
+                  icon={candidateIcon(candidate.color, candidate.letter)}
+                >
+                  <Popup>
+                    <div className="sw-popup__title" style={{ color: candidate.color }}>
+                      {candidate.kind} {candidate.rank}
+                    </div>
+                    <div className="sw-popup__line">
+                      Score {scoreText(candidate.score)} / 100
+                    </div>
+                    <div className="sw-popup__line">
+                      {candidate.distanceKm === null
+                        ? "Distance not recorded"
+                        : `${distanceText(candidate.distanceKm)} from target`}
+                    </div>
+                    {candidate.readout ? (
+                      <div className="sw-popup__line">{candidate.readout}</div>
+                    ) : null}
+                    <div className="sw-popup__line">
+                      GPS {coordText(candidate.latitude)}, {coordText(candidate.longitude)}
+                    </div>
+                  </Popup>
+                </Marker>
+              </span>
+            ))
+          : null}
+
+        {measurePath.length >= 3 ? (
+          <Polygon
+            positions={measurePath}
+            pathOptions={{
+              color: MEASURE,
+              weight: 2,
+              fillColor: MEASURE,
+              fillOpacity: 0.12,
+            }}
+          />
+        ) : measurePath.length === 2 ? (
+          <Polyline
+            positions={measurePath}
+            pathOptions={{ color: MEASURE, weight: 2, dashArray: "6 4" }}
+          />
+        ) : null}
+        {measurePath.map((position, index) => (
+          <CircleMarker
+            key={`vertex_${index}_${position[0]}_${position[1]}`}
+            center={position}
+            radius={4}
+            pathOptions={{ color: "#fff", weight: 1.5, fillColor: MEASURE, fillOpacity: 1 }}
+          />
+        ))}
+
+        <CanvasTool tool={tool} onPoint={handlePoint} />
+
+        <Controller
+          bounds={bounds}
+          fitToken={fitToken}
+          resizeToken={resizeToken}
+          focus={focus}
+          onView={onView}
+          onMapReady={onMapReady}
+        />
+      </MapContainer>
+
+      {/* Outside the Leaflet container on purpose: a click on map furniture must not also
+          reach the canvas, where it would drop a measuring vertex or move the target. */}
       <div className="sw-chips">
         <span className="sw-chip sw-chip--accent">
           AOI <b>{dmsText(target.latitude, target.longitude)}</b>
@@ -322,7 +425,31 @@ export default function SurveyMap({
         ) : null}
       </div>
 
-      {/* Pin location is fixed to form input coordinates */}
-    </MapContainer>
+      {tool === "measure" ? (
+        <div className="sw-measure">
+          <span className="sw-measure__value" aria-live="polite">
+            {measureText ?? "Click the map to measure"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setVertices((current) => current.slice(0, -1))}
+            disabled={vertices.length === 0}
+            title="Remove the last point"
+          >
+            <Undo2 className="size-3.5" aria-hidden="true" />
+            <span className="sr-only">Remove the last point</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setVertices([])}
+            disabled={vertices.length === 0}
+            title="Clear the measurement"
+          >
+            <X className="size-3.5" aria-hidden="true" />
+            <span className="sr-only">Clear the measurement</span>
+          </button>
+        </div>
+      ) : null}
+    </>
   );
 }

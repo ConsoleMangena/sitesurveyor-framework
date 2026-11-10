@@ -1,3 +1,6 @@
+import { X } from "lucide-react";
+
+import { Button } from "@/components/ui/button.tsx";
 import type { MapCandidate } from "../../lib/surveys/workbench.ts";
 import { coordText, distanceText, scoreText, type DossierCategory } from "../../lib/surveys/labels.ts";
 import { BlockTitle } from "./BlockTitle.tsx";
@@ -13,11 +16,14 @@ export default function CandidateTable({
   selectedKey,
   onFocus,
   activeDossierCategory,
+  onClose,
 }: {
   rows: MapCandidate[];
   selectedKey: string | null;
   onFocus: (candidate: MapCandidate) => void;
   activeDossierCategory?: DossierCategory;
+  /** Present when the table is docked under the canvas, where it needs its own way out. */
+  onClose?: () => void;
 }) {
   const displayRows = activeDossierCategory
     ? rows.filter((r) => r.category === activeDossierCategory)
@@ -25,7 +31,22 @@ export default function CandidateTable({
 
   return (
     <section className="sw-block px-4 py-3.5">
-      <BlockTitle count={displayRows.length}>Candidate attributes</BlockTitle>
+      <div className="flex items-center justify-between gap-2">
+        <BlockTitle count={displayRows.length}>Candidate attributes</BlockTitle>
+        {onClose ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={onClose}
+            title="Close the attribute table"
+          >
+            <X className="size-3.5" aria-hidden="true" />
+            <span className="sr-only">Close the attribute table</span>
+          </Button>
+        ) : null}
+      </div>
 
       <div className="sw-attr-scroll mt-2 rounded-md border border-input">
         <table className="sw-attr-table">

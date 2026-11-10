@@ -6,8 +6,9 @@ import {
   OPTICAL_PRODUCTS,
   WINDOW_LABELS,
   coverageLabel,
+  coverageName,
+  coverageRows,
   imageryChip,
-  inputsText,
   productById,
   windowOptions,
   yearOptions,
@@ -97,12 +98,8 @@ describe("provenance wording", () => {
     fixed: {},
   };
 
-  it("lists the elevation and land cover a score was computed from", () => {
-    expect(inputsText(provenance)).toBe("Copernicus DEM 30 m · ESA WorldCover 2021");
-  });
-
   it("says nothing was recorded rather than guessing from the form", () => {
-    expect(inputsText(null)).toBe("—");
+    expect(coverageRows(null)).toEqual([]);
     expect(coverageLabel(provenance, "optical")).toBeNull();
   });
 
@@ -112,5 +109,57 @@ describe("provenance wording", () => {
 
   it("keeps an unknown coverage id pointing at itself", () => {
     expect(productById("not_a_product")).toBe(OPTICAL_PRODUCTS[0]);
+  });
+});
+
+describe("coverageRows", () => {
+  const provenance = {
+    selectable: {
+      dem: { coverage: "dem_cop_30", label: "Copernicus DEM 30 m", credit: null },
+      optical: {
+        coverage: "gm_s2_annual",
+        label: "Sentinel-2 · 2023",
+        credit: "Copernicus Sentinel-2",
+      },
+    },
+    fixed: {
+      alos: "ALOS PALSAR 2007 L-band mosaic",
+      gravimetry: "Synthetic calibration field — excluded from scoring",
+    },
+  };
+
+  it("returns one row per recorded coverage, chosen ones first", () => {
+    const rows = coverageRows(provenance);
+    expect(rows.map((row) => row.key)).toEqual(["dem", "optical", "alos", "gravimetry"]);
+    expect(rows.map((row) => row.chosen)).toEqual([true, true, false, false]);
+  });
+
+  it("carries the credit and the coverage id the run recorded", () => {
+    const optical = coverageRows(provenance).find((row) => row.key === "optical");
+    expect(optical?.credit).toBe("Copernicus Sentinel-2");
+    expect(optical?.coverage).toBe("gm_s2_annual");
+    expect(optical?.label).toBe("Sentinel-2 · 2023");
+  });
+
+  it("keeps a pinned record verbatim, including its refusal to score", () => {
+    const gravity = coverageRows(provenance).find((row) => row.key === "gravimetry");
+    expect(gravity?.label).toBe("Synthetic calibration field — excluded from scoring");
+    expect(gravity?.coverage).toBeNull();
+  });
+
+  it("names the selectable inputs from the field table and the pinned ones from the worker", () => {
+    expect(coverageName("dem")).toBe("Elevation model");
+    expect(coverageName("optical")).toBe("Optical source");
+    expect(coverageName("rainfall")).toBe("Rainfall");
+    expect(coverageName("fc_ls")).toBe("Fractional cover");
+  });
+
+  it("keeps a key it has no name for rather than inventing one", () => {
+    expect(coverageName("some_new_layer")).toBe("some_new_layer");
+  });
+
+  it("lists nothing for a run that recorded nothing, not the coverages on offer", () => {
+    expect(coverageRows({ selectable: {}, fixed: {} })).toEqual([]);
+    expect(coverageRows(undefined)).toEqual([]);
   });
 });
