@@ -247,11 +247,11 @@ export const DRAPE_Z_INDEX = 200;
 export const BASEMAPS: Basemap[] = [
   {
     id: "satellite",
-    label: "Satellite imagery",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Imagery © Esri, Earthstar Geographics",
+    label: "Google Satellite",
+    url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    attribution: "Imagery © Google",
     maxZoom: 20,
-    maxNativeZoom: 19,
+    maxNativeZoom: 20,
     swatch: "linear-gradient(135deg,#1f4735,#2f6b4f)",
   },
   {

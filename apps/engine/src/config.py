@@ -203,7 +203,7 @@ OPTICAL_PRODUCTS: dict[str, dict] = {
     # medians them itself, which is what makes a season available at all.
     "s2_l2a": {
         "label": "Sentinel-2 L2A (clear-scene composite)",
-        "years": (2019, 2025),
+        "years": (2019, 2026),
         "windows": ("annual", "dry", "wet"),
         "credit": "Copernicus Sentinel-2",
         "family": "Sentinel-2",

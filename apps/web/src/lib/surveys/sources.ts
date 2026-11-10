@@ -42,7 +42,7 @@ export const OPTICAL_PRODUCTS: OpticalProduct[] = [
     label: "Sentinel-2 L2A (clear-scene composite)",
     family: "Sentinel-2",
     credit: "Copernicus Sentinel-2",
-    years: [2019, 2025],
+    years: [2019, 2026],
     windows: ["annual", "dry", "wet"],
   },
   {
