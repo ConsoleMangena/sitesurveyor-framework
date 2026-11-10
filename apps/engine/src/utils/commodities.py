@@ -45,6 +45,8 @@ EVIDENCE_KEYS = (
     "ferrous_mafic",
     "relative_relief",
     "endowment",
+    "bouguer_anomaly",
+    "gravity_gradient",
 )
 
 #: Score bands, in index units (0-100 percentiles within the survey area).

@@ -83,10 +83,17 @@ def run_minerals_survey(
     print("=" * 65)
 
     # 1. Load data layers
-    print("[1/6] Loading multi-spectral and terrain rasters...")
+    print("[1/6] Loading multi-spectral, terrain and geophysical rasters...")
     dem = warp(cfg.RAW / "dem.tif", 1)
     lc = warp(cfg.RAW / "landcover.tif", 1, resampling=Resampling.nearest)
     alos_hv = warp(cfg.RAW / "alos.tif", 2)
+
+    from src.utils.gravity import load_gravity_layers
+    grav_data = load_gravity_layers(cfg.BBOX_WGS84, (cfg.HEIGHT, cfg.WIDTH))
+    if grav_data["active"]:
+        print(f"      [Gravimetry] Integrated Bouguer gravity anomaly & gradient ({grav_data['source_file']})")
+    else:
+        print("      [Gravimetry] No external gravity raster present — using structural & spectral baseline")
 
     # Sentinel-2 bands for alteration, addressed by name
     blue = warp(cfg.RAW / "optical.tif", "blue", scale=10000.0)
@@ -163,6 +170,11 @@ def run_minerals_survey(
         "relative_relief": norm_relief,
         "endowment": norm_endow,
     }
+    if grav_data["active"]:
+        if grav_data["norm_bouguer"] is not None:
+            evidence_layers["bouguer_anomaly"] = grav_data["norm_bouguer"]
+        if grav_data["norm_gradient"] is not None:
+            evidence_layers["gravity_gradient"] = grav_data["norm_gradient"]
 
     # One rule for all nine systems, gold included. Rescaling this overlay to fill 0-100
     # before handing it to the commodity screen stretched gold roughly 20 points above the
@@ -208,7 +220,7 @@ def run_minerals_survey(
         """
         lc_code = int(lc[row, col]) if np.isfinite(lc[row, col]) else None
         test_hole = depth.test_hole_depth(cover_high[row, col])
-        return {
+        out = {
             "elevation_m": safe_round(dem[row, col], 1),
             "slope_degrees": safe_round(slope[row, col], 1),
             "overburden_min_m": safe_round(cover_low[row, col], 1),
@@ -225,16 +237,26 @@ def run_minerals_survey(
             "endowment_context_pct": safe_round(norm_endow[row, col] * 100, 1),
             "landcover": cfg.LANDCOVER_NAMES.get(lc_code),
         }
+        if grav_data["active"] and grav_data["raw_bouguer"] is not None:
+            out["bouguer_anomaly_mgal"] = safe_round(grav_data["raw_bouguer"][row, col], 1)
+        if grav_data["active"] and grav_data["raw_gradient"] is not None:
+            out["gravity_gradient_mgal_km"] = safe_round(grav_data["raw_gradient"][row, col], 2)
+        return out
 
     for cand in candidates:
         cand.update(field_read(cand["row"], cand["col"]))
-        cand["field_notes"] = [
+        notes = [
             f"Cover: {cand['overburden_min_m']}-{cand['overburden_max_m']} m "
             f"({cand['overburden_landform'] or 'landform not resolvable'})",
             f"First test hole: {cand['test_hole_depth_m']} m — {cand['sampling_method']}",
             f"Lineament density percentile: {cand['lineament_density_pct']}",
             f"Elevation: {cand['elevation_m']} m | Slope: {cand['slope_degrees']}°",
         ]
+        if cand.get("bouguer_anomaly_mgal") is not None:
+            notes.append(f"Bouguer gravity anomaly: {cand['bouguer_anomaly_mgal']} mGal")
+        if cand.get("gravity_gradient_mgal_km") is not None:
+            notes.append(f"Gravity horizontal gradient: {cand['gravity_gradient_mgal_km']} mGal/km")
+        cand["field_notes"] = notes
 
     if candidates:
         first = candidates[0]
@@ -434,6 +456,11 @@ def run_minerals_survey(
     summary["provenance"] = capture_provenance(
         "minerals", ["dem.tif", "landcover.tif", "alos.tif", "optical.tif"]
     )
+    summary["provenance"]["gravimetry"] = {
+        "active": bool(grav_data["active"]),
+        "source": grav_data["source_file"] or "None (structural/spectral baseline)",
+        "method": "Bouguer density anomaly and horizontal gradient magnitude" if grav_data["active"] else "None",
+    }
     (cfg.OUT / "mineral_summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
 
     # Export Mobile KML and KMZ for Smartphone GPS
