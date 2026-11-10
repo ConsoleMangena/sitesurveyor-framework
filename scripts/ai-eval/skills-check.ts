@@ -54,6 +54,33 @@ check(
 );
 check("router->nomatch", selectSkills("what is the weather", skills).length === 0);
 
+// EO domain-interpretation skills route on their domain nouns. The survey
+// lifecycle stays in the system prompt; these only aid reading the dossier.
+check(
+  "router->eo-hazard",
+  selectSkills("Is this site safe to build on? Check flood and slope hazard", skills).some(
+    (s) => s.key === "eo-hazard-interpretation",
+  ),
+);
+check(
+  "router->eo-minerals",
+  selectSkills("Interpret the mineral prospectivity results", skills).some(
+    (s) => s.key === "eo-minerals-interpretation",
+  ),
+);
+check(
+  "router->eo-water",
+  selectSkills("What did the groundwater borehole survey find?", skills).some(
+    (s) => s.key === "eo-water-interpretation",
+  ),
+);
+check(
+  "router->eo-soil",
+  selectSkills("How suitable is this soil for crops and erosion risk?", skills).some(
+    (s) => s.key === "eo-soil-interpretation",
+  ),
+);
+
 // Context rendering includes the skill body and a clear section header.
 const ctx = formatSkillContext(selectSkills("close overdue invoices", skills));
 check("ctx-body", ctx.includes("close_overdue_invoices"));

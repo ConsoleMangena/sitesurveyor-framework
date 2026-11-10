@@ -75,6 +75,25 @@ const ROUTER: { key: string; keywords: string[] }[] = [
     key: "destructive-action-policy",
     keywords: ["delete", "remove", "erase", "destroy", "archive", "permanent"],
   },
+  // EO interpretation only. The survey lifecycle (quote/confirm/launch, status
+  // vs result) is always-on in the ai-agent system prompt; these fill the
+  // per-domain dossier-reading gaps it omits. Rows: 20261110000000_eo_domain_skills.
+  {
+    key: "eo-hazard-interpretation",
+    keywords: ["hazard", "flood", "safety", "slope", "landslide", "buildable", "inundation"],
+  },
+  {
+    key: "eo-minerals-interpretation",
+    keywords: ["mineral", "prospect", "commodity", "gold", "copper", "alteration", "exploration", "unscreenable"],
+  },
+  {
+    key: "eo-water-interpretation",
+    keywords: ["groundwater", "borehole", "water", "aquifer", "depth to water", "drill target"],
+  },
+  {
+    key: "eo-soil-interpretation",
+    keywords: ["soil", "land capability", "agriculture", "agri", "crop", "erosion", "suitability", "fertility"],
+  },
 ];
 
 export function parseExamples(raw: unknown): SkillExample[] {
