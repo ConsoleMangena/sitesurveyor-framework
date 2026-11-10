@@ -498,3 +498,265 @@ export async function getSatelliteSurveyStatus(
   });
 }
 
+/** Read one number out of the engine's score block; PostgREST may render
+ *  numeric columns as strings, and a missing key is a null, never a zero. */
+function scoreNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function recordOf(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+/**
+ * 4. Read the full published dossier of a survey run — the findings the
+ *    workbench renders: scores, mineral systems with their map share,
+ *    depth-to-water, provenance, ranked targets and published files.
+ *
+ *    The status tool carries progress and a headline only; this is the read
+ *    the assistant answers "what did the survey find" from. Every key is read
+ *    defensively because the result blob is the engine's own document: an
+ *    older run costs one missing field, not a failed answer.
+ */
+export async function getSatelliteSurveyResult(
+  db: Db,
+  opts: CallOpts,
+  args: { run_id?: string },
+): Promise<string> {
+  const owner = scopeWrite(opts.workspaceId);
+  if (!owner.ok) return JSON.stringify({ error: owner.error });
+
+  const runId = args.run_id?.trim();
+  const filter = runId ? `id=eq.${encodeURIComponent(runId)}&` : "";
+
+  const runRes = await db.supabaseFetch({
+    ...opts,
+    method: "GET",
+    path: `survey_runs?select=id,status,stage,progress,categories,client_name,latitude,longitude,half_deg,surface_area_km2,quoted_credits,result,error_message,created_at,completed_at&${workspaceParam(
+      owner.workspaceId,
+    )}&${filter}order=created_at.desc&limit=1`,
+  });
+
+  if (!runRes.ok || !Array.isArray(runRes.json) || runRes.json.length === 0) {
+    return JSON.stringify({
+      found: false,
+      message: runId
+        ? `No survey run found with id ${runId} in this workspace.`
+        : "No satellite survey found for this workspace.",
+    });
+  }
+
+  const run = runRes.json[0] as {
+    id: string;
+    status: string;
+    stage: string | null;
+    progress: number;
+    categories: string[];
+    client_name: string;
+    latitude: number;
+    longitude: number;
+    half_deg: number;
+    surface_area_km2: number | null;
+    quoted_credits: number | null;
+    result: Record<string, unknown> | null;
+    error_message: string | null;
+    created_at: string;
+    completed_at: string | null;
+  };
+
+  const category = (run.categories?.[0] as EoCategory) || "water";
+  const categoryLabel = EO_CATEGORY_LABELS[category] || category;
+  const header = {
+    found: true,
+    id: run.id,
+    category,
+    category_label: categoryLabel,
+    client_name: run.client_name,
+    latitude: run.latitude,
+    longitude: run.longitude,
+    half_deg: run.half_deg,
+    surface_area_km2: run.surface_area_km2,
+    credits_charged: run.quoted_credits,
+    created_at: run.created_at,
+    completed_at: run.completed_at,
+  };
+
+  if (run.status === "failed") {
+    return JSON.stringify({
+      ...header,
+      status: "failed",
+      error_message: run.error_message || "The survey worker encountered an unrecoverable error.",
+    });
+  }
+
+  if (run.status !== "succeeded") {
+    return JSON.stringify({
+      ...header,
+      status: run.status,
+      stage: run.stage,
+      progress: run.progress,
+      message: `Results are not published yet — the run is ${run.status} (${run.progress}%). Poll get_satellite_survey_status and read the dossier once it succeeds.`,
+    });
+  }
+
+  const result = recordOf(run.result);
+  const scoresRaw = recordOf(result.scores);
+  const categories = recordOf(result.categories);
+
+  // Same keys the web reader uses (parseSurveyResult): hazard is scored the
+  // other way round, so the safety score is the one a reader acts on.
+  const scoreOf = (key: string, valueKey: string, classKey: string) => {
+    const entry = recordOf(scoresRaw[key]);
+    const score = scoreNumber(entry[valueKey]);
+    if (score === null) return null;
+    return { score, class: textOrNull(entry[classKey]) };
+  };
+  const scores: Record<string, { score: number; class: string | null }> = {};
+  const groundwater = scoreOf("groundwater", "cell_score", "cell_class");
+  const minerals = scoreOf("minerals", "cell_score", "cell_class");
+  const soilLand = scoreOf("soil_land", "cell_score", "cell_class");
+  const hazardSafety = scoreOf("hazard_safety", "safety_score", "hazard_class");
+  if (groundwater) scores.groundwater = groundwater;
+  if (minerals) scores.minerals = minerals;
+  if (soilLand) scores.soil_land = soilLand;
+  if (hazardSafety) scores.hazard_safety = hazardSafety;
+
+  const assessment = recordOf(recordOf(categories.water).target_assessment);
+  const waterDepth =
+    Object.keys(assessment).length > 0
+      ? {
+          depth_to_water_wet_m: scoreNumber(assessment.depth_to_water_wet_m),
+          depth_to_water_dry_m: scoreNumber(assessment.depth_to_water_dry_m),
+          borehole_read: textOrNull(assessment.borehole_read),
+        }
+      : null;
+
+  const mineralBlock = recordOf(categories.minerals);
+  const areaByKey = new Map<string, Record<string, unknown>>();
+  for (const entry of Array.isArray(mineralBlock.commodity_area_distribution)
+    ? mineralBlock.commodity_area_distribution
+    : []) {
+    const row = recordOf(entry);
+    const key = textOrNull(row.key);
+    if (key) areaByKey.set(key, row);
+  }
+  const commodities = (
+    Array.isArray(mineralBlock.mineral_commodities) ? mineralBlock.mineral_commodities : []
+  )
+    .slice(0, 12)
+    .map((entry) => {
+      const item = recordOf(entry);
+      const owned = areaByKey.get(textOrNull(item.key) ?? "");
+      return {
+        name: textOrNull(item.name),
+        group: textOrNull(item.group),
+        indicated: item.indicated === true,
+        confidence: textOrNull(item.confidence),
+        area_band: textOrNull(item.area_band),
+        area_top_decile: scoreNumber(item.area_top_decile),
+        target_score: scoreNumber(item.target_score),
+        map_area_km2: scoreNumber(owned?.area_km2),
+        map_share_pct: scoreNumber(owned?.share_pct),
+      };
+    })
+    .filter((item) => item.name !== null);
+
+  const unscreenable = (
+    Array.isArray(mineralBlock.unscreenable_commodities)
+      ? mineralBlock.unscreenable_commodities
+      : []
+  )
+    .slice(0, 6)
+    .map((entry) => {
+      const item = recordOf(entry);
+      return {
+        name: textOrNull(item.name),
+        reason: textOrNull(item.reason),
+        needs: textOrNull(item.needs),
+      };
+    })
+    .filter((item) => item.name !== null);
+
+  const sourcesRaw = recordOf(result.data_sources);
+  const layers: Record<string, string> = {};
+  for (const [layer, value] of Object.entries(recordOf(sourcesRaw.selectable))) {
+    const entry = recordOf(value);
+    layers[layer] =
+      textOrNull(entry.label) ?? textOrNull(entry.coverage) ?? textOrNull(value) ?? layer;
+  }
+  const fixed: Record<string, string> = {};
+  for (const [layer, value] of Object.entries(recordOf(sourcesRaw.fixed))) {
+    const text = textOrNull(value);
+    if (text) fixed[layer] = text;
+  }
+
+  const targetBlock = recordOf(result.target);
+
+  const [targetsRes, filesRes] = await Promise.all([
+    db.supabaseFetch({
+      ...opts,
+      method: "GET",
+      path: `survey_targets?select=category,rank,latitude,longitude,score,distance_km,readout&run_id=eq.${run.id}&order=rank.asc&limit=10`,
+    }),
+    db.supabaseFetch({
+      ...opts,
+      method: "GET",
+      path: `survey_deliverables?select=kind,content_type&run_id=eq.${run.id}&order=kind.asc`,
+    }),
+  ]);
+
+  const targets = (Array.isArray(targetsRes.json) ? targetsRes.json : []).map(
+    (entry) => {
+      const row = recordOf(entry);
+      const readout = textOrNull(row.readout);
+      return {
+        category: row.category,
+        rank: row.rank,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        score: scoreNumber(row.score),
+        distance_km: scoreNumber(row.distance_km),
+        readout: readout ? readout.slice(0, 240) : null,
+      };
+    },
+  );
+
+  const files = (Array.isArray(filesRes.json) ? filesRes.json : [])
+    .map((entry) => textOrNull(recordOf(entry).kind))
+    .filter((kind): kind is string => kind !== null);
+
+  const summary = textOrNull(result.executive_summary);
+
+  return JSON.stringify({
+    ...header,
+    status: "succeeded",
+    executive_summary: summary ? summary.slice(0, 1500) : null,
+    claim_ceiling: textOrNull(result.claim_ceiling),
+    score_basis: textOrNull(result.score_basis),
+    scores,
+    water_depth: waterDepth,
+    mineral_commodities: commodities,
+    unscreenable_commodities: unscreenable,
+    target_grid:
+      Object.keys(targetBlock).length > 0
+        ? {
+            cell_m: scoreNumber(targetBlock.cell_m),
+            utm_zone: textOrNull(targetBlock.utm_zone),
+            crs: textOrNull(targetBlock.crs),
+          }
+        : null,
+    data_sources: { layers, fixed },
+    targets,
+    published_files: files,
+    message: `Dossier for ${categoryLabel}. Files are downloadable from the Satellite Workbench; scores rank investigation priority inside this survey area only.`,
+  });
+}
+

@@ -39,6 +39,11 @@ import {
 } from "../../lib/repositories/aiChats.ts";
 import { streamAiReply } from "../../lib/repositories/aiChatApi.ts";
 import { SLASH_COMMANDS } from "@/features/ai/slashCommands.ts";
+import {
+  clearAiSurveyContext,
+  readAiSurveyContext,
+  type AiSurveyContext,
+} from "@/features/ai/surveyHandover.ts";
 
 export interface AssistantPageProps {
   onNavigate?: (view: string) => void;
@@ -75,7 +80,7 @@ const ASSISTANT_CAPABILITIES = [
   {
     label: "Earth Observation",
     detail:
-      "Runs single-domain satellite surveys (groundwater & boreholes, mineral prospectivity, hazard risk, or soil capability) with upfront credit quotes and active job locks.",
+      "Runs single-domain satellite surveys (groundwater & boreholes, mineral prospectivity, hazard risk, or soil capability) with upfront credit quotes and active job locks, and reads completed surveys back — scores, mineral systems, water depth and ranked targets.",
   },
 
   {
@@ -115,6 +120,7 @@ const TOOL_LABELS: Record<string, string> = {
   quote_satellite_survey: "Calculating survey quote & coverage",
   launch_satellite_survey: "Deducting credits & launching survey",
   get_satellite_survey_status: "Checking survey progress",
+  get_satellite_survey_result: "Reading survey results",
 
   query_site_data: "Querying workspace data",
   count_site_data: "Counting records",
@@ -170,6 +176,16 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
   const [renameDraft, setRenameDraft] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
+  /** The survey the workbench handed over, attached until the reader detaches
+   *  it. Read once on mount; the key is consumed so a later visit without a
+   *  fresh handover does not re-attach an old run. */
+  const [surveyContext, setSurveyContext] = useState<AiSurveyContext | null>(
+    () => readAiSurveyContext(sessionStorage),
+  );
+
+  useEffect(() => {
+    clearAiSurveyContext(sessionStorage);
+  }, []);
 
   const query = draft.trim().toLowerCase();
   const isSlash = draft.startsWith("/") && !draft.includes(" ");
@@ -401,6 +417,7 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
         onActivity: (raw) => {
           if (raw) recordStep(raw);
         },
+        surveyRunId: surveyContext?.runId,
       });
     } finally {
       // The composer never stays locked on a turn that ended.
@@ -414,6 +431,7 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
     renameConversation,
     scrollToBottom,
     recordStep,
+    surveyContext,
   ]);
 
   const startRename = useCallback((conversation: AiConversation) => {
@@ -814,6 +832,24 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
         </div>
 
         <div className="relative">
+          {surveyContext && (
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+              <Globe className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">
+                Survey attached:{" "}
+                <span className="font-medium text-foreground">{surveyContext.label}</span>
+              </span>
+              <button
+                type="button"
+                aria-label="Detach survey context"
+                title="Stop sending this survey as context"
+                onClick={() => setSurveyContext(null)}
+                className="shrink-0 rounded-md p-1 hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
           {showSlashMenu && (
             <div
               className="absolute bottom-full left-0 z-30 mb-2 w-full max-w-lg rounded-xl border border-border/80 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md"

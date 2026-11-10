@@ -89,6 +89,33 @@ describe("streamAiReply credit contract", () => {
     expect(sink.onError).not.toHaveBeenCalled();
   });
 
+  it("forwards the open survey run as agent context", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ndjson([{ type: "final", text: "Done." }]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamAiReply("conv-1", "What did this survey find?", {
+      ...handlers(),
+      surveyRunId: "99999999-9999-9999-9999-999999999999",
+    });
+
+    expect(sentBody(fetchMock, 0).survey_run_id).toBe(
+      "99999999-9999-9999-9999-999999999999",
+    );
+  });
+
+  it("omits survey context when no run is attached", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ndjson([{ type: "final", text: "Done." }]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamAiReply("conv-1", "Hi", handlers());
+
+    expect(sentBody(fetchMock, 0)).not.toHaveProperty("survey_run_id");
+  });
+
   it("gives up on a stream that stops mid-answer", async () => {
     vi.useFakeTimers();
     try {

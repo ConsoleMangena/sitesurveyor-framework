@@ -104,6 +104,8 @@ export interface AiStreamHandlers {
   onActivity?: (label: string | null) => void;
   /** Project context forwarded to the agent. */
   projectId?: string;
+  /** Earth Observation survey run the user has open in the workbench. */
+  surveyRunId?: string;
   /** Override the default LLM model (must be in the server allowlist). */
   model?: string;
 }
@@ -143,13 +145,14 @@ export async function streamAiReply(
     "Content-Type": "application/json",
     ...(SUPABASE_KEY ? { apikey: SUPABASE_KEY } : {}),
   };
-  const { projectId, model } = handlers;
+  const { projectId, model, surveyRunId } = handlers;
   const body = JSON.stringify({
     conversation_id: conversationId,
     message,
     // Lets the server bill this turn idempotently across both runtimes.
     turn_id: generateLocalId(),
     ...(projectId ? { project_id: projectId } : {}),
+    ...(surveyRunId ? { survey_run_id: surveyRunId } : {}),
     ...(model ? { model } : {}),
   });
 

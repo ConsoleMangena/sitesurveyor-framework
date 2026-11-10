@@ -77,6 +77,7 @@ import {
 } from "../../../lib/surveys/sources.ts";
 import TargetForm from "./TargetForm.tsx";
 import EarthObservationSetupForm from "./EarthObservationSetupForm.tsx";
+import { writeAiSurveyContext } from "@/features/ai/surveyHandover.ts";
 import {
   initialForm,
   pinTarget,
@@ -150,7 +151,12 @@ export default function SatelliteSurveyPage({
   const [openedJob, setOpenedJob] = useState<JobWithProject | null>(null);
 
   const [values, setValues] = useState<SurveyFormValues>(initialForm);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // A workbench deep link (?view=satellite&runId=…) pins the run it names. Seeding
+  // the id once means the `selected` lookup below matches it when the queue loads,
+  // and later polls cannot drag the selection back to the latest run.
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get("runId"),
+  );
   const [queuedThisSession, setQueuedThisSession] = useState<string | null>(null);
   const [queueing, setQueueing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -276,6 +282,17 @@ export default function SatelliteSurveyPage({
   const selected = runs.find((run) => run.id === selectedId) ?? runs[0] ?? null;
   const running = runs.find((run) => run.active) ?? null;
   const { detail, error: detailError } = useSurveyDetail(selected);
+
+  /** Hand the survey on screen to the assistant, which forwards the run id to
+   *  the agent so "this survey" answers from this run's dossier. */
+  const handleAskAi = useCallback(() => {
+    if (!selected || !onNavigate) return;
+    writeAiSurveyContext(sessionStorage, {
+      runId: selected.id,
+      label: selected.clientName || "Satellite survey",
+    });
+    onNavigate("assistant");
+  }, [selected, onNavigate]);
 
   // Elapsed time is a timer, not `Date.now()` in render: reading the wall clock while
   // rendering would make the number jump on any unrelated re-render of the page.
@@ -813,6 +830,7 @@ export default function SatelliteSurveyPage({
         onReload={() => void refresh()}
         onClear={clearBoard}
         onExportView={() => setExportModalOpen(true)}
+        onAskAi={selected && onNavigate ? handleAskAi : undefined}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => togglePanel("left")}

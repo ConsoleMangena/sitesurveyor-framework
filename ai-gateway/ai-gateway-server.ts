@@ -296,6 +296,7 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
     conversation_id?: string;
     message?: string;
     project_id?: string;
+    survey_run_id?: string;
     model?: string;
     turn_id?: string;
   };
@@ -319,6 +320,12 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
     typeof payload.project_id === "string" ? payload.project_id.trim() : "";
   const projectId = /^[0-9a-f-]{36}$/i.test(rawProjectId)
     ? rawProjectId
+    : undefined;
+  // Optional workbench context: the survey run the user has open.
+  const rawSurveyRunId =
+    typeof payload.survey_run_id === "string" ? payload.survey_run_id.trim() : "";
+  const surveyRunId = /^[0-9a-f-]{36}$/i.test(rawSurveyRunId)
+    ? rawSurveyRunId
     : undefined;
   // Validate model against allowlist; unknown values silently fall back.
   // Then apply task-complexity routing: complex multi-step tasks escalate to a
@@ -448,6 +455,7 @@ async function handleChat(req: http.IncomingMessage, res: http.ServerResponse) {
         serviceKey: SUPABASE_SERVICE_ROLE_KEY,
         workspaceId: workspaceId ?? undefined,
         projectId,
+        surveyRunId,
         memoryNote: conversation.summary?.trim() || undefined,
         model,
         userId,

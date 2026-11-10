@@ -11,6 +11,7 @@ import {
   Maximize2,
   Minimize2,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -29,6 +30,8 @@ interface WorkbenchBarProps {
   onReload: () => void;
   onClear: () => void;
   onExportView?: () => void;
+  /** Hand the survey on screen to SiteSurveyor AI; absent when no run is open. */
+  onAskAi?: () => void;
   leftOpen: boolean;
   rightOpen: boolean;
   onToggleLeft: () => void;
@@ -53,6 +56,7 @@ export function WorkbenchBar({
   onReload,
   onClear,
   onExportView,
+  onAskAi,
   leftOpen,
   rightOpen,
   onToggleLeft,
@@ -75,6 +79,19 @@ export function WorkbenchBar({
           <Play className="size-3.5 shrink-0" aria-hidden="true" />
           <span>Run survey</span>
         </Button>
+        {onAskAi ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-[11.5px] shrink-0"
+            onClick={onAskAi}
+            title="Discuss this survey with SiteSurveyor AI"
+          >
+            <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>Ask AI</span>
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"

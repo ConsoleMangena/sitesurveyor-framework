@@ -22,6 +22,7 @@ import {
   quoteSatelliteSurvey,
   launchSatelliteSurvey,
   getSatelliteSurveyStatus,
+  getSatelliteSurveyResult,
 } from "./satellite-survey-workflow.ts";
 import {
   formatSkillContext,
@@ -65,6 +66,8 @@ export interface RunAgentOptions {
   workspaceId?: string;
   /** Project the user has open in the CAD workspace, if any. */
   projectId?: string;
+  /** Earth Observation survey run the user has open in the workbench, if any. */
+  surveyRunId?: string;
   /** Rolling conversation summary (notes about turns outside the history window). */
   memoryNote?: string;
   /** Optional abort signal so callers can cancel an in-flight agent run. */
@@ -653,13 +656,31 @@ const TOOLS: ToolSchema[] = [
     function: {
       name: "get_satellite_survey_status",
       description:
-        "Check the progress or retrieve the latest results (targets, scores) of a satellite survey run in this workspace.",
+        "Check the progress of a satellite survey run in this workspace. For the full findings of a completed run (scores, mineral systems, water depth, targets) use get_satellite_survey_result instead.",
       parameters: {
         type: "object",
         properties: {
           run_id: {
             type: "string",
             description: "Optional UUID of the survey run. If omitted, checks the latest survey run in the workspace.",
+          },
+        },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_satellite_survey_result",
+      description:
+        "Read the full published dossier of a completed Earth Observation survey: category scores, indicated mineral systems with their map area share, depth-to-water, ranked targets with coordinates, data provenance and published files. Returns a progress pointer while the run is still in flight. Use this to answer what a survey found.",
+      parameters: {
+        type: "object",
+        properties: {
+          run_id: {
+            type: "string",
+            description: "Optional UUID of the survey run. If omitted, reads the latest survey run in the workspace.",
           },
         },
         additionalProperties: false,
@@ -874,7 +895,19 @@ function systemPrompt(supabaseUrl: string): string {
     "6. ATOMIC LAUNCH & WORKBENCH HANDOVER:",
     "   When user confirms, invoke launch_satellite_survey with confirmed=true and pass notes.",
     "   Provide the new run ID, estimated runtime (~4 minutes), and direct workbench link:",
-    "   [Open in Survey Workbench](?view=surveyWorkbench&runId={RUN_ID})",
+    "   [Open in Survey Workbench](?view=satellite&runId={RUN_ID})",
+    "",
+    "7. READING COMPLETED SURVEYS:",
+    "   When the user asks what a survey found, call get_satellite_survey_result",
+    "   (run_id optional — defaults to the latest run). It returns the category",
+    "   scores, indicated mineral systems with their map area share, depth-to-water,",
+    "   ranked targets with coordinates, data provenance and the published files.",
+    "   Answer with the real numbers from that dossier. Respect claim_ceiling:",
+    "   scores rank investigation priority inside this one survey area — they are",
+    "   not grade, not tonnage, and two different sites cannot be compared on them.",
+    "   While a run is still queued/acquiring/surveying/publishing, report progress",
+    "   from get_satellite_survey_status instead of guessing findings.",
+    "   If a SURVEY CONTEXT line names an open run, 'this survey' means that run_id.",
     "CAD WORKFLOW:",
     "Before drawing onto an existing drawing, read it first (list_cad_layers)",
     "and reuse its layer names exactly. Group ONE logical action per [CAD]",
@@ -1133,6 +1166,8 @@ export async function executeTool(
     serviceKey: string;
     workspaceId?: string;
     conversationId?: string;
+    /** Signed-in user, stamped onto survey runs the agent launches. */
+    userId?: string;
     schemas: Map<string, TableSchemaInfo>;
     /** When set, only these tools may execute (public market concierge). */
     allowedTools?: ReadonlySet<string>;
@@ -1449,6 +1484,13 @@ export async function executeTool(
   }
   if (name === "get_satellite_survey_status") {
     return getSatelliteSurveyStatus(
+      { supabaseFetch },
+      { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey, workspaceId: ctx.workspaceId },
+      args as { run_id?: string },
+    );
+  }
+  if (name === "get_satellite_survey_result") {
+    return getSatelliteSurveyResult(
       { supabaseFetch },
       { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey, workspaceId: ctx.workspaceId },
       args as { run_id?: string },
@@ -1905,6 +1947,7 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     serviceKey: opts.serviceKey,
     workspaceId: opts.workspaceId,
     conversationId: opts.conversationId,
+    userId: opts.userId,
     schemas,
     allowedTools: market ? MARKET_TOOL_NAMES : undefined,
   };
@@ -1953,6 +1996,9 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
       : "") +
     (opts.projectId
       ? `\nThe user currently has project ${opts.projectId} open in the CAD workspace.`
+      : "") +
+    (opts.surveyRunId
+      ? `\nSURVEY CONTEXT: the user currently has Earth Observation survey run ${opts.surveyRunId} open in the Satellite Workbench. Treat "this survey" as that run and pass run_id="${opts.surveyRunId}" to the satellite survey tools.`
       : "");
 
   const outbound: OutboundMessage[] = [

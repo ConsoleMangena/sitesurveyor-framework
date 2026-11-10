@@ -242,6 +242,7 @@ Deno.serve(async (req) => {
     conversation_id?: string;
     message?: string;
     project_id?: string;
+    survey_run_id?: string;
     model?: string;
     turn_id?: string;
   };
@@ -250,6 +251,7 @@ Deno.serve(async (req) => {
       conversation_id?: string;
       message?: string;
       project_id?: string;
+      survey_run_id?: string;
       model?: string;
       turn_id?: string;
     };
@@ -268,6 +270,13 @@ Deno.serve(async (req) => {
     : "";
   const projectId = /^[0-9a-f-]{36}$/i.test(rawProjectId)
     ? rawProjectId
+    : undefined;
+  // Optional workbench context: the survey run the user has open.
+  const rawSurveyRunId = typeof body.survey_run_id === "string"
+    ? body.survey_run_id.trim()
+    : "";
+  const surveyRunId = /^[0-9a-f-]{36}$/i.test(rawSurveyRunId)
+    ? rawSurveyRunId
     : undefined;
   // Validate model against allowlist; unknown values silently fall back.
   // Then apply task-complexity routing: complex multi-step tasks escalate to a
@@ -375,6 +384,7 @@ Deno.serve(async (req) => {
           serviceKey: SERVICE_ROLE_KEY,
           workspaceId: workspaceId ?? undefined,
           projectId,
+          surveyRunId,
           memoryNote: conversation.summary?.trim() || undefined,
           model,
           userId: user.id,
