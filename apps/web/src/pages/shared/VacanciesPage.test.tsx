@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import VacanciesPage from "./VacanciesPage.tsx";
 import type { VacancyItem } from "../../lib/repositories/vacancies.ts";
+import type { UiUser } from "../../features/workspace/types.ts";
 import { listVacancies } from "../../lib/repositories/vacancies.ts";
 import { createMarketInquiry } from "../../lib/repositories/marketInquiries.ts";
 
@@ -28,6 +29,17 @@ vi.mock("../../lib/repositories/vacancies.ts", () => ({
 vi.mock("../../lib/repositories/marketInquiries.ts", () => ({
   createMarketInquiry: vi.fn(),
 }));
+
+const mockUser: UiUser = {
+  id: "u-1",
+  workspaceId: "ws-123",
+  name: "Test User",
+  email: "user@example.com",
+  company: "Survey Tech",
+  accountType: "personal",
+  signupAccountType: "personal",
+  isPlatformAdmin: false,
+};
 
 const mockVacancies: VacancyItem[] = [
   {
@@ -95,20 +107,7 @@ describe("VacanciesPage", () => {
   });
 
   it("renders vacancies and metrics rather than workspace project tasks", async () => {
-    render(
-      <VacanciesPage
-        workspaceId="ws-123"
-        user={{
-          id: "u-1",
-          workspaceId: "ws-123",
-          name: "Test User",
-          email: "user@example.com",
-          company: "Survey Tech",
-          accountType: "personal",
-          signupAccountType: "personal",
-        }}
-      />,
-    );
+    render(<VacanciesPage workspaceId="ws-123" user={mockUser} />);
 
     // Verify page header
     expect(await screen.findByRole("heading", { name: /Job Vacancies/i })).toBeInTheDocument();
@@ -127,20 +126,7 @@ describe("VacanciesPage", () => {
 
   it("filters vacancies by discipline", async () => {
     const user = userEvent.setup();
-    render(
-      <VacanciesPage
-        workspaceId="ws-123"
-        user={{
-          id: "u-1",
-          workspaceId: "ws-123",
-          name: "Test User",
-          email: "user@example.com",
-          company: "Survey Tech",
-          accountType: "personal",
-          signupAccountType: "personal",
-        }}
-      />,
-    );
+    render(<VacanciesPage workspaceId="ws-123" user={mockUser} />);
 
     await screen.findByText("Licensed Cadastral Surveyor");
 
@@ -155,20 +141,7 @@ describe("VacanciesPage", () => {
 
   it("filters vacancies by search query", async () => {
     const user = userEvent.setup();
-    render(
-      <VacanciesPage
-        workspaceId="ws-123"
-        user={{
-          id: "u-1",
-          workspaceId: "ws-123",
-          name: "Test User",
-          email: "user@example.com",
-          company: "Survey Tech",
-          accountType: "personal",
-          signupAccountType: "personal",
-        }}
-      />,
-    );
+    render(<VacanciesPage workspaceId="ws-123" user={mockUser} />);
 
     await screen.findByText("Licensed Cadastral Surveyor");
 
@@ -194,24 +167,11 @@ describe("VacanciesPage", () => {
       desired_start_date: "2026-11-20",
       seats: null,
       status: "pending",
+      responded_at: null,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     });
 
-    render(
-      <VacanciesPage
-        workspaceId="ws-123"
-        user={{
-          id: "u-1",
-          workspaceId: "ws-123",
-          name: "Test User",
-          email: "user@example.com",
-          company: "Survey Tech",
-          accountType: "personal",
-          signupAccountType: "personal",
-        }}
-      />,
-    );
+    render(<VacanciesPage workspaceId="ws-123" user={mockUser} />);
 
     const cardTitle = await screen.findByText("Licensed Cadastral Surveyor");
     await user.click(cardTitle);
