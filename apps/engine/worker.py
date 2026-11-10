@@ -101,6 +101,8 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     "minerals_tiles": "mineral_commodity_zones_tiles.pmtiles",
     "soil_tiles": "soil_capability_zones_tiles.pmtiles",
     "hazard_tiles": "hazard_risk_zones_tiles.pmtiles",
+    "gravity_webtif": "gravity_density_zones_web.tif",
+    "gravity_tiles": "gravity_density_zones_tiles.pmtiles",
 }
 
 CONTENT_TYPES = {

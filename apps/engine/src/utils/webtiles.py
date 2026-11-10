@@ -414,4 +414,21 @@ def build_survey_tiles(categories: Sequence[str]) -> list[str]:
                     "web map deliverable %s skipped for %s: %s",
                     out_path.name, zone_tif.name, exc,
                 )
+
+    # Gravimetric exploration zones (if produced during mineral screening)
+    grav_tif = cfg.OUT / "gravity_density_zones.tif"
+    if grav_tif.is_file():
+        from src.utils.gravity import GRAVITY_ZONE_PALETTE
+        web_out = cfg.OUT / "gravity_density_zones_web.tif"
+        tiles_out = cfg.OUT / "gravity_density_zones_tiles.pmtiles"
+        for out_path, render in (
+            (web_out, lambda p=web_out: write_web_geotiff(grav_tif, p, GRAVITY_ZONE_PALETTE)),
+            (tiles_out, lambda p=tiles_out: write_zone_pmtiles(grav_tif, p, GRAVITY_ZONE_PALETTE, "Gravimetric Exploration Zones", transparent_codes=(0,))),
+        ):
+            try:
+                render()
+                built.append(out_path.name)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("gravimetry web map deliverable %s skipped: %s", out_path.name, exc)
+
     return built
