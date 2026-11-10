@@ -116,6 +116,33 @@ describe("streamAiReply credit contract", () => {
     expect(sentBody(fetchMock, 0)).not.toHaveProperty("survey_run_id");
   });
 
+  it("forwards the viewed workspace so surveys land where the user is looking", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ndjson([{ type: "final", text: "Done." }]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamAiReply("conv-1", "Run a satellite survey", {
+      ...handlers(),
+      workspaceId: "88888888-8888-8888-8888-888888888888",
+    });
+
+    expect(sentBody(fetchMock, 0).workspace_id).toBe(
+      "88888888-8888-8888-8888-888888888888",
+    );
+  });
+
+  it("omits workspace_id when none is provided so the server uses the default", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ndjson([{ type: "final", text: "Done." }]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamAiReply("conv-1", "Hi", handlers());
+
+    expect(sentBody(fetchMock, 0)).not.toHaveProperty("workspace_id");
+  });
+
   it("gives up on a stream that stops mid-answer", async () => {
     vi.useFakeTimers();
     try {

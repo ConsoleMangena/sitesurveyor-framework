@@ -250,6 +250,7 @@ Deno.serve(async (req) => {
     body = (await req.json()) as {
       conversation_id?: string;
       message?: string;
+      workspace_id?: string;
       project_id?: string;
       survey_run_id?: string;
       model?: string;
@@ -264,6 +265,15 @@ Deno.serve(async (req) => {
   if (!conversationId || !message) {
     return json(400, { error: "conversation_id and message are required." });
   }
+  // Optional viewed-workspace context: the workspace the user is looking at, so
+  // surveys and writes land there rather than the account default. Honoured only
+  // after an active-membership check below; malformed values are ignored.
+  const rawWorkspaceId = typeof body.workspace_id === "string"
+    ? body.workspace_id.trim()
+    : "";
+  const requestedWorkspaceId = /^[0-9a-f-]{36}$/i.test(rawWorkspaceId)
+    ? rawWorkspaceId
+    : undefined;
   // Optional CAD-workspace context: ignore malformed values silently.
   const rawProjectId = typeof body.project_id === "string"
     ? body.project_id.trim()
@@ -306,6 +316,18 @@ Deno.serve(async (req) => {
 
   // Workspace resolution is independent of the turn bookkeeping below.
   const workspacePromise = (async () => {
+    // Honour the workspace the client is viewing, but only when the user is an
+    // active member of it — the same predicate the credit ledger enforces, so a
+    // hand-edited request can neither bill nor write into a foreign workspace.
+    if (requestedWorkspaceId) {
+      const memberRes = await rest<{ workspace_id: string }[]>(
+        "GET",
+        `workspace_members?user_id=eq.${user.id}&workspace_id=eq.${requestedWorkspaceId}&status=eq.active&select=workspace_id&limit=1`,
+      );
+      if (memberRes.ok && memberRes.json?.[0]?.workspace_id) {
+        return requestedWorkspaceId;
+      }
+    }
     const profileRes = await rest<{ default_workspace_id: string | null }[]>(
       "GET",
       `profiles?id=eq.${user.id}&select=default_workspace_id`,

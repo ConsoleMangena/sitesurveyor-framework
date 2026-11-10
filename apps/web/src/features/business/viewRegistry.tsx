@@ -59,7 +59,7 @@ export function renderBusinessView(
     case "assistant":
       return (
         <Suspense fallback={<PageLoader />}>
-          <AssistantPage onNavigate={onNavigate} />
+          <AssistantPage onNavigate={onNavigate} workspaceId={user.workspaceId} />
         </Suspense>
       );
 

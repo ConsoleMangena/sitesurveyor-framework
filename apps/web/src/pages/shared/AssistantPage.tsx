@@ -51,6 +51,8 @@ import {
 
 export interface AssistantPageProps {
   onNavigate?: (view: string) => void;
+  /** The workspace the user is viewing, so surveys and writes land here. */
+  workspaceId?: string;
 }
 
 interface ChatMessage {
@@ -133,7 +135,7 @@ const BUBBLE_BASE = "max-w-full px-3.5 py-2 text-sm leading-relaxed shadow-sm";
 const BUBBLE_USER = `${BUBBLE_BASE} whitespace-pre-wrap rounded-[16px_16px_0_16px] bg-primary text-primary-foreground`;
 const BUBBLE_AGENT = `${BUBBLE_BASE} rounded-[16px_16px_16px_0] border border-border/60 bg-muted text-card-foreground`;
 
-export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
+export default function AssistantPage({ onNavigate, workspaceId }: AssistantPageProps = {}) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const [conversations, setConversations] = useState<AiConversation[]>([]);
@@ -394,6 +396,7 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
         onActivity: (raw) => {
           if (raw) recordStep(raw);
         },
+        workspaceId,
         surveyRunId: surveyContext?.runId,
       });
     } finally {
@@ -409,6 +412,7 @@ export default function AssistantPage({ onNavigate }: AssistantPageProps = {}) {
     scrollToBottom,
     recordStep,
     surveyContext,
+    workspaceId,
   ]);
 
   const startRename = useCallback((conversation: AiConversation) => {

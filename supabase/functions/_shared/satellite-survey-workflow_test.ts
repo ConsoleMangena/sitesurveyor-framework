@@ -10,7 +10,7 @@
  */
 
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { getSatelliteSurveyResult } from "./satellite-survey-workflow.ts";
+import { getSatelliteSurveyResult, launchSatelliteSurvey } from "./satellite-survey-workflow.ts";
 import type { CallOpts, Db } from "./workflows.ts";
 import { executeTool } from "./ai-agent.ts";
 
@@ -310,4 +310,124 @@ Deno.test("executeTool routes get_satellite_survey_result inside the workspace",
   } finally {
     globalThis.fetch = original;
   }
+});
+
+// ── Launch: job creation + run linkage ─────────────────────────────────────
+//
+// The AI launch path used to queue an orphaned run: it charged credits and
+// inserted survey_runs with no job, so the survey never appeared under the
+// workspace's jobs and could not be opened in the workbench. These tests pin
+// the job into existence and the run's job_id/project_id to it.
+
+interface LaunchCall {
+  method: string;
+  path: string;
+  body?: unknown;
+}
+
+/** POST-aware stub: no run in flight, a successful charge, and controllable
+ *  job/run insert outcomes so the refund paths can be exercised. */
+function launchDb(
+  opts: { failJobInsert?: boolean; failRunInsert?: boolean } = {},
+): { db: Db; calls: LaunchCall[] } {
+  const calls: LaunchCall[] = [];
+  const db: Db = {
+    supabaseFetch(o) {
+      calls.push({ method: o.method, path: o.path, body: o.body });
+      const [table] = o.path.split("?");
+      if (o.method === "GET" && table === "survey_runs") {
+        return Promise.resolve({ ok: true, status: 200, json: [], count: 0 });
+      }
+      if (o.method === "POST" && table === "rpc/charge_satellite_survey") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: [{ credits_charged: 40, remaining_balance: 60, quote: { surface_area_km2: 169 } }],
+          count: 1,
+        });
+      }
+      if (o.method === "POST" && table === "jobs") {
+        return Promise.resolve({ ok: !opts.failJobInsert, status: opts.failJobInsert ? 500 : 201, json: [], count: 0 });
+      }
+      if (o.method === "POST" && table === "survey_runs") {
+        return Promise.resolve({ ok: !opts.failRunInsert, status: opts.failRunInsert ? 500 : 201, json: [], count: 0 });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: [], count: 0 });
+    },
+  };
+  return { db, calls };
+}
+
+const LAUNCH_ARGS = {
+  category: "minerals",
+  latitude: -19.5,
+  longitude: 29.8,
+  half_deg: 0.06,
+  client_name: "Gweru South",
+  notes: "Gold prospecting",
+  confirmed: true,
+};
+
+Deno.test("launch creates a job and links the run to it", async () => {
+  const { db, calls } = launchDb();
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS),
+  ) as { success: boolean; job_id: string; run_id: string };
+
+  assertEquals(result.success, true);
+  const jobCall = calls.find((c) => c.method === "POST" && c.path === "jobs");
+  const runCall = calls.find((c) => c.method === "POST" && c.path === "survey_runs");
+  assert(jobCall, "a job must be created");
+  assert(runCall, "a run must be queued");
+
+  const job = jobCall.body as Row;
+  const run = runCall.body as Row;
+  assertEquals(job.workspace_id, "ws-1");
+  assertEquals(job.title, "Gweru South");
+  assertEquals(job.status, "planned");
+  assertEquals(job.created_by, "user-1");
+  // The specification travels in description so opening the job restores it.
+  const spec = JSON.parse(job.description as string) as Row;
+  assertEquals(spec.category, "minerals");
+  assertEquals(spec.latitude, -19.5);
+  assertEquals(spec.longitude, 29.8);
+  assertEquals(spec.halfDeg, 0.06);
+  // The run points at the job, exactly as the workbench's own launch does.
+  assertEquals(run.job_id, job.id);
+  assertEquals(run.project_id, job.id);
+  assertEquals(run.workspace_id, "ws-1");
+  assertEquals(result.job_id, job.id);
+});
+
+Deno.test("a failed run insert refunds credits and removes the orphaned job", async () => {
+  const { db, calls } = launchDb({ failRunInsert: true });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS),
+  ) as { error: string };
+
+  assertEquals(result.error, "QUEUE_INSERT_FAILED");
+  assert(
+    calls.some((c) => c.path === "rpc/refund_workspace_ai_credits"),
+    "credits must be refunded when the run cannot be queued",
+  );
+  const jobDelete = calls.find((c) => c.method === "PATCH" && c.path.startsWith("jobs?"));
+  assert(jobDelete, "the job created for the failed queue must be removed");
+  assertEquals((jobDelete.body as Row)._deleted, true);
+});
+
+Deno.test("a failed job insert refunds before any run is queued", async () => {
+  const { db, calls } = launchDb({ failJobInsert: true });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS),
+  ) as { error: string };
+
+  assertEquals(result.error, "JOB_INSERT_FAILED");
+  assert(
+    calls.some((c) => c.path === "rpc/refund_workspace_ai_credits"),
+    "credits must be refunded when the job cannot be created",
+  );
+  assert(
+    !calls.some((c) => c.method === "POST" && c.path === "survey_runs"),
+    "no run may be queued when the job insert failed",
+  );
 });

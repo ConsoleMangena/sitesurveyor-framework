@@ -238,7 +238,6 @@ export async function launchSatelliteSurvey(
     client_name?: string;
     notes?: string;
     address?: string;
-    projectId?: string;
     confirmed: boolean;
   },
 ): Promise<string> {
@@ -327,34 +326,10 @@ export async function launchSatelliteSurvey(
   const creditsCharged = chargeData?.credits_charged ?? 0;
   const remainingBalance = chargeData?.remaining_balance ?? 0;
   const quote = chargeData?.quote ?? null;
+  const locationNote = (args.notes || args.address || "").trim() || null;
 
-  // 5. Insert queued run into survey_runs
-  const insertRes = await db.supabaseFetch({
-    ...opts,
-    method: "POST",
-    path: "survey_runs",
-    body: {
-      id: runId,
-      workspace_id: owner.workspaceId,
-      created_by: userId || null,
-      project_id: args.projectId || null,
-      status: "queued",
-      stage: "Queued for a survey worker",
-      latitude: lat,
-      longitude: lon,
-      half_deg: halfDeg,
-      categories: [category],
-      client_name: clientName,
-      address: (args.notes || args.address || "").trim() || null,
-      estimated_minutes: 4,
-      quoted_credits: creditsCharged,
-      surface_area_km2: quote?.surface_area_km2 ?? null,
-      credit_quote: quote,
-    },
-  });
-
-  if (!insertRes.ok) {
-    // If table insert fails, refund credits immediately
+  // Credits are already debited against runId; every failure below gives them back.
+  const refund = async (reason: string): Promise<void> => {
     await db.supabaseFetch({
       ...opts,
       method: "POST",
@@ -363,10 +338,77 @@ export async function launchSatelliteSurvey(
         p_workspace_id: owner.workspaceId,
         p_user_id: userId || null,
         p_operation_id: runId,
-        p_reason: "Satellite survey run insert failed",
+        p_reason: reason,
       },
     });
+  };
 
+  // 5. Create the job this survey belongs to, mirroring the workbench's "new job"
+  //    flow. The specification travels in description as JSON so opening the job
+  //    restores the category, point and extent it was launched for. Without it the
+  //    run is orphaned: it charges and processes, but never appears under the
+  //    workspace's jobs and cannot be opened in the workbench.
+  const jobId = crypto.randomUUID();
+  const jobRes = await db.supabaseFetch({
+    ...opts,
+    method: "POST",
+    path: "jobs",
+    body: {
+      id: jobId,
+      workspace_id: owner.workspaceId,
+      title: clientName,
+      description: JSON.stringify({ category, latitude: lat, longitude: lon, halfDeg }),
+      job_type: categoryLabel,
+      location: locationNote,
+      status: "planned",
+      created_by: userId || null,
+    },
+  });
+
+  if (!jobRes.ok) {
+    await refund("Satellite survey job insert failed");
+    return JSON.stringify({
+      error: "JOB_INSERT_FAILED",
+      message: "Could not create the survey job. Your credits have been refunded.",
+    });
+  }
+
+  // 6. Insert the queued run, linked to the job. project_id carries the job id
+  //    exactly as the workbench does — survey_runs.project_id has no project FK.
+  const insertRes = await db.supabaseFetch({
+    ...opts,
+    method: "POST",
+    path: "survey_runs",
+    body: {
+      id: runId,
+      workspace_id: owner.workspaceId,
+      created_by: userId || null,
+      job_id: jobId,
+      project_id: jobId,
+      status: "queued",
+      stage: "Queued for a survey worker",
+      latitude: lat,
+      longitude: lon,
+      half_deg: halfDeg,
+      categories: [category],
+      client_name: clientName,
+      address: locationNote,
+      estimated_minutes: 4,
+      quoted_credits: creditsCharged,
+      surface_area_km2: quote?.surface_area_km2 ?? null,
+      credit_quote: quote,
+    },
+  });
+
+  if (!insertRes.ok) {
+    await refund("Satellite survey run insert failed");
+    // Remove the job just created so a failed queue leaves no orphan behind.
+    await db.supabaseFetch({
+      ...opts,
+      method: "PATCH",
+      path: `jobs?id=eq.${jobId}&${workspaceParam(owner.workspaceId)}`,
+      body: { _deleted: true },
+    });
     return JSON.stringify({
       error: "QUEUE_INSERT_FAILED",
       message: "Could not queue the survey job. Your credits have been refunded.",
@@ -376,6 +418,8 @@ export async function launchSatelliteSurvey(
   return JSON.stringify({
     success: true,
     run_id: runId,
+    job_id: jobId,
+    job_title: clientName,
     category,
     category_label: categoryLabel,
     latitude: lat,
@@ -386,7 +430,7 @@ export async function launchSatelliteSurvey(
     status: "queued",
     stage: "Queued for a survey worker",
     estimated_minutes: 4,
-    message: `🛰️ ${categoryLabel} survey successfully launched and debited (${creditsCharged} credits). The worker is processing satellite rasters.`,
+    message: `🛰️ ${categoryLabel} survey successfully launched and debited (${creditsCharged} credits). Saved as job "${clientName}" in your workspace; the worker is processing satellite rasters.`,
   });
 }
 

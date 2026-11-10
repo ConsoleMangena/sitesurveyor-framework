@@ -1477,7 +1477,6 @@ export async function executeTool(
         half_deg?: number;
         client_name?: string;
         notes?: string;
-        projectId?: string;
         confirmed: boolean;
       },
     );

@@ -102,6 +102,9 @@ export interface AiStreamHandlers {
   onError: (message: string) => void;
   /** Agent activity for the thinking indicator ("thinking" | tool name). */
   onActivity?: (label: string | null) => void;
+  /** The workspace the user is viewing; surveys and writes land here rather
+   *  than the account default when the two differ. */
+  workspaceId?: string;
   /** Project context forwarded to the agent. */
   projectId?: string;
   /** Earth Observation survey run the user has open in the workbench. */
@@ -145,12 +148,13 @@ export async function streamAiReply(
     "Content-Type": "application/json",
     ...(SUPABASE_KEY ? { apikey: SUPABASE_KEY } : {}),
   };
-  const { projectId, model, surveyRunId } = handlers;
+  const { projectId, model, surveyRunId, workspaceId } = handlers;
   const body = JSON.stringify({
     conversation_id: conversationId,
     message,
     // Lets the server bill this turn idempotently across both runtimes.
     turn_id: generateLocalId(),
+    ...(workspaceId ? { workspace_id: workspaceId } : {}),
     ...(projectId ? { project_id: projectId } : {}),
     ...(surveyRunId ? { survey_run_id: surveyRunId } : {}),
     ...(model ? { model } : {}),
