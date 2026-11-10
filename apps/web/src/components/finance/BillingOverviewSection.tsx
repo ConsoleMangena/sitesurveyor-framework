@@ -117,97 +117,104 @@ export default function BillingOverviewSection({
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="gap-4 border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Needs attention</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {overview.pending_payments > 0 ? (
-              <p className="flex items-start gap-2 text-warning">
-                <Hourglass className="mt-0.5 h-4 w-4 shrink-0" />
-                {overview.pending_payments} payment{overview.pending_payments === 1 ? "" : "s"}{" "}
-                still awaiting PesePay confirmation. Credits and storage arrive only once it lands.
-              </p>
-            ) : null}
-            {overview.failed_payments > 0 ? (
-              <p className="flex items-start gap-2 text-destructive">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                {overview.failed_payments} payment{overview.failed_payments === 1 ? "" : "s"}{" "}
-                failed or was cancelled. Nothing was allocated for those.
-              </p>
-            ) : null}
-            {storage?.expiring_storage_mb ? (
-              <p className="flex items-start gap-2 text-muted-foreground">
-                <HardDrive className="mt-0.5 h-4 w-4 shrink-0" />
-                {storage.expiring_storage_mb.toFixed(0)} MB of purchased storage ends{" "}
-                {storage.next_storage_expiration ? formatDate(storage.next_storage_expiration) : "soon"}.
-                Renew before then to keep uploading at the same quota.
-              </p>
-            ) : null}
-            {overview.pending_payments === 0 &&
-            overview.failed_payments === 0 &&
-            !storage?.expiring_storage_mb ? (
-              <p className="text-muted-foreground">
-                Nothing waiting on a payment. All confirmed purchases are allocated.
-              </p>
-            ) : null}
-          </CardContent>
+        <Card className="flex h-full flex-col justify-between border-border">
+          <div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Needs attention</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {overview.pending_payments > 0 ? (
+                <p className="flex items-start gap-2 text-warning">
+                  <Hourglass className="mt-0.5 h-4 w-4 shrink-0" />
+                  {overview.pending_payments} payment{overview.pending_payments === 1 ? "" : "s"}{" "}
+                  still awaiting PesePay confirmation. Credits and storage arrive only once it lands.
+                </p>
+              ) : null}
+              {overview.failed_payments > 0 ? (
+                <p className="flex items-start gap-2 text-destructive">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {overview.failed_payments} payment{overview.failed_payments === 1 ? "" : "s"}{" "}
+                  failed or was cancelled. Nothing was allocated for those.
+                </p>
+              ) : null}
+              {storage?.expiring_storage_mb ? (
+                <p className="flex items-start gap-2 text-muted-foreground">
+                  <HardDrive className="mt-0.5 h-4 w-4 shrink-0" />
+                  {storage.expiring_storage_mb.toFixed(0)} MB of purchased storage ends{" "}
+                  {storage.next_storage_expiration ? formatDate(storage.next_storage_expiration) : "soon"}.
+                  Renew before then to keep uploading at the same quota.
+                </p>
+              ) : null}
+              {overview.pending_payments === 0 &&
+              overview.failed_payments === 0 &&
+              !storage?.expiring_storage_mb ? (
+                <p className="text-muted-foreground">
+                  Nothing waiting on a payment. All confirmed purchases are allocated.
+                </p>
+              ) : null}
+            </CardContent>
+          </div>
         </Card>
 
-        <Card className="gap-4 border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Quota build-up</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="flex flex-col divide-y divide-border text-sm">
-              <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0">
-                <dt className="text-muted-foreground">Base allowance</dt>
-                <dd className="font-mono tabular-nums">
-                  {storage ? `${storage.base_limit_mb.toFixed(0)} MB` : "—"}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 py-2">
-                <dt className="text-muted-foreground">Purchased add-ons</dt>
-                <dd className="font-mono tabular-nums">
-                  {storage ? `${storage.purchased_storage_mb.toFixed(0)} MB` : "—"}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 py-2">
-                <dt className="text-muted-foreground">Total quota</dt>
-                <dd className="font-mono font-semibold tabular-nums">
-                  {storage ? `${storage.limit_mb.toFixed(0)} MB` : "—"}
-                </dd>
-              </div>
-            </dl>
-            {storage?.over_quota ? (
-              <p className="mt-3 flex items-start gap-2 text-xs text-destructive">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                Over quota: new uploads are blocked, existing files stay downloadable.
-              </p>
-            ) : null}
-          </CardContent>
+        <Card className="flex h-full flex-col justify-between border-border">
+          <div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Quota build-up</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="flex flex-col divide-y divide-border text-sm">
+                <div className="flex items-baseline justify-between gap-4 py-2 first:pt-0">
+                  <dt className="text-muted-foreground">Base allowance</dt>
+                  <dd className="font-mono tabular-nums">
+                    {storage ? `${storage.base_limit_mb.toFixed(0)} MB` : "—"}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="text-muted-foreground">Purchased add-ons</dt>
+                  <dd className="font-mono tabular-nums">
+                    {storage ? `${storage.purchased_storage_mb.toFixed(0)} MB` : "—"}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="text-muted-foreground">Total quota</dt>
+                  <dd className="font-mono font-semibold tabular-nums">
+                    {storage ? `${storage.limit_mb.toFixed(0)} MB` : "—"}
+                  </dd>
+                </div>
+              </dl>
+              {storage?.over_quota ? (
+                <p className="mt-3 flex items-start gap-2 text-xs text-destructive">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  Over quota: new uploads are blocked, existing files stay downloadable.
+                </p>
+              ) : null}
+            </CardContent>
+          </div>
         </Card>
 
-        <Card className="gap-4 border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Buy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => onSection("credits")}>
-                <Sparkles />
-                AI credits
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => onSection("storage")}>
-                <HardDrive />
-                Storage
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => onSection("methods")}>
-                <Wallet />
-                Add money
-              </Button>
-            </div>
-          </CardContent>
+        <Card className="flex h-full flex-col justify-between border-border">
+          <div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Buy</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">Top up balances or expand allowances</p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => onSection("credits")}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI credits
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => onSection("storage")}>
+                  <HardDrive className="h-3.5 w-3.5" />
+                  Storage
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => onSection("methods")}>
+                  <Wallet className="h-3.5 w-3.5" />
+                  Add money
+                </Button>
+              </div>
+            </CardContent>
+          </div>
         </Card>
       </div>
     </DashboardSection>

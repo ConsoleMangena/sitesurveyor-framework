@@ -40,7 +40,7 @@ function RailIcon({ children, className }: { children: React.ReactNode; classNam
   return (
     <span
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground",
+        "flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground",
         className,
       )}
       aria-hidden="true"
@@ -70,10 +70,10 @@ function BalanceRow({
         {label}
       </span>
       {loading ? (
-        <Skeleton className="mt-2 h-7 w-28" aria-busy="true" />
+        <Skeleton className="mt-1.5 h-6 w-24" aria-busy="true" />
       ) : (
-        <p className="mt-1 flex items-baseline gap-2">
-          <span className="font-mono text-2xl font-semibold tabular-nums">{value}</span>
+        <p className="mt-1 flex items-baseline gap-1.5">
+          <span className="font-mono text-xl font-bold tabular-nums text-foreground">{value}</span>
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{unit}</span>
         </p>
       )}
@@ -95,7 +95,7 @@ function WalletStatus({
   shortAddress: string;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 min-w-0">
       <span
         className={cn(
           "size-2 shrink-0 rounded-full",
@@ -124,24 +124,18 @@ function WalletStatus({
 
 function RailHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
-    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-      <div className="flex min-w-0 items-start gap-3">
-        <RailIcon>{icon}</RailIcon>
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
-        </div>
+    <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4 pb-3">
+      <RailIcon>{icon}</RailIcon>
+      <div className="min-w-0 flex-1">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </CardHeader>
   );
 }
 
 function RailContent({ children }: { children: React.ReactNode }) {
-  return <CardContent className="space-y-4">{children}</CardContent>;
-}
-
-function ActionButtonRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-3">{children}</div>;
+  return <CardContent className="flex flex-1 flex-col justify-between space-y-3 p-4 pt-0">{children}</CardContent>;
 }
 
 function SavedWalletNote({ connected, hasWallet, walletName, shortAddress }: {
@@ -178,7 +172,7 @@ export default function PaymentRails({
   const shortAddr = shortAddress(address ?? "");
 
   return (
-    <section className="space-y-4" aria-label="Payment rails">
+    <section className="space-y-3" aria-label="Payment rails">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Payment rails
@@ -187,139 +181,155 @@ export default function PaymentRails({
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* ── Crypto rail (Solana) ─────────────────────────── */}
-        <Card data-rail="crypto" className="gap-4 border-border">
+        <Card data-rail="crypto" className="flex h-full flex-col justify-between border-border">
           <RailHeader
-            icon={<SolanaLogo size={22} />}
+            icon={<SolanaLogo size={20} />}
             title="Crypto wallets"
             subtitle={`Solana ${clusterLabel} · USDC`}
           />
 
           <RailContent>
-            <WalletStatus
-              connected={connected}
-              hasWallet={hasWallet}
-              address={address}
-              walletName={walletName}
-              shortAddress={shortAddr}
-            />
-
-            <div className="flex flex-col lg:flex-row gap-6">
-              <BalanceRow
-                icon={<SolanaLogo size={12} />}
-                label="USDC available"
-                value={formatAmount(solana.usdc, 2)}
-                unit="USDC"
-                loading={solana.loading && solana.usdc === null}
-              />
-
-              <BalanceRow
-                icon={<SolanaLogo size={12} />}
-                label="SOL for fees"
-                value={formatAmount(solana.sol, 4)}
-                unit="SOL"
-                loading={solana.loading && solana.sol === null}
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={solana.refresh}
-                  disabled={solana.loading || !hasWallet}
-                  aria-label="Refresh wallet balances"
-                  className="shrink-0"
-                >
-                  <RefreshCw
-                    className={cn("h-4 w-4", solana.loading && "animate-spin")}
-                  />
-                </Button>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/30 px-3 py-2 min-h-[46px]">
+                <WalletStatus
+                  connected={connected}
+                  hasWallet={hasWallet}
+                  address={address}
+                  walletName={walletName}
+                  shortAddress={shortAddr}
+                />
               </div>
 
-              <ActionButtonRow>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={onManageWallets}
-                >
-                  <SolanaLogo size={14} />
-                  {connected ? "Manage wallets" : "Connect wallet"}
-                </Button>
-              </ActionButtonRow>
+              <SavedWalletNote
+                connected={connected}
+                hasWallet={hasWallet}
+                walletName={walletName}
+                shortAddress={shortAddr}
+              />
+
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 min-h-[76px] items-center">
+                <BalanceRow
+                  icon={<SolanaLogo size={12} />}
+                  label="USDC available"
+                  value={formatAmount(solana.usdc, 2)}
+                  unit="USDC"
+                  loading={solana.loading && solana.usdc === null}
+                />
+
+                <BalanceRow
+                  icon={<SolanaLogo size={12} />}
+                  label="SOL for fees"
+                  value={formatAmount(solana.sol, 4)}
+                  unit="SOL"
+                  loading={solana.loading && solana.sol === null}
+                />
+              </div>
+
+              {solana.error ? (
+                <div className="rounded-lg border border-border bg-muted/50 p-2.5">
+                  <FieldError>{solana.error}</FieldError>
+                </div>
+              ) : null}
             </div>
 
-            <SavedWalletNote
-              connected={connected}
-              hasWallet={hasWallet}
-              walletName={walletName}
-              shortAddress={shortAddr}
-            />
+            <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={solana.refresh}
+                disabled={solana.loading || !hasWallet}
+                aria-label="Refresh wallet balances"
+                className="h-8 w-8 shrink-0"
+              >
+                <RefreshCw
+                  className={cn("h-3.5 w-3.5", solana.loading && "animate-spin")}
+                />
+              </Button>
 
-            {solana.error ? (
-              <div className="rounded-lg border border-border bg-muted/50 p-3">
-                <FieldError>{solana.error}</FieldError>
-              </div>
-            ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-2 text-xs"
+                onClick={onManageWallets}
+              >
+                <SolanaLogo size={13} />
+                {connected ? "Manage wallets" : "Connect wallet"}
+              </Button>
+            </div>
           </RailContent>
         </Card>
 
         {/* ── Fiat rail (PesePay) ──────────────────────────── */}
-        <Card data-rail="pesepay" className="gap-4 border-border">
+        <Card data-rail="pesepay" className="flex h-full flex-col justify-between border-border">
           <RailHeader
-            icon={<PesepayLogo size={24} />}
+            icon={<PesepayLogo size={22} />}
             title="PesePay balance"
             subtitle="Prepaid USD · personal to you"
           />
 
           <RailContent>
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "size-2 shrink-0 rounded-full",
-                  balance > 0 && !balanceFailed ? "bg-primary" : "bg-border",
-                )}
-                data-connected={(balance > 0 && !balanceFailed) || undefined}
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                <p className="text-sm font-medium">SiteSurveyor credit</p>
-                <p className="truncate font-mono text-xs text-muted-foreground">
-                  USD · invoices and storage
-                </p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/30 px-3 py-2 min-h-[46px]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={cn(
+                      "size-2 shrink-0 rounded-full",
+                      balance > 0 && !balanceFailed ? "bg-primary" : "bg-border",
+                    )}
+                    data-connected={(balance > 0 && !balanceFailed) || undefined}
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">SiteSurveyor credit</p>
+                    <p className="truncate font-mono text-xs text-muted-foreground">
+                      USD · invoices and storage
+                    </p>
+                  </div>
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 min-h-[76px] items-center">
+                <BalanceRow
+                  icon={<PesepayLogo size={12} />}
+                  label="Available balance"
+                  value={balanceFailed ? "—" : formatAmount(balance, 2)}
+                  unit="USD"
+                  loading={pesepayLoading}
+                />
+
+                <div className="min-w-0 border-l border-border/60 pl-3">
+                  <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <ShieldCheck className="h-3 w-3 text-primary" />
+                    Settlement
+                  </span>
+                  <p className="mt-1 text-sm font-medium text-foreground">Direct balance</p>
+                  <p className="truncate text-xs text-muted-foreground">Applies instantly</p>
+                </div>
+              </div>
+
+              {pesepayError ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/50 p-2.5">
+                  <FieldError>{pesepayError}</FieldError>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onRetryPesepay}>
+                    Retry
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
-            <BalanceRow
-              icon={<PesepayLogo size={12} />}
-              label="Available balance"
-              value={balanceFailed ? "—" : formatAmount(balance, 2)}
-              unit="USD"
-              loading={pesepayLoading}
-            />
-
-            <ActionButtonRow>
+            <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+              <span className="text-xs text-muted-foreground">Prepaid checkout</span>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="h-8 gap-1.5 text-xs"
                 onClick={onOpenBalance}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" />
                 Add funds
               </Button>
-            </ActionButtonRow>
-
-            {pesepayError ? (
-              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/50 p-3">
-                <FieldError>{pesepayError}</FieldError>
-                <Button variant="ghost" size="sm" onClick={onRetryPesepay}>
-                  Retry
-                </Button>
-              </div>
-            ) : null}
+            </div>
           </RailContent>
         </Card>
       </div>

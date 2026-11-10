@@ -2,13 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import {
@@ -86,7 +80,6 @@ export default function PackageCatalog({
           workspaceId,
           packageId: pkg.id,
         });
-        // PesePay holds the payment page; the return URL re-verifies this order.
         window.location.assign(checkout.redirectUrl);
       } catch (err: unknown) {
         onMessage({
@@ -130,9 +123,9 @@ export default function PackageCatalog({
 
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-44 w-full" />
+          <Skeleton key={i} className="h-36 w-full rounded-xl" />
         ))}
       </div>
     );
@@ -153,36 +146,51 @@ export default function PackageCatalog({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
       {packages.map((pkg) => {
         const covered = walletBalance >= pkg.amount;
         const busy = busyId === pkg.id;
         return (
-          <Card key={pkg.id} className="flex flex-col justify-between gap-4 border-border">
-            <CardHeader className="space-y-1 pb-2">
-              <CardTitle className="text-base">{headline(pkg)}</CardTitle>
-              <CardDescription className="text-sm leading-relaxed">
-                {pkg.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <span className="text-2xl font-bold tabular-nums">
-                  ${pkg.amount.toFixed(2)}
-                </span>
-                {unitNote ? (
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    {unitNote(pkg)}
+          <Card
+            key={pkg.id}
+            className="flex flex-col justify-between h-full rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 shadow-sm"
+          >
+            <div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h4 className="text-sm font-semibold text-foreground truncate">
+                    {headline(pkg)}
+                  </h4>
+                  {unitNote && unitNote(pkg) ? (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {unitNote(pkg)}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className="text-base sm:text-lg font-bold font-mono tabular-nums text-foreground">
+                    ${pkg.amount.toFixed(2)}
                   </span>
-                ) : null}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+
+              {pkg.description ? (
+                <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                  {pkg.description}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-border/60 flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   size="sm"
                   disabled={busy}
                   onClick={() => void buyFromBalance(pkg)}
+                  className="w-full text-xs h-8 px-2"
+                  variant={covered ? "default" : "secondary"}
                 >
-                  {busy ? <Loader2 className="animate-spin" /> : null}
+                  {busy ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                   {busy ? "Processing…" : "Pay from balance"}
                 </Button>
                 <Button
@@ -190,17 +198,17 @@ export default function PackageCatalog({
                   variant="outline"
                   disabled={busy}
                   onClick={() => void buyWithCheckout(pkg)}
+                  className="w-full text-xs h-8 px-2"
                 >
                   Pay with PesePay
                 </Button>
               </div>
               {!covered && (
-                <p className="text-xs text-muted-foreground">
-                  Balance is ${walletBalance.toFixed(2)} — PesePay checkout covers
-                  this package.
-                </p>
+                <span className="text-[11px] text-muted-foreground truncate">
+                  Balance is ${walletBalance.toFixed(2)} — PesePay checkout covers this.
+                </span>
               )}
-            </CardContent>
+            </div>
           </Card>
         );
       })}

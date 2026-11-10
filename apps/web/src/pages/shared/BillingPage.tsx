@@ -825,46 +825,50 @@ export default function BillingPage({
                           aria-pressed={paymentSource === "crypto"}
                           onClick={() => setPaymentSource("crypto")}
                           className={cn(
-                            "flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors",
+                            "flex flex-col justify-between gap-2 rounded-lg border p-3 text-left transition-colors",
                             paymentSource === "crypto"
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                               : "border-border bg-card hover:border-primary/40",
                           )}
                         >
-                          <span className="flex items-center gap-2">
-                            <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
-                              <SolanaLogo size={20} />
-                            </span>
-                            <span className="truncate text-sm font-semibold">
-                              Crypto wallet
-                            </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
+                                <SolanaLogo size={16} />
+                              </span>
+                              <span className="truncate text-xs font-semibold">
+                                Crypto wallet
+                              </span>
+                            </div>
                             <span
                               className={cn(
-                                "ml-auto flex size-4 shrink-0 items-center justify-center rounded-full border",
+                                "flex size-3.5 shrink-0 items-center justify-center rounded-full border",
                                 paymentSource === "crypto"
                                   ? "border-primary bg-primary text-primary-foreground"
                                   : "border-border text-transparent",
                               )}
                               aria-hidden="true"
                             >
-                              <Check className="h-3 w-3" />
+                              <Check className="h-2.5 w-2.5" />
                             </span>
-                          </span>
-                          <span className="truncate font-mono text-xs text-muted-foreground">
-                            {cryptoAddress
-                              ? `${cryptoWalletName ?? "Connected wallet"} · ${shorten(cryptoAddress, 4, 4)}${
-                                  cryptoConnected ? "" : " · saved"
-                                }`
-                              : "No wallet connected"}
-                          </span>
-                          <span className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-                            <SolanaLogo size={12} />
-                            {solanaBalances.usdc === null
-                              ? solanaBalances.loading
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                              {cryptoAddress
+                                ? `${cryptoWalletName ?? "Connected wallet"} · ${shorten(cryptoAddress, 4, 4)}${
+                                    cryptoConnected ? "" : " · saved"
+                                  }`
+                                : "No wallet connected"}
+                            </span>
+                            <span className="mt-1 flex items-center gap-1 font-mono text-xs font-semibold tabular-nums text-foreground">
+                              <SolanaLogo size={11} />
+                              {solanaBalances.usdc === null
+                                ? solanaBalances.loading
                                 ? "…"
                                 : "— USDC"
                               : `${formatAmount(solanaBalances.usdc, 2)} USDC`}
-                          </span>
+                            </span>
+                          </div>
                         </button>
 
                         <button
@@ -872,45 +876,49 @@ export default function BillingPage({
                           aria-pressed={paymentSource === "pesepay"}
                           onClick={() => setPaymentSource("pesepay")}
                           className={cn(
-                            "flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors",
+                            "flex flex-col justify-between gap-2 rounded-lg border p-3 text-left transition-colors",
                             paymentSource === "pesepay"
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                               : "border-border bg-card hover:border-primary/40",
                           )}
                         >
-                          <span className="flex items-center gap-2">
-                            <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
-                              <PesepayLogo size={20} />
-                            </span>
-                            <span className="truncate text-sm font-semibold">
-                              PesePay balance
-                            </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
+                                <PesepayLogo size={16} />
+                              </span>
+                              <span className="truncate text-xs font-semibold">
+                                PesePay balance
+                              </span>
+                            </div>
                             <span
                               className={cn(
-                                "ml-auto flex size-4 shrink-0 items-center justify-center rounded-full border",
+                                "flex size-3.5 shrink-0 items-center justify-center rounded-full border",
                                 paymentSource === "pesepay"
                                   ? "border-primary bg-primary text-primary-foreground"
                                   : "border-border text-transparent",
                               )}
                               aria-hidden="true"
                             >
-                              <Check className="h-3 w-3" />
+                              <Check className="h-2.5 w-2.5" />
                             </span>
-                          </span>
-                          <span className="truncate font-mono text-xs text-muted-foreground">
-                            {pesepayBalanceLoading
-                              ? "Loading balance…"
-                              : "Prepaid USD · invoices and storage"}
-                          </span>
-                          <span className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-                            <PesepayLogo size={12} />
-                            {pesepayBalanceLoading ? "—" : formatCurrency(pesepayBalanceValue)}
-                          </span>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                              {pesepayBalanceLoading
+                                ? "Loading balance…"
+                                : "Prepaid USD · invoices and storage"}
+                            </span>
+                            <span className="mt-1 flex items-center gap-1 font-mono text-xs font-semibold tabular-nums text-foreground">
+                              <PesepayLogo size={11} />
+                              {pesepayBalanceLoading ? "—" : formatCurrency(pesepayBalanceValue)}
+                            </span>
+                          </div>
                         </button>
                       </div>
 
                       {paymentSource === "crypto" ? (
-                        <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/40 p-4">
+                        <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-3.5">
                           {cryptoReady ? (
                             <>
                               <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
@@ -935,7 +943,7 @@ export default function BillingPage({
                               {cryptoConnected ? (
                                 <Button
                                   type="button"
-                                  className="w-full gap-2"
+                                  className="w-full h-9 text-xs font-semibold gap-2"
                                   onClick={payWithSolana}
                                   disabled={
                                     solanaBusy ||
@@ -948,7 +956,7 @@ export default function BillingPage({
                                   {solanaBusy ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
-                                    <SolanaLogo size={16} />
+                                    <SolanaLogo size={15} />
                                   )}
                                   {solanaButtonLabel}
                                 </Button>
@@ -956,7 +964,7 @@ export default function BillingPage({
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  className="w-full gap-2"
+                                  className="w-full h-9 text-xs font-semibold gap-2"
                                   onClick={manageWalletsFromComposer}
                                 >
                                   <Wallet className="h-4 w-4" />
@@ -985,7 +993,7 @@ export default function BillingPage({
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="gap-2"
+                                className="h-9 text-xs font-semibold gap-2"
                                 onClick={manageWalletsFromComposer}
                               >
                                 <Wallet className="h-4 w-4" />
@@ -999,7 +1007,7 @@ export default function BillingPage({
                           )}
                         </div>
                       ) : (
-                        <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/40 p-4">
+                        <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-3.5">
                           <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
                             <span>PesePay balance</span>
                             <span className="flex items-center gap-1 font-mono text-xs font-semibold text-foreground">
@@ -1017,7 +1025,7 @@ export default function BillingPage({
                           </div>
                           <Button
                             type="button"
-                            className="w-full gap-2"
+                            className="w-full h-9 text-xs font-semibold gap-2"
                             onClick={payFromPesepayBalance}
                             disabled={
                               balancePaymentBusy ||
@@ -1033,7 +1041,7 @@ export default function BillingPage({
                             {balancePaymentBusy ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <PesepayLogo size={16} />
+                              <PesepayLogo size={15} />
                             )}
                             {balancePaymentBusy ? "Paying…" : "Pay from PesePay balance"}
                           </Button>
@@ -1054,10 +1062,10 @@ export default function BillingPage({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="gap-2 self-start"
+                              className="h-8 gap-1.5 text-xs self-start"
                               onClick={openPesepaySettings}
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-3.5 w-3.5" />
                               Add funds
                             </Button>
                           ) : null}
@@ -1071,7 +1079,7 @@ export default function BillingPage({
                           <Button
                             type="button"
                             variant="outline"
-                            className="w-full gap-2"
+                            className="w-full h-9 text-xs font-semibold gap-2"
                             onClick={payWithPesepay}
                             disabled={
                               pesepayBusy ||
@@ -1084,7 +1092,7 @@ export default function BillingPage({
                             {pesepayBusy ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <PesepayLogo size={20} />
+                              <PesepayLogo size={18} />
                             )}
                             {pesepayBusy ? "Opening PesePay…" : "Pay with PesePay checkout"}
                           </Button>
@@ -1345,7 +1353,7 @@ export default function BillingPage({
       )}
 
       {activeSection === "overview" ? (
-        <>
+        <div className="space-y-6">
           <BillingOverviewSection
             workspaceId={workspaceId}
             refreshKey={purchaseRefresh}
@@ -1353,7 +1361,23 @@ export default function BillingPage({
           />
 
           {paymentRails}
-        </>
+
+          <section className="space-y-3" aria-label="Invoicing and settlements">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Invoicing & settlements
+              </p>
+            </div>
+            <MetricsTiles
+              collected={history.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)}
+              outstanding={invoices.reduce(
+                (sum, invoice) => sum + (invoice.status === "paid" ? 0 : Number(invoice.total || 0)),
+                0,
+              )}
+              invoiceCount={invoices.length}
+            />
+          </section>
+        </div>
       ) : null}
 
       {activeSection === "credits" ? (
@@ -1380,17 +1404,6 @@ export default function BillingPage({
           workspaceId={workspaceId}
           isPlatformAdmin={isPlatformAdmin}
           refreshKey={purchaseRefresh}
-        />
-      ) : null}
-
-      {activeSection === "overview" ? (
-        <MetricsTiles
-          collected={history.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)}
-          outstanding={invoices.reduce(
-            (sum, invoice) => sum + (invoice.status === "paid" ? 0 : Number(invoice.total || 0)),
-            0,
-          )}
-          invoiceCount={invoices.length}
         />
       ) : null}
 
