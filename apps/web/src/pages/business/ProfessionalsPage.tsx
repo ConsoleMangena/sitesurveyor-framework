@@ -42,6 +42,9 @@ import {
   Clock,
   Star,
   Search,
+  SearchX,
+  X,
+  Users,
   Pencil,
   Trash2,
   Loader2,
@@ -264,7 +267,7 @@ export default function ProfessionalsPage({
     return true;
   });
 
-  const pageSize = 10;
+  const pageSize = 12;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const effectivePage = Math.min(page, totalPages);
   const paginated = filtered.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
@@ -663,10 +666,27 @@ export default function ProfessionalsPage({
             placeholder="Search professionals..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className={search ? "pl-9 pr-9" : "pl-9"}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
+
+      {filtered.length > 0 && (
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {filtered.length} {filtered.length === 1 ? "professional" : "professionals"}
+          {discFilter !== "all" || search.trim() ? " found" : ""}
+        </p>
+      )}
 
       {/* Detail Dialog */}
       <DialogTemplate
@@ -702,9 +722,12 @@ export default function ProfessionalsPage({
             <div className="min-w-0 space-y-5 lg:col-span-3">
             <div className="relative h-28 overflow-hidden rounded-xl bg-gradient-to-br from-primary/30 via-primary/15 to-primary/5">
               {selectedPro.is_verified && (
-                <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-500/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                <Badge
+                  variant="success"
+                  className="absolute right-2 top-2 gap-1 rounded-full px-2 py-0.5 text-micro font-semibold uppercase tracking-wide shadow-sm"
+                >
                   <BadgeCheck size={11} /> Verified
-                </div>
+                </Badge>
               )}
             </div>
             <div className="-mt-14 flex flex-wrap items-end gap-4 px-1">
@@ -724,12 +747,12 @@ export default function ProfessionalsPage({
                   {selectedPro.availability}
                 </Badge>
                 {selectedPro.rating != null && selectedPro.rating > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-xs text-warning">
                     <Star size={11} fill="currentColor" />
                     <span className="font-semibold tabular-nums">
                       {selectedPro.rating}
                     </span>
-                    <span className="text-amber-700/70 dark:text-amber-400/80">
+                    <span className="text-warning/70">
                       ({selectedPro.reviews ?? 0})
                     </span>
                   </span>
@@ -756,8 +779,8 @@ export default function ProfessionalsPage({
 
             <div className="min-w-0 space-y-4 lg:col-span-2">
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-none border bg-muted/30 px-3 py-2.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+                <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
                   Rate
                 </span>
                 <p className="mt-0.5 text-sm font-semibold tabular-nums">
@@ -767,25 +790,25 @@ export default function ProfessionalsPage({
                   </span>
                 </p>
                 {selectedPro.currency && selectedPro.currency !== "USD" && (
-                  <p className="text-[10px] text-muted-foreground">{selectedPro.currency}</p>
+                  <p className="text-micro text-muted-foreground">{selectedPro.currency}</p>
                 )}
               </div>
-              <div className="rounded-none border bg-muted/30 px-3 py-2.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+                <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
                   Discipline
                 </span>
                 <p className="mt-0.5 truncate text-sm font-semibold" title={selectedPro.discipline}>
                   {selectedPro.discipline}
                 </p>
               </div>
-              <div className="rounded-none border bg-muted/30 px-3 py-2.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+                <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
                   Experience
                 </span>
                 <p className="mt-0.5 text-sm font-semibold">{selectedPro.experience}</p>
               </div>
-              <div className="rounded-none border bg-muted/30 px-3 py-2.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+                <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
                   Location
                 </span>
                 <p className="mt-0.5 truncate text-sm font-semibold" title={selectedPro.location}>
@@ -834,11 +857,46 @@ export default function ProfessionalsPage({
 
       {filtered.length === 0 ? (
         <Card className="border-border/60">
-          <CardContent className="py-10 text-center">
-            <h3 className="text-base font-semibold">No professionals found</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Try adjusting your search or filter criteria.
-            </p>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              {professionals.length === 0 ? <Users size={22} /> : <SearchX size={22} />}
+            </div>
+            {professionals.length === 0 ? (
+              <>
+                <h3 className="text-base font-semibold">No professionals yet</h3>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  {isPlatformAdmin
+                    ? "Add the first professional to start building the hire directory."
+                    : "Directory entries are maintained by platform administrators."}
+                </p>
+                {isPlatformAdmin && (
+                  <Button onClick={openCreatePro} className="mt-1 gap-2">
+                    <Plus size={16} />
+                    Add professional
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <h3 className="text-base font-semibold">No professionals found</h3>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Try adjusting your search or filter criteria.
+                </p>
+                {(discFilter !== "all" || search.trim()) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-1"
+                    onClick={() => {
+                      setSearch("");
+                      setDiscFilter("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -860,9 +918,12 @@ export default function ProfessionalsPage({
               >
                 <div className="relative h-16 bg-gradient-to-br from-primary/30 via-primary/15 to-primary/5">
                   {p.is_verified && (
-                    <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-500/95 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                    <Badge
+                      variant="success"
+                      className="absolute right-2 top-2 gap-1 rounded-full px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wide shadow-sm"
+                    >
                       <BadgeCheck size={10} /> Verified
-                    </div>
+                    </Badge>
                   )}
                 </div>
                 <CardContent className="-mt-7 p-4">
@@ -896,7 +957,7 @@ export default function ProfessionalsPage({
                       </div>
                     )}
                     {p.rating != null && p.rating > 0 && (
-                      <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                      <div className="flex items-center gap-1.5 text-warning">
                         <Star size={11} fill="currentColor" />
                         <span className="font-semibold tabular-nums">{p.rating}</span>
                         <span className="text-muted-foreground">({p.reviews ?? 0})</span>
@@ -913,7 +974,7 @@ export default function ProfessionalsPage({
                         </span>
                       </div>
                       {p.currency && p.currency !== "USD" && (
-                        <div className="text-[10px] text-muted-foreground">{p.currency}</div>
+                        <div className="text-micro text-muted-foreground">{p.currency}</div>
                       )}
                     </div>
                     {isPlatformAdmin && (
