@@ -90,6 +90,41 @@ def test_residual_index_removes_most_of_the_vegetation_signal():
     assert np.nanstd(resid) < 0.25 * np.nanstd(ix)
 
 
+def test_residual_index_constant_ndvi_falls_back_to_a_constant_fit():
+    nd = np.full(200, 0.5, dtype="float32")
+    ix = np.linspace(-0.2, 0.4, 200, dtype="float32")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = residual_index(ix, nd)
+
+    np.testing.assert_allclose(out, ix - np.mean(ix), atol=1e-6)
+
+
+def test_residual_index_near_constant_ndvi_stays_conditioned_and_finite():
+    nd = (0.5 + np.linspace(-5e-7, 5e-7, 200)).astype("float32")
+    ix = (0.2 + 2.0 * (nd - 0.5)).astype("float32")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = residual_index(ix, nd)
+
+    assert np.isfinite(out).all()
+    assert np.nanstd(out) < 1e-6
+
+
+def test_residual_index_preserves_unobserved_cells():
+    ix, nd = _big_pair(n=150)
+    ix[0] = np.nan
+    nd[1] = np.nan
+
+    out = residual_index(ix, nd)
+
+    assert np.isnan(out[0])
+    assert np.isnan(out[1])
+    assert np.isfinite(out[2:]).all()
+
+
 def test_too_few_jointly_observed_pixels_reports_no_data(capsys):
     """Returning the raw index here would label an undetrended ratio as a residual."""
     sparse = np.full(400, np.nan, dtype="float32")

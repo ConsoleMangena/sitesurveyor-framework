@@ -94,6 +94,7 @@ def run_hazard_survey(
     wofs_freq = warp(cfg.RAW / "wofs.tif", 3)
 
     # Sentinel-2 reflectance, addressed by band name
+    blue = warp(cfg.RAW / "optical.tif", "blue", scale=10000.0)
     red = warp(cfg.RAW / "optical.tif", "red", scale=10000.0)
     nir = warp(cfg.RAW / "optical.tif", "nir", scale=10000.0)
     swir1 = warp(cfg.RAW / "optical.tif", "swir_1", scale=10000.0)
@@ -130,7 +131,7 @@ def run_hazard_survey(
     print("[3/6] Computing spectral vegetation & soil moisture stress...")
     ndvi_layer = ndvi(nir, red)
     ndmi_layer = ndmi(nir, swir1)
-    bsi_layer = bare_soil_index(red, swir1, nir, swir2)
+    bsi_layer = bare_soil_index(red, swir1, nir, blue)
 
     # ------------------------------------------------------------------
     # 4. Construct hazard sub-layers (0 to 1 scale, 1 = highest hazard)
@@ -199,9 +200,12 @@ def run_hazard_survey(
 
     # Natural-break classification for Hazard Zones
     # 1: Very Low Hazard, 2: Low, 3: Moderate, 4: High, 5: Very High
-    valid_vals = hazard_index[np.isfinite(hazard_index)]
+    excluded = water_mask | builtup_mask
+    valid_vals = hazard_index[np.isfinite(hazard_index) & ~excluded]
     breaks = jenks_breaks(valid_vals, k=5)
-    hazard_zones = classify_zones(hazard_index, breaks, water_mask=water_mask)
+    hazard_zones = classify_zones(
+        hazard_index, breaks, water_mask=water_mask, builtup_mask=builtup_mask
+    )
 
     # Site Safety Index (100 = Safest, 0 = Most hazardous)
     safety_index = (100.0 - hazard_index).astype("float32")
@@ -238,8 +242,10 @@ def run_hazard_survey(
     # 6. Siting: Identify Safest Low-Risk Buildable Sites
     # ------------------------------------------------------------------
     # Use safety index to pick the top safest buildable locations near property
-    safety_breaks = jenks_breaks(safety_index[np.isfinite(safety_index)], k=5)
-    safety_classes = classify_zones(safety_index, safety_breaks, water_mask=water_mask)
+    safety_breaks = jenks_breaks(safety_index[np.isfinite(safety_index) & ~excluded], k=5)
+    safety_classes = classify_zones(
+        safety_index, safety_breaks, water_mask=water_mask, builtup_mask=builtup_mask
+    )
 
     safest_sites = find_candidate_sites(
         safety_index,
@@ -383,6 +389,8 @@ def _plot_hazard_map(hazard_index, hazard_zones, safest_sites):
         Patch(color=hazard_colors[4], label="High Hazard"),
         Patch(color=hazard_colors[5], label="Very High Hazard"),
     ]
+    if (hazard_zones == 6).any():
+        patches.append(Patch(color=hazard_colors[6], label="Built-up (excluded)"))
     if (hazard_zones == NODATA_CLASS).any():
         patches.append(Patch(color=NODATA_HEX, label="No satellite coverage"))
     ax.legend(handles=patches, loc="lower right", fontsize=8,

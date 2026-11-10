@@ -131,6 +131,7 @@ def run_soil_survey(
 
     # Reflectance from whichever Sentinel-2 aggregate this run selected, addressed by band
     # name so a product switch cannot quietly renumber it.
+    blue     = warp(cfg.RAW / "optical.tif", "blue", scale=10000.0)
     red      = warp(cfg.RAW / "optical.tif", "red", scale=10000.0)
     nir      = warp(cfg.RAW / "optical.tif", "nir", scale=10000.0)
     swir1    = warp(cfg.RAW / "optical.tif", "swir_1", scale=10000.0)
@@ -182,7 +183,7 @@ def run_soil_survey(
     print("[3/6] Computing spectral land-condition indices...")
     ndvi_layer   = ndvi(nir, red)      # vegetation health
     ndmi_layer   = ndmi(nir, swir1)    # canopy/soil moisture
-    bsi_layer    = bare_soil_index(red, swir1, nir, swir2)  # bare/exposed soil
+    bsi_layer    = bare_soil_index(red, swir1, nir, blue)  # bare/exposed soil
 
     # ------------------------------------------------------------------
     # 4. Evidence layer construction (each normalized 0–100)
