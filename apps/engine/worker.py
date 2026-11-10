@@ -82,6 +82,8 @@ SURVEY_DELIVERABLES: dict[str, str] = {
     "minerals_index_tif": "mineral_commodity_index.tif",
     "soil_index_tif": "soil_capability_index.tif",
     "hazard_index_tif": "hazard_composite_index.tif",
+    "gravity_zones_tif": "gravity_density_zones.tif",
+    "gravity_residual_tif": "gravity_residual_anomaly.tif",
     "groundwater_overlay": "groundwater_overlay.png",
     "minerals_overlay": "minerals_overlay.png",
     "soil_overlay": "soil_overlay.png",
@@ -228,12 +230,19 @@ def readout(category: str, row: dict) -> str | None:
         if cover:
             parts.append(f"overburden {cover}")
         if category == "minerals":
-            bouguer = row.get("bouguer_anomaly_mgal")
-            if bouguer is not None:
+            res = row.get("residual_gravity_mgal")
+            if res is not None:
+                sign = "+" if res > 0 else ""
+                parts.append(f"residual {sign}{res:g} mGal")
+            elif (bouguer := row.get("bouguer_anomaly_mgal")) is not None:
                 parts.append(f"Bouguer {bouguer} mGal")
             grad = row.get("gravity_gradient_mgal_km")
             if grad is not None:
                 parts.append(f"grad {grad} mGal/km")
+            zone = row.get("gravity_zone_name")
+            if zone:
+                short_zone = str(zone).split("(")[0].strip()
+                parts.append(short_zone)
     elif category == "hazard_safety":
         klass = row.get("class_name")
         if klass:

@@ -19,6 +19,9 @@ from src.utils.gravity import (
     horizontal_gradient_magnitude,
     load_gravity_layers,
     find_gravity_raster,
+    regional_residual_separation,
+    classify_gravity_zones,
+    GRAVITY_ZONE_NAMES,
 )
 
 
@@ -49,6 +52,38 @@ def test_horizontal_gradient_handles_nans() -> None:
     assert np.all(np.isfinite(hgm[np.isfinite(grid)]))
 
 
+def test_regional_residual_separation() -> None:
+    """A crustal regional ramp is subtracted cleanly, leaving a localized bullseye."""
+    h, w = 30, 30
+    y, x = np.mgrid[0:h, 0:w]
+    regional_synth = 0.5 * x + 0.3 * y - 100.0  # Regional plane
+    # Add a localized positive anomaly (e.g. dense orebody at center)
+    dist = np.hypot(x - 15, y - 15)
+    local_target = 8.0 * np.exp(-0.5 * (dist / 3.0) ** 2)
+    composite = (regional_synth + local_target).astype("float32")
+
+    reg, res = regional_residual_separation(composite, order=1)
+    assert reg.shape == (h, w)
+    assert res.shape == (h, w)
+    # Residual should peak near the center and be near 0 at corners
+    assert res[15, 15] > 6.0
+    assert abs(res[0, 0]) < 1.0
+
+
+def test_classify_gravity_zones() -> None:
+    """Classification returns 5 exploration zones with correct codes and names."""
+    h, w = 40, 40
+    res = np.linspace(-5.0, 5.0, h * w, dtype="float32").reshape((h, w))
+    grad = np.linspace(0.1, 4.0, h * w, dtype="float32").reshape((h, w))
+
+    zones, names = classify_gravity_zones(res, grad)
+    assert zones.shape == (h, w)
+    assert zones.dtype == np.uint8
+    assert set(np.unique(zones)).issubset({1, 2, 3, 4, 5})
+    assert len(names) == 5
+    assert 1 in names and 5 in names
+
+
 def test_load_gravity_layers_when_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """When no external gravity raster is found, returns clean degraded state."""
     monkeypatch.setattr(cfg, "EXTERNAL", tmp_path / "empty_ext")
@@ -59,8 +94,12 @@ def test_load_gravity_layers_when_missing(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert data["source_file"] is None
     assert data["raw_bouguer"] is None
     assert data["norm_bouguer"] is None
+    assert data["regional_bouguer"] is None
+    assert data["residual_bouguer"] is None
+    assert data["norm_residual"] is None
     assert data["raw_gradient"] is None
     assert data["norm_gradient"] is None
+    assert data["zones"] is None
 
 
 def test_load_gravity_layers_when_present(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -94,7 +133,11 @@ def test_load_gravity_layers_when_present(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert data["source_file"] == "bouguer_gravity.tif"
     assert data["raw_bouguer"] is not None
     assert data["norm_bouguer"] is not None
+    assert data["residual_bouguer"] is not None
+    assert data["regional_bouguer"] is not None
+    assert data["norm_residual"] is not None
     assert data["norm_gradient"] is not None
+    assert data["zones"] is not None
     assert data["norm_bouguer"].shape == (cfg.HEIGHT, cfg.WIDTH)
     assert np.nanmin(data["norm_bouguer"]) >= 0.0
     assert np.nanmax(data["norm_bouguer"]) <= 1.0

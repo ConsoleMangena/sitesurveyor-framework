@@ -91,7 +91,7 @@ def run_minerals_survey(
     from src.utils.gravity import load_gravity_layers
     grav_data = load_gravity_layers(cfg.BBOX_WGS84, (cfg.HEIGHT, cfg.WIDTH))
     if grav_data["active"]:
-        print(f"      [Gravimetry] Integrated Bouguer gravity anomaly & gradient ({grav_data['source_file']})")
+        print(f"      [Gravimetry] Integrated Bouguer gravity anomaly, residual & gradient ({grav_data['source_file']})")
     else:
         print("      [Gravimetry] No external gravity raster present — using structural & spectral baseline")
 
@@ -175,6 +175,8 @@ def run_minerals_survey(
             evidence_layers["bouguer_anomaly"] = grav_data["norm_bouguer"]
         if grav_data["norm_gradient"] is not None:
             evidence_layers["gravity_gradient"] = grav_data["norm_gradient"]
+        if grav_data["norm_residual"] is not None:
+            evidence_layers["residual_gravity"] = grav_data["norm_residual"]
 
     # One rule for all nine systems, gold included. Rescaling this overlay to fill 0-100
     # before handing it to the commodity screen stretched gold roughly 20 points above the
@@ -239,8 +241,14 @@ def run_minerals_survey(
         }
         if grav_data["active"] and grav_data["raw_bouguer"] is not None:
             out["bouguer_anomaly_mgal"] = safe_round(grav_data["raw_bouguer"][row, col], 1)
+        if grav_data["active"] and grav_data["residual_bouguer"] is not None:
+            out["residual_gravity_mgal"] = safe_round(grav_data["residual_bouguer"][row, col], 1)
         if grav_data["active"] and grav_data["raw_gradient"] is not None:
             out["gravity_gradient_mgal_km"] = safe_round(grav_data["raw_gradient"][row, col], 2)
+        if grav_data["active"] and grav_data["zones"] is not None:
+            z_code = int(grav_data["zones"][row, col])
+            out["gravity_zone_code"] = z_code
+            out["gravity_zone_name"] = grav_data["zone_names"].get(z_code, "Unknown")
         return out
 
     for cand in candidates:
@@ -254,6 +262,11 @@ def run_minerals_survey(
         ]
         if cand.get("bouguer_anomaly_mgal") is not None:
             notes.append(f"Bouguer gravity anomaly: {cand['bouguer_anomaly_mgal']} mGal")
+        if cand.get("residual_gravity_mgal") is not None:
+            res_val = cand["residual_gravity_mgal"]
+            sign = "+" if res_val > 0 else ""
+            z_desc = f" ({cand['gravity_zone_name']})" if cand.get("gravity_zone_name") else ""
+            notes.append(f"Residual gravity: {sign}{res_val} mGal{z_desc}")
         if cand.get("gravity_gradient_mgal_km") is not None:
             notes.append(f"Gravity horizontal gradient: {cand['gravity_gradient_mgal_km']} mGal/km")
         cand["field_notes"] = notes
@@ -355,6 +368,22 @@ def run_minerals_survey(
         colors=ZONE_PALETTES["minerals"],
         transparent_codes=MINERAL_TRANSPARENT_CODES,
     )
+    if grav_data["active"] and grav_data["zones"] is not None:
+        from src.utils.gravity import GRAVITY_ZONE_PALETTE
+        write_raster(
+            cfg.OUT / "gravity_density_zones.tif",
+            grav_data["zones"],
+            dtype="uint8",
+            nodata=0,
+            colors=GRAVITY_ZONE_PALETTE,
+        )
+    if grav_data["active"] and grav_data["residual_bouguer"] is not None:
+        write_raster(
+            cfg.OUT / "gravity_residual_anomaly.tif",
+            grav_data["residual_bouguer"],
+            dtype="float32",
+            nodata=np.nan,
+        )
 
     # Candidate CSV with commodity breakdown
     candidate_fields = [
@@ -370,7 +399,7 @@ def run_minerals_survey(
         "lineament_density_pct", "intersection_density_pct",
         "iron_oxide_residual_pct", "hydroxyl_clay_residual_pct",
         "ferrous_mafic_pct", "relative_relief_pct", "endowment_context_pct",
-        "bouguer_anomaly_mgal", "gravity_gradient_mgal_km",
+        "bouguer_anomaly_mgal", "residual_gravity_mgal", "gravity_gradient_mgal_km", "gravity_zone_name",
     ]
     csv_path = cfg.OUT / "candidate_mineral_targets.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
@@ -460,7 +489,20 @@ def run_minerals_survey(
     summary["provenance"]["gravimetry"] = {
         "active": bool(grav_data["active"]),
         "source": grav_data["source_file"] or "None (structural/spectral baseline)",
-        "method": "Bouguer density anomaly and horizontal gradient magnitude" if grav_data["active"] else "None",
+        "method": (
+            "Regional-residual polynomial separation (2nd order), horizontal gradient magnitude & 5-tier density zonation"
+            if grav_data["active"]
+            else "None"
+        ),
+        "residual_range_mgal": [
+            safe_round(float(np.nanmin(grav_data["residual_bouguer"])), 1),
+            safe_round(float(np.nanmax(grav_data["residual_bouguer"])), 1),
+        ] if grav_data["active"] and grav_data["residual_bouguer"] is not None else None,
+        "gradient_range_mgal_km": [
+            safe_round(float(np.nanmin(grav_data["raw_gradient"])), 2),
+            safe_round(float(np.nanmax(grav_data["raw_gradient"])), 2),
+        ] if grav_data["active"] and grav_data["raw_gradient"] is not None else None,
+        "zones": grav_data.get("zone_names") if grav_data["active"] else None,
     }
     (cfg.OUT / "mineral_summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
 

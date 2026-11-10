@@ -47,6 +47,7 @@ EVIDENCE_KEYS = (
     "endowment",
     "bouguer_anomaly",
     "gravity_gradient",
+    "residual_gravity",
 )
 
 #: Score bands, in index units (0-100 percentiles within the survey area).

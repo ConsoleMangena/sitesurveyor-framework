@@ -136,11 +136,19 @@ export function mapCandidates(
       if (category === "minerals" && target.payload) {
         const payload = target.payload as Record<string, unknown>;
         const gParts: string[] = [];
-        if (payload.bouguer_anomaly_mgal !== undefined && payload.bouguer_anomaly_mgal !== null) {
+        if (payload.residual_gravity_mgal !== undefined && payload.residual_gravity_mgal !== null) {
+          const resNum = Number(payload.residual_gravity_mgal);
+          const sign = resNum > 0 ? "+" : "";
+          gParts.push(`res ${sign}${payload.residual_gravity_mgal} mGal`);
+        } else if (payload.bouguer_anomaly_mgal !== undefined && payload.bouguer_anomaly_mgal !== null) {
           gParts.push(`Bouguer ${payload.bouguer_anomaly_mgal} mGal`);
         }
         if (payload.gravity_gradient_mgal_km !== undefined && payload.gravity_gradient_mgal_km !== null) {
           gParts.push(`grad ${payload.gravity_gradient_mgal_km} mGal/km`);
+        }
+        if (payload.gravity_zone_name) {
+          const zStr = String(payload.gravity_zone_name).split("(")[0].trim();
+          gParts.push(zStr);
         }
         if (gParts.length > 0 && (!candidateReadout || !candidateReadout.includes("mGal"))) {
           candidateReadout = candidateReadout ? `${candidateReadout} / ${gParts.join(" · ")}` : gParts.join(" · ");
