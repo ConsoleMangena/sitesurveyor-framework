@@ -1,16 +1,22 @@
 """
-Provision regional Bouguer gravity anomaly raster for Southern Africa / Zimbabwe craton.
+Provision a SYNTHETIC Bouguer gravity calibration field for Southern Africa.
 
-Generates a physically calibrated Bouguer gravity anomaly GeoTIFF covering the regional
-exploration corridor (Lat -24.0° to -15.0°, Lon 25.0° to 34.0°) matching published
-geophysical surveys (EIGEN-6C4 / WGM2012 / Geological Survey of Zimbabwe):
+This writes an analytic model, not geophysical data. Nothing here is downloaded from
+EIGEN-6C4, WGM2012 or the Geological Survey of Zimbabwe, and no amplitude below is an
+observed value: they are plausible shapes chosen so the gravimetric pipeline has
+something to run against before a real survey grid is provisioned.
 
-- Regional cratonic baseline: -110 mGal (isostatically compensated Kalahari plateau).
-- Great Dyke of Zimbabwe: +35 to +50 mGal linear positive Bouguer gravity anomaly with
-  steep flanking horizontal gradients (ultramafic-mafic layered intrusion).
-- Midlands / Shurugwi / Kwekwe greenstone belts: +15 to +28 mGal positive anomalies
-  (dense mafic volcanics, komatiites, banded ironstones, and chromite complexes).
-- Granite batholiths (e.g. Chilimanzi, Sesombi): -10 to -20 mGal gravity lows.
+The field covers Lat -24.0 to -15.0, Lon 25.0 to 34.0 at ~2.2 km posting and combines:
+
+- A cratonic background tilt around -112 mGal.
+- A Great Dyke-shaped linear ridge, +45 mGal with an ~8 km Gaussian half-width.
+- Greenstone-belt-shaped highs over the Midlands, Kwekwe-Gweru, Masvingo and
+  Harare-Bindura corridors.
+- A granite-batholith-shaped low over Chilimanzi.
+
+The raster is tagged `SITESURVEYOR_KIND=modelled` so `src/utils/gravity.py` reports it
+as a model and withholds it from scoring. To score gravimetry, replace this file with a
+real Bouguer grid tagged `measured` and carrying its citation.
 """
 from __future__ import annotations
 
@@ -25,6 +31,13 @@ import src.config as cfg
 import numpy as np
 import rasterio
 from rasterio.transform import from_origin
+
+from src.utils.gravity import KIND_MODELLED, TAG_CITATION, TAG_KIND
+
+CITATION = (
+    "SiteSurveyor synthetic Bouguer calibration field (scripts/provision_gravity.py); "
+    "analytic model, not a measured survey"
+)
 
 
 def generate_regional_bouguer_raster(
@@ -123,11 +136,16 @@ def generate_regional_bouguer_raster(
         nodata=-9999.0,
     ) as dst:
         dst.write(bouguer, 1)
-        dst.set_band_description(1, "Bouguer Gravity Anomaly (mGal)")
+        dst.set_band_description(1, "Bouguer Gravity Anomaly (mGal) - synthetic calibration field")
+        dst.update_tags(**{
+            TAG_KIND: KIND_MODELLED,
+            TAG_CITATION: CITATION,
+        })
 
-    print(f"[ok] Provisioned Bouguer gravity raster: {out_path} ({w}x{h}, {out_path.stat().st_size / 1024:.1f} KB)")
+    print(f"[ok] Provisioned SYNTHETIC Bouguer calibration field: {out_path} ({w}x{h}, {out_path.stat().st_size / 1024:.1f} KB)")
     print(f"     Lat range: [{lat_min}, {lat_max}] | Lon range: [{lon_min}, {lon_max}]")
     print(f"     Anomaly range: {float(np.nanmin(bouguer)):.1f} to {float(np.nanmax(bouguer)):.1f} mGal")
+    print(f"     Tagged {TAG_KIND}={KIND_MODELLED} - reported as a model and withheld from scoring.")
     return out_path
 
 

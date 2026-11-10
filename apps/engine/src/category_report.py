@@ -1606,6 +1606,13 @@ _INDICATOR_LABELS = {
     "overburden_min_m": "Cover to fresh rock, thin end (m)",
     "overburden_max_m": "Cover to fresh rock, thick end (m)",
     "test_hole_depth_m": "First test hole (m)",
+    "bouguer_anomaly_mgal": "Bouguer gravity anomaly (mGal)",
+    "residual_gravity_mgal": "Residual gravity anomaly (mGal)",
+    "gravity_gradient_mgal_km": "Gravity horizontal gradient (mGal/km)",
+    "gravity_zone_name": "Gravimetric density zone",
+    "bouguer_anomaly": "Bouguer gravity anomaly",
+    "residual_gravity": "Residual gravity (density contrast)",
+    "gravity_gradient": "Gravity gradient (density contacts)",
 }
 
 

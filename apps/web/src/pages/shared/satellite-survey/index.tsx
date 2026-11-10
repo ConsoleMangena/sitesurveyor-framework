@@ -546,6 +546,7 @@ export default function SatelliteSurveyPage({
     source: sourceText(selected, queuedThisSession),
     inputs: inputsText(provenance),
     basis: basisText(detail?.run.result?.scoreBasis ?? null),
+    gravimetry: provenance?.fixed.gravimetry ?? null,
   };
 
   const pill = listError

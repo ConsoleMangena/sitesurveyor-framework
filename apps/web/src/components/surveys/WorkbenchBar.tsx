@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   FileText,
   PanelLeftClose,
@@ -12,6 +13,11 @@ import {
   Minimize2,
   LogOut,
   Sparkles,
+  Layers,
+  Crosshair,
+  Activity,
+  FileDown,
+  FolderGit2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -21,6 +27,8 @@ export interface EnginePill {
   state: "ready" | "running" | "error";
   text: string;
 }
+
+export type RibbonTab = "project" | "layers" | "analysis" | "targets" | "export";
 
 interface WorkbenchBarProps {
   onRun: () => void;
@@ -40,14 +48,18 @@ interface WorkbenchBarProps {
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onExitProject?: () => void;
+  activeCategory?: string;
 }
 
-/** The engine's toolbar, one for one, with two links it no longer has.
+/**
+ * Modern GIS Workstation Ribbon Bar (inspired by RustGIS / ArcGIS Pro).
  *
- * `Platform` and `API` were the sandbox's doors back to the site and to the REST and MCP
- * reference; the workbench is inside the site now and there is no HTTP API to document,
- * so both went. `Clear data` became `Clear board` because it clears this screen only —
- * the platform keeps every survey the workspace has run.
+ * Provides a structured, task-driven ribbon interface organized into:
+ * - PROJECT: Execution, AI copilot, queue reload, canvas reset
+ * - LAYERS: Map contents, basemap selection, raster drape controls
+ * - ANALYSIS: Prospectivity screening, multi-criteria models
+ * - TARGETS: Candidate site attributes, drilling/exploration coordinates
+ * - EXPORT: Cartographic PDF sheets, mobile GPS KMZ, spatial GeoTIFFs
  */
 export function WorkbenchBar({
   onRun,
@@ -66,86 +78,263 @@ export function WorkbenchBar({
   onToggleFullscreen,
   onExitProject,
 }: WorkbenchBarProps) {
+  const [activeTab, setActiveTab] = useState<RibbonTab>("project");
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 py-2">
-      <div className="sw-toolbar" role="toolbar" aria-label="Workspace actions">
-        <Button
-          type="button"
-          size="sm"
-          className="h-7 gap-1.5 text-[11.5px] shrink-0"
-          disabled={running}
-          onClick={onRun}
-        >
-          <Play className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Run survey</span>
-        </Button>
-        {onAskAi ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-[11.5px] shrink-0"
-            onClick={onAskAi}
-            title="Discuss this survey with SiteSurveyor AI"
-          >
-            <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>Ask AI</span>
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1.5 text-[11.5px] shrink-0"
-          onClick={onResetView}
-          title="Frame the study area again"
-        >
-          <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">Reset view</span>
-          <span className="sm:hidden">Reset</span>
-        </Button>
-        {onExportView ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-[11.5px] shrink-0"
-            onClick={onExportView}
-            title="Export official cartographic map sheet as high-res PDF"
-          >
-            <FileText className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">PDF Map Sheet</span>
-            <span className="sm:hidden">PDF</span>
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1.5 text-[11.5px] shrink-0"
-          onClick={onReload}
-          title="Ask the platform for the queue again"
-        >
-          <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">Reload results</span>
-          <span className="sm:hidden">Reload</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 gap-1.5 text-[11.5px] shrink-0"
-          onClick={onClear}
-          title="Take this survey off the workbench. Nothing is deleted."
-        >
-          <Eraser className="size-3.5 shrink-0" aria-hidden="true" />
-          <span className="hidden sm:inline">Clear board</span>
-          <span className="sm:hidden">Clear</span>
-        </Button>
+    <div className="sw-ribbon mb-2 rounded-lg border border-border/80 bg-card/90 shadow-sm backdrop-blur-md transition-all">
+      {/* Top Ribbon Tabs Header */}
+      <div className="sw-ribbon__tabs flex items-center justify-between border-b border-border/60 px-2 py-1 bg-muted/30">
+        <div className="flex items-center gap-1" role="tablist" aria-label="GIS Ribbon Navigation">
+          <RibbonTabButton
+            active={activeTab === "project"}
+            onClick={() => setActiveTab("project")}
+            icon={<FolderGit2 className="size-3.5" />}
+            label="Project"
+          />
+          <RibbonTabButton
+            active={activeTab === "layers"}
+            onClick={() => {
+              setActiveTab("layers");
+              if (!leftOpen) onToggleLeft();
+            }}
+            icon={<Layers className="size-3.5" />}
+            label="Layers"
+          />
+          <RibbonTabButton
+            active={activeTab === "analysis"}
+            onClick={() => {
+              setActiveTab("analysis");
+              if (!rightOpen) onToggleRight();
+            }}
+            icon={<Activity className="size-3.5" />}
+            label="Analysis"
+          />
+          <RibbonTabButton
+            active={activeTab === "targets"}
+            onClick={() => {
+              setActiveTab("targets");
+              if (!rightOpen) onToggleRight();
+            }}
+            icon={<Crosshair className="size-3.5" />}
+            label="Targets"
+          />
+          <RibbonTabButton
+            active={activeTab === "export"}
+            onClick={() => {
+              setActiveTab("export");
+              onExportView?.();
+            }}
+            icon={<FileDown className="size-3.5" />}
+            label="Export"
+          />
+        </div>
 
-        <div className="hidden min-[981px]:flex items-center gap-1.5">
-          <span className="sw-toolbar__divider" aria-hidden="true" />
+        {/* Right Station Telemetry */}
+        <div className="flex items-center gap-2">
+          <span className="sw-pill" data-state={pill.state}>
+            <i aria-hidden="true" />
+            <span className="font-mono text-[11px]">{pill.text}</span>
+          </span>
 
+          {onToggleFullscreen ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground hover:text-foreground"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? "Exit Fill Dashboard" : "Fill Dashboard with Earth Observation UI"}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="size-3.5" aria-hidden="true" />
+              ) : (
+                <Maximize2 className="size-3.5" aria-hidden="true" />
+              )}
+              <span className="sr-only">Toggle fullscreen</span>
+            </Button>
+          ) : null}
+
+          {onExitProject ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-destructive hover:bg-destructive/10"
+              onClick={onExitProject}
+              title="Exit current project"
+            >
+              <LogOut className="size-3.5" aria-hidden="true" />
+              <span className="sr-only">Exit project</span>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Ribbon Action Tool Group */}
+      <div className="sw-ribbon__actions flex flex-wrap items-center justify-between gap-2 px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Active Tools">
+          {activeTab === "project" && (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px] font-medium shadow-sm transition-all"
+                disabled={running}
+                onClick={onRun}
+              >
+                <Play className="size-3.5 fill-current shrink-0" aria-hidden="true" />
+                <span>Run Survey</span>
+              </Button>
+
+              {onAskAi ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 text-[11.5px] border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+                  onClick={onAskAi}
+                  title="Discuss this survey with SiteSurveyor AI"
+                >
+                  <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>Ask AI</span>
+                </Button>
+              ) : null}
+
+              <div className="h-4 w-px bg-border/80 mx-1" aria-hidden="true" />
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px] shrink-0"
+                onClick={onResetView}
+                title="Frame the study area again"
+              >
+                <RotateCcw className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="hidden sm:inline">Reset View</span>
+                <span className="sm:hidden">Reset</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px] shrink-0"
+                onClick={onReload}
+                title="Ask the platform for the queue again"
+              >
+                <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="hidden sm:inline">Reload</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px] shrink-0 text-muted-foreground hover:text-foreground"
+                onClick={onClear}
+                title="Clear board without deleting"
+              >
+                <Eraser className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="hidden sm:inline">Clear Board</span>
+              </Button>
+            </>
+          )}
+
+          {activeTab === "layers" && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`h-7 gap-1.5 text-[11.5px] ${leftOpen ? "bg-accent/40 font-semibold" : ""}`}
+                onClick={onToggleLeft}
+                title="Toggle Contents & Layers panel"
+              >
+                <Layers className="size-3.5 shrink-0" />
+                <span>{leftOpen ? "Hide Layers Pane" : "Show Layers Pane"}</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px]"
+                onClick={onResetView}
+              >
+                <RotateCcw className="size-3.5 shrink-0" />
+                <span>Fit AOI</span>
+              </Button>
+            </>
+          )}
+
+          {activeTab === "analysis" && (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px] font-medium"
+                disabled={running}
+                onClick={onRun}
+              >
+                <Play className="size-3.5 fill-current shrink-0" />
+                <span>Re-run Analysis</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`h-7 gap-1.5 text-[11.5px] ${rightOpen ? "bg-accent/40 font-semibold" : ""}`}
+                onClick={onToggleRight}
+              >
+                <Activity className="size-3.5 shrink-0" />
+                <span>{rightOpen ? "Hide Analysis Pane" : "Show Analysis Pane"}</span>
+              </Button>
+            </>
+          )}
+
+          {activeTab === "targets" && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`h-7 gap-1.5 text-[11.5px] ${rightOpen ? "bg-accent/40 font-semibold" : ""}`}
+                onClick={onToggleRight}
+              >
+                <Crosshair className="size-3.5 shrink-0" />
+                <span>Candidate Attributes Table</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px]"
+                onClick={onResetView}
+              >
+                <RotateCcw className="size-3.5 shrink-0" />
+                <span>Focus AOI</span>
+              </Button>
+            </>
+          )}
+
+          {activeTab === "export" && (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 gap-1.5 text-[11.5px] font-medium bg-primary text-primary-foreground"
+                onClick={onExportView}
+                title="Export high-res PDF Map Sheet"
+              >
+                <FileText className="size-3.5 shrink-0" />
+                <span>PDF Cartographic Sheet</span>
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Panel Toggles Group */}
+        <div className="flex items-center gap-1.5">
           <PanelToggle
             side="left"
             open={leftOpen}
@@ -159,54 +348,43 @@ export function WorkbenchBar({
             label="Analysis"
           />
         </div>
-
-        {onToggleFullscreen || onExitProject ? (
-          <div className="flex items-center gap-1.5">
-            <span className="sw-toolbar__divider" aria-hidden="true" />
-
-            {onToggleFullscreen ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={`h-7 gap-1.5 text-[11.5px] shrink-0 ${isFullscreen ? "bg-primary/10 border-primary/40 text-primary" : ""}`}
-                onClick={onToggleFullscreen}
-                title={isFullscreen ? "Exit Fill Dashboard" : "Fill Dashboard with Earth Observation UI"}
-              >
-                {isFullscreen ? (
-                  <Minimize2 className="size-3.5 shrink-0" aria-hidden="true" />
-                ) : (
-                  <Maximize2 className="size-3.5 shrink-0" aria-hidden="true" />
-                )}
-                <span className="hidden md:inline">
-                  {isFullscreen ? "Standard view" : "Fill dashboard"}
-                </span>
-              </Button>
-            ) : null}
-
-            {onExitProject ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1.5 text-[11.5px] shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                onClick={onExitProject}
-                title="Exit current project and return to job selection"
-              >
-                <LogOut className="size-3.5 shrink-0" aria-hidden="true" />
-                <span className="hidden sm:inline">Exit Project</span>
-                <span className="sm:hidden">Exit</span>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
       </div>
-
-      <span className="sw-pill" data-state={pill.state}>
-        <i aria-hidden="true" />
-        {pill.text}
-      </span>
     </div>
+  );
+}
+
+function RibbonTabButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`relative flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium transition-all rounded-md ${
+        active
+          ? "bg-background text-foreground shadow-xs font-semibold"
+          : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+      }`}
+    >
+      <span className={active ? "text-primary" : "text-muted-foreground"}>{icon}</span>
+      <span>{label}</span>
+      {active && (
+        <span
+          className="absolute inset-x-2 -bottom-1 h-0.5 rounded-full bg-primary"
+          aria-hidden="true"
+        />
+      )}
+    </button>
   );
 }
 
@@ -253,22 +431,24 @@ interface StatusStripProps {
 
 /** The thin line that tells you where the camera is and what the queue is doing.
  *
- * Every field is measured rather than asserted: the coordinate and zoom come from the
- * map itself, the CRS from the survey result, and the job text from the run row.
+ * Formatted with precision GIS telemetry metrics (CRS, Lat/Lon, scale, status).
  */
 export function StatusStrip({ view, crs, job, basis }: StatusStripProps) {
   return (
-    <footer className="sw-status mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-border pt-2">
-      <span>{view?.coords ?? "—"}</span>
+    <footer className="sw-status mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-[11px] text-muted-foreground shadow-2xs backdrop-blur-xs">
+      <div className="flex items-center gap-1.5 font-mono">
+        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+        <span className="text-foreground font-semibold">{view?.coords ?? "—"}</span>
+      </div>
       <Sep />
-      <span>{crs}</span>
+      <span className="font-mono text-[10.5px]">{crs}</span>
       <Sep />
-      <span>{view ? `Zoom ${view.zoom} · ${view.scale}` : "Zoom —"}</span>
+      <span className="font-mono text-[10.5px]">{view ? `Zoom ${view.zoom} · ${view.scale}` : "Zoom —"}</span>
       <Sep />
-      <span role="status" aria-live="polite">
+      <span role="status" aria-live="polite" className="text-foreground font-medium">
         {job}
       </span>
-      <span className="ml-auto text-[11px] text-muted-foreground">{basis}</span>
+      <span className="ml-auto font-mono text-[10px] text-muted-foreground/80">{basis}</span>
     </footer>
   );
 }

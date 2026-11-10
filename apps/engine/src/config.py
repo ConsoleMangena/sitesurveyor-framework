@@ -88,13 +88,21 @@ WATER_WEIGHTS = {
 }
 
 # --- Mineral Model Weights (AHP) ---
+# Gold is shear-hosted, so the gravity product that belongs here is the horizontal
+# gradient (density contacts) rather than the residual, which says how dense the rock
+# is and not where it is broken. minerals.py only puts the gravity layers into the
+# overlay when the raster declares itself a measured survey; a modelled or unverified
+# grid is withheld and the index renormalises over the weight that remains. That share
+# has to stay below 1 - MIN_WEIGHT_COVERAGE (0.4) or withholding it would push every
+# cell under the coverage floor and refuse the whole survey.
 MINERAL_WEIGHTS = {
-    "lineament_density": 0.28,
-    "lineament_intersections": 0.18,
-    "iron_oxide": 0.14,
-    "hydroxyl_clay": 0.14,
+    "lineament_density": 0.24,
+    "lineament_intersections": 0.17,
+    "iron_oxide": 0.12,
+    "hydroxyl_clay": 0.12,
     "ferrous_mafic": 0.12,
-    "relative_relief": 0.08,
+    "gravity_gradient": 0.10,
+    "relative_relief": 0.07,
     "endowment": 0.06,
 }
 

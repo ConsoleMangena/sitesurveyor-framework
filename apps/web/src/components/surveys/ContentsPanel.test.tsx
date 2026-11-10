@@ -6,7 +6,7 @@ import { CATEGORY_ZONE_LABELS } from "../../lib/surveys/labels.ts";
 
 const noop = () => {};
 
-function panel(category: "minerals" | "water") {
+function panel(category: "minerals" | "water", gravimetry?: string) {
   return render(
     <ContentsPanel
       layers={{ aoi: true, candidates: true, raster: true }}
@@ -21,6 +21,7 @@ function panel(category: "minerals" | "water") {
         source: "Synthetic run",
         inputs: "Sentinel-2",
         basis: "Percentile within this AOI",
+        gravimetry,
       }}
       runs={[]}
       selectedId={null}
@@ -49,5 +50,23 @@ describe("ContentsPanel raster legend", () => {
     expect(screen.getByText("Classified Potential")).toBeInTheDocument();
     expect(screen.getByText("Very high potential")).toBeInTheDocument();
     expect(screen.queryByText("Gold (Au)")).not.toBeInTheDocument();
+  });
+});
+
+describe("ContentsPanel survey snapshot", () => {
+  const modelled =
+    "SiteSurveyor synthetic Bouguer calibration field; analytic model, not a measured survey" +
+    " — modelled field, not a measurement; excluded from scoring";
+
+  it("states what the gravity field was worth beside the numbers it sits under", () => {
+    panel("minerals", modelled);
+    expect(screen.getByText("Gravimetry")).toBeInTheDocument();
+    // The row truncates, so the whole disclosure has to survive in the hover text.
+    expect(screen.getByText(modelled)).toHaveAttribute("title", modelled);
+  });
+
+  it("adds no gravity row to a survey that never recorded one", () => {
+    panel("water");
+    expect(screen.queryByText("Gravimetry")).not.toBeInTheDocument();
   });
 });

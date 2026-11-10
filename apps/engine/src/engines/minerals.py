@@ -88,12 +88,9 @@ def run_minerals_survey(
     lc = warp(cfg.RAW / "landcover.tif", 1, resampling=Resampling.nearest)
     alos_hv = warp(cfg.RAW / "alos.tif", 2)
 
-    from src.utils.gravity import load_gravity_layers
-    grav_data = load_gravity_layers(cfg.BBOX_WGS84, (cfg.HEIGHT, cfg.WIDTH))
-    if grav_data["active"]:
-        print(f"      [Gravimetry] Integrated Bouguer gravity anomaly, residual & gradient ({grav_data['source_file']})")
-    else:
-        print("      [Gravimetry] No external gravity raster present — using structural & spectral baseline")
+    from src.utils.gravity import load_gravity_layers, source_label
+    grav_data = load_gravity_layers()
+    print(f"      [Gravimetry] {source_label(grav_data)}")
 
     # Sentinel-2 bands for alteration, addressed by name
     blue = warp(cfg.RAW / "optical.tif", "blue", scale=10000.0)
@@ -170,9 +167,11 @@ def run_minerals_survey(
         "relative_relief": norm_relief,
         "endowment": norm_endow,
     }
-    if grav_data["active"]:
-        if grav_data["norm_bouguer"] is not None:
-            evidence_layers["bouguer_anomaly"] = grav_data["norm_bouguer"]
+    # Only a raster that declares itself a measured survey may carry weight. A modelled
+    # or unverified grid still produces maps and target readouts, but it does not become
+    # evidence in a score. bouguer_anomaly is left out even when scored: no commodity
+    # weights it, because it still holds the regional trend that residual_gravity removes.
+    if grav_data["scoreable"]:
         if grav_data["norm_gradient"] is not None:
             evidence_layers["gravity_gradient"] = grav_data["norm_gradient"]
         if grav_data["norm_residual"] is not None:
@@ -239,6 +238,8 @@ def run_minerals_survey(
             "endowment_context_pct": safe_round(norm_endow[row, col] * 100, 1),
             "landcover": cfg.LANDCOVER_NAMES.get(lc_code),
         }
+        if grav_data["active"]:
+            out["gravity_source_kind"] = grav_data["source_kind"]
         if grav_data["active"] and grav_data["raw_bouguer"] is not None:
             out["bouguer_anomaly_mgal"] = safe_round(grav_data["raw_bouguer"][row, col], 1)
         if grav_data["active"] and grav_data["residual_bouguer"] is not None:
@@ -248,7 +249,9 @@ def run_minerals_survey(
         if grav_data["active"] and grav_data["zones"] is not None:
             z_code = int(grav_data["zones"][row, col])
             out["gravity_zone_code"] = z_code
-            out["gravity_zone_name"] = grav_data["zone_names"].get(z_code, "Unknown")
+            z_name = grav_data["zone_names"].get(z_code)
+            if z_name:
+                out["gravity_zone_name"] = z_name
         return out
 
     for cand in candidates:
@@ -260,15 +263,16 @@ def run_minerals_survey(
             f"Lineament density percentile: {cand['lineament_density_pct']}",
             f"Elevation: {cand['elevation_m']} m | Slope: {cand['slope_degrees']}°",
         ]
+        grav_suffix = "" if grav_data["scoreable"] else f" ({grav_data['source_kind']} field)"
         if cand.get("bouguer_anomaly_mgal") is not None:
-            notes.append(f"Bouguer gravity anomaly: {cand['bouguer_anomaly_mgal']} mGal")
+            notes.append(f"Bouguer gravity anomaly: {cand['bouguer_anomaly_mgal']} mGal{grav_suffix}")
         if cand.get("residual_gravity_mgal") is not None:
             res_val = cand["residual_gravity_mgal"]
             sign = "+" if res_val > 0 else ""
             z_desc = f" ({cand['gravity_zone_name']})" if cand.get("gravity_zone_name") else ""
-            notes.append(f"Residual gravity: {sign}{res_val} mGal{z_desc}")
+            notes.append(f"Residual gravity: {sign}{res_val} mGal{z_desc}{grav_suffix}")
         if cand.get("gravity_gradient_mgal_km") is not None:
-            notes.append(f"Gravity horizontal gradient: {cand['gravity_gradient_mgal_km']} mGal/km")
+            notes.append(f"Gravity horizontal gradient: {cand['gravity_gradient_mgal_km']} mGal/km{grav_suffix}")
         cand["field_notes"] = notes
 
     if candidates:
@@ -400,6 +404,7 @@ def run_minerals_survey(
         "iron_oxide_residual_pct", "hydroxyl_clay_residual_pct",
         "ferrous_mafic_pct", "relative_relief_pct", "endowment_context_pct",
         "bouguer_anomaly_mgal", "residual_gravity_mgal", "gravity_gradient_mgal_km", "gravity_zone_name",
+        "gravity_source_kind",
     ]
     csv_path = cfg.OUT / "candidate_mineral_targets.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
@@ -482,15 +487,22 @@ def run_minerals_survey(
         "indicated_commodities": indicated,
         "unscreenable_commodities": commodity_screen.unscreened_payload(),
     }
-    from src.utils.provenance import capture_provenance
+    from src.utils.provenance import capture_provenance, gravity_fingerprint
     summary["provenance"] = capture_provenance(
         "minerals", ["dem.tif", "landcover.tif", "alos.tif", "optical.tif"]
     )
     summary["provenance"]["gravimetry"] = {
         "active": bool(grav_data["active"]),
         "source": grav_data["source_file"] or "None (structural/spectral baseline)",
+        "kind": grav_data["source_kind"],
+        "citation": grav_data["source_citation"] or None,
+        "scored": bool(grav_data["scoreable"]),
+        "label": source_label(grav_data),
+        "input": gravity_fingerprint(),
         "method": (
-            "Regional-residual polynomial separation (2nd order), horizontal gradient magnitude & 5-tier density zonation"
+            "Regional-residual polynomial separation (2nd order), horizontal gradient magnitude "
+            f"& 5-tier density zonation, interpolated from the source posting onto the {cfg.CELL:g} m "
+            "analysis grid rather than observed at that resolution"
             if grav_data["active"]
             else "None"
         ),
@@ -504,6 +516,9 @@ def run_minerals_survey(
         ] if grav_data["active"] and grav_data["raw_gradient"] is not None else None,
         "zones": grav_data.get("zone_names") if grav_data["active"] else None,
     }
+    # The dashboard reads data_sources and nothing else from the provenance tree, so the
+    # gravity declaration travels here or a modelled field reaches the page unlabelled.
+    summary["provenance"]["data_sources"]["fixed"]["gravimetry"] = source_label(grav_data)
     (cfg.OUT / "mineral_summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
 
     # Export Mobile KML and KMZ for Smartphone GPS

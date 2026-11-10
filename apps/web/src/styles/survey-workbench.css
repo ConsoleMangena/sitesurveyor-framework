@@ -651,3 +651,63 @@
 .dark .sw-pill[data-state="running"] {
   color: #fbbf24;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RustGIS-inspired Workstation Styling & Ribbon Theme
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.sw-ribbon {
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dark .sw-ribbon {
+  background: rgb(24 24 27 / 0.88);
+  border-color: rgb(39 39 42 / 0.9);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+}
+
+.sw-ribbon__tabs {
+  border-bottom: 1px solid var(--border);
+}
+
+.dark .sw-ribbon__tabs {
+  border-bottom-color: rgb(39 39 42 / 0.8);
+  background: rgb(18 18 20 / 0.6);
+}
+
+.sw-ribbon__actions {
+  min-height: 38px;
+}
+
+/* Glassmorphism precision map HUD chips */
+.sw-chip {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: all 0.15s ease;
+}
+
+.dark .sw-chip {
+  background: rgba(18, 18, 20, 0.84);
+  border-color: rgba(63, 63, 70, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Workstation attribute table refinement */
+.sw-attr-table {
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+.sw-attr-table th {
+  user-select: none;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.dark .sw-attr-table tbody tr[data-selected="true"] {
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+  box-shadow: inset 2px 0 0 var(--primary);
+}

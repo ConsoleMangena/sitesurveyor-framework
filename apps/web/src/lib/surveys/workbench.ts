@@ -150,6 +150,10 @@ export function mapCandidates(
           const zStr = String(payload.gravity_zone_name).split("(")[0].trim();
           gParts.push(zStr);
         }
+        const kind = payload.gravity_source_kind;
+        if (kind && kind !== "measured") {
+          gParts.push(`${String(kind)} field`);
+        }
         if (gParts.length > 0 && (!candidateReadout || !candidateReadout.includes("mGal"))) {
           candidateReadout = candidateReadout ? `${candidateReadout} / ${gParts.join(" · ")}` : gParts.join(" · ");
         }

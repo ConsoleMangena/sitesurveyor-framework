@@ -36,16 +36,61 @@ def test_every_commodity_carries_its_own_weights() -> None:
     assert len(fingerprints) == len(cm.COMMODITIES)
 
 
-def test_gold_keeps_the_historic_model_weights() -> None:
+def test_gold_keeps_the_frozen_model_weights() -> None:
+    # Gravity enters gold as a gradient, not a residual: shear-hosted gold follows the
+    # structure that fed it rather than a density body. cfg.MINERAL_WEIGHTS must match
+    # this dict exactly; test_minerals_engine asserts that against the live config.
     assert cm.GOLD.weights == {
-        "lineament_density": 0.28,
-        "lineament_intersections": 0.18,
-        "iron_oxide": 0.14,
-        "hydroxyl_clay": 0.14,
+        "lineament_density": 0.24,
+        "lineament_intersections": 0.17,
+        "iron_oxide": 0.12,
+        "hydroxyl_clay": 0.12,
         "ferrous_mafic": 0.12,
-        "relative_relief": 0.08,
+        "gravity_gradient": 0.10,
+        "relative_relief": 0.07,
         "endowment": 0.06,
     }
+
+
+def test_withheld_gravity_still_leaves_every_commodity_scoreable() -> None:
+    """Gravity only scores on a measured survey, so most runs withhold it entirely.
+
+    If that dropped a model under MIN_WEIGHT_COVERAGE, the whole survey would come back
+    unscored instead of scored on the structural and spectral evidence it does have.
+    """
+    layers = _layers()
+    for key in cm.GRAVITY_EVIDENCE:
+        layers[key] = np.full((4, 4), np.nan, dtype="float32")
+    for commodity in cm.COMMODITIES:
+        index = cm.commodity_index(layers, commodity.weights)
+        assert np.all(np.isfinite(index)), f"{commodity.key} refused the cell without gravity"
+
+
+def test_no_commodity_stakes_too_much_of_itself_on_gravity() -> None:
+    for commodity in cm.COMMODITIES:
+        staked = sum(w for k, w in commodity.weights.items() if k in cm.GRAVITY_EVIDENCE)
+        assert 1.0 - staked >= cm.MIN_WEIGHT_COVERAGE, commodity.key
+
+
+def test_lithium_never_scores_a_dense_target() -> None:
+    """residual_gravity reads high for dense rock; an LCT pegmatite is a mass deficit."""
+    assert cm.LITHIUM.weights.get("residual_gravity", 0.0) == 0.0
+    dense = cm.commodity_index(_layers(residual_gravity=1.0), cm.LITHIUM.weights)
+    felsic = cm.commodity_index(_layers(residual_gravity=0.0), cm.LITHIUM.weights)
+    assert np.array_equal(dense, felsic)
+
+
+def test_the_regional_trend_is_not_counted_twice() -> None:
+    # bouguer_anomaly still holds the regional trend that residual_gravity removes, so
+    # weighting both would score one density signal twice.
+    for commodity in cm.COMMODITIES:
+        assert commodity.weights.get("bouguer_anomaly", 0.0) == 0.0, commodity.key
+
+
+def test_supergene_blankets_do_not_read_gravity() -> None:
+    """Manganese and bauxite are weathering products, not dense intrusive bodies."""
+    for commodity in (cm.MANGANESE, cm.BAUXITE):
+        assert not set(commodity.weights) & set(cm.GRAVITY_EVIDENCE), commodity.key
 
 
 def test_identity_layers_produce_a_mid_index() -> None:

@@ -25,6 +25,8 @@ export interface SurveySnapshot {
   source: string;
   inputs: string;
   basis: string;
+  /** What the gravity field is and whether it scored. Minerals only. */
+  gravimetry?: string | null;
 }
 
 interface ContentsPanelProps {
@@ -265,6 +267,9 @@ export default function ContentsPanel({
             <SnapshotRow label="Grid" value={snapshot.grid} />
             <SnapshotRow label="Source" value={snapshot.source} />
             <SnapshotRow label="Inputs" value={snapshot.inputs} title="Coverages the scores were computed from" />
+            {snapshot.gravimetry ? (
+              <SnapshotRow label="Gravimetry" value={snapshot.gravimetry} />
+            ) : null}
             <SnapshotRow label="Basis" value={snapshot.basis} />
           </dl>
         </section>

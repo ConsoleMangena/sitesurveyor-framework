@@ -72,6 +72,30 @@ def input_manifest(names: list[str]) -> dict:
     return inputs
 
 
+def gravity_fingerprint() -> dict:
+    """Identity of the gravity input, including the kind it declares.
+
+    The scoring gate turns on that kind, so swapping a modelled calibration field for a
+    measured survey has to invalidate a cached run. Hashing the pixels alone would miss
+    a re-tag, and hashing the tag alone would miss a replacement grid.
+    """
+    from src.utils.gravity import find_gravity_raster, read_source_tags
+
+    path = find_gravity_raster()
+    if path is None:
+        return {"status": "absent"}
+    kind, citation = read_source_tags(path)
+    with path.open("rb") as handle:
+        digest = hashlib.file_digest(handle, "sha256").hexdigest()
+    return {
+        "status": "available",
+        "file": path.name,
+        "sha256": digest,
+        "kind": kind,
+        "citation": citation,
+    }
+
+
 def cache_mismatch(record: dict | None, latitude: float, longitude: float) -> str | None:
     if not isinstance(record, dict) or record.get("schema_version") != 1:
         return "reproducibility record missing or unsupported"
@@ -92,6 +116,10 @@ def cache_mismatch(record: dict | None, latitude: float, longitude: float) -> st
     from src.fetch_data import scenes_used
     if record.get("optical_scenes") != scenes_used():
         return "optical scene record changed"
+    # Only minerals records a gravimetry block; the other categories would mismatch forever.
+    if category == "minerals":
+        if (record.get("gravimetry") or {}).get("input") != gravity_fingerprint():
+            return "gravity input or its declared kind changed"
     return None
 
 

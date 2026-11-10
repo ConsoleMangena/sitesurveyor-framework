@@ -3,12 +3,23 @@ from __future__ import annotations
 import json
 import os
 
+import numpy as np
 import pytest
+import rasterio
+from rasterio.transform import from_origin
 
 import src.config as cfg
 import src.fetch_data as fd
 from src.mcp.server import _cached_summary
-from src.utils.provenance import capture_provenance, input_manifest, model_identity
+from src.utils.gravity import TAG_CITATION, TAG_KIND
+from src.utils.provenance import (
+    CATEGORY_INPUTS,
+    capture_provenance,
+    cache_mismatch,
+    gravity_fingerprint,
+    input_manifest,
+    model_identity,
+)
 
 
 @pytest.fixture
@@ -149,3 +160,79 @@ def test_report_uses_captured_sources_and_honest_score_wording(tmp_path, monkeyp
     legacy = build_report_html(get(category), {})
     assert "Input provenance not recorded for this survey" in legacy
     assert "new-live-source" not in legacy
+
+
+@pytest.fixture
+def mineral_record(tmp_path, monkeypatch):
+    """A minerals provenance record with a real, modelled gravity raster behind it."""
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    ext = tmp_path / "external"
+    ext.mkdir()
+    monkeypatch.setattr(cfg, "RAW", raw)
+    monkeypatch.setattr(cfg, "EXTERNAL", ext)
+    monkeypatch.setattr(cfg, "ROOT", tmp_path)
+
+    raster = ext / "bouguer_gravity.tif"
+    with rasterio.open(
+        raster, "w", driver="GTiff", height=8, width=8, count=1, dtype="float32",
+        crs="EPSG:4326", transform=from_origin(29.0, -19.0, 0.01, 0.01),
+    ) as dst:
+        dst.write(np.linspace(-20.0, 20.0, 64, dtype="float32").reshape(8, 8), 1)
+        dst.update_tags(**{TAG_KIND: "modelled", TAG_CITATION: "Analytic calibration field"})
+
+    record = capture_provenance("minerals", [])
+    record["gravimetry"] = {"input": gravity_fingerprint()}
+    assert cache_mismatch(record, cfg.TARGET_LAT, cfg.TARGET_LON) is None
+    return record, raster
+
+
+def test_retagging_gravity_invalidates_a_cached_run(mineral_record) -> None:
+    """Swapping the synthetic field for a measured survey has to re-run the minerals.
+
+    The pixels are identical here; only the claim changed. Hashing the file alone would
+    miss it if GDAL left the bytes alone, and hashing the tag alone would miss a
+    replacement grid, so the fingerprint carries both.
+    """
+    record, raster = mineral_record
+    with rasterio.open(raster) as src:
+        pixels = src.read(1)
+    before = gravity_fingerprint()
+    assert before["kind"] == "modelled"
+
+    with rasterio.open(raster, "r+") as dst:
+        dst.update_tags(**{TAG_KIND: "measured"})
+    with rasterio.open(raster) as src:
+        assert np.array_equal(src.read(1), pixels)
+
+    after = gravity_fingerprint()
+    assert after["kind"] == "measured"
+    assert after != before
+    assert cache_mismatch(record, cfg.TARGET_LAT, cfg.TARGET_LON) == (
+        "gravity input or its declared kind changed"
+    )
+
+
+def test_replacing_the_gravity_grid_invalidates_a_cached_run(mineral_record) -> None:
+    record, raster = mineral_record
+    with rasterio.open(raster, "r+") as dst:
+        dst.write(np.zeros((8, 8), dtype="float32"), 1)
+    assert gravity_fingerprint()["sha256"] != record["gravimetry"]["input"]["sha256"]
+    assert cache_mismatch(record, cfg.TARGET_LAT, cfg.TARGET_LON) == (
+        "gravity input or its declared kind changed"
+    )
+
+
+def test_only_minerals_carries_a_gravimetry_block(mineral_record) -> None:
+    """Water, soil and hazard never record one, so demanding it would cache-miss forever."""
+    record, _ = mineral_record
+    del record["gravimetry"]
+    record["category"] = "water"
+    record["inputs"] = input_manifest(CATEGORY_INPUTS["water"])
+    assert cache_mismatch(record, cfg.TARGET_LAT, cfg.TARGET_LON) is None
+
+
+def test_absent_gravity_is_recorded_as_absent(tmp_path, monkeypatch) -> None:
+    for name in ("EXTERNAL", "RAW", "ROOT"):
+        monkeypatch.setattr(cfg, name, tmp_path / "empty")
+    assert gravity_fingerprint() == {"status": "absent"}

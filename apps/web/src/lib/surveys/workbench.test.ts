@@ -99,6 +99,47 @@ describe("mapCandidates", () => {
     // A key the engine adds later must not draw an unlabelled marker in someone's colour.
     expect(mapCandidates([target({ category: "geothermal" })])).toEqual([]);
   });
+
+  it("says a gravity number came from a modelled field, not a survey", () => {
+    // Rows published before the worker qualified its own readout still reach the map.
+    const [row] = mapCandidates([
+      target({
+        category: "minerals",
+        readout: "Stream sediment",
+        payload: {
+          residual_gravity_mgal: 2.4,
+          gravity_gradient_mgal_km: 1.1,
+          gravity_zone_name: "Dense Mafic (Greenstone Assemblage)",
+          gravity_source_kind: "modelled",
+        },
+      }),
+    ]);
+
+    expect(row.readout).toBe(
+      "Stream sediment / res +2.4 mGal · grad 1.1 mGal/km · Dense Mafic · modelled field",
+    );
+  });
+
+  it("does not qualify a measured survey or repeat a readout the worker already wrote", () => {
+    const measured = mapCandidates([
+      target({
+        category: "minerals",
+        readout: null,
+        payload: { bouguer_anomaly_mgal: -84.2, gravity_source_kind: "measured" },
+      }),
+    ]);
+    expect(measured[0].readout).toBe("Bouguer -84.2 mGal");
+
+    const published = "Rock chip / residual +2.4 mGal · modelled field";
+    const [row] = mapCandidates([
+      target({
+        category: "minerals",
+        readout: published,
+        payload: { residual_gravity_mgal: 2.4, gravity_source_kind: "modelled" },
+      }),
+    ]);
+    expect(row.readout).toBe(published);
+  });
 });
 
 describe("coordinates", () => {

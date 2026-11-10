@@ -212,6 +212,48 @@ def test_the_summary_publishes_as_strict_json(mineral_run) -> None:
     assert summary["unscreenable_commodities"]
 
 
+def test_gravity_declares_itself_and_only_scores_when_it_is_a_measurement(mineral_run) -> None:
+    """A modelled field must reach the page labelled, and must not drive a score.
+
+    The dashboard reads `data_sources` and nothing else from the provenance tree, so the
+    declaration has to travel there or the number on screen has no stated basis.
+    """
+    from src.utils import commodities as cm
+
+    summary, _ = mineral_run
+    grav = summary["provenance"]["gravimetry"]
+    assert grav["scored"] == (grav["kind"] == "measured")
+    label = summary["provenance"]["data_sources"]["fixed"]["gravimetry"]
+    assert label and label == grav["label"]
+
+    if not grav["active"]:
+        assert "No gravity raster" in label
+        return
+
+    assert grav["citation"], "an unattributed gravity grid cannot be described honestly"
+    for candidate in summary["candidate_targets"]:
+        assert candidate.get("gravity_source_kind") == grav["kind"]
+        if not grav["scored"]:
+            for note in candidate["field_notes"]:
+                if "mGal" in note:
+                    assert f"({grav['kind']} field)" in note, note
+
+    if not grav["scored"]:
+        assert "excluded from scoring" in label
+        for commodity in summary["mineral_commodities"]:
+            driven = {item["evidence"] for item in commodity["top_evidence"]}
+            assert not driven & set(cm.GRAVITY_EVIDENCE), (
+                f"{commodity['key']} credits gravity it was never given"
+            )
+
+    from src.category_report import build_report_html, get
+
+    html = build_report_html(get("minerals"), summary)
+    assert ("measured survey, scored" if grav["scored"] else "excluded from scoring") in html, (
+        "the printed report does not say what the gravity field was worth"
+    )
+
+
 def test_every_candidate_names_a_commodity_it_actually_scored(mineral_run) -> None:
     summary, _ = mineral_run
     for candidate in summary["candidate_targets"]:

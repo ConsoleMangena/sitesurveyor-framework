@@ -50,6 +50,15 @@ EVIDENCE_KEYS = (
     "residual_gravity",
 )
 
+#: The gravity subset, which a run may have to withhold. These layers are normalised so
+#: HIGH means DENSE (Bouguer, residual) or STEEP (gradient). That polarity is favourable
+#: for massive sulphide, BIF, ultramafic and carbonatite targets and inverted for a
+#: low-density target such as an LCT pegmatite -- which is why lithium weights the
+#: gradient and never the residual. `bouguer_anomaly` carries no weight anywhere: it
+#: still holds the regional trend, so scoring it beside `residual_gravity` would count
+#: one density signal twice.
+GRAVITY_EVIDENCE = ("bouguer_anomaly", "gravity_gradient", "residual_gravity")
+
 #: Score bands, in index units (0-100 percentiles within the survey area).
 BAND_HIGH = 70.0
 BAND_MODERATE = 55.0
@@ -124,15 +133,16 @@ GOLD = Commodity(
     color="#e69f00",
     systems="Orogenic / shear-zone hosted gold with quartz-carbonate veining",
     deposit_style="Structurally controlled lode gold in greenstone and granite-greenstone terrane",
-    # Deliberately identical to the historic model weights, so the gold index
-    # in the map sheet is unchanged by this catalogue existing.
+    # Kept identical to cfg.MINERAL_WEIGHTS: the headline index and the gold entry in
+    # the commodity race must be the same model, or the map sheet and the table disagree.
     weights={
-        "lineament_density": 0.28,
-        "lineament_intersections": 0.18,
-        "iron_oxide": 0.14,
-        "hydroxyl_clay": 0.14,
+        "lineament_density": 0.24,
+        "lineament_intersections": 0.17,
+        "iron_oxide": 0.12,
+        "hydroxyl_clay": 0.12,
         "ferrous_mafic": 0.12,
-        "relative_relief": 0.08,
+        "gravity_gradient": 0.10,
+        "relative_relief": 0.07,
         "endowment": 0.06,
     },
     confidence="High",
@@ -155,13 +165,17 @@ BASE_METALS = Commodity(
     systems="Volcanogenic massive sulphide and skarn-style base-metal alteration",
     deposit_style="Sulphide-bearing alteration zones along structures and lithological contacts",
     weights={
-        "hydroxyl_clay": 0.26,
-        "iron_oxide": 0.22,
-        "lineament_intersections": 0.18,
-        "lineament_density": 0.14,
-        "ferrous_mafic": 0.10,
-        "relative_relief": 0.06,
-        "endowment": 0.04,
+        "hydroxyl_clay": 0.20,
+        "iron_oxide": 0.18,
+        # Massive sulphide is dense, so the residual points at the body itself rather
+        # than only its alteration halo; the gradient picks out the contacts that fed it.
+        "residual_gravity": 0.16,
+        "lineament_intersections": 0.14,
+        "lineament_density": 0.10,
+        "gravity_gradient": 0.08,
+        "ferrous_mafic": 0.08,
+        "relative_relief": 0.04,
+        "endowment": 0.02,
     },
     confidence="Moderate",
     confidence_note=(
@@ -182,12 +196,15 @@ NICKEL_PGM = Commodity(
     systems="Magmatic sulphide in mafic and ultramafic bodies",
     deposit_style="Mafic-ultramafic hosted sulphide, often in layered complexes or greenstone belts",
     weights={
-        "ferrous_mafic": 0.30,
-        "lineament_density": 0.18,
-        "relative_relief": 0.16,
-        "lineament_intersections": 0.14,
-        "iron_oxide": 0.10,
-        "hydroxyl_clay": 0.06,
+        "ferrous_mafic": 0.24,
+        # A mafic-ultramafic body is what a positive residual actually maps, so this is
+        # the most direct gravity signal in the catalogue.
+        "residual_gravity": 0.22,
+        "lineament_density": 0.14,
+        "relative_relief": 0.12,
+        "lineament_intersections": 0.10,
+        "iron_oxide": 0.08,
+        "hydroxyl_clay": 0.04,
         "endowment": 0.06,
     },
     confidence="Moderate",
@@ -209,11 +226,14 @@ CHROMIUM = Commodity(
     systems="Stratiform chromitite seams in ultramafic sequences",
     deposit_style="Layered ultramafic seams, commonly on ridgelines where they crop out",
     weights={
-        "ferrous_mafic": 0.34,
-        "relative_relief": 0.24,
-        "lineament_density": 0.16,
-        "iron_oxide": 0.12,
-        "lineament_intersections": 0.08,
+        "ferrous_mafic": 0.28,
+        # The ultramafic host is dense even where the chromitite seam is below the
+        # pixel, so the residual locates the sequence the seams sit in.
+        "residual_gravity": 0.20,
+        "relative_relief": 0.18,
+        "lineament_density": 0.12,
+        "iron_oxide": 0.10,
+        "lineament_intersections": 0.06,
         "hydroxyl_clay": 0.04,
         "endowment": 0.02,
     },
@@ -236,12 +256,17 @@ IRON_ORE = Commodity(
     systems="Banded iron formation and iron-enriched laterite or gossan",
     deposit_style="BIF-hosted or supergene iron enrichment",
     weights={
+        # Stays above 0.40: iron oxide is the driver, and a cell that loses it must
+        # fall below the coverage floor rather than be scored on the remainder.
         "iron_oxide": 0.42,
-        "relative_relief": 0.20,
-        "lineament_density": 0.12,
-        "ferrous_mafic": 0.12,
-        "lineament_intersections": 0.06,
-        "hydroxyl_clay": 0.04,
+        # BIF and magnetite are markedly denser than their host, so the residual is
+        # close to a direct measurement of the target.
+        "residual_gravity": 0.18,
+        "relative_relief": 0.14,
+        "lineament_density": 0.08,
+        "ferrous_mafic": 0.08,
+        "lineament_intersections": 0.04,
+        "hydroxyl_clay": 0.02,
         "endowment": 0.04,
     },
     confidence="High",
@@ -262,11 +287,15 @@ LITHIUM = Commodity(
     systems="LCT pegmatite swarms and their greisen alteration",
     deposit_style="Intrusion-related pegmatites, structurally controlled, often in greenstone margins",
     weights={
-        "lineament_density": 0.30,
-        "relative_relief": 0.24,
-        "lineament_intersections": 0.18,
+        "lineament_density": 0.26,
+        "relative_relief": 0.22,
+        "lineament_intersections": 0.16,
         "hydroxyl_clay": 0.12,
         "iron_oxide": 0.08,
+        # Gradient only, deliberately. An LCT pegmatite is LESS dense than its host, and
+        # residual_gravity is normalised so high means dense -- weighting it here would
+        # score the wrong rock as the best ground.
+        "gravity_gradient": 0.08,
         "ferrous_mafic": 0.04,
         "endowment": 0.04,
     },
@@ -341,10 +370,13 @@ RARE_EARTHS = Commodity(
     systems="Carbonatite complexes, alkaline intrusions and ion-adsorption clays",
     deposit_style="Hydrothermally altered alkaline ring complexes and weathered clay blankets",
     weights={
-        "hydroxyl_clay": 0.28,
-        "iron_oxide": 0.24,
-        "lineament_density": 0.20,
-        "lineament_intersections": 0.14,
+        "hydroxyl_clay": 0.24,
+        "iron_oxide": 0.20,
+        "lineament_density": 0.16,
+        # Carbonatite and alkaline complexes are dense and often ring-shaped, so the
+        # residual separates them from the surrounding granite.
+        "residual_gravity": 0.14,
+        "lineament_intersections": 0.12,
         "ferrous_mafic": 0.06,
         "relative_relief": 0.04,
         "endowment": 0.04,
@@ -437,6 +469,17 @@ def validate() -> None:
         total = sum(commodity.weights.values())
         if abs(total - 1.0) > 1e-6:
             raise ValueError(f"{commodity.key}: weights sum to {total:.6f}, not 1.0")
+        # Gravity is withheld unless the raster declares itself a measured survey, so
+        # the rest of the model has to clear the coverage floor on its own or a
+        # gravity-free AOI would refuse every cell instead of scoring on what it has.
+        without_gravity = sum(
+            w for k, w in commodity.weights.items() if k not in GRAVITY_EVIDENCE
+        )
+        if without_gravity < MIN_WEIGHT_COVERAGE - 1e-9:
+            raise ValueError(
+                f"{commodity.key}: staking {1.0 - without_gravity:.2f} on gravity leaves "
+                f"{without_gravity:.2f} without it, below the {MIN_WEIGHT_COVERAGE} coverage floor"
+            )
         if not commodity.confidence_note or not commodity.verification:
             raise ValueError(f"{commodity.key}: every commodity needs its caveat")
         if not commodity.symbol or not commodity.color:
