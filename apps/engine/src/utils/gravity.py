@@ -79,7 +79,12 @@ def horizontal_gradient_magnitude(
 
 def find_gravity_raster() -> Path | None:
     """Locate an available Bouguer gravity raster in external or raw directories."""
-    search_dirs = [cfg.EXTERNAL, cfg.RAW]
+    search_dirs = [
+        cfg.EXTERNAL,
+        cfg.RAW,
+        cfg.ROOT / "data" / "external",
+        cfg.ROOT / "data",
+    ]
     for d in search_dirs:
         if not d.is_dir():
             continue

@@ -53,6 +53,7 @@ def test_load_gravity_layers_when_missing(monkeypatch: pytest.MonkeyPatch, tmp_p
     """When no external gravity raster is found, returns clean degraded state."""
     monkeypatch.setattr(cfg, "EXTERNAL", tmp_path / "empty_ext")
     monkeypatch.setattr(cfg, "RAW", tmp_path / "empty_raw")
+    monkeypatch.setattr(cfg, "ROOT", tmp_path / "empty_root")
     data = load_gravity_layers()
     assert data["active"] is False
     assert data["source_file"] is None
@@ -67,6 +68,7 @@ def test_load_gravity_layers_when_present(monkeypatch: pytest.MonkeyPatch, tmp_p
     ext_dir = tmp_path / "external"
     ext_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(cfg, "EXTERNAL", ext_dir)
+    monkeypatch.setattr(cfg, "ROOT", tmp_path)
 
     tif_path = ext_dir / "bouguer_gravity.tif"
     # Create a small valid GeoTIFF on WGS84

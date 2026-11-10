@@ -227,6 +227,13 @@ def readout(category: str, row: dict) -> str | None:
         cover = _metric(row.get("overburden_min_m"), row.get("overburden_max_m"), " m")
         if cover:
             parts.append(f"overburden {cover}")
+        if category == "minerals":
+            bouguer = row.get("bouguer_anomaly_mgal")
+            if bouguer is not None:
+                parts.append(f"Bouguer {bouguer} mGal")
+            grad = row.get("gravity_gradient_mgal_km")
+            if grad is not None:
+                parts.append(f"grad {grad} mGal/km")
     elif category == "hazard_safety":
         klass = row.get("class_name")
         if klass:

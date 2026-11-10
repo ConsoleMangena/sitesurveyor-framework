@@ -132,6 +132,20 @@ export function mapCandidates(
       if (!isDossierCategory(target.category) || target.category !== category) continue;
       if (rows.some((row) => row.key === target.id)) continue;
       if (categoryCount(rows, category) >= perCategory) break;
+      let candidateReadout = target.readout;
+      if (category === "minerals" && target.payload) {
+        const payload = target.payload as Record<string, unknown>;
+        const gParts: string[] = [];
+        if (payload.bouguer_anomaly_mgal !== undefined && payload.bouguer_anomaly_mgal !== null) {
+          gParts.push(`Bouguer ${payload.bouguer_anomaly_mgal} mGal`);
+        }
+        if (payload.gravity_gradient_mgal_km !== undefined && payload.gravity_gradient_mgal_km !== null) {
+          gParts.push(`grad ${payload.gravity_gradient_mgal_km} mGal/km`);
+        }
+        if (gParts.length > 0 && (!candidateReadout || !candidateReadout.includes("mGal"))) {
+          candidateReadout = candidateReadout ? `${candidateReadout} / ${gParts.join(" · ")}` : gParts.join(" · ");
+        }
+      }
       rows.push({
         key: target.id,
         category,
@@ -143,7 +157,7 @@ export function mapCandidates(
         longitude: target.longitude,
         score: target.score,
         distanceKm: target.distanceKm,
-        readout: target.readout,
+        readout: candidateReadout,
         payload: target.payload,
       });
     }

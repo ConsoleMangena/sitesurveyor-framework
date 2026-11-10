@@ -47,10 +47,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application source code and configurations
 COPY src/ ./src/
+COPY data/ ./data/
 COPY main.py worker.py ./
 
 # Create persistent cache & outputs directories
-RUN mkdir -p /app/state/data/raw /app/state/data/external /app/state/outputs
+RUN mkdir -p /app/state/data/raw /app/state/data/external /app/state/outputs && \
+    (cp -rn /app/data/external/* /app/state/data/external/ 2>/dev/null || true)
 
 # Import the worker once during the build. A missing shared library or module otherwise
 # surfaces only as a restarting service that never claims a job, with the traceback buried
