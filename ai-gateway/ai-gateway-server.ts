@@ -251,7 +251,7 @@ async function chargeAiTurn(
     return {
       ok: false,
       status: 402,
-      error: "Not enough AI credits for this reply. Top up in Billing, then try again.",
+      error: "Not enough SiteSurveyor credits for this reply. Top up in Billing, then try again.",
     };
   }
   // Fail closed: never run a paid model turn we could not bill.

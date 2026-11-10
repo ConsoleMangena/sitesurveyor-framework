@@ -204,7 +204,7 @@ export interface StartSurveyInput {
  */
 export class InsufficientCreditsError extends Error {
   constructor() {
-    super("This workspace has run out of AI credits. Buy more from Billing to survey again.");
+    super("This workspace has run out of SiteSurveyor credits. Buy more from Billing to survey again.");
     this.name = "InsufficientCreditsError";
   }
 }

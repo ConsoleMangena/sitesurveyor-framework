@@ -19,6 +19,7 @@ import {
   ClipboardList,
   MapPin,
   Search,
+  Info,
   X,
 } from 'lucide-react'
 
@@ -52,6 +53,8 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
+  EmptyContent,
 } from '@/components/ui/empty'
 import { generateLocalId } from '@/lib/localDb/utils'
 import { DashboardShell, DashboardHeader } from '@/components/dashboard/DashboardShell.tsx'
@@ -85,7 +88,7 @@ import { getMyWorkspaceMembership } from '../../lib/repositories/workspaces.ts'
 import { canManageProjects, canManageTeam } from '../../lib/permissions.ts'
 import { ProjectDashboard } from '../../features/projects/components/ProjectDashboard.tsx'
 import { ProjectSettings } from '../../features/projects/components/ProjectSettings.tsx'
-import { ProjectFilesManager } from '../../features/projects/components/ProjectFilesManager.tsx'
+import { ProjectJobsPanel } from '../../features/projects/components/ProjectJobsPanel.tsx'
 import { useAsyncAction } from '../../hooks/useAsyncAction.ts'
 import { useOfflineSyncStatus } from '../../lib/hooks/useOfflineSyncStatus.ts'
 import {
@@ -108,16 +111,17 @@ export type HubProject = UiHubProject
 interface ProjectHubPageProps {
   userName: string
   workspaceId: string
+  onNavigate?: (view: string) => void
   onEnterFullscreenProject?: () => void
   onExitFullscreenProject?: () => void
 }
 
-type ProjectTab = 'overview' | 'files' | 'settings'
+type ProjectTab = 'overview' | 'jobs' | 'settings'
 
 const ACTIVE_PROJECT_KEY = 'sitesurveyorActiveProjectId'
 const ACTIVE_PROJECT_TAB_KEY = 'sitesurveyorActiveProjectTab'
 
-const VALID_TABS: ProjectTab[] = ['overview', 'files', 'settings']
+const VALID_TABS: ProjectTab[] = ['overview', 'jobs', 'settings']
 
 function isValidProjectTab(value: string | null): value is ProjectTab {
   return VALID_TABS.includes(value as ProjectTab)
@@ -133,17 +137,17 @@ const statusBadgeVariant: Record<string, BadgeProps['variant']> = {
 
 const tabIcons: Record<ProjectTab, React.ReactNode> = {
   overview: <LayoutGrid className="h-4 w-4" />,
-  files: <FolderOpen className="h-4 w-4" />,
+  jobs: <ClipboardList className="h-4 w-4" />,
   settings: <Settings className="h-4 w-4" />,
 }
 
 const tabLabels: Record<ProjectTab, string> = {
   overview: 'Overview',
-  files: 'Files',
+  jobs: 'Jobs',
   settings: 'Settings',
 }
 
-export default function ProjectHubPage({ userName, workspaceId, onEnterFullscreenProject, onExitFullscreenProject }: ProjectHubPageProps) {
+export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEnterFullscreenProject, onExitFullscreenProject }: ProjectHubPageProps) {
   const [projects, setProjects] = useState<HubProject[]>([])
   const [organizations, setOrganizations] = useState<OrganizationRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -772,11 +776,11 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
   if (showNewModal) {
     return (
       <PageForm
-        title="Initialize Project"
-        description="Create a new project environment."
+        title="New Project"
+        description="Set up the project, its client, and its spatial reference."
         onBack={() => setShowNewModal(false)}
         footer={
-          <Button type="submit" form="new-project-form" className="w-full sm:w-auto" disabled={saving}>{saving ? 'Creating...' : 'Launch Environment'}</Button>
+          <Button type="submit" form="new-project-form" className="w-full sm:w-auto" disabled={saving}>{saving ? 'Creating…' : 'Create Project'}</Button>
         }
       >
         <form id="new-project-form" className="mx-auto w-full max-w-6xl" onSubmit={handleCreateProject}>
@@ -1069,10 +1073,12 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                     </Button>
                     <div className="min-w-0">
                       <h1 className="text-2xl font-bold tracking-tight truncate">{activeProject.name}</h1>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{activeProject.id}</code>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <Badge variant={statusBadgeVariant[activeProject.status] ?? 'secondary'}>{activeProject.status}</Badge>
                         <span>·</span>
-                        <span>{activeProject.client}</span>
+                        <span className="truncate">{activeProject.client}</span>
+                        <span>·</span>
+                        <span>{activeProject.phase} phase</span>
                       </div>
                     </div>
                   </div>
@@ -1081,8 +1087,12 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                   </div>
                 </header>
 
-                {effectiveProjectTab === 'files' ? (
-                  <ProjectFilesManager projectId={activeProject.dbId} workspaceId={workspaceId} />
+                {effectiveProjectTab === 'jobs' ? (
+                  <ProjectJobsPanel
+                    workspaceId={workspaceId}
+                    projectId={activeProject.dbId}
+                    onNavigate={onNavigate}
+                  />
                 ) : effectiveProjectTab === 'overview' ? (
                   <ProjectDashboard
                     kpiData={kpiData}
@@ -1212,7 +1222,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                 <Input
                   id="project-search"
                   name="project-search"
-                  placeholder="Search reference or client..."
+                  placeholder="Search projects…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-7"
@@ -1253,6 +1263,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                   <TableHead className="text-right hidden sm:table-cell w-[90px]">Points</TableHead>
                   <TableHead className="hidden md:table-cell w-48">Progress</TableHead>
                   <TableHead className="text-right w-[100px]">Status</TableHead>
+                  <TableHead className="w-[52px]"><span className="sr-only">Details</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1262,8 +1273,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                     <TableRow
                       key={p.dbId}
                       className="cursor-pointer"
-                      onClick={() => setSelectedProject(p)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedProject(p); } }}
+                      onClick={() => openProject(p)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p); } }}
                       tabIndex={0}
                       role="button"
                       aria-label={`Open project ${p.name}`}
@@ -1271,7 +1282,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                       <TableCell className="align-middle">
                         <div className="flex flex-col">
                           <span className="font-semibold truncate max-w-[260px]" title={p.name}>{p.name}</span>
-                          <code className="w-fit rounded bg-muted px-1.5 py-0.5 text-xs text-primary font-medium mt-1">{p.id}</code>
+                          <code className="w-fit rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium mt-1">{p.id}</code>
                         </div>
                       </TableCell>
                       <TableCell className="align-middle hidden sm:table-cell font-medium">
@@ -1298,6 +1309,19 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                       <TableCell className="align-middle text-right">
                         <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'}>{p.status}</Badge>
                       </TableCell>
+                      <TableCell className="align-middle w-[52px]">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground hover:text-foreground"
+                          aria-label={`Project details for ${p.name}`}
+                          title="Project details"
+                          onClick={(e) => { e.stopPropagation(); setSelectedProject(p) }}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -1314,8 +1338,8 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                   <article
                     key={p.dbId}
                     className="cursor-pointer rounded-lg border border-border/40 bg-muted/30 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setSelectedProject(p)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedProject(p); } }}
+                    onClick={() => openProject(p)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p); } }}
                     tabIndex={0}
                     role="button"
                     aria-label={`Open project ${p.name}`}
@@ -1323,7 +1347,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <span className="block font-semibold truncate" title={p.name}>{p.name}</span>
-                        <code className="mt-1 inline-block w-fit rounded bg-background px-1.5 py-0.5 text-xs text-primary font-medium">{p.id}</code>
+                        <code className="mt-1 inline-block w-fit rounded bg-background px-1.5 py-0.5 text-xs text-muted-foreground font-medium">{p.id}</code>
                       </div>
                       <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'} className="shrink-0">{p.status}</Badge>
                     </div>
@@ -1357,10 +1381,42 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
                   <EmptyMedia variant="icon">
                     <FolderOpen />
                   </EmptyMedia>
-                  <EmptyDescription>
-                    {projects.length === 0 ? 'No projects yet. Create your first project to get started.' : 'No projects found.'}
-                  </EmptyDescription>
+                  {projects.length === 0 ? (
+                    <>
+                      <EmptyTitle>No projects yet</EmptyTitle>
+                      <EmptyDescription>
+                        Create your first project to start tracking field operations.
+                      </EmptyDescription>
+                    </>
+                  ) : (
+                    <>
+                      <EmptyTitle>No projects found</EmptyTitle>
+                      <EmptyDescription>
+                        Nothing matches the current search or filter.
+                      </EmptyDescription>
+                    </>
+                  )}
                 </EmptyHeader>
+                {projects.length === 0 ? (
+                  canEditProjects ? (
+                    <EmptyContent>
+                      <Button size="sm" className="gap-1.5" onClick={() => setShowNewModal(true)}>
+                        <Plus className="size-3.5" />
+                        New Project
+                      </Button>
+                    </EmptyContent>
+                  ) : null
+                ) : (
+                  <EmptyContent>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setSearchQuery(''); setActiveFilter('All') }}
+                    >
+                      Clear search and filters
+                    </Button>
+                  </EmptyContent>
+                )}
               </Empty>
             )}
           </DashboardCard>
@@ -1507,7 +1563,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
 
             {showPermanentDeleteConfirm ? (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
-                <p className="text-sm font-semibold text-destructive">Are you sure you want to PERMANENTLY DELETE this project?</p>
+                <p className="text-sm font-semibold text-destructive">Permanently delete this project?</p>
                 <p className="text-sm text-destructive">This will destroy all related field data. Type <strong>{selectedProject.name}</strong> to confirm.</p>
                 <Input id="delete-project-confirm" name="delete-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
@@ -1517,7 +1573,7 @@ export default function ProjectHubPage({ userName, workspaceId, onEnterFullscree
               </div>
             ) : showDeleteConfirm ? (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
-                <p className="text-sm font-semibold text-destructive">Are you sure you want to archive this project?</p>
+                <p className="text-sm font-semibold text-destructive">Archive this project?</p>
                 <p className="text-sm text-destructive">Type <strong>{selectedProject.name}</strong> to confirm.</p>
                 <Input id="archive-project-confirm" name="archive-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">

@@ -43,14 +43,14 @@ describe("streamAiReply credit contract", () => {
   it("stops at a credit rejection instead of retrying the fallback runtime", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(rejection(402, "Not enough AI credits for this reply."));
+      .mockResolvedValueOnce(rejection(402, "Not enough SiteSurveyor credits for this reply."));
     vi.stubGlobal("fetch", fetchMock);
     const sink = handlers();
 
     await streamAiReply("conv-1", "Survey this site", sink);
 
     expect(sink.onError).toHaveBeenCalledWith(
-      "Not enough AI credits for this reply.",
+      "Not enough SiteSurveyor credits for this reply.",
     );
     expect(sink.onFinal).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);

@@ -305,7 +305,7 @@ export async function launchSatelliteSurvey(
     if (msg.includes("INSUFFICIENT_AI_CREDITS")) {
       return JSON.stringify({
         error: "INSUFFICIENT_CREDITS",
-        message: "Your workspace has insufficient AI credits for this survey. Top up credits in Billing to proceed.",
+        message: "Your workspace has insufficient SiteSurveyor credits for this survey. Top up credits in Billing to proceed.",
       });
     }
     return JSON.stringify({

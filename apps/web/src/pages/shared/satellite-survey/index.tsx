@@ -149,6 +149,11 @@ export default function SatelliteSurveyPage({
   const [jobs, setJobs] = useState<JobWithProject[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [openedJob, setOpenedJob] = useState<JobWithProject | null>(null);
+  // Set when the operator came here from a project, so new jobs join that project.
+  // Read once and cleared on mount: the handoff is one-shot.
+  const [jobProjectContext] = useState<string | null>(() =>
+    sessionStorage.getItem("sitesurveyor:selected_job_project_id"),
+  );
 
   const [values, setValues] = useState<SurveyFormValues>(initialForm);
   // A workbench deep link (?view=satellite&runId=…) pins the run it names. Seeding
@@ -250,6 +255,7 @@ export default function SatelliteSurveyPage({
   }
 
   useEffect(() => {
+    sessionStorage.removeItem("sitesurveyor:selected_job_project_id");
     void fetchJobs().then((rows) => {
       const storedJobId = sessionStorage.getItem("sitesurveyor:selected_job_id");
       if (storedJobId) {
@@ -655,7 +661,7 @@ export default function SatelliteSurveyPage({
     // may be stale, so this is a courtesy, not the rule -- the platform is the rule.
     if (quote && !canAfford(quote, balance)) {
       setRefused(
-        `This workspace has ${balance?.toLocaleString()} AI credits and this survey costs ` +
+        `This workspace has ${balance?.toLocaleString()} SiteSurveyor credits and this survey costs ` +
           `${quote.credits}. Buy more credits before running it.`,
       );
       return;
@@ -707,7 +713,9 @@ export default function SatelliteSurveyPage({
     }
   }
 
-  const outOfCredits = refused !== null && refused.includes("AI credits");
+  // Any refusal that mentions credits is a credits refusal, whatever wording
+  // the server or database used for the pool's name.
+  const outOfCredits = refused !== null && /credits/i.test(refused);
 
   // The EO UI must NEVER open unless a job is opened!
   const isJobOpened = Boolean(openedJob && values.jobId);
@@ -733,6 +741,7 @@ export default function SatelliteSurveyPage({
             void submit();
           }}
           onRefreshJobs={fetchJobs}
+          projectContextId={jobProjectContext}
           busy={running !== null}
           queueing={queueing}
           quote={quote}

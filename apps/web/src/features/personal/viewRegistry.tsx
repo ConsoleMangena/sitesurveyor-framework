@@ -84,6 +84,7 @@ export function renderPersonalView(
             workspaceId={user.workspaceId}
             onEnterFullscreenProject={onEnterFullscreenProject}
             onExitFullscreenProject={onExitFullscreenProject}
+            onNavigate={onNavigate}
           />
         </Suspense>
       );

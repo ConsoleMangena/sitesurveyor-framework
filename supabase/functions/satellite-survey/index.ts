@@ -186,7 +186,7 @@ async function chargeSurvey(
     const message = error.message ?? "";
     if (message.includes("INSUFFICIENT_AI_CREDITS")) {
       return { ok: false as const, status: 402, error:
-        "This workspace has run out of AI credits. Buy more from Billing to survey again." };
+        "This workspace has run out of SiteSurveyor credits. Buy more from Billing to survey again." };
     }
     if (message.includes("not configured for billing")) {
       return { ok: false as const, status: 503, error:

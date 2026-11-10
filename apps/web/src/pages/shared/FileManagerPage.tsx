@@ -1964,7 +1964,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                 <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
                 Signed by {wallet.wallet?.adapter.name ?? "your wallet"} ({wallet.shortAddress}) on{" "}
                 {SOLANA_CLUSTER_LABEL[SOLANA_CLUSTER]}. The network fee is paid from that wallet,
-                never from your AI credits or SiteSurveyor balance.
+                never from your SiteSurveyor credits or SiteSurveyor balance.
               </p>
             ) : (
               <p className="flex items-start gap-2 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">

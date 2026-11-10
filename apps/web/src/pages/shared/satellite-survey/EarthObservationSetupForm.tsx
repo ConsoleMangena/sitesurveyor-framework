@@ -78,6 +78,8 @@ interface EarthObservationSetupFormProps {
   onProceedToWorkbench: (job: JobWithProject) => void;
   onLaunchSurvey: (job: JobWithProject) => void;
   onRefreshJobs?: () => Promise<JobWithProject[]>;
+  /** Set when the operator came from a project, so newly created jobs join that project. */
+  projectContextId?: string | null;
   busy: boolean;
   queueing: boolean;
   /** What the platform prices this job at, from its survey type and its ground. */
@@ -100,6 +102,7 @@ export default function EarthObservationSetupForm({
   onProceedToWorkbench,
   onLaunchSurvey,
   onRefreshJobs,
+  projectContextId,
   busy,
   queueing,
   quote,
@@ -225,6 +228,7 @@ export default function EarthObservationSetupForm({
         location: newJobLocation.trim() || undefined,
         job_type: typeLabel,
         description: serializeJobSpec(spec),
+        project_id: projectContextId ?? undefined,
         status: "planned",
       });
       const asProjectJob: JobWithProject = { ...created, project_name: null };
@@ -287,7 +291,7 @@ export default function EarthObservationSetupForm({
     }
     if (!affordable) {
       setValidationProblems([
-        `This workspace has ${balance?.toLocaleString()} AI credits and this survey costs ` +
+        `This workspace has ${balance?.toLocaleString()} SiteSurveyor credits and this survey costs ` +
           `${quote?.credits}. Buy more credits from Billing before running it.`,
       ]);
       return;

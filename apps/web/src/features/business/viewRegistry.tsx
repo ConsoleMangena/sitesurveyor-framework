@@ -95,6 +95,7 @@ export function renderBusinessView(
             workspaceId={user.workspaceId}
             onEnterFullscreenProject={onEnterFullscreenProject}
             onExitFullscreenProject={onExitFullscreenProject}
+            onNavigate={onNavigate}
           />
         </Suspense>
       );
