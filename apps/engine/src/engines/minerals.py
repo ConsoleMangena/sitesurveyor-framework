@@ -370,6 +370,7 @@ def run_minerals_survey(
         "lineament_density_pct", "intersection_density_pct",
         "iron_oxide_residual_pct", "hydroxyl_clay_residual_pct",
         "ferrous_mafic_pct", "relative_relief_pct", "endowment_context_pct",
+        "bouguer_anomaly_mgal", "gravity_gradient_mgal_km",
     ]
     csv_path = cfg.OUT / "candidate_mineral_targets.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
