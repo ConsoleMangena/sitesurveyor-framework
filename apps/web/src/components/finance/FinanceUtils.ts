@@ -64,7 +64,7 @@ export function invoiceStatusVariant(status: string) {
 
 const PESAPAY_KIND_LABELS: Record<string, string> = {
   deposit: "Deposit",
-  ai_credit_purchase: "AI credits",
+  ai_credit_purchase: "SiteSurveyor credits",
   storage_purchase: "Storage",
   invoice_payment: "Invoice payment",
 };

@@ -45,7 +45,7 @@ import type { PurchaseMessage } from "./PackageCatalog.tsx";
 const KIND_FILTERS = [
   { value: "all", label: "All" },
   { value: "deposit", label: "Deposits" },
-  { value: "ai_credit_purchase", label: "AI credits" },
+  { value: "ai_credit_purchase", label: "SiteSurveyor credits" },
   { value: "storage_purchase", label: "Storage" },
   { value: "invoice_payment", label: "Invoices" },
 ] as const;

@@ -225,7 +225,7 @@ export default function FinancialInsightsSection({
                   </dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-4 py-2">
-                  <dt className="text-muted-foreground">AI credits refunded</dt>
+                  <dt className="text-muted-foreground">SiteSurveyor credits refunded</dt>
                   <dd className="font-mono tabular-nums">{refunds.toLocaleString()}</dd>
                 </div>
               </dl>

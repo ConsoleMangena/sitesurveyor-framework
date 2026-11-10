@@ -70,7 +70,7 @@ export default function AiCreditsSection({
       setBalance(nextBalance);
       setEntries(nextEntries);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unable to load AI credits.");
+      setError(err instanceof Error ? err.message : "Unable to load SiteSurveyor credits.");
     } finally {
       setLoading(false);
     }
@@ -115,7 +115,7 @@ export default function AiCreditsSection({
   const columnCount = isPlatformAdmin ? 6 : 5;
 
   return (
-    <DashboardSection title="AI credits">
+    <DashboardSection title="SiteSurveyor credits">
       <KpiGrid>
         <KpiCard
           title="Available credits"
@@ -136,7 +136,7 @@ export default function AiCreditsSection({
         kind="ai_credits"
         walletBalance={walletBalance}
         headline={(pkg) =>
-          `${(pkg.credits ?? 0).toLocaleString()} AI credits`
+          `${(pkg.credits ?? 0).toLocaleString()} SiteSurveyor credits`
         }
         unitNote={(pkg) =>
           pkg.credits

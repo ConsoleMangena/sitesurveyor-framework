@@ -86,7 +86,7 @@ export default function BillingOverviewSection({
       <MetricStrip
         metrics={[
           {
-            label: "AI credits available",
+            label: "SiteSurveyor credits available",
             value: Number(overview.ai_credit_balance).toLocaleString(),
             subtext: `${Number(overview.ai_credits_used).toLocaleString()} used`,
             tone: "primary",
@@ -202,7 +202,7 @@ export default function BillingOverviewSection({
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => onSection("credits")}>
                   <Sparkles className="h-3.5 w-3.5" />
-                  AI credits
+                  SiteSurveyor credits
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => onSection("storage")}>
                   <HardDrive className="h-3.5 w-3.5" />

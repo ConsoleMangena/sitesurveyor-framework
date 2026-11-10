@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { WorkspaceNotifications } from "@/components/workspace/WorkspaceNotifications";
+import { WorkspaceCredits } from "@/components/workspace/WorkspaceCredits";
 import { LayoutProvider } from "@/context/layout-provider";
 import { SearchProvider } from "@/context/search-provider";
 import type {
@@ -97,6 +98,10 @@ export default function WorkspaceShell({
               <Header fixed>
                 <Search />
                 <div className="ms-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+                  <WorkspaceCredits
+                    workspaceId={user.workspaceId}
+                    onChangeView={onChangeView}
+                  />
                   <ThemeToggle />
                   <WorkspaceNotifications
                     workspaceId={user.workspaceId}

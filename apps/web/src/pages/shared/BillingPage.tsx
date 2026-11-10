@@ -238,7 +238,7 @@ export default function BillingPage({
               result.kind === "storage"
                 ? "Payment confirmed. The storage you bought is active on this workspace."
                 : result.kind === "ai_credits"
-                  ? "Payment confirmed. Your AI credits are ready to use."
+                  ? "Payment confirmed. Your SiteSurveyor credits are ready to use."
                   : "Payment confirmed by PesePay.",
           });
         } else if (result.status === "pending") {

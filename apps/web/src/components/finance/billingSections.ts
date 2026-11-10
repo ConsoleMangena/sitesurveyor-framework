@@ -22,7 +22,7 @@ export const BILLING_SECTIONS: BillingSectionMeta[] = [
   },
   {
     id: "credits",
-    label: "AI credits",
+    label: "SiteSurveyor credits",
     description: "Buy credits and see every call that spent them.",
   },
   {
