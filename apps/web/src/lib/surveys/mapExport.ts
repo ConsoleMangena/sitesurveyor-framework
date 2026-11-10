@@ -2804,22 +2804,32 @@ function drawMapFurniture(
         const size = 5.5;
         const text = safeText(options.targetDepthLabel);
         const chipW = bold.widthOfTextAtSize(text, size) + 8;
+        const chipH = 10;
         const chipX = Math.max(
           mapRect.x + 4,
           Math.min(x - chipW / 2, mapRect.x + mapRect.w - chipW - 4),
         );
-        const chipTop = yPt + 9;
+        // Position below target crosshairs (which extend 9pt from center),
+        // or above if too close to the bottom edge of the map frame.
+        const belowTop = yPt + 11.5;
+        const chipTop =
+          belowTop + chipH <= mapRect.y + mapRect.h - 4
+            ? belowTop
+            : yPt - 11.5 - chipH;
+
         page.drawRectangle({
           x: chipX,
-          y: yFlip(chipTop),
+          y: yFlip(chipTop + chipH),
           width: chipW,
-          height: 10.5,
-          color: ACCENT,
-          opacity: 0.92,
+          height: chipH,
+          color: PAPER,
+          borderColor: ACCENT,
+          borderWidth: 0.6,
+          opacity: 0.94,
         });
-        drawTextLine(ctx, text, chipX + 4, chipTop + 2.4, size, {
+        drawTextLine(ctx, text, chipX + 4, chipTop + 2.2, size, {
           font: bold,
-          color: rgb(1, 1, 1),
+          color: ACCENT,
         });
       }
     }

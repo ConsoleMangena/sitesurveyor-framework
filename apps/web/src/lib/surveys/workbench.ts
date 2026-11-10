@@ -223,8 +223,10 @@ export function dmsText(latitude: number, longitude: number): string {
   return `${coordWithHemisphere(latitude, "lat")}, ${coordWithHemisphere(longitude, "lon")}`;
 }
 
+export type BasemapId = "satellite" | "sentinel" | "street";
+
 export interface Basemap {
-  id: "satellite" | "street";
+  id: BasemapId;
   label: string;
   url: string;
   attribution: string;
@@ -253,6 +255,15 @@ export const BASEMAPS: Basemap[] = [
     maxZoom: 20,
     maxNativeZoom: 20,
     swatch: "linear-gradient(135deg,#1f4735,#2f6b4f)",
+  },
+  {
+    id: "sentinel",
+    label: "Sentinel-2 Cloudless",
+    url: "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg",
+    attribution: "Sentinel-2 cloudless by EOX (Copernicus)",
+    maxZoom: 20,
+    maxNativeZoom: 16,
+    swatch: "linear-gradient(135deg,#134e4a,#0d9488)",
   },
   {
     id: "street",

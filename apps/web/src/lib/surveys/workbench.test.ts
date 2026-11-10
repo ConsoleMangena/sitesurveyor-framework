@@ -123,8 +123,8 @@ describe("scale", () => {
     expect(scaleText(metersPerPixel(0, 13))).toBe("19.1 m/px");
   });
 
-  it("offers only the two basemaps the canvas can actually tile", () => {
-    expect(BASEMAPS.map((base) => base.id)).toEqual(["satellite", "street"]);
+  it("offers the basemaps the canvas can actually tile", () => {
+    expect(BASEMAPS.map((base) => base.id)).toEqual(["satellite", "sentinel", "street"]);
     expect(basemapById("nothing")).toBe(BASEMAPS[0]);
   });
 });
