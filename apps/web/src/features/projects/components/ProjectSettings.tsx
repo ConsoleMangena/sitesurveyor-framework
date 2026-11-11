@@ -23,6 +23,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface ProjectSettingsProps {
   activeProject: HubProject;
@@ -155,253 +160,274 @@ export function ProjectSettings({
             </Button>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="project-settings-name">Project Name</Label>
-              <Input
-                id="project-settings-name"
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-client">
-                  Client / Organization
-                </Label>
-                <Select
-                  value={editOrgId === '' ? NO_ORGANIZATION : editOrgId}
-                  onValueChange={(value) =>
-                    setEditOrgId(value === NO_ORGANIZATION ? '' : value)
-                  }
-                  disabled={!canEditProjects}
-                >
-                  <SelectTrigger id="project-settings-client">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_ORGANIZATION}>
-                      {editClient || 'Unassigned'}
-                    </SelectItem>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-phase">Phase</Label>
-                <Select value={editPhase} onValueChange={setEditPhase}>
-                  <SelectTrigger id="project-settings-phase">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Planning">Planning</SelectItem>
-                    <SelectItem value="Field Execution">
-                      Field Execution
-                    </SelectItem>
-                    <SelectItem value="Data Processing">
-                      Data Processing
-                    </SelectItem>
-                    <SelectItem value="Drafting">Drafting</SelectItem>
-                    <SelectItem value="Quality Assurance">
-                      Quality Assurance
-                    </SelectItem>
-                    <SelectItem value="Delivered">Delivered</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-status">Status</Label>
-                <Select value={editStatus} onValueChange={setEditStatus}>
-                  <SelectTrigger id="project-settings-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Draft">Draft</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="On Hold">On Hold</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                    <SelectItem value="Archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-axis">Axis Convention</Label>
-                <Select
-                  value={editAxisConvention}
-                  onValueChange={(value) =>
-                    setEditAxisConvention(value as 'yx' | 'xy')
-                  }
-                >
-                  <SelectTrigger id="project-settings-axis">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yx">
-                      Y, X (Zimbabwe / RSA Gauss — Y = Easting first)
-                    </SelectItem>
-                    <SelectItem value="xy">
-                      X, Y (UTM / International — X = Easting first)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Controls coordinate readouts across the project workspace.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="project-settings-crs-type">
-                Coordinate System Type
-              </Label>
-              <Select
-                value={editCrsType}
-                onValueChange={(value) => setEditCrsType(value as CrsType)}
-              >
-                <SelectTrigger id="project-settings-crs-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="local">
-                    Local site grid (arbitrary project origin)
-                  </SelectItem>
-                  <SelectItem value="projected">
-                    Projected CRS (UTM, SPCS, Gauss-Conform, ...)
-                  </SelectItem>
-                  <SelectItem value="other">Other / unspecified</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {editCrsType === 'projected' && (
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-crs-epsg">
-                  EPSG Code (optional)
-                </Label>
-                <Input
-                  id="project-settings-crs-epsg"
-                  type="text"
-                  value={editCrsEpsg}
-                  onChange={(e) => setEditCrsEpsg(e.target.value)}
-                  placeholder="e.g. 32736"
-                />
-              </div>
-            )}
-
-            {editCrsType === 'local' && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CardContent className="space-y-6">
+            <Collapsible open className="space-y-4">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between px-0 py-2 font-semibold text-base">
+                  <span>Basic Details</span>
+                  <span className="text-xs text-muted-foreground">Name, client, phase, status</span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="project-settings-origin-e">
-                    Local Origin Easting
-                  </Label>
+                  <Label htmlFor="project-settings-name">Project Name</Label>
                   <Input
-                    id="project-settings-origin-e"
+                    id="project-settings-name"
                     type="text"
-                    value={editLocalOriginE}
-                    onChange={(e) => setEditLocalOriginE(e.target.value)}
-                    placeholder="Value treated as 0 in local grid"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="project-settings-origin-n">
-                    Local Origin Northing
-                  </Label>
-                  <Input
-                    id="project-settings-origin-n"
-                    type="text"
-                    value={editLocalOriginN}
-                    onChange={(e) => setEditLocalOriginN(e.target.value)}
-                    placeholder="Value treated as 0 in local grid"
-                  />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-client">
+                      Client / Organization
+                    </Label>
+                    <Select
+                      value={editOrgId === '' ? NO_ORGANIZATION : editOrgId}
+                      onValueChange={(value) =>
+                        setEditOrgId(value === NO_ORGANIZATION ? '' : value)
+                      }
+                      disabled={!canEditProjects}
+                    >
+                      <SelectTrigger id="project-settings-client">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_ORGANIZATION}>
+                          {editClient || 'Unassigned'}
+                        </SelectItem>
+                        {organizations.map((org) => (
+                          <SelectItem key={org.id} value={org.id}>
+                            {org.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-phase">Phase</Label>
+                    <Select value={editPhase} onValueChange={setEditPhase}>
+                      <SelectTrigger id="project-settings-phase">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Planning">Planning</SelectItem>
+                        <SelectItem value="Field Execution">
+                          Field Execution
+                        </SelectItem>
+                        <SelectItem value="Data Processing">
+                          Data Processing
+                        </SelectItem>
+                        <SelectItem value="Drafting">Drafting</SelectItem>
+                        <SelectItem value="Quality Assurance">
+                          Quality Assurance
+                        </SelectItem>
+                        <SelectItem value="Delivered">Delivered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            <div className="space-y-1.5">
-              <Label htmlFor="project-settings-datum">Datum Name</Label>
-              <Input
-                id="project-settings-datum"
-                type="text"
-                value={editDatum}
-                onChange={(e) => setEditDatum(e.target.value)}
-                placeholder="e.g. WGS84, Arc 1950, site local..."
-              />
-              <p className="text-xs text-muted-foreground">
-                A short human-readable datum label. Use the fields above for the
-                technical CRS / EPSG code.
-              </p>
-            </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-status">Status</Label>
+                    <Select value={editStatus} onValueChange={setEditStatus}>
+                      <SelectTrigger id="project-settings-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="On Hold">On Hold</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Archived">Archived</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-description">
+                      Description / Scope of Work
+                    </Label>
+                    <Textarea
+                      id="project-settings-description"
+                      className="min-h-[100px]"
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-bearing">Bearing Format</Label>
-                <Select
-                  value={editBearingFormat}
-                  onValueChange={setEditBearingFormat}
-                >
-                  <SelectTrigger id="project-settings-bearing">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="azimuth">
-                      WCB / Forward Bearing (D°M'S")
-                    </SelectItem>
-                    <SelectItem value="quadrant">
-                      Reduced Bearing (N/S .. E/W)
-                    </SelectItem>
-                    <SelectItem value="gon">Gon / Grad</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-angle">Angle Entry</Label>
-                <Select value={editAngleEntry} onValueChange={setEditAngleEntry}>
-                  <SelectTrigger id="project-settings-angle">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="packed">Packed DD.MMSS</SelectItem>
-                    <SelectItem value="dms">D M S fields</SelectItem>
-                    <SelectItem value="decimal">Decimal degrees</SelectItem>
-                    <SelectItem value="gon">Gon / Grad</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="project-settings-decimals">
-                  Coordinate Decimals
-                </Label>
-                <Input
-                  id="project-settings-decimals"
-                  type="number"
-                  min={0}
-                  max={6}
-                  value={editCoordDecimals}
-                  onChange={(e) => setEditCoordDecimals(e.target.value)}
-                />
-              </div>
-            </div>
+            <Collapsible open className="space-y-4">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between px-0 py-2 font-semibold text-base">
+                  <span>Coordinate System</span>
+                  <span className="text-xs text-muted-foreground">CRS type, EPSG, axis convention, local origin</span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-axis">Axis Convention</Label>
+                    <Select
+                      value={editAxisConvention}
+                      onValueChange={(value) =>
+                        setEditAxisConvention(value as 'yx' | 'xy')
+                      }
+                    >
+                      <SelectTrigger id="project-settings-axis">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yx">
+                          Y, X (Zimbabwe / RSA Gauss — Y = Easting first)
+                        </SelectItem>
+                        <SelectItem value="xy">
+                          X, Y (UTM / International — X = Easting first)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Controls coordinate readouts across the project workspace.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-crs-type">
+                      Coordinate System Type
+                    </Label>
+                    <Select
+                      value={editCrsType}
+                      onValueChange={(value) => setEditCrsType(value as CrsType)}
+                    >
+                      <SelectTrigger id="project-settings-crs-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="local">
+                          Local site grid (arbitrary project origin)
+                        </SelectItem>
+                        <SelectItem value="projected">
+                          Projected CRS (UTM, SPCS, Gauss-Conform, ...)
+                        </SelectItem>
+                        <SelectItem value="other">Other / unspecified</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="project-settings-description">
-                Description / Scope of Work
-              </Label>
-              <Textarea
-                id="project-settings-description"
-                className="min-h-[100px]"
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-              />
-            </div>
+                {editCrsType === 'projected' && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-crs-epsg">
+                      EPSG Code (optional)
+                    </Label>
+                    <Input
+                      id="project-settings-crs-epsg"
+                      type="text"
+                      value={editCrsEpsg}
+                      onChange={(e) => setEditCrsEpsg(e.target.value)}
+                      placeholder="e.g. 32736"
+                    />
+                  </div>
+                )}
+
+                {editCrsType === 'local' && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="project-settings-origin-e">
+                        Local Origin Easting
+                      </Label>
+                      <Input
+                        id="project-settings-origin-e"
+                        type="text"
+                        value={editLocalOriginE}
+                        onChange={(e) => setEditLocalOriginE(e.target.value)}
+                        placeholder="Value treated as 0 in local grid"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="project-settings-origin-n">
+                        Local Origin Northing
+                      </Label>
+                      <Input
+                        id="project-settings-origin-n"
+                        type="text"
+                        value={editLocalOriginN}
+                        onChange={(e) => setEditLocalOriginN(e.target.value)}
+                        placeholder="Value treated as 0 in local grid"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="project-settings-datum">Datum Name</Label>
+                  <Input
+                    id="project-settings-datum"
+                    type="text"
+                    value={editDatum}
+                    onChange={(e) => setEditDatum(e.target.value)}
+                    placeholder="e.g. WGS84, Arc 1950, site local..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A short human-readable datum label. Use the fields above for the
+                    technical CRS / EPSG code.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-bearing">Bearing Format</Label>
+                    <Select
+                      value={editBearingFormat}
+                      onValueChange={setEditBearingFormat}
+                    >
+                      <SelectTrigger id="project-settings-bearing">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="azimuth">
+                          WCB / Forward Bearing (D°M'S")
+                        </SelectItem>
+                        <SelectItem value="quadrant">
+                          Reduced Bearing (N/S .. E/W)
+                        </SelectItem>
+                        <SelectItem value="gon">Gon / Grad</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-angle">Angle Entry</Label>
+                    <Select value={editAngleEntry} onValueChange={setEditAngleEntry}>
+                      <SelectTrigger id="project-settings-angle">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="packed">Packed DD.MMSS</SelectItem>
+                        <SelectItem value="dms">D M S fields</SelectItem>
+                        <SelectItem value="decimal">Decimal degrees</SelectItem>
+                        <SelectItem value="gon">Gon / Grad</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="project-settings-decimals">
+                      Coordinate Decimals
+                    </Label>
+                    <Input
+                      id="project-settings-decimals"
+                      type="number"
+                      min={0}
+                      max={6}
+                      value={editCoordDecimals}
+                      onChange={(e) => setEditCoordDecimals(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </Card>
 
@@ -580,14 +606,13 @@ export function ProjectSettings({
                                 log.activity_type === 'system'
                                   ? 'bg-muted-foreground'
                                   : 'bg-primary',
-                              )}
-                            />
+                              )} />
                             <div className="flex flex-col">
                               <span className="text-sm text-foreground">
                                 {log.content}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {log.user_name} &bull;{' '}
+                                {log.user_name} &bull; {' '}
                                 {new Date(log.created_at).toLocaleTimeString([], {
                                   hour: '2-digit',
                                   minute: '2-digit',

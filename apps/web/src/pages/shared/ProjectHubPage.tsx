@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   LayoutGrid,
   Settings,
-  Menu,
   ChevronLeft,
   ChevronRight,
   Layers,
@@ -18,10 +17,13 @@ import {
   Loader2,
   RefreshCw,
   ClipboardList,
-  MapPin,
   Search,
   Info,
   X,
+  Filter,
+  List,
+  Grid,
+  MapPin,
 } from 'lucide-react'
 
 import ErrorNotice from '@/components/errors/ErrorNotice.tsx'
@@ -51,11 +53,11 @@ import {
 import { ResponsiveTable } from '@/components/ui/responsive-table'
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  EmptyContent,
 } from '@/components/ui/empty'
 import { generateLocalId } from '@/lib/localDb/utils'
 import { DashboardShell, DashboardHeader } from '@/components/dashboard/DashboardShell.tsx'
@@ -63,6 +65,11 @@ import { DashboardCard } from '@/components/dashboard/DashboardCard.tsx'
 import { KpiCard, KpiGrid } from '@/components/dashboard/KpiCard.tsx'
 import { DialogTemplate } from '@/components/templates/DialogTemplate.tsx'
 import { PageForm } from '@/components/templates/PageForm.tsx'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 
 import {
   createProject,
@@ -214,6 +221,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'All' | 'Active' | 'Completed' | 'Mine' | 'Archived'>('All')
+  const [listView, setListView] = useState<'table' | 'cards'>('table')
 
   const [newName, setNewName] = useState('')
   const [newOrgId, setNewOrgId] = useState('')
@@ -712,6 +720,12 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
     }
     return sections
   }, [recentActivities])
+  const timelineSummary = {
+    notes: activities.filter(a => a.activity_type === 'note').length,
+    actions: activities.filter(a => a.activity_type === 'action').length,
+    system: activities.filter(a => a.activity_type === 'system').length,
+  }
+
   const settingsActivitySections = useMemo(() => {
     const chunkSize = 4
     const sections: ProjectActivity[][] = []
@@ -721,11 +735,6 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
     }
     return sections
   }, [activities])
-  const timelineSummary = {
-    notes: activities.filter(a => a.activity_type === 'note').length,
-    actions: activities.filter(a => a.activity_type === 'action').length,
-    system: activities.filter(a => a.activity_type === 'system').length,
-  }
 
   const clampedOverviewSectionIndex = Math.min(
     overviewActivitySectionIndex,
@@ -981,7 +990,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   }
 
   return (
-      <DashboardShell className={cn('w-full max-w-none overflow-x-hidden', activeProject && 'h-full min-h-0 gap-0 overflow-hidden sm:gap-0')}>
+    <DashboardShell className={cn('w-full max-w-none overflow-x-hidden', activeProject && 'h-full min-h-0 gap-0 overflow-hidden sm:gap-0')}>
       {error ? (
         <ErrorNotice tone="danger">
           {error}
@@ -1060,7 +1069,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
                 </div>
               )}
             </div>
-            <nav className="flex-1 overflow-auto p-3 space-y-1">
+            <nav className="flex-1 overflow-auto p-3 space-y-1" aria-label="Project sections">
               {projectTabs.map((tab) => (
                 <Button
                   key={tab}
@@ -1083,121 +1092,125 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
 
           <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
             <div className="flex flex-col gap-4 p-4 sm:p-6">
-                <header className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <Button variant="outline" size="icon" className="lg:hidden shrink-0" onClick={() => setProjectMobileMenuOpen(true)} aria-label="Open project navigation">
-                      <Menu className="h-4 w-4" />
-                    </Button>
-                    <div className="min-w-0">
-                      <h1 className="text-2xl font-bold tracking-tight truncate">{activeProject.name}</h1>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <Badge variant={statusBadgeVariant[activeProject.status] ?? 'secondary'}>{activeProject.status}</Badge>
-                        <span>·</span>
-                        <span className="truncate">{activeProject.client}</span>
-                        <span>·</span>
-                        <span>{activeProject.phase} phase</span>
-                      </div>
+              <header className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Button variant="outline" size="icon" className="lg:hidden shrink-0" onClick={() => setProjectMobileMenuOpen(true)} aria-label="Open project navigation">
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <div className="min-w-0">
+                    <h1 className="text-2xl font-bold tracking-tight truncate">{activeProject.name}</h1>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <Badge variant={statusBadgeVariant[activeProject.status] ?? 'secondary'}>{activeProject.status}</Badge>
+                      <span>·</span>
+                      <span className="truncate">{activeProject.client}</span>
+                      <span>·</span>
+                      <span>{activeProject.phase} phase</span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setSelectedProject(activeProject)}>Details</Button>
-                  </div>
-                </header>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setSelectedProject(activeProject)}>Details</Button>
+                </div>
+              </header>
 
-                {effectiveProjectTab === 'jobs' ? (
-                  <ProjectJobsPanel
-                    workspaceId={workspaceId}
-                    projectId={activeProject.dbId}
-                    onNavigate={onNavigate}
-                  />
-                ) : effectiveProjectTab === 'overview' ? (
-                  <ProjectDashboard
-                    kpiData={kpiData}
-                    activities={activities}
-                    timelineSummary={timelineSummary}
-                    recentActivities={recentActivities}
-                    recentActivitySections={recentActivitySections}
-                    overviewActivitySectionIndex={clampedOverviewSectionIndex}
-                    setOverviewActivitySectionIndex={setOverviewActivitySectionIndex}
-                    newActivityText={newActivityText}
-                    setNewActivityText={setNewActivityText}
-                    submittingActivity={submittingActivity}
-                    deletingActivityId={deletingActivityId}
-                    deployedAssets={deployedAssets}
-                    onUndeployAsset={handleUndeployAsset}
-                    handleAddActivity={handleAddActivity}
-                    handleQuickAction={handleQuickAction}
-                    handleDeleteActivity={handleDeleteActivity}
-                    comingSoonTools={COMING_SOON_TOOLS}
-                  />
-                ) : effectiveProjectTab === 'settings' ? (
-                  <ProjectSettings
-                    activeProject={activeProject}
-                    editName={editName}
-                    setEditName={setEditName}
-                    editClient={editClient}
-                    organizations={organizations}
-                    editOrgId={editOrgId}
-                    setEditOrgId={setEditOrgId}
-                    editPhase={editPhase}
-                    setEditPhase={setEditPhase}
-                    editDatum={editDatum}
-                    setEditDatum={setEditDatum}
-                    editAxisConvention={editAxisConvention}
-                    setEditAxisConvention={setEditAxisConvention}
-                    editCrsType={editCrsType}
-                    setEditCrsType={setEditCrsType}
-                    editCrsEpsg={editCrsEpsg}
-                    setEditCrsEpsg={setEditCrsEpsg}
-                    editLocalOriginE={editLocalOriginE}
-                    setEditLocalOriginE={setEditLocalOriginE}
-                    editLocalOriginN={editLocalOriginN}
-                    setEditLocalOriginN={setEditLocalOriginN}
-                    editBearingFormat={editBearingFormat}
-                    setEditBearingFormat={setEditBearingFormat}
-                    editAngleEntry={editAngleEntry}
-                    setEditAngleEntry={setEditAngleEntry}
-                    editCoordDecimals={editCoordDecimals}
-                    setEditCoordDecimals={setEditCoordDecimals}
-                    editStatus={editStatus}
-                    setEditStatus={setEditStatus}
-                    editDesc={editDesc}
-                    setEditDesc={setEditDesc}
-                    handleUpdateProject={handleUpdateProject}
-                    saving={saving}
-                    canEditProjects={canEditProjects}
-                    canInviteProjectMembers={canInviteProjectMembers}
-                    handleUnarchiveProject={handleUnarchiveProject}
-                    setSelectedProject={setSelectedProject}
-                    setShowPermanentDeleteConfirm={setShowPermanentDeleteConfirm}
-                    setShowDeleteConfirm={setShowDeleteConfirm}
-                    setShowAssignModal={setShowAssignModal}
-                    activities={activities}
-                    settingsActivitySections={settingsActivitySections}
-                    settingsActivitySectionIndex={clampedSettingsSectionIndex}
-                    setSettingsActivitySectionIndex={setSettingsActivitySectionIndex}
-                    newActivityText={newActivityText}
-                    setNewActivityText={setNewActivityText}
-                    submittingActivity={submittingActivity}
-                    deletingActivityId={deletingActivityId}
-                    handleAddActivity={handleAddActivity}
-                    handleDeleteActivity={handleDeleteActivity}
-                  />
-                ) : null}
+              {effectiveProjectTab === 'jobs' ? (
+                <ProjectJobsPanel
+                  workspaceId={workspaceId}
+                  projectId={activeProject.dbId}
+                  onNavigate={onNavigate}
+                />
+              ) : effectiveProjectTab === 'overview' ? (
+                <ProjectDashboard
+                  kpiData={kpiData}
+                  activities={activities}
+                  timelineSummary={timelineSummary}
+                  recentActivities={recentActivities}
+                  recentActivitySections={recentActivitySections}
+                  overviewActivitySectionIndex={clampedOverviewSectionIndex}
+                  setOverviewActivitySectionIndex={setOverviewActivitySectionIndex}
+                  newActivityText={newActivityText}
+                  setNewActivityText={setNewActivityText}
+                  submittingActivity={submittingActivity}
+                  deletingActivityId={deletingActivityId}
+                  deployedAssets={deployedAssets}
+                  onUndeployAsset={handleUndeployAsset}
+                  handleAddActivity={handleAddActivity}
+                  handleQuickAction={handleQuickAction}
+                  handleDeleteActivity={handleDeleteActivity}
+                  comingSoonTools={COMING_SOON_TOOLS}
+                />
+              ) : effectiveProjectTab === 'settings' ? (
+                <ProjectSettings
+                  activeProject={activeProject}
+                  editName={editName}
+                  setEditName={setEditName}
+                  editClient={editClient}
+                  organizations={organizations}
+                  editOrgId={editOrgId}
+                  setEditOrgId={setEditOrgId}
+                  editPhase={editPhase}
+                  setEditPhase={setEditPhase}
+                  editDatum={editDatum}
+                  setEditDatum={setEditDatum}
+                  editAxisConvention={editAxisConvention}
+                  setEditAxisConvention={setEditAxisConvention}
+                  editCrsType={editCrsType}
+                  setEditCrsType={setEditCrsType}
+                  editCrsEpsg={editCrsEpsg}
+                  setEditCrsEpsg={setEditCrsEpsg}
+                  editLocalOriginE={editLocalOriginE}
+                  setEditLocalOriginE={setEditLocalOriginE}
+                  editLocalOriginN={editLocalOriginN}
+                  setEditLocalOriginN={setEditLocalOriginN}
+                  editBearingFormat={editBearingFormat}
+                  setEditBearingFormat={setEditBearingFormat}
+                  editAngleEntry={editAngleEntry}
+                  setEditAngleEntry={setEditAngleEntry}
+                  editCoordDecimals={editCoordDecimals}
+                  setEditCoordDecimals={setEditCoordDecimals}
+                  editStatus={editStatus}
+                  setEditStatus={setEditStatus}
+                  editDesc={editDesc}
+                  setEditDesc={setEditDesc}
+                  handleUpdateProject={handleUpdateProject}
+                  saving={saving}
+                  canEditProjects={canEditProjects}
+                  canInviteProjectMembers={canInviteProjectMembers}
+                  handleUnarchiveProject={handleUnarchiveProject}
+                  setSelectedProject={setSelectedProject}
+                  setShowPermanentDeleteConfirm={setShowPermanentDeleteConfirm}
+                  setShowDeleteConfirm={setShowDeleteConfirm}
+                  setShowAssignModal={setShowAssignModal}
+                  activities={activities}
+                  settingsActivitySections={settingsActivitySections}
+                  settingsActivitySectionIndex={clampedSettingsSectionIndex}
+                  setSettingsActivitySectionIndex={setSettingsActivitySectionIndex}
+                  newActivityText={newActivityText}
+                  setNewActivityText={setNewActivityText}
+                  submittingActivity={submittingActivity}
+                  deletingActivityId={deletingActivityId}
+                  handleAddActivity={handleAddActivity}
+                  handleDeleteActivity={handleDeleteActivity}
+                />
+              ) : null}
             </div>
           </div>
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          <DashboardHeader
-            title="Projects"
-            subtitle="Manage tracking, computations, and deployments for active field operations"
-            actions={
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <DashboardHeader
+                title="Projects"
+                subtitle="Manage tracking, computations, and deployments for active field operations"
+              />
+            </div>
+            <div className="flex items-center gap-2 sm:ml-auto">
               <Button onClick={() => setShowNewModal(true)} disabled={!canEditProjects} className="gap-2">
                 <Plus className="h-4 w-4" /> New Project
               </Button>
-            }
-          />
+            </div>
+          </div>
 
           <KpiGrid>
             <KpiCard
@@ -1234,21 +1247,48 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
             title="Projects"
             icon={<LayoutGrid className="h-4 w-4" />}
             titleAction={
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="project-search"
-                  name="project-search"
-                  placeholder="Search projects…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-7"
-                />
-                {searchQuery && (
-                  <button type="button" onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search">
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="project-search"
+                    name="project-search"
+                    placeholder="Search projects…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 pr-7"
+                  />
+                  {searchQuery && (
+                    <button type="button" onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant={listView === 'table' ? 'secondary' : 'outline'}
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setListView('table')}
+                    aria-label="Table view"
+                    title="Table view"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={listView === 'cards' ? 'secondary' : 'outline'}
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setListView('cards')}
+                    aria-label="Card view"
+                    title="Card view"
+                  >
+                    <Grid className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="size-8" onClick={() => setActiveFilter('All')} title="All filters">
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             }
           >
@@ -1267,342 +1307,151 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
               ))}
             </div>
 
-            <div className="hidden md:block">
-              <ResponsiveTable>
-                <Table className="min-w-[900px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[220px]">Project</TableHead>
-                    <TableHead className="hidden sm:table-cell min-w-[160px]">Client</TableHead>
-                  <TableHead className="hidden md:table-cell w-[120px]">Phase</TableHead>
-                  <TableHead className="hidden lg:table-cell min-w-[140px]">Surveyor</TableHead>
-                  <TableHead className="hidden xl:table-cell min-w-[160px]">Datum</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell w-[90px]">Points</TableHead>
-                  <TableHead className="hidden md:table-cell w-48">Progress</TableHead>
-                  <TableHead className="text-right w-[100px]">Status</TableHead>
-                  <TableHead className="w-[52px]"><span className="sr-only">Details</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            {listView === 'table' ? (
+              <div className="hidden md:block">
+                <ResponsiveTable>
+                  <Table className="min-w-[900px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[220px]">Project</TableHead>
+                        <TableHead className="hidden sm:table-cell min-w-[160px]">Client</TableHead>
+                        <TableHead className="hidden md:table-cell w-[120px]">Phase</TableHead>
+                        <TableHead className="hidden lg:table-cell min-w-[140px]">Surveyor</TableHead>
+                        <TableHead className="hidden xl:table-cell min-w-[160px]">Datum</TableHead>
+                        <TableHead className="text-right hidden sm:table-cell w-[90px]">Points</TableHead>
+                        <TableHead className="hidden md:table-cell w-48">Progress</TableHead>
+                        <TableHead className="text-right w-[100px]">Status</TableHead>
+                        <TableHead className="w-[52px]"><span className="sr-only">Details</span></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProjects.map((p) => {
+                        const surveyor = p.members[0]?.name || 'Unassigned'
+                        return (
+                          <TableRow
+                            key={p.dbId}
+                            className="cursor-pointer"
+                            onClick={() => openProject(p)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p); } }}
+                            tabIndex={0}
+                            role="button"
+                            aria-label={`Open project ${p.name}`}
+                          >
+                            <TableCell className="align-middle">
+                              <div className="flex flex-col">
+                                <span className="font-semibold truncate max-w-[260px]" title={p.name}>{p.name}</span>
+                                <code className="w-fit rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium mt-1">{p.id}</code>
+                              </div>
+                            </TableCell>
+                            <TableCell className="align-middle hidden sm:table-cell font-medium">
+                              <span className="block truncate max-w-[160px]" title={p.client}>{p.client}</span>
+                            </TableCell>
+                            <TableCell className="align-middle hidden md:table-cell text-muted-foreground">
+                              <span className="block truncate max-w-[120px]" title={p.phase}>{p.phase}</span>
+                            </TableCell>
+                            <TableCell className="align-middle hidden lg:table-cell">
+                              <span className="block truncate max-w-[160px]" title={surveyor}>{surveyor}</span>
+                            </TableCell>
+                            <TableCell className="align-middle hidden xl:table-cell text-muted-foreground text-xs">
+                              <span className="block truncate max-w-[180px]" title={p.datum}>{p.datum}</span>
+                            </TableCell>
+                            <TableCell className="align-middle text-right hidden sm:table-cell font-mono font-semibold">{p.points.toLocaleString()}</TableCell>
+                            <TableCell className="align-middle hidden md:table-cell">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                  <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
+                                </div>
+                                <span className="text-xs font-semibold w-8 text-right">{p.progress}%</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="align-middle text-right">
+                              <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'}>{p.status}</Badge>
+                            </TableCell>
+                            <TableCell className="align-middle w-[52px]">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-foreground"
+                                aria-label={`Project details for ${p.name}`}
+                                title="Project details"
+                                onClick={(e) => { e.stopPropagation(); setSelectedProject(p) }}
+                                onKeyDown={(e) => e.stopPropagation()}
+                              >
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </ResponsiveTable>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredProjects.map((p) => {
                   const surveyor = p.members[0]?.name || 'Unassigned'
                   return (
-                    <TableRow
+                    <Card
                       key={p.dbId}
-                      className="cursor-pointer"
+                      className="cursor-pointer transition-shadow hover:shadow-md"
                       onClick={() => openProject(p)}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p); } }}
                       tabIndex={0}
                       role="button"
                       aria-label={`Open project ${p.name}`}
                     >
-                      <TableCell className="align-middle">
-                        <div className="flex flex-col">
-                          <span className="font-semibold truncate max-w-[260px]" title={p.name}>{p.name}</span>
-                          <code className="w-fit rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium mt-1">{p.id}</code>
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold truncate">{p.name}</h3>
+                            <code className="w-fit rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium mt-1">{p.id}</code>
+                          </div>
+                          <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'}>{p.status}</Badge>
                         </div>
-                      </TableCell>
-                      <TableCell className="align-middle hidden sm:table-cell font-medium">
-                        <span className="block truncate max-w-[160px]" title={p.client}>{p.client}</span>
-                      </TableCell>
-                      <TableCell className="align-middle hidden md:table-cell text-muted-foreground">
-                        <span className="block truncate max-w-[120px]" title={p.phase}>{p.phase}</span>
-                      </TableCell>
-                      <TableCell className="align-middle hidden lg:table-cell">
-                        <span className="block truncate max-w-[160px]" title={surveyor}>{surveyor}</span>
-                      </TableCell>
-                      <TableCell className="align-middle hidden xl:table-cell text-muted-foreground text-xs">
-                        <span className="block truncate max-w-[180px]" title={p.datum}>{p.datum}</span>
-                      </TableCell>
-                      <TableCell className="align-middle text-right hidden sm:table-cell font-mono font-semibold">{p.points.toLocaleString()}</TableCell>
-                      <TableCell className="align-middle hidden md:table-cell">
-                        <div className="flex items-center gap-2">
+                        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                          {p.client && <span className="truncate max-w-[200px]" title={p.client}>{p.client}</span>}
+                          <span>·</span>
+                          {p.phase && <span>{p.phase}</span>}
+                          <span>·</span>
+                          <span className="truncate max-w-[160px]" title={surveyor}>{surveyor}</span>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2 text-xs">
                           <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                             <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
                           </div>
-                          <span className="text-xs font-semibold w-8 text-right">{p.progress}%</span>
+                          <span className="text-xs font-semibold w-8 text-right text-muted-foreground">{p.progress}%</span>
                         </div>
-                      </TableCell>
-                      <TableCell className="align-middle text-right">
-                        <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'}>{p.status}</Badge>
-                      </TableCell>
-                      <TableCell className="align-middle w-[52px]">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 text-muted-foreground hover:text-foreground"
-                          aria-label={`Project details for ${p.name}`}
-                          title="Project details"
-                          onClick={(e) => { e.stopPropagation(); setSelectedProject(p) }}
-                          onKeyDown={(e) => e.stopPropagation()}
-                        >
-                          <Info className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="font-mono">{p.points.toLocaleString()} pts</span>
+                          <span>{p.datum}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )
                 })}
-              </TableBody>
-            </Table>
-            </ResponsiveTable>
-            </div>
-
-            {/* Mobile project tiles */}
-            <div className="flex flex-col gap-3 md:hidden">
-              {filteredProjects.map((p) => {
-                const surveyor = p.members[0]?.name || 'Unassigned'
-                return (
-                  <article
-                    key={p.dbId}
-                    className="cursor-pointer rounded-lg border border-border/40 bg-muted/30 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => openProject(p)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p); } }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`Open project ${p.name}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <span className="block font-semibold truncate" title={p.name}>{p.name}</span>
-                        <code className="mt-1 inline-block w-fit rounded bg-background px-1.5 py-0.5 text-xs text-muted-foreground font-medium">{p.id}</code>
-                      </div>
-                      <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'} className="shrink-0">{p.status}</Badge>
-                    </div>
-                    <div className="mt-2 space-y-1 text-sm">
-                      <p className="truncate text-muted-foreground">
-                        <span className="font-medium text-foreground" title={p.client}>{p.client}</span>
-                        {' · '}
-                        <span title={p.phase}>{p.phase}</span>
-                      </p>
-                      <p className="truncate text-muted-foreground">
-                        <span title={surveyor}>{surveyor}</span>
-                        {' · '}
-                        <span className="text-xs" title={p.datum}>{p.datum}</span>
-                      </p>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
-                      </div>
-                      <span className="w-9 shrink-0 text-right text-xs font-semibold">{p.progress}%</span>
-                      <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{p.points.toLocaleString()} pts</span>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
+              </div>
+            )}
 
             {filteredProjects.length === 0 && (
-              <Empty className="border-none">
+              <Empty className="border-none py-12">
                 <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <FolderOpen />
-                  </EmptyMedia>
-                  {projects.length === 0 ? (
-                    <>
-                      <EmptyTitle>No projects yet</EmptyTitle>
-                      <EmptyDescription>
-                        Create your first project to start tracking field operations.
-                      </EmptyDescription>
-                    </>
-                  ) : (
-                    <>
-                      <EmptyTitle>No projects found</EmptyTitle>
-                      <EmptyDescription>
-                        Nothing matches the current search or filter.
-                      </EmptyDescription>
-                    </>
-                  )}
+                  <EmptyMedia variant="icon"><FolderOpen /></EmptyMedia>
+                  <EmptyTitle className="text-base">No projects match your filters</EmptyTitle>
+                  <EmptyDescription>
+                    Try adjusting your search or filter, or create a new project.
+                  </EmptyDescription>
                 </EmptyHeader>
-                {projects.length === 0 ? (
-                  canEditProjects ? (
-                    <EmptyContent>
-                      <Button size="sm" className="gap-1.5" onClick={() => setShowNewModal(true)}>
-                        <Plus className="size-3.5" />
-                        New Project
-                      </Button>
-                    </EmptyContent>
-                  ) : null
-                ) : (
-                  <EmptyContent>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => { setSearchQuery(''); setActiveFilter('All') }}
-                    >
-                      Clear search and filters
-                    </Button>
-                  </EmptyContent>
-                )}
+                <EmptyContent>
+                  <Button onClick={() => setShowNewModal(true)} disabled={!canEditProjects} className="gap-2">
+                    <Plus className="h-4 w-4" /> New Project
+                  </Button>
+                </EmptyContent>
               </Empty>
             )}
           </DashboardCard>
         </div>
       )}
-
-      {/* Assign Team Member */}
-      <DialogTemplate
-        open={showAssignModal}
-        onOpenChange={(open) => { if (!open) setShowAssignModal(false); }}
-        title="Assign Team Member"
-        description="Invite a technician to this project."
-        size="md"
-        footer={
-          <>
-            <Button type="button" variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-            <Button type="submit" form="assign-member-form" disabled={assigningMember}>{assigningMember ? 'Sending...' : 'Send Invitation'}</Button>
-          </>
-        }
-      >
-        <form
-          id="assign-member-form"
-          className="space-y-4"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            if (!assignEmail || !activeProjectId) return
-            setAssigningMember(true)
-            try {
-              const result = await inviteWorkspaceMember({ workspaceId, email: assignEmail, role: 'technician', projectId: activeProjectId, projectRole: 'member' })
-              setNotice({
-                type: 'info',
-                message: result.linkedToProject
-                  ? `${assignEmail} was added to the project and invited to the workspace.`
-                  : `Invitation generated for ${assignEmail}.`,
-              })
-              setShowAssignModal(false)
-              setAssignEmail('')
-              await fetchProjects()
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Failed to invite team member.')
-            } finally {
-              setAssigningMember(false)
-            }
-          }}
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="assign-email">Team Member Email</Label>
-            <Input id="assign-email" type="email" placeholder="surveyor@example.com" value={assignEmail} onChange={e => setAssignEmail(e.target.value)} required autoFocus />
-          </div>
-        </form>
-      </DialogTemplate>
-
-      {/* Project Details */}
-      <DialogTemplate
-        open={selectedProject !== null}
-        onOpenChange={(open) => { if (!open) { setSelectedProject(null); setShowDeleteConfirm(false); setShowPermanentDeleteConfirm(false); setDeleteConfirmText(''); } }}
-        title={selectedProject?.name ?? "Project Details"}
-        description={selectedProject ? (
-          <span><code className="rounded bg-muted px-1.5 py-0.5 text-xs">{selectedProject.id}</code> · {selectedProject.phase}</span>
-        ) : undefined}
-        size="full"
-        footer={selectedProject && !showPermanentDeleteConfirm && !showDeleteConfirm ? (
-          <>
-            {selectedProject.status === 'Archived' ? (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => handleUnarchiveProject(selectedProject.dbId)}>Restore Project</Button>
-                <Button variant="destructive" onClick={() => setShowPermanentDeleteConfirm(true)}>Delete Forever</Button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => setShowDeleteConfirm(true)}>Archive Project</Button>
-                <Button variant="destructive" onClick={() => setShowPermanentDeleteConfirm(true)}>Delete Project</Button>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => { setSelectedProject(null); setShowDeleteConfirm(false); setShowPermanentDeleteConfirm(false); setDeleteConfirmText(''); }}>Close</Button>
-              <Button onClick={() => openProject(selectedProject)}>Open Project</Button>
-            </div>
-          </>
-        ) : undefined}
-      >
-        {selectedProject && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-              <div className="rounded-lg border p-3 space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">Status</span>
-                <Badge variant={statusBadgeVariant[selectedProject.status] ?? 'secondary'}>{selectedProject.status}</Badge>
-              </div>
-              <div className="rounded-lg border p-3 space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">Client</span>
-                <p className="font-medium">{selectedProject.client}</p>
-              </div>
-              <div className="rounded-lg border p-3 space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">Datum</span>
-                <p className="font-medium">{selectedProject.datum}</p>
-              </div>
-              <div className="rounded-lg border p-3 space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">Points</span>
-                <p className="font-medium">{selectedProject.points.toLocaleString()}</p>
-              </div>
-              <div className="rounded-lg border p-3 space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">Created</span>
-                <p className="font-medium">{selectedProject.createdAt}</p>
-              </div>
-              <div className="rounded-lg border p-3 space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">Last Activity</span>
-                <p className="font-medium">{selectedProject.lastActivity}</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Progress</span>
-              <div className="flex items-center gap-3">
-                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${selectedProject.progress}%` }} />
-                </div>
-                <span className="text-sm font-bold w-10 text-right">{selectedProject.progress}%</span>
-              </div>
-            </div>
-
-            {selectedProject.description && (
-              <div className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</span>
-                <p className="text-sm text-muted-foreground leading-relaxed">{selectedProject.description}</p>
-              </div>
-            )}
-
-            {selectedProject.members.length > 0 && (
-              <div className="space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team ({selectedProject.members.length})</span>
-                <div className="space-y-2">
-                  {selectedProject.members.map((m, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                      <div>
-                        <p className="font-medium">{m.name}</p>
-                        <p className="text-xs text-muted-foreground">{m.role}</p>
-                      </div>
-                      <Badge variant={m.status === 'active' ? 'success' : 'warning'}>{m.status === 'active' ? 'Active' : 'Pending'}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {showPermanentDeleteConfirm ? (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
-                <p className="text-sm font-semibold text-destructive">Permanently delete this project?</p>
-                <p className="text-sm text-destructive">This will destroy all related field data. Type <strong>{selectedProject.name}</strong> to confirm.</p>
-                <Input id="delete-project-confirm" name="delete-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
-                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { setShowPermanentDeleteConfirm(false); setDeleteConfirmText(''); }}>Cancel</Button>
-                  <Button size="sm" variant="destructive" disabled={deleteConfirmText !== selectedProject.name} onClick={() => handlePermanentDeleteProject(selectedProject.dbId)}>Delete Project Permanently</Button>
-                </div>
-              </div>
-            ) : showDeleteConfirm ? (
-              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
-                <p className="text-sm font-semibold text-destructive">Archive this project?</p>
-                <p className="text-sm text-destructive">Type <strong>{selectedProject.name}</strong> to confirm.</p>
-                <Input id="archive-project-confirm" name="archive-project-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="Type project name to confirm..." autoFocus />
-                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}>Cancel</Button>
-                  <Button size="sm" variant="destructive" disabled={deleteConfirmText !== selectedProject.name} onClick={() => handleArchiveProject(selectedProject.dbId)}>Archive Project</Button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        )}
-      </DialogTemplate>
     </DashboardShell>
   )
 }
-
