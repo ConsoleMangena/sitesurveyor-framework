@@ -20,7 +20,6 @@ import {
   Search,
   Info,
   X,
-  Filter,
   List,
   Grid,
   MapPin,
@@ -112,8 +111,6 @@ import {
   type ActivityWithMeta,
 } from '../../lib/activityCache.ts'
 
-import { COMING_SOON_TOOLS } from '../../features/projects/tools/toolRegistry.ts'
-
 export type HubProject = UiHubProject
 
 interface ProjectHubPageProps {
@@ -150,6 +147,24 @@ const tabLabels: Record<ProjectTab, string> = {
   overview: 'Overview',
   jobs: 'Jobs',
   settings: 'Settings',
+}
+
+type ProjectFilter = 'All' | 'Active' | 'Completed' | 'Mine' | 'Archived'
+
+const kpiIcons: Record<ProjectFilter, React.ReactNode> = {
+  All: <Layers className="size-4" />,
+  Active: <Activity className="size-4" />,
+  Completed: <CheckCircle2 className="size-4" />,
+  Mine: <User className="size-4" />,
+  Archived: <Archive className="size-4" />,
+}
+
+const kpiTones: Record<ProjectFilter, 'primary' | 'success' | 'purple' | 'neutral'> = {
+  All: 'primary',
+  Active: 'primary',
+  Completed: 'success',
+  Mine: 'purple',
+  Archived: 'neutral',
 }
 
 export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEnterFullscreenProject, onExitFullscreenProject }: ProjectHubPageProps) {
@@ -220,7 +235,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   const [settingsActivitySectionIndex, setSettingsActivitySectionIndex] = useState(0)
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'All' | 'Active' | 'Completed' | 'Mine' | 'Archived'>('All')
+  const [activeFilter, setActiveFilter] = useState<ProjectFilter>('All')
   const [listView, setListView] = useState<'table' | 'cards'>('table')
 
   const [newName, setNewName] = useState('')
@@ -558,36 +573,6 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
       setError(err instanceof Error ? err.message : 'Failed to add activity.')
     } finally {
       setSubmittingActivity(false)
-    }
-  }
-
-  const handleQuickAction = async (action: string) => {
-    if (!activeProjectId) return
-
-    try {
-      if (!navigator.onLine) {
-        const tempId = generateLocalId()
-        const content = `Executed: ${action}`
-        const pending = buildPendingActivity(
-          activeProjectId,
-          tempId,
-          content,
-          'action',
-          userName,
-        )
-        const currentCache = readCachedActivities(activeProjectId)
-        setActivities((prev) => [pending, ...prev])
-        writeCachedActivities(activeProjectId, [pending, ...currentCache])
-        queueActivityCreate(activeProjectId, tempId, content, 'action', userName)
-        setNotice({ type: 'info', message: `${action} initialized. Action will sync when online.` })
-        return
-      }
-
-      await createProjectActivity(activeProjectId, `Executed: ${action}`, 'action')
-      await fetchActivities()
-      setNotice({ type: 'info', message: `${action} initialized. Action logged to timeline.` })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to execute ${action}.`)
     }
   }
 
@@ -1122,7 +1107,6 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
               ) : effectiveProjectTab === 'overview' ? (
                 <ProjectDashboard
                   kpiData={kpiData}
-                  activities={activities}
                   timelineSummary={timelineSummary}
                   recentActivities={recentActivities}
                   recentActivitySections={recentActivitySections}
@@ -1135,9 +1119,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
                   deployedAssets={deployedAssets}
                   onUndeployAsset={handleUndeployAsset}
                   handleAddActivity={handleAddActivity}
-                  handleQuickAction={handleQuickAction}
                   handleDeleteActivity={handleDeleteActivity}
-                  comingSoonTools={COMING_SOON_TOOLS}
                 />
               ) : effectiveProjectTab === 'settings' ? (
                 <ProjectSettings
@@ -1198,49 +1180,38 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <DashboardHeader
-                title="Projects"
-                subtitle="Manage tracking, computations, and deployments for active field operations"
-              />
-            </div>
-            <div className="flex items-center gap-2 sm:ml-auto">
+          <DashboardHeader
+            title="Projects"
+            subtitle="Manage tracking, computations, and deployments for active field operations"
+            actions={
               <Button onClick={() => setShowNewModal(true)} disabled={!canEditProjects} className="gap-2">
                 <Plus className="h-4 w-4" /> New Project
               </Button>
-            </div>
-          </div>
+            }
+          />
 
+          {/* The counts are the filter control: one row instead of a KPI band
+              plus a chip row that repeated the same five numbers. */}
           <KpiGrid>
-            <KpiCard
-              title="All"
-              value={String(counts.All)}
-              icon={<Layers className="size-4" />}
-            />
-            <KpiCard
-              title="Active"
-              value={String(counts.Active)}
-              tone="primary"
-              icon={<Activity className="size-4" />}
-            />
-            <KpiCard
-              title="Completed"
-              value={String(counts.Completed)}
-              tone="success"
-              icon={<CheckCircle2 className="size-4" />}
-            />
-            <KpiCard
-              title="Mine"
-              value={String(counts.Mine)}
-              tone="purple"
-              icon={<User className="size-4" />}
-            />
-            <KpiCard
-              title="Archived"
-              value={String(counts.Archived)}
-              icon={<Archive className="size-4" />}
-            />
+            {(Object.keys(counts) as (keyof typeof counts)[]).map((tab) => {
+              const selected = activeFilter === tab
+              return (
+                <KpiCard
+                  key={tab}
+                  title={tab}
+                  value={String(counts[tab])}
+                  icon={kpiIcons[tab]}
+                  tone={selected ? kpiTones[tab] : 'neutral'}
+                  onClick={() => setActiveFilter(tab)}
+                  className={cn(
+                    'transition-colors',
+                    selected
+                      ? 'border-primary/50 bg-primary/5'
+                      : 'hover:bg-accent/50',
+                  )}
+                />
+              )
+            })}
           </KpiGrid>
 
           <DashboardCard
@@ -1285,26 +1256,21 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
                   >
                     <Grid className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="size-8" onClick={() => setActiveFilter('All')} title="All filters">
-                    <Filter className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
             }
           >
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              {(Object.keys(counts) as (keyof typeof counts)[]).map((tab) => (
-                <Button
-                  key={tab}
-                  variant={activeFilter === tab ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveFilter(tab)}
-                  className="gap-1.5"
-                >
-                  {tab}
-                  <Badge variant={activeFilter === tab ? 'secondary' : 'outline'} className="h-5 px-1.5 text-xs">{counts[tab]}</Badge>
+              <span className="text-xs text-muted-foreground">
+                {activeFilter === 'All' ? 'Showing all active projects' : `Filtered by ${activeFilter}`}
+                {' · '}
+                {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
+              </span>
+              {activeFilter !== 'All' && (
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setActiveFilter('All')}>
+                  Clear filter
                 </Button>
-              ))}
+              )}
             </div>
 
             {listView === 'table' ? (
