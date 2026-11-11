@@ -71,7 +71,7 @@ export function VehicleDetailDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[14px] border border-border/80 bg-background p-0 shadow-lg sm:max-w-3xl">
         {/* Banner with Vehicle Photo and Tier Theme */}
         <div className="relative flex min-h-[160px] w-full shrink-0 items-end overflow-hidden border-b border-border/70 sm:min-h-[190px]">
           <img
@@ -304,7 +304,7 @@ export function VehicleDetailDialog({
         </div>
 
         {/* Action Footer */}
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 bg-background px-5 py-3.5 sm:px-6">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 bg-muted/60 px-5 py-3.5 sm:px-6">
           <Button
             type="button"
             variant="outline"

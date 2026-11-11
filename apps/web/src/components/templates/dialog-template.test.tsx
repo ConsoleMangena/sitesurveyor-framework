@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { Button } from "@/components/ui/button.tsx";
 import { DialogTemplate, DialogActionButtons } from "./DialogTemplate.tsx";
 
 describe("DialogTemplate", () => {
@@ -28,6 +29,44 @@ describe("DialogTemplate", () => {
     const panel = screen.getByRole("dialog");
     expect(panel.querySelector(".dlg-header")).not.toBeNull();
     expect(panel.querySelector(".dlg-body")).not.toBeNull();
+  });
+
+  it("tints the icon tile and shares one header scale", () => {
+    render(
+      <DialogTemplate
+        open
+        onOpenChange={() => {}}
+        title="Delete project"
+        description="This cannot be undone."
+        kicker="Project"
+        tone="danger"
+        icon={<span>!</span>}
+      />,
+    );
+    const panel = screen.getByRole("dialog");
+    const tile = panel.querySelector(".dlg-header-icon");
+    expect(tile).not.toBeNull();
+    expect(tile?.className).toContain("text-error");
+    expect(screen.getByText("Project")).toBeTruthy();
+    expect(panel.querySelector(".dlg-body")).toBeNull();
+  });
+
+  it("places footer notes opposite the actions", () => {
+    render(
+      <DialogTemplate
+        open
+        onOpenChange={() => {}}
+        title="Edit widget"
+        footerNote="Changes apply to this workspace only."
+        footer={<Button>Save</Button>}
+      >
+        <p>Body</p>
+      </DialogTemplate>,
+    );
+    const footer = screen.getByRole("dialog").querySelector(".dlg-footer");
+    expect(footer?.querySelector(".dlg-footer-note")?.textContent).toContain(
+      "Changes apply to this workspace only.",
+    );
   });
 
   it("renders the footer region only when actions are supplied", () => {

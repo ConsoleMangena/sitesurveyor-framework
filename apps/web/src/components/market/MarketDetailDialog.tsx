@@ -273,7 +273,7 @@ export function MarketDetailDialog({
           contentRef.current?.focus({ preventScroll: true });
         }}
         className={cn(
-          "web3-theme flex flex-col gap-0 overflow-hidden rounded-2xl border border-border/80 bg-background p-0 shadow-2xl sm:gap-0 sm:p-0",
+          "web3-theme flex flex-col gap-0 overflow-hidden rounded-[14px] border border-border/80 bg-background p-0 shadow-lg sm:gap-0 sm:p-0",
           fullScreen
             ? "h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)]! max-h-none! max-w-none!"
             : "fixed inset-auto left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-h-[85dvh] sm:max-w-4xl"
@@ -758,7 +758,7 @@ export function MarketDetailDialog({
         </div>
 
         {!inlineListingActions ? (
-          <div className="shrink-0 border-t border-border/80 bg-background px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-7">
+          <div className="shrink-0 border-t border-border/80 bg-muted/60 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-7">
             {renderActions(dot)}
           </div>
         ) : null}

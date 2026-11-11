@@ -2,10 +2,13 @@ import * as React from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { DESCRIPTION_CLASS, KICKER_CLASS, TITLE_CLASS } from "./chrome";
 
 export interface PageFormProps {
   title: React.ReactNode;
   description?: React.ReactNode;
+  /** Small uppercase line above the title, matching the dialog header. */
+  kicker?: React.ReactNode;
   onBack: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -16,6 +19,7 @@ export interface PageFormProps {
 export function PageForm({
   title,
   description,
+  kicker,
   onBack,
   children,
   footer,
@@ -40,10 +44,11 @@ export function PageForm({
           <ArrowLeft size={16} />
           Back
         </Button>
-        <div className="min-w-0">
-          <h1 className="text-lg font-semibold leading-tight">{title}</h1>
+        <div className="min-w-0 flex-1">
+          {kicker && <p className={KICKER_CLASS}>{kicker}</p>}
+          <h1 className={cn("mt-1", TITLE_CLASS)}>{title}</h1>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className={cn("mt-0.5", DESCRIPTION_CLASS)}>{description}</p>
           )}
         </div>
       </header>
@@ -58,7 +63,7 @@ export function PageForm({
       </div>
 
       {footer && (
-        <footer className="flex flex-col-reverse gap-2 border-t px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:justify-end">
+        <footer className="flex flex-col-reverse gap-2 border-t bg-muted/60 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:justify-end">
           {footer}
         </footer>
       )}

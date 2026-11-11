@@ -148,7 +148,7 @@ export function BookingSlip({
           event.preventDefault();
           contentRef.current?.focus({ preventScroll: true });
         }}
-        className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-2xl border border-border/80 bg-background p-0 shadow-2xl sm:max-w-lg sm:gap-0 sm:p-0"
+        className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-[14px] border border-border/80 bg-background p-0 shadow-lg sm:max-w-lg sm:gap-0 sm:p-0"
       >
         <div
           className={cn(
@@ -255,7 +255,7 @@ export function BookingSlip({
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-background px-5 py-4 sm:px-6">
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-muted/60 px-5 py-4 sm:px-6">
               <Button
                 type="button"
                 className="h-11 rounded-xl px-5 text-sm font-semibold"
@@ -458,7 +458,7 @@ export function BookingSlip({
               ) : null}
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-background px-5 py-4 sm:px-6">
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-muted/60 px-5 py-4 sm:px-6">
               <Button
                 type="button"
                 variant="outline"

@@ -62,10 +62,7 @@ function AlertDialogHeader({
   return (
     <div
       data-slot="alert-dialog-header"
-      className={cn(
-        "dlg-alert-header flex flex-col gap-2 text-start",
-        className,
-      )}
+      className={cn("dlg-header", className)}
       {...props}
     />
   )
@@ -78,10 +75,7 @@ function AlertDialogFooter({
   return (
     <div
       data-slot="alert-dialog-footer"
-      className={cn(
-        "dlg-alert-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
-        className,
-      )}
+      className={cn("dlg-footer", className)}
       {...props}
     />
   )
@@ -95,7 +89,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "text-[16px] font-bold leading-tight tracking-[-0.018em]",
+        "text-base font-semibold leading-snug tracking-[-0.01em]",
         className,
       )}
       {...props}
@@ -110,7 +104,10 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-[13px] leading-[1.5] text-muted-foreground", className)}
+      className={cn(
+        "text-[13px] leading-[1.5] text-muted-foreground",
+        className,
+      )}
       {...props}
     />
   )

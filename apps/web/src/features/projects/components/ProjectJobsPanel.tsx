@@ -20,14 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogTemplate } from "@/components/templates/DialogTemplate";
 import {
   Empty,
   EmptyContent,
@@ -82,7 +75,10 @@ function formatDate(iso: string): string {
 
 function scheduleText(job: JobWithProject): string | null {
   const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    new Date(iso).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+    });
   if (job.scheduled_start && job.scheduled_end) {
     return `${fmt(job.scheduled_start)} – ${fmt(job.scheduled_end)}`;
   }
@@ -100,7 +96,11 @@ interface ProjectJobsPanelProps {
  * Earth Observation jobs live here; an EO job is recognised by the survey
  * specification JSON in its description and hands off to the EO workbench.
  */
-export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: ProjectJobsPanelProps) {
+export function ProjectJobsPanel({
+  workspaceId,
+  projectId,
+  onNavigate,
+}: ProjectJobsPanelProps) {
   const [allJobs, setAllJobs] = useState<JobWithProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,14 +125,20 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
       setError(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load the jobs in this project.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load the jobs in this project.",
+      );
     } finally {
       setLoading(false);
     }
   }, [load]);
 
   const jobs = allJobs.filter((job) => job.project_id === projectId);
-  const attachable = allJobs.filter((job) => !job.project_id && !job.archived_at);
+  const attachable = allJobs.filter(
+    (job) => !job.project_id && !job.archived_at,
+  );
 
   const openInEarthObservation = (job: JobWithProject) => {
     onNavigate?.("satellite", {
@@ -154,7 +160,9 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
       setAttachOpen(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to attach that job.");
+      setError(
+        err instanceof Error ? err.message : "Unable to attach that job.",
+      );
     } finally {
       setAttachingId(null);
     }
@@ -183,7 +191,9 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
       setNewStart("");
       await load();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Unable to create that job.");
+      setFormError(
+        err instanceof Error ? err.message : "Unable to create that job.",
+      );
     } finally {
       setCreating(false);
     }
@@ -195,19 +205,34 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
         <div className="min-w-0">
           <CardTitle className="text-base">Jobs</CardTitle>
           <CardDescription>
-            The field jobs and Earth Observation surveys carried out under this project.
+            The field jobs and Earth Observation surveys carried out under this
+            project.
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAttachOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => setAttachOpen(true)}
+          >
             <Link2 className="size-3.5" />
             Attach job
           </Button>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={newEarthObservation}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={newEarthObservation}
+          >
             <Satellite className="size-3.5" />
             New Earth Observation
           </Button>
-          <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setCreateOpen(true)}
+          >
             <Plus className="size-3.5" />
             New job
           </Button>
@@ -228,23 +253,40 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
               <EmptyMedia variant="icon">
                 <ClipboardList />
               </EmptyMedia>
-              <EmptyTitle className="text-base">No jobs in this project yet</EmptyTitle>
+              <EmptyTitle className="text-base">
+                No jobs in this project yet
+              </EmptyTitle>
               <EmptyDescription>
-                Every survey and field job carried out under this project will be listed
-                here, with Earth Observation work opening straight into its workbench.
+                Every survey and field job carried out under this project will
+                be listed here, with Earth Observation work opening straight
+                into its workbench.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <div className="flex flex-wrap justify-center gap-2">
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAttachOpen(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setAttachOpen(true)}
+                >
                   <Link2 className="size-3.5" />
                   Attach a job
                 </Button>
-                <Button size="sm" className="gap-1.5" onClick={newEarthObservation}>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={newEarthObservation}
+                >
                   <Satellite className="size-3.5" />
                   New Earth Observation
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setCreateOpen(true)}
+                >
                   <Plus className="size-3.5" />
                   New job
                 </Button>
@@ -265,11 +307,17 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="min-w-0 truncate text-sm font-medium" title={job.title}>
+                      <p
+                        className="min-w-0 truncate text-sm font-medium"
+                        title={job.title}
+                      >
                         {job.title}
                       </p>
                       {isEo ? (
-                        <Badge variant="outline" className="shrink-0 gap-1 text-[11px]">
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 gap-1 text-[11px]"
+                        >
                           <Satellite className="size-3" aria-hidden="true" />
                           EO
                         </Badge>
@@ -280,13 +328,22 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
                       {when ? <span>· {when}</span> : null}
                       {job.location ? (
                         <span className="inline-flex items-center gap-1">
-                          · <MapPin className="size-3 shrink-0" aria-hidden="true" />
-                          <span className="min-w-0 truncate">{job.location}</span>
+                          ·{" "}
+                          <MapPin
+                            className="size-3 shrink-0"
+                            aria-hidden="true"
+                          />
+                          <span className="min-w-0 truncate">
+                            {job.location}
+                          </span>
                         </span>
                       ) : null}
                     </div>
                   </div>
-                  <Badge variant={statusVariant[job.status] ?? "secondary"} className="shrink-0">
+                  <Badge
+                    variant={statusVariant[job.status] ?? "secondary"}
+                    className="shrink-0"
+                  >
                     {statusLabel[job.status] ?? job.status}
                   </Badge>
                 </button>
@@ -296,201 +353,229 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
         )}
       </CardContent>
 
-      <Dialog
+      <DialogTemplate
         open={detailJob !== null}
         onOpenChange={(open) => {
           if (!open) setDetailJob(null);
         }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          {detailJob ? (
+        size="lg"
+        kicker="Job"
+        icon={<ClipboardList className="size-4" aria-hidden="true" />}
+        title={detailJob?.title ?? "Job"}
+        description={
+          detailJob ? `Created ${formatDate(detailJob.created_at)}` : undefined
+        }
+        footer={
+          detailJob ? (
             <>
-              <DialogHeader>
-                <DialogTitle className="min-w-0 truncate pr-6">{detailJob.title}</DialogTitle>
-                <DialogDescription>Created {formatDate(detailJob.created_at)}</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={statusVariant[detailJob.status] ?? "secondary"}>
-                    {statusLabel[detailJob.status] ?? detailJob.status}
-                  </Badge>
-                  {detailJob.job_type ? (
-                    <Badge variant="outline">{detailJob.job_type}</Badge>
-                  ) : null}
-                  {parseJobSpec(detailJob.description) ? (
-                    <Badge variant="outline" className="gap-1">
-                      <Satellite className="size-3" aria-hidden="true" />
-                      Earth Observation
-                    </Badge>
-                  ) : null}
-                </div>
-                {(() => {
-                  const spec = parseJobSpec(detailJob.description);
-                  if (!spec) return null;
-                  return (
-                    <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-xs tabular-nums text-muted-foreground">
-                      <p className="font-semibold text-foreground">Survey ground</p>
-                      <p className="mt-1">
-                        {spec.latitude.toFixed(5)}, {spec.longitude.toFixed(5)} · ±{spec.halfDeg}°
-                      </p>
-                    </div>
-                  );
-                })()}
-                <dl className="space-y-2">
-                  {detailJob.location ? (
-                    <div className="flex items-center justify-between gap-3">
-                      <dt className="text-muted-foreground">Location</dt>
-                      <dd className="min-w-0 truncate font-medium" title={detailJob.location}>
-                        {detailJob.location}
-                      </dd>
-                    </div>
-                  ) : null}
-                  {scheduleText(detailJob) ? (
-                    <div className="flex items-center justify-between gap-3">
-                      <dt className="flex items-center gap-1.5 text-muted-foreground">
-                        <CalendarDays className="size-3.5" aria-hidden="true" />
-                        Schedule
-                      </dt>
-                      <dd className="font-medium">{scheduleText(detailJob)}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-                {detailJob.description ? (
-                  <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
-                    {detailJob.description}
-                  </p>
-                ) : null}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetailJob(null)}>
-                  Close
+              <Button variant="outline" onClick={() => setDetailJob(null)}>
+                Close
+              </Button>
+              {parseJobSpec(detailJob.description) ? (
+                <Button
+                  className="gap-1.5"
+                  onClick={() => {
+                    openInEarthObservation(detailJob);
+                    setDetailJob(null);
+                  }}
+                >
+                  <Satellite className="size-4" aria-hidden="true" />
+                  Open in Earth Observation
                 </Button>
-                {parseJobSpec(detailJob.description) ? (
-                  <Button
-                    className="gap-1.5"
-                    onClick={() => {
-                      openInEarthObservation(detailJob);
-                      setDetailJob(null);
-                    }}
-                  >
-                    <Satellite className="size-4" aria-hidden="true" />
-                    Open in Earth Observation
-                  </Button>
-                ) : null}
-              </DialogFooter>
+              ) : null}
             </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+          ) : null
+        }
+      >
+        {detailJob ? (
+          <>
+            <div className="space-y-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={statusVariant[detailJob.status] ?? "secondary"}>
+                  {statusLabel[detailJob.status] ?? detailJob.status}
+                </Badge>
+                {detailJob.job_type ? (
+                  <Badge variant="outline">{detailJob.job_type}</Badge>
+                ) : null}
+                {parseJobSpec(detailJob.description) ? (
+                  <Badge variant="outline" className="gap-1">
+                    <Satellite className="size-3" aria-hidden="true" />
+                    Earth Observation
+                  </Badge>
+                ) : null}
+              </div>
+              {(() => {
+                const spec = parseJobSpec(detailJob.description);
+                if (!spec) return null;
+                return (
+                  <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-xs tabular-nums text-muted-foreground">
+                    <p className="font-semibold text-foreground">
+                      Survey ground
+                    </p>
+                    <p className="mt-1">
+                      {spec.latitude.toFixed(5)}, {spec.longitude.toFixed(5)} ·
+                      ±{spec.halfDeg}°
+                    </p>
+                  </div>
+                );
+              })()}
+              <dl className="space-y-2">
+                {detailJob.location ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">Location</dt>
+                    <dd
+                      className="min-w-0 truncate font-medium"
+                      title={detailJob.location}
+                    >
+                      {detailJob.location}
+                    </dd>
+                  </div>
+                ) : null}
+                {scheduleText(detailJob) ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="flex items-center gap-1.5 text-muted-foreground">
+                      <CalendarDays className="size-3.5" aria-hidden="true" />
+                      Schedule
+                    </dt>
+                    <dd className="font-medium">{scheduleText(detailJob)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              {detailJob.description ? (
+                <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+                  {detailJob.description}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </DialogTemplate>
 
-      <Dialog open={attachOpen} onOpenChange={setAttachOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Attach a job to this project</DialogTitle>
-            <DialogDescription>
-              Pick a workspace job that does not belong to a project yet.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-72 space-y-1.5 overflow-y-auto">
-            {attachable.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Every workspace job already belongs to a project.
-              </p>
-            ) : (
-              attachable.map((job) => (
-                <button
-                  key={job.id}
-                  type="button"
-                  disabled={attachingId !== null}
-                  onClick={() => void handleAttach(job)}
-                  className="flex w-full items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-left transition-colors hover:bg-accent/60 disabled:opacity-50"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium" title={job.title}>
-                      {job.title}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {job.job_type ?? "Job"} · created {formatDate(job.created_at)}
-                    </span>
+      <DialogTemplate
+        open={attachOpen}
+        onOpenChange={setAttachOpen}
+        kicker="Project job"
+        icon={<Link2 className="size-4" aria-hidden="true" />}
+        title="Attach a job to this project"
+        description="Pick a workspace job that does not belong to a project yet."
+      >
+        <div className="space-y-1.5">
+          {attachable.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Every workspace job already belongs to a project.
+            </p>
+          ) : (
+            attachable.map((job) => (
+              <button
+                key={job.id}
+                type="button"
+                disabled={attachingId !== null}
+                onClick={() => void handleAttach(job)}
+                className="flex w-full items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-left transition-colors hover:bg-accent/60 disabled:opacity-50"
+              >
+                <span className="min-w-0">
+                  <span
+                    className="block truncate text-sm font-medium"
+                    title={job.title}
+                  >
+                    {job.title}
                   </span>
-                  {attachingId === job.id ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Plus className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {job.job_type ?? "Job"} · created{" "}
+                    {formatDate(job.created_at)}
+                  </span>
+                </span>
+                {attachingId === job.id ? (
+                  <Loader2
+                    className="size-4 shrink-0 animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Plus
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      </DialogTemplate>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New job in this project</DialogTitle>
-            <DialogDescription>
-              The job starts as planned and can be scheduled once the crew is set.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="project-job-title">Title</Label>
-              <Input
-                id="project-job-title"
-                value={newTitle}
-                onChange={(event) => setNewTitle(event.target.value)}
-                placeholder="e.g. Boundary survey — Phase 2"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="project-job-type">Type</Label>
-                <select
-                  id="project-job-type"
-                  value={newType}
-                  onChange={(event) => setNewType(event.target.value)}
-                  className={`${fieldClass} w-full`}
-                >
-                  {FIELD_JOB_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="project-job-start">Start date</Label>
-                <Input
-                  id="project-job-start"
-                  type="date"
-                  value={newStart}
-                  onChange={(event) => setNewStart(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="project-job-location">Location</Label>
-              <Input
-                id="project-job-location"
-                value={newLocation}
-                onChange={(event) => setNewLocation(event.target.value)}
-                placeholder="Site or area (optional)"
-              />
-            </div>
-            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
-          </div>
-          <DialogFooter>
+      <DialogTemplate
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        kicker="Project job"
+        icon={<Plus className="size-4" aria-hidden="true" />}
+        title="New job in this project"
+        description="The job starts as planned and can be scheduled once the crew is set."
+        footer={
+          <>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={creating || !newTitle.trim()} onClick={() => void handleCreate()}>
-              {creating ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+            <Button
+              disabled={creating || !newTitle.trim()}
+              onClick={() => void handleCreate()}
+            >
+              {creating ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : null}
               Create job
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="project-job-title">Title</Label>
+            <Input
+              id="project-job-title"
+              value={newTitle}
+              onChange={(event) => setNewTitle(event.target.value)}
+              placeholder="e.g. Boundary survey — Phase 2"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="project-job-type">Type</Label>
+              <select
+                id="project-job-type"
+                value={newType}
+                onChange={(event) => setNewType(event.target.value)}
+                className={`${fieldClass} w-full`}
+              >
+                {FIELD_JOB_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="project-job-start">Start date</Label>
+              <Input
+                id="project-job-start"
+                type="date"
+                value={newStart}
+                onChange={(event) => setNewStart(event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="project-job-location">Location</Label>
+            <Input
+              id="project-job-location"
+              value={newLocation}
+              onChange={(event) => setNewLocation(event.target.value)}
+              placeholder="Site or area (optional)"
+            />
+          </div>
+          {formError ? (
+            <p className="text-sm text-destructive">{formError}</p>
+          ) : null}
+        </div>
+      </DialogTemplate>
     </Card>
   );
 }

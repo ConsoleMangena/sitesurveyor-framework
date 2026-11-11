@@ -7,11 +7,17 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button-variants.ts";
+import {
+  DESCRIPTION_CLASS,
+  KICKER_CLASS,
+  TITLE_CLASS,
+  TONE_CLASS,
+  type Tone,
+} from "./chrome";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -24,9 +30,18 @@ interface ConfirmDialogProps {
   destructive?: boolean;
   disabled?: boolean;
   form?: string;
+  /** Optional icon tile, tinted with `tone`. */
+  icon?: ReactNode;
+  tone?: Tone;
+  kicker?: ReactNode;
   children?: ReactNode;
 }
 
+/**
+ * A confirmation uses the same header, body and footer frame as every form
+ * dialog — it only swaps the primary action for a destructive one and adds an
+ * alert role so screen readers announce it.
+ */
 export function ConfirmDialog({
   open,
   onOpenChange,
@@ -38,21 +53,41 @@ export function ConfirmDialog({
   destructive = false,
   disabled = false,
   form,
+  icon,
+  tone,
+  kicker,
   children,
 }: ConfirmDialogProps) {
+  const resolvedTone: Tone = tone ?? (destructive ? "danger" : "default");
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
-        <AlertDialogHeader className="text-start">
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          {description !== undefined && (
-            <AlertDialogDescription asChild>
-              <div>{description}</div>
-            </AlertDialogDescription>
-          )}
-        </AlertDialogHeader>
-        {children ? <div className="dlg-alert-body">{children}</div> : null}
-        <AlertDialogFooter>
+        <div className="dlg-header">
+          {icon ? (
+            <span
+              className={cn("dlg-header-icon", TONE_CLASS[resolvedTone])}
+            >
+              {icon}
+            </span>
+          ) : null}
+          <div className="dlg-header-main">
+            {kicker ? <p className={KICKER_CLASS}>{kicker}</p> : null}
+            <AlertDialogTitle className={TITLE_CLASS}>
+              {title}
+            </AlertDialogTitle>
+            {description !== undefined && (
+              <AlertDialogDescription
+                className={cn("mt-0.5", DESCRIPTION_CLASS)}
+                asChild
+              >
+                <div>{description}</div>
+              </AlertDialogDescription>
+            )}
+          </div>
+        </div>
+        {children ? <div className="dlg-body">{children}</div> : null}
+        <AlertDialogFooter className="dlg-footer">
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             type={form ? "submit" : "button"}

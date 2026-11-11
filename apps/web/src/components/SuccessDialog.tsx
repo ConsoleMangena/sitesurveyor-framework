@@ -9,10 +9,14 @@ export interface SuccessDialogProps {
   message: string;
 }
 
+/**
+ * A settled action. Same frame as every other dialog — only the icon tile is
+ * tinted green, so success reads instantly without a second layout.
+ */
 export function SuccessDialog({
   open,
   onOpenChange,
-  title = "Success",
+  title = "Done",
   message,
 }: SuccessDialogProps) {
   return (
@@ -21,17 +25,15 @@ export function SuccessDialog({
       onOpenChange={onOpenChange}
       title={title}
       description={message}
+      tone="success"
+      icon={<CheckCircle2 className="size-[18px]" aria-hidden="true" />}
       size="sm"
       footer={
         <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
           Done
         </Button>
       }
-    >
-      <div className="flex justify-center py-4">
-        <CheckCircle2 className="h-12 w-12 text-success" />
-      </div>
-    </DialogTemplate>
+    />
   );
 }
 
