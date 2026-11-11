@@ -41,6 +41,26 @@ export function MarketInquiryPanel({
   const [seats, setSeats] = useState("1");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
+
+  const nameError = attempted && !name.trim() ? "Enter your name." : null;
+  const emailError = !attempted
+    ? null
+    : !email.trim()
+      ? "Enter your email address."
+      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+        ? "Enter a valid email address."
+        : null;
+  const seatsError =
+    attempted && kind === "event" && (!seats.trim() || !(Number(seats) >= 1))
+      ? "Enter at least 1 seat."
+      : null;
+
+  const toggleOpen = () => {
+    setOpen((value) => !value);
+    setAttempted(false);
+    setError(null);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -73,10 +93,11 @@ export function MarketInquiryPanel({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      setError("Add your name and email so the publisher can reply.");
+    setAttempted(true);
+    if (!name.trim() || !email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return;
     }
+    if (kind === "event" && !(Number(seats) >= 1)) return;
     setBusy(true);
     setError(null);
     try {
@@ -130,29 +151,39 @@ export function MarketInquiryPanel({
         <Button
           size="sm"
           className={primaryActionClass}
-          onClick={() => setOpen((value) => !value)}
+          onClick={toggleOpen}
         >
           {label}
         </Button>
       </DialogActionRow>
       {open ? (
-        <form onSubmit={submit} className="mt-4 space-y-3 border-t border-border/80 pt-4 text-left">
+        <form onSubmit={submit} className="mt-4 space-y-3 border-t border-border/80 pt-4 text-left" noValidate>
           <p className="text-xs text-muted-foreground">
             Your inquiry goes to whoever published “{itemName}” on the market.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="inquiry-name" className="text-xs">Your name</Label>
+              <Label htmlFor="inquiry-name" className="text-xs">
+                Your name <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="inquiry-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1.5 h-10 bg-background text-sm"
                 autoComplete="name"
+                disabled={busy}
+                aria-invalid={!!nameError}
+                aria-describedby={nameError ? "inquiry-name-error" : undefined}
               />
+              {nameError ? (
+                <FieldError id="inquiry-name-error" className="mt-1.5">{nameError}</FieldError>
+              ) : null}
             </div>
             <div>
-              <Label htmlFor="inquiry-email" className="text-xs">Email</Label>
+              <Label htmlFor="inquiry-email" className="text-xs">
+                Email <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="inquiry-email"
                 type="email"
@@ -160,7 +191,14 @@ export function MarketInquiryPanel({
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1.5 h-10 bg-background text-sm"
                 autoComplete="email"
+                inputMode="email"
+                disabled={busy}
+                aria-invalid={!!emailError}
+                aria-describedby={emailError ? "inquiry-email-error" : undefined}
               />
+              {emailError ? (
+                <FieldError id="inquiry-email-error" className="mt-1.5">{emailError}</FieldError>
+              ) : null}
             </div>
           </div>
           {kind === "job" ? (
@@ -172,12 +210,15 @@ export function MarketInquiryPanel({
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="mt-1.5 h-10 bg-background text-sm"
+                disabled={busy}
               />
             </div>
           ) : null}
           {kind === "event" ? (
             <div>
-              <Label htmlFor="inquiry-seats" className="text-xs">Seats</Label>
+              <Label htmlFor="inquiry-seats" className="text-xs">
+                Seats <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="inquiry-seats"
                 type="number"
@@ -185,7 +226,13 @@ export function MarketInquiryPanel({
                 value={seats}
                 onChange={(e) => setSeats(e.target.value)}
                 className="mt-1.5 h-10 bg-background text-sm"
+                disabled={busy}
+                aria-invalid={!!seatsError}
+                aria-describedby={seatsError ? "inquiry-seats-error" : undefined}
               />
+              {seatsError ? (
+                <FieldError id="inquiry-seats-error" className="mt-1.5">{seatsError}</FieldError>
+              ) : null}
             </div>
           ) : null}
           <div>
@@ -197,6 +244,7 @@ export function MarketInquiryPanel({
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Introduce yourself and what you need…"
               className="mt-1.5 bg-background text-sm leading-6"
+              disabled={busy}
             />
           </div>
           {error ? <FieldError>{error}</FieldError> : null}

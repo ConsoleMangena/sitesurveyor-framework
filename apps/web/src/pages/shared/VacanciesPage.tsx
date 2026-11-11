@@ -23,6 +23,7 @@ import {
   Waves,
   Scan,
   Globe,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -78,6 +79,7 @@ import {
 } from "../../components/ui/empty.tsx";
 import { Skeleton } from "../../components/ui/skeleton.tsx";
 import { cn } from "../../lib/utils.ts";
+import FieldError from "../../components/errors/FieldError.tsx";
 
 interface VacanciesPageProps {
   workspaceId: string;
@@ -142,11 +144,14 @@ export default function VacanciesPage({
   const [applying, setApplying] = useState(false);
   const [applySuccess, setApplySuccess] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [applyAttempted, setApplyAttempted] = useState(false);
 
   // Editor (Platform Admin)
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savingVacancy, setSavingVacancy] = useState(false);
+  const [vacancyAttempted, setVacancyAttempted] = useState(false);
+  const [vacancyError, setVacancyError] = useState<string | null>(null);
 
   // Form Fields
   const [fTitle, setFTitle] = useState("");
@@ -267,6 +272,8 @@ export default function VacanciesPage({
     setFStartsOn("");
     setFPhotoPath("");
     setPhotoError(null);
+    setVacancyAttempted(false);
+    setVacancyError(null);
     persistedPhoto.current = null;
     sessionUpload.current = null;
     setEditorOpen(true);
@@ -293,6 +300,8 @@ export default function VacanciesPage({
     setFStartsOn(v.starts_on ?? "");
     setFPhotoPath(v.photo_path ?? "");
     setPhotoError(null);
+    setVacancyAttempted(false);
+    setVacancyError(null);
     persistedPhoto.current = v.photo_path ?? null;
     sessionUpload.current = null;
     setEditorOpen(true);
@@ -300,13 +309,14 @@ export default function VacanciesPage({
   };
 
   // Save Vacancy
-  const handleSaveVacancy = async () => {
+  const handleSaveVacancy = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setVacancyAttempted(true);
     if (!fTitle.trim() || !fLocation.trim()) {
-      setError("Title and location are required.");
       return;
     }
     setSavingVacancy(true);
-    setError(null);
+    setVacancyError(null);
     try {
       const payload: VacancyCreateInput = {
         title: fTitle.trim(),
@@ -344,7 +354,7 @@ export default function VacanciesPage({
       setEditorOpen(false);
       await loadData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save vacancy.");
+      setVacancyError(e instanceof Error ? e.message : "Failed to save vacancy.");
     } finally {
       setSavingVacancy(false);
     }
@@ -392,10 +402,12 @@ export default function VacanciesPage({
   };
 
   // Apply Handler
-  const handleApply = async () => {
+  const handleApply = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!selectedVacancy) return;
-    if (!applicantEmail.trim() || !applicantName.trim()) {
-      setApplyError("Please provide your name and email address.");
+    setApplyAttempted(true);
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail.trim());
+    if (!applicantEmail.trim() || !applicantName.trim() || !emailOk) {
       return;
     }
     setApplying(true);
@@ -434,6 +446,8 @@ export default function VacanciesPage({
   }
 
   if (editorOpen) {
+    const titleError = vacancyAttempted && !fTitle.trim();
+    const locationError = vacancyAttempted && !fLocation.trim();
     return (
       <PageForm
         title={editingId ? "Edit Job Vacancy" : "Post a Job Vacancy"}
@@ -448,13 +462,29 @@ export default function VacanciesPage({
             >
               Cancel
             </Button>
-            <Button onClick={() => void handleSaveVacancy()} disabled={savingVacancy}>
+            <Button
+              type="submit"
+              form="vacancy-editor-form"
+              disabled={savingVacancy}
+              className="gap-1.5"
+            >
+              {savingVacancy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {savingVacancy ? "Saving…" : "Save Vacancy"}
             </Button>
           </>
         }
       >
-        <div className="mx-auto w-full max-w-6xl">
+        <form
+          id="vacancy-editor-form"
+          onSubmit={(e) => void handleSaveVacancy(e)}
+          noValidate
+          className="mx-auto w-full max-w-6xl"
+        >
+          {vacancyError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{vacancyError}</AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0 space-y-6">
               <Card>
@@ -473,7 +503,13 @@ export default function VacanciesPage({
                       onChange={(e) => setFTitle(e.target.value)}
                       placeholder="e.g. Senior Cadastral Surveyor"
                       autoFocus
+                      disabled={savingVacancy}
+                      aria-invalid={titleError || undefined}
+                      aria-describedby={titleError ? "v-title-error" : undefined}
                     />
+                    {titleError && (
+                      <FieldError id="v-title-error">Enter a job title.</FieldError>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
@@ -551,7 +587,15 @@ export default function VacanciesPage({
                       value={fLocation}
                       onChange={(e) => setFLocation(e.target.value)}
                       placeholder="e.g. Harare, Zimbabwe"
+                      disabled={savingVacancy}
+                      aria-invalid={locationError || undefined}
+                      aria-describedby={locationError ? "v-location-error" : undefined}
                     />
+                    {locationError && (
+                      <FieldError id="v-location-error">
+                        Enter a location, or “Remote” for fully remote roles.
+                      </FieldError>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <Switch
@@ -757,10 +801,16 @@ export default function VacanciesPage({
               </Card>
             </aside>
           </div>
-        </div>
+        </form>
       </PageForm>
     );
   }
+
+  const appNameError = applyAttempted && !applicantName.trim();
+  const appEmailError =
+    applyAttempted &&
+    (!applicantEmail.trim() ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail.trim()));
 
   return (
     <DashboardShell className="w-full max-w-full space-y-6">
@@ -890,6 +940,7 @@ export default function VacanciesPage({
                   setShowApplyModal(false);
                   setApplySuccess(false);
                   setApplyError(null);
+                  setApplyAttempted(false);
                 }}
                 role="button"
                 tabIndex={0}
@@ -900,6 +951,7 @@ export default function VacanciesPage({
                     setShowApplyModal(false);
                     setApplySuccess(false);
                     setApplyError(null);
+                    setApplyAttempted(false);
                   }
                 }}
               >
@@ -1110,25 +1162,52 @@ export default function VacanciesPage({
                             <AlertDescription>{applyError}</AlertDescription>
                           </Alert>
                         )}
+                        <form
+                          id="vacancy-apply-form"
+                          onSubmit={(e) => void handleApply(e)}
+                          noValidate
+                          className="space-y-4"
+                        >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div className="space-y-1.5">
-                            <Label htmlFor="app-name">Full Name</Label>
+                            <Label htmlFor="app-name">
+                              Full Name <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                               id="app-name"
                               value={applicantName}
                               onChange={(e) => setApplicantName(e.target.value)}
                               placeholder="Your full name"
+                              autoComplete="name"
+                              disabled={applying}
+                              aria-invalid={appNameError || undefined}
+                              aria-describedby={appNameError ? "app-name-error" : undefined}
                             />
+                            {appNameError && (
+                              <FieldError id="app-name-error">Enter your full name.</FieldError>
+                            )}
                           </div>
                           <div className="space-y-1.5">
-                            <Label htmlFor="app-email">Email Address</Label>
+                            <Label htmlFor="app-email">
+                              Email Address <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                               id="app-email"
                               type="email"
+                              inputMode="email"
                               value={applicantEmail}
                               onChange={(e) => setApplicantEmail(e.target.value)}
                               placeholder="name@example.com"
+                              autoComplete="email"
+                              disabled={applying}
+                              aria-invalid={appEmailError || undefined}
+                              aria-describedby={appEmailError ? "app-email-error" : undefined}
                             />
+                            {appEmailError && (
+                              <FieldError id="app-email-error">
+                                Enter a valid email address.
+                              </FieldError>
+                            )}
                           </div>
                         </div>
 
@@ -1139,6 +1218,7 @@ export default function VacanciesPage({
                             type="date"
                             value={desiredStartDate}
                             onChange={(e) => setDesiredStartDate(e.target.value)}
+                            disabled={applying}
                           />
                         </div>
 
@@ -1150,11 +1230,13 @@ export default function VacanciesPage({
                             value={applicantMessage}
                             onChange={(e) => setApplicantMessage(e.target.value)}
                             placeholder="Highlight relevant certifications, instruments operated (e.g. Leica, Trimble), or regional experience..."
+                            disabled={applying}
                           />
                         </div>
 
                         <div className="flex justify-end gap-2 pt-2">
                           <Button
+                            type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => setShowApplyModal(false)}
@@ -1163,14 +1245,16 @@ export default function VacanciesPage({
                             Cancel
                           </Button>
                           <Button
+                            type="submit"
                             size="sm"
-                            onClick={() => void handleApply()}
                             disabled={applying}
                             className="gap-1.5"
                           >
+                            {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                             {applying ? "Submitting…" : "Send Application"}
                           </Button>
                         </div>
+                        </form>
                       </>
                     )}
                   </CardContent>

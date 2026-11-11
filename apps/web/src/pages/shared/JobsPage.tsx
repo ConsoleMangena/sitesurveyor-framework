@@ -1,4 +1,7 @@
 import { useState, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Mountain,
   MapPinned,
@@ -19,6 +22,7 @@ import {
   Sprout,
   ShieldAlert,
   Satellite,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -46,7 +50,14 @@ import { Skeleton } from "../../components/ui/skeleton.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
-import { Label } from "../../components/ui/label.tsx";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../../components/ui/form.tsx";
 import { Textarea } from "../../components/ui/textarea.tsx";
 import {
   Select,
@@ -67,12 +78,51 @@ import { ComboboxField } from "../../components/templates/ComboboxField.tsx";
 import { DialogTemplate } from "../../components/templates/DialogTemplate.tsx";
 import { PageForm } from "../../components/templates/PageForm.tsx";
 import { SuccessDialog } from "../../components/SuccessDialog.tsx";
+import ErrorNotice from "../../components/errors/ErrorNotice.tsx";
 import { Alert, AlertDescription } from "../../components/ui/alert.tsx";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx";
 import { Separator } from "../../components/ui/separator.tsx";
 import { cn } from "../../lib/utils.ts";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
+
+const jobEditorSchema = z
+  .object({
+    title: z.string().trim().min(1, "Enter a job title."),
+    description: z.string(),
+    job_type: z.string(),
+    location: z.string(),
+    status: z.enum(["planned", "scheduled", "in_progress", "completed", "cancelled"]),
+    project_id: z.string(),
+    scheduled_start: z.string(),
+    scheduled_end: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    if (
+      values.scheduled_start &&
+      values.scheduled_end &&
+      new Date(values.scheduled_end).getTime() < new Date(values.scheduled_start).getTime()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scheduled_end"],
+        message: "The end time must be after the start time.",
+      });
+    }
+  });
+
+type JobEditorValues = z.infer<typeof jobEditorSchema>;
+
+const jobEditorDefaults: JobEditorValues = {
+  title: "",
+  description: "",
+  job_type: "",
+  location: "",
+  status: "planned",
+  project_id: "",
+  scheduled_start: "",
+  scheduled_end: "",
+};
 
 interface JobsPageProps {
   workspaceId: string;
@@ -191,16 +241,14 @@ export default function JobsPage({
   const [error, setError] = useState<string | null>(null);
   const [jobEditorOpen, setJobEditorOpen] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
-  const [savingJob, setSavingJob] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [jobTitle, setJobTitle] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [jobType, setJobType] = useState("");
-  const [jobLocation, setJobLocation] = useState("");
-  const [jobStatus, setJobStatus] = useState<JobStatus>("planned");
-  const [jobProjectId, setJobProjectId] = useState("");
-  const [jobScheduledStart, setJobScheduledStart] = useState("");
-  const [jobScheduledEnd, setJobScheduledEnd] = useState("");
+  const jobForm = useForm<JobEditorValues>({
+    resolver: zodResolver(jobEditorSchema),
+    defaultValues: jobEditorDefaults,
+  });
+  const savingJob = jobForm.formState.isSubmitting;
+  const jobValues = jobForm.watch();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<JobFilter>("all");
   const [selectedJob, setSelectedJob] = useState<JobWithProject | null>(null);
@@ -236,48 +284,40 @@ export default function JobsPage({
 
   const openCreateEditor = () => {
     setEditingJobId(null);
-    setJobTitle("");
-    setJobDescription("");
-    setJobType("");
-    setJobLocation("");
-    setJobStatus("planned");
-    setJobProjectId("");
-    setJobScheduledStart("");
-    setJobScheduledEnd("");
+    setEditorError(null);
+    jobForm.reset(jobEditorDefaults);
     setJobEditorOpen(true);
   };
 
   const openEditEditor = (job: JobWithProject) => {
     setEditingJobId(job.id);
-    setJobTitle(job.title);
-    setJobDescription(job.description ?? "");
-    setJobType(job.job_type ?? "");
-    setJobLocation(job.location ?? "");
-    setJobStatus(job.status);
-    setJobProjectId(job.project_id ?? "");
-    setJobScheduledStart(toDatetimeLocal(job.scheduled_start));
-    setJobScheduledEnd(toDatetimeLocal(job.scheduled_end));
+    setEditorError(null);
+    jobForm.reset({
+      title: job.title,
+      description: job.description ?? "",
+      job_type: job.job_type ?? "",
+      location: job.location ?? "",
+      status: job.status,
+      project_id: job.project_id ?? "",
+      scheduled_start: toDatetimeLocal(job.scheduled_start),
+      scheduled_end: toDatetimeLocal(job.scheduled_end),
+    });
     setJobEditorOpen(true);
     setSelectedJob(null);
   };
 
-  const saveJobEditor = async () => {
-    if (!jobTitle.trim()) {
-      setError("Job title is required.");
-      return;
-    }
-    setError(null);
-    setSavingJob(true);
+  const saveJobEditor = async (values: JobEditorValues) => {
+    setEditorError(null);
     try {
       const base = {
-        title: jobTitle.trim(),
-        description: jobDescription.trim() || null,
-        job_type: jobType.trim() || null,
-        location: jobLocation.trim() || null,
-        status: jobStatus,
-        project_id: jobProjectId || null,
-        scheduled_start: fromDatetimeLocal(jobScheduledStart),
-        scheduled_end: fromDatetimeLocal(jobScheduledEnd),
+        title: values.title,
+        description: values.description.trim() || null,
+        job_type: values.job_type.trim() || null,
+        location: values.location.trim() || null,
+        status: values.status as JobStatus,
+        project_id: values.project_id || null,
+        scheduled_start: fromDatetimeLocal(values.scheduled_start),
+        scheduled_end: fromDatetimeLocal(values.scheduled_end),
       };
       if (editingJobId) {
         await updateJob(editingJobId, base);
@@ -288,9 +328,7 @@ export default function JobsPage({
       await fetchJobs();
       setSuccessMessage(editingJobId ? "Job updated successfully." : "Job created successfully.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save job.");
-    } finally {
-      setSavingJob(false);
+      setEditorError(e instanceof Error ? e.message : "Failed to save job.");
     }
   };
 
@@ -398,15 +436,27 @@ export default function JobsPage({
             <Button variant="outline" onClick={() => setJobEditorOpen(false)} disabled={savingJob}>
               Cancel
             </Button>
-            <Button onClick={() => void saveJobEditor()} disabled={savingJob}>
+            <Button type="submit" form="job-editor-form" disabled={savingJob}>
+              {savingJob && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {savingJob ? "Saving…" : "Save"}
             </Button>
           </>
         }
       >
-        <div className="mx-auto w-full max-w-6xl">
+        <Form {...jobForm}>
+        <form
+          id="job-editor-form"
+          onSubmit={jobForm.handleSubmit(saveJobEditor)}
+          className="mx-auto w-full max-w-6xl"
+          noValidate
+        >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
+              {editorError ? (
+                <ErrorNotice tone="danger" onDismiss={() => setEditorError(null)}>
+                  {editorError}
+                </ErrorNotice>
+              ) : null}
               {/* ── Job Details ──────────────────────────────── */}
               <Card>
                 <CardHeader>
@@ -424,51 +474,91 @@ export default function JobsPage({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="job-editor-title">
-                        Title <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="job-editor-title"
-                        value={jobTitle}
-                        onChange={(e) => setJobTitle(e.target.value)}
-                        placeholder="e.g. Site Boundary Survey"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="job-editor-desc">Description</Label>
-                      <Textarea
-                        id="job-editor-desc"
-                        rows={3}
-                        value={jobDescription}
-                        onChange={(e) => setJobDescription(e.target.value)}
-                        placeholder="Briefly describe the scope of work"
-                      />
-                    </div>
+                    <FormField
+                      control={jobForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Title <span className="text-destructive">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Site Boundary Survey"
+                              autoFocus
+                              disabled={savingJob}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={jobForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              rows={3}
+                              placeholder="Briefly describe the scope of work"
+                              disabled={savingJob}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <ComboboxField
-                        label="Job type"
-                        value={jobType}
-                        onChange={(v) => setJobType(v)}
-                        options={JOB_TYPE_OPTIONS}
-                        placeholder="Select type"
-                        emptyText="No types found."
-                        optional
-                        optionalLabel="No type"
+                      <FormField
+                        control={jobForm.control}
+                        name="job_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Job type</FormLabel>
+                            <FormControl>
+                              <ComboboxField
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                options={JOB_TYPE_OPTIONS}
+                                placeholder="Select type"
+                                emptyText="No types found."
+                                optional
+                                optionalLabel="No type"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      <ComboboxField
-                        label="Project"
-                        value={jobProjectId}
-                        onChange={(v) => setJobProjectId(v)}
-                        options={projectOptions.map((p) => ({
-                          value: p.id,
-                          label: p.name || "Untitled project",
-                        }))}
-                        placeholder="Select project"
-                        emptyText="No projects found."
-                        optional
-                        optionalLabel="No project"
+                      <FormField
+                        control={jobForm.control}
+                        name="project_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Project</FormLabel>
+                            <FormControl>
+                              <ComboboxField
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                options={projectOptions.map((p) => ({
+                                  value: p.id,
+                                  label: p.name || "Untitled project",
+                                }))}
+                                placeholder="Select project"
+                                emptyText="No projects found."
+                                optional
+                                optionalLabel="No project"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
                   </div>
@@ -494,37 +584,56 @@ export default function JobsPage({
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="job-editor-location">Location</Label>
-                      <Input
-                        id="job-editor-location"
-                        value={jobLocation}
-                        onChange={(e) => setJobLocation(e.target.value)}
-                        placeholder="e.g. 123 North St"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Status</Label>
-                      <Select
-                        value={jobStatus}
-                        onValueChange={(v) => setJobStatus(v as JobStatus)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="planned">Planned</SelectItem>
-                          <SelectItem value="scheduled">Scheduled</SelectItem>
-                          <SelectItem value="in_progress">
-                            In progress
-                          </SelectItem>
-                          <SelectItem value="completed">
-                            Completed
-                          </SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <FormField
+                      control={jobForm.control}
+                      name="location"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. 123 North St"
+                              autoComplete="street-address"
+                              disabled={savingJob}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={jobForm.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={savingJob}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="planned">Planned</SelectItem>
+                              <SelectItem value="scheduled">Scheduled</SelectItem>
+                              <SelectItem value="in_progress">
+                                In progress
+                              </SelectItem>
+                              <SelectItem value="completed">
+                                Completed
+                              </SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -547,26 +656,40 @@ export default function JobsPage({
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="job-editor-start">
-                        Scheduled start
-                      </Label>
-                      <Input
-                        id="job-editor-start"
-                        type="datetime-local"
-                        value={jobScheduledStart}
-                        onChange={(e) => setJobScheduledStart(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="job-editor-end">Scheduled end</Label>
-                      <Input
-                        id="job-editor-end"
-                        type="datetime-local"
-                        value={jobScheduledEnd}
-                        onChange={(e) => setJobScheduledEnd(e.target.value)}
-                      />
-                    </div>
+                    <FormField
+                      control={jobForm.control}
+                      name="scheduled_start"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Scheduled start</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              disabled={savingJob}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={jobForm.control}
+                      name="scheduled_end"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Scheduled end</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="datetime-local"
+                              disabled={savingJob}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -584,24 +707,24 @@ export default function JobsPage({
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Type</dt>
                       <dd className="truncate font-medium capitalize">
-                        {jobType || "—"}
+                        {jobValues.job_type || "—"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Status</dt>
-                      <dd className="font-medium">{mapStatus(jobStatus)}</dd>
+                      <dd className="font-medium">{mapStatus(jobValues.status)}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Project</dt>
                       <dd className="truncate font-medium">
-                        {projectOptions.find((p) => p.id === jobProjectId)
+                        {projectOptions.find((p) => p.id === jobValues.project_id)
                           ?.name || "None"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Location</dt>
                       <dd className="truncate font-medium">
-                        {jobLocation || "—"}
+                        {jobValues.location || "—"}
                       </dd>
                     </div>
                   </dl>
@@ -609,7 +732,8 @@ export default function JobsPage({
               </Card>
             </aside>
           </div>
-        </div>
+        </form>
+        </Form>
       </PageForm>
     );
   }

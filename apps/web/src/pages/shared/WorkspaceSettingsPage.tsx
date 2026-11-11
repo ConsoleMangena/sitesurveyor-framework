@@ -32,6 +32,7 @@ import {
 } from "../../components/ui/empty.tsx";
 import { ResponsiveTable } from "../../components/ui/responsive-table.tsx";
 import ErrorNotice from "../../components/errors/ErrorNotice.tsx";
+import FieldError from "../../components/errors/FieldError.tsx";
 import {
   DashboardHeader,
   DashboardSection,
@@ -139,6 +140,7 @@ export default function WorkspaceSettingsPage({
   const [walletBusy, setWalletBusy] = useState<"deposit" | "verify" | null>(null);
   const [walletMessage, setWalletMessage] = useState<CheckoutMessage>(null);
   const [depositAmount, setDepositAmount] = useState("25");
+  const [depositAttempted, setDepositAttempted] = useState(false);
   const [activeDepositId, setActiveDepositId] = useState<string | null>(null);
 
   const returnedDepositId = searchParams.get("pesepay") === "wallet-return"
@@ -232,13 +234,12 @@ export default function WorkspaceSettingsPage({
   }, [returnedDepositId, checkDeposit, isPlatformAdmin]);
 
   const depositFunds = async () => {
+    setDepositAttempted(true);
     const amount = Number(depositAmount);
     if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
-      setWalletMessage({ tone: "error", text: "Enter a deposit amount between USD 1 and USD 10,000." });
       return;
     }
     if (Math.abs(amount * 100 - Math.round(amount * 100)) > 0.0001) {
-      setWalletMessage({ tone: "error", text: "Use no more than two decimal places for the deposit." });
       return;
     }
 
@@ -261,6 +262,17 @@ export default function WorkspaceSettingsPage({
   const storageLimitGB = limitMb / 1024;
   const isNearLimit = percent >= 80;
   const isAtLimit = percent >= 95;
+
+  const depositAmountNumber = Number(depositAmount);
+  const depositAmountError = !depositAttempted
+    ? null
+    : !Number.isFinite(depositAmountNumber) ||
+        depositAmountNumber < 1 ||
+        depositAmountNumber > 10000
+      ? "Enter an amount between USD 1 and USD 10,000."
+      : Math.abs(depositAmountNumber * 100 - Math.round(depositAmountNumber * 100)) > 0.0001
+        ? "Use no more than two decimal places."
+        : null;
 
   if (isPlatformAdmin) {
     return (
@@ -400,6 +412,7 @@ export default function WorkspaceSettingsPage({
                   </div>
                   <form
                     className="w-full max-w-sm space-y-2 sm:w-auto sm:text-right"
+                    noValidate
                     onSubmit={(event) => {
                       event.preventDefault();
                       void depositFunds();
@@ -417,13 +430,23 @@ export default function WorkspaceSettingsPage({
                         value={depositAmount}
                         onChange={(event) => setDepositAmount(event.target.value)}
                         disabled={walletBusy !== null}
-                        aria-describedby="pesepay-deposit-help"
+                        aria-invalid={depositAmountError ? true : undefined}
+                        aria-describedby={
+                          depositAmountError
+                            ? "pesepay-deposit-amount-error pesepay-deposit-help"
+                            : "pesepay-deposit-help"
+                        }
                       />
                       <Button type="submit" size="sm" className="shrink-0 gap-2" disabled={walletBusy !== null}>
                         {walletBusy === "deposit" && <Loader2 size={14} className="animate-spin" />}
                         {walletBusy === "deposit" ? "Opening…" : "Add with PesePay"}
                       </Button>
                     </div>
+                    {depositAmountError && (
+                      <FieldError id="pesepay-deposit-amount-error" className="sm:justify-end">
+                        {depositAmountError}
+                      </FieldError>
+                    )}
                   </form>
                 </div>
 

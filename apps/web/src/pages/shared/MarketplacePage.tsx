@@ -56,6 +56,7 @@ import {
 } from "../../components/market/MarketCartSheet.tsx";
 import { ListingPaymentPanel } from "../../components/market/ListingPaymentPanel.tsx";
 import PageLoader from "../../components/PageLoader.tsx";
+import FieldError from "../../components/errors/FieldError.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
@@ -139,6 +140,8 @@ export default function MarketplacePage({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savingListing, setSavingListing] = useState(false);
+  const [listingAttempted, setListingAttempted] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
   const [mName, setMName] = useState("");
   const [mType, setMType] = useState("Total Station");
   const [mCondition, setMCondition] = useState("Good");
@@ -157,6 +160,7 @@ export default function MarketplacePage({
   const [requestEndDate, setRequestEndDate] = useState("");
   const [requestSending, setRequestSending] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [requestAttempted, setRequestAttempted] = useState(false);
   /** The buyer's latest request on the open listing — payment waits on `accepted`. */
   const [listingRequest, setListingRequest] =
     useState<MarketplaceRequestRow | null>(null);
@@ -266,6 +270,7 @@ export default function MarketplacePage({
     setSelectedListing(listing);
     setShowRequestForm(false);
     setRequestSent(false);
+    setRequestAttempted(false);
     setRequestMessage("");
     setRequestStartDate("");
     setRequestEndDate("");
@@ -277,6 +282,8 @@ export default function MarketplacePage({
 
   const handleSubmitRequest = useCallback(async () => {
     if (!selectedListing) return;
+    setRequestAttempted(true);
+    if (requestStartDate && requestEndDate && requestEndDate < requestStartDate) return;
     setRequestSending(true);
     try {
       const created = await createMarketplaceRequest({
@@ -305,6 +312,8 @@ export default function MarketplacePage({
 
   const openCreateListing = () => {
     setEditingId(null);
+    setListingAttempted(false);
+    setEditorError(null);
     setMName("");
     setMType("Total Station");
     setMCondition("Good");
@@ -320,6 +329,8 @@ export default function MarketplacePage({
 
   const openEditListing = (row: MarketplaceListingRow) => {
     setEditingId(row.id);
+    setListingAttempted(false);
+    setEditorError(null);
     setMName(row.name);
     setMType(row.type);
     setMCondition(row.condition);
@@ -334,23 +345,23 @@ export default function MarketplacePage({
     setSelectedListing(null);
   };
 
-  const saveListing = async () => {
+  const saveListing = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setListingAttempted(true);
     const existing = editingId
       ? listingState.find((l) => l.id === editingId)
       : null;
     const isOwner = existing?.workspace_id === workspaceId;
     const canManage = isPlatformAdmin || isOwner;
     if (!canManage) {
-      setFetchError("Only the listing owner or a platform administrator can edit this listing.");
+      setEditorError("Only the listing owner or a platform administrator can edit this listing.");
       return;
     }
     if (!mName.trim() || !mSeller.trim() || !mLocation.trim()) {
-      setFetchError("Name, seller, and location are required.");
       return;
     }
     const priceNum = Number(mPrice);
-    if (!Number.isFinite(priceNum) || priceNum < 0) {
-      setFetchError("Enter a valid price.");
+    if (!mPrice.trim() || !Number.isFinite(priceNum) || priceNum < 0) {
       return;
     }
     const specsArr = mSpecs
@@ -358,7 +369,7 @@ export default function MarketplacePage({
       .map((s) => s.trim())
       .filter(Boolean);
     setSavingListing(true);
-    setFetchError(null);
+    setEditorError(null);
     try {
       const payload = {
         name: mName.trim(),
@@ -381,7 +392,7 @@ export default function MarketplacePage({
       setEditorOpen(false);
       await fetchListings();
     } catch (e) {
-      setFetchError(e instanceof Error ? e.message : "Failed to save listing.");
+      setEditorError(e instanceof Error ? e.message : "Failed to save listing.");
     } finally {
       setSavingListing(false);
     }
@@ -450,6 +461,22 @@ export default function MarketplacePage({
     };
 
   if (editorOpen) {
+    const fieldErrors = {
+      name: listingAttempted && !mName.trim() ? "Enter a listing name." : null,
+      seller: listingAttempted && !mSeller.trim() ? "Enter the seller or provider." : null,
+      location:
+        listingAttempted && !mLocation.trim()
+          ? "Enter where the instrument is located."
+          : null,
+      price: !listingAttempted
+        ? null
+        : !mPrice.trim()
+          ? "Enter a price."
+          : !Number.isFinite(Number(mPrice)) || Number(mPrice) < 0
+            ? "Enter a valid price (0 or more)."
+            : null,
+    };
+
     return (
       <PageForm
         title={editingId ? "Edit listing" : "List an instrument"}
@@ -460,7 +487,7 @@ export default function MarketplacePage({
             <Button variant="outline" onClick={() => setEditorOpen(false)} disabled={savingListing}>
               Cancel
             </Button>
-            <Button onClick={saveListing} disabled={savingListing}>
+            <Button type="submit" form="listing-editor-form" disabled={savingListing}>
               {savingListing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
@@ -474,9 +501,19 @@ export default function MarketplacePage({
           </>
         }
       >
-        <div className="mx-auto w-full max-w-6xl">
+        <form
+          id="listing-editor-form"
+          onSubmit={(e) => void saveListing(e)}
+          className="mx-auto w-full max-w-6xl"
+          noValidate
+        >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
+              {editorError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{editorError}</AlertDescription>
+                </Alert>
+              ) : null}
               {/* ── Listing Details ──────────────────────────── */}
               <Card>
                 <CardHeader>
@@ -497,15 +534,22 @@ export default function MarketplacePage({
                 <CardContent>
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label>
+                      <Label htmlFor="listing-name">
                         Name <span className="text-destructive">*</span>
                       </Label>
                       <Input
+                        id="listing-name"
                         value={mName}
                         onChange={(e) => setMName(e.target.value)}
                         placeholder="e.g. Leica TS16"
                         autoFocus
+                        disabled={savingListing}
+                        aria-invalid={!!fieldErrors.name}
+                        aria-describedby={fieldErrors.name ? "listing-name-error" : undefined}
                       />
+                      {fieldErrors.name ? (
+                        <FieldError id="listing-name-error">{fieldErrors.name}</FieldError>
+                      ) : null}
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
@@ -519,20 +563,24 @@ export default function MarketplacePage({
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Specs (comma separated)</Label>
+                        <Label htmlFor="listing-specs">Specs (comma separated)</Label>
                         <Input
+                          id="listing-specs"
                           value={mSpecs}
                           onChange={(e) => setMSpecs(e.target.value)}
                           placeholder="e.g. 2'' accuracy, 1000m range"
+                          disabled={savingListing}
                         />
                       </div>
                       <div className="space-y-1.5 sm:col-span-2">
-                        <Label>Description</Label>
+                        <Label htmlFor="listing-description">Description</Label>
                         <Textarea
+                          id="listing-description"
                           value={mDescription}
                           onChange={(e) => setMDescription(e.target.value)}
                           placeholder="Optional details about the asset's history or inclusions."
                           rows={3}
+                          disabled={savingListing}
                         />
                       </div>
                     </div>
@@ -570,24 +618,35 @@ export default function MarketplacePage({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Currency</Label>
+                      <Label htmlFor="listing-currency">Currency</Label>
                       <Input
+                        id="listing-currency"
                         value={mCurrency}
                         onChange={(e) => setMCurrency(e.target.value)}
                         placeholder="USD"
+                        disabled={savingListing}
                       />
                     </div>
                     <div className="space-y-1.5 sm:col-span-2">
-                      <Label>
+                      <Label htmlFor="listing-price">
                         Price <span className="text-destructive">*</span>
                       </Label>
                       <Input
+                        id="listing-price"
                         type="number"
                         min="0"
+                        step="0.01"
+                        inputMode="decimal"
                         value={mPrice}
                         onChange={(e) => setMPrice(e.target.value)}
                         placeholder="0.00"
+                        disabled={savingListing}
+                        aria-invalid={!!fieldErrors.price}
+                        aria-describedby={fieldErrors.price ? "listing-price-error" : undefined}
                       />
+                      {fieldErrors.price ? (
+                        <FieldError id="listing-price-error">{fieldErrors.price}</FieldError>
+                      ) : null}
                     </div>
                   </div>
                 </CardContent>
@@ -613,25 +672,39 @@ export default function MarketplacePage({
                 <CardContent>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label>
+                      <Label htmlFor="listing-location">
                         Location <span className="text-destructive">*</span>
                       </Label>
                       <Input
+                        id="listing-location"
                         value={mLocation}
                         onChange={(e) => setMLocation(e.target.value)}
                         placeholder="e.g. City, country"
+                        disabled={savingListing}
+                        aria-invalid={!!fieldErrors.location}
+                        aria-describedby={fieldErrors.location ? "listing-location-error" : undefined}
                       />
+                      {fieldErrors.location ? (
+                        <FieldError id="listing-location-error">{fieldErrors.location}</FieldError>
+                      ) : null}
                     </div>
                     <div className="space-y-1.5">
-                      <Label>
+                      <Label htmlFor="listing-seller">
                         Seller / Provider{" "}
                         <span className="text-destructive">*</span>
                       </Label>
                       <Input
+                        id="listing-seller"
                         value={mSeller}
                         onChange={(e) => setMSeller(e.target.value)}
                         placeholder="Your firm or name"
+                        disabled={savingListing}
+                        aria-invalid={!!fieldErrors.seller}
+                        aria-describedby={fieldErrors.seller ? "listing-seller-error" : undefined}
                       />
+                      {fieldErrors.seller ? (
+                        <FieldError id="listing-seller-error">{fieldErrors.seller}</FieldError>
+                      ) : null}
                     </div>
                     <div className="space-y-1.5 sm:col-span-2">
                       <Label>Receiving Wallet</Label>
@@ -707,7 +780,7 @@ export default function MarketplacePage({
               </Card>
             </aside>
           </div>
-        </div>
+        </form>
       </PageForm>
     );
   }
@@ -1013,20 +1086,52 @@ export default function MarketplacePage({
                     {selectedListing.listing_type === "hire" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Start Date</Label>
+                          <Label htmlFor="market-request-start" className="text-xs">Start Date</Label>
                           <Input
+                            id="market-request-start"
                             type="date"
                             value={requestStartDate}
                             onChange={(e) => setRequestStartDate(e.target.value)}
+                            disabled={requestSending}
+                            aria-invalid={
+                              requestAttempted &&
+                              !!requestStartDate &&
+                              !!requestEndDate &&
+                              requestEndDate < requestStartDate
+                            }
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs">End Date</Label>
+                          <Label htmlFor="market-request-end" className="text-xs">End Date</Label>
                           <Input
+                            id="market-request-end"
                             type="date"
                             value={requestEndDate}
                             onChange={(e) => setRequestEndDate(e.target.value)}
+                            disabled={requestSending}
+                            aria-invalid={
+                              requestAttempted &&
+                              !!requestStartDate &&
+                              !!requestEndDate &&
+                              requestEndDate < requestStartDate
+                            }
+                            aria-describedby={
+                              requestAttempted &&
+                              requestStartDate &&
+                              requestEndDate &&
+                              requestEndDate < requestStartDate
+                                ? "market-request-date-error"
+                                : undefined
+                            }
                           />
+                          {requestAttempted &&
+                          requestStartDate &&
+                          requestEndDate &&
+                          requestEndDate < requestStartDate ? (
+                            <FieldError id="market-request-date-error">
+                              The end date must be on or after the start date.
+                            </FieldError>
+                          ) : null}
                         </div>
                       </div>
                     )}
@@ -1035,6 +1140,8 @@ export default function MarketplacePage({
                       value={requestMessage}
                       onChange={(e) => setRequestMessage(e.target.value)}
                       rows={3}
+                      disabled={requestSending}
+                      aria-label="Message to the seller (optional)"
                     />
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setShowRequestForm(false)}>

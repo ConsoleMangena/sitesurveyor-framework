@@ -20,7 +20,7 @@ export interface ComboboxOption {
 }
 
 interface ComboboxFieldProps {
-  label: string;
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   options: ComboboxOption[];
@@ -28,6 +28,10 @@ interface ComboboxFieldProps {
   emptyText?: string;
   optional?: boolean;
   optionalLabel?: string;
+  id?: string;
+  onBlur?: () => void;
+  "aria-invalid"?: boolean | "true" | "false";
+  "aria-describedby"?: string;
 }
 
 export function ComboboxField({
@@ -39,6 +43,10 @@ export function ComboboxField({
   emptyText = "No matches found.",
   optional = false,
   optionalLabel = "None",
+  id,
+  onBlur,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedby,
 }: ComboboxFieldProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -55,68 +63,78 @@ export function ComboboxField({
     setOpen(false);
   };
 
+  const control = (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          id={id}
+          aria-expanded={open}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedby}
+          onBlur={onBlur}
+          className="h-9 w-full justify-between px-3 font-normal aria-invalid:border-destructive aria-invalid:ring-destructive/20"
+        >
+          <span className={cn("truncate", !value && "text-muted-foreground")}>
+            {selected ? selected.label : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+      >
+        <Command>
+          <CommandInput
+            placeholder="Search..."
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandGroup>
+              {optional && (
+                <CommandItem value={optionalLabel} onSelect={() => select("")}>
+                  <Check
+                    className={cn(
+                      "size-4",
+                      value === "" ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {optionalLabel}
+                </CommandItem>
+              )}
+              {filtered.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  onSelect={() => select(option.value)}
+                >
+                  <Check
+                    className={cn(
+                      "size-4",
+                      value === option.value ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+
+  if (!label) return control;
+
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="h-9 w-full justify-between px-3 font-normal"
-          >
-            <span className={cn("truncate", !value && "text-muted-foreground")}>
-              {selected ? selected.label : placeholder}
-            </span>
-            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="w-[var(--radix-popover-trigger-width)] p-0"
-        >
-          <Command>
-            <CommandInput
-              placeholder="Search..."
-              value={query}
-              onValueChange={setQuery}
-            />
-            <CommandList>
-              <CommandEmpty>{emptyText}</CommandEmpty>
-              <CommandGroup>
-                {optional && (
-                  <CommandItem value={optionalLabel} onSelect={() => select("")}>
-                    <Check
-                      className={cn(
-                        "size-4",
-                        value === "" ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    {optionalLabel}
-                  </CommandItem>
-                )}
-                {filtered.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.label}
-                    onSelect={() => select(option.value)}
-                  >
-                    <Check
-                      className={cn(
-                        "size-4",
-                        value === option.value ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    {option.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+      <Label htmlFor={id}>{label}</Label>
+      {control}
     </div>
   );
 }

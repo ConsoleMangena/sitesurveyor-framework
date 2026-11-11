@@ -15,6 +15,7 @@ import {
   ClipboardList,
   ListChecks,
   ScrollText,
+  Loader2,
 } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
@@ -93,6 +94,7 @@ interface InvoiceDetailProps {
     status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
   };
   savingDetails: boolean;
+  detailsError: string | null;
   organizations: OrganizationRow[];
   projectOptions: { id: string; name: string }[];
   onChange: (id: string, field: keyof InvoiceLineItem, value: string | number) => void;
@@ -122,6 +124,7 @@ function InvoiceDetail({
   editing,
   editDraft,
   savingDetails,
+  detailsError,
   organizations,
   projectOptions,
   onChange,
@@ -306,11 +309,14 @@ function InvoiceDetail({
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-inv-number">Invoice number</Label>
+                <Label htmlFor="edit-inv-number">
+                  Invoice number <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="edit-inv-number"
                   value={editDraft.invoice_number}
                   onChange={(e) => onEditDraftChange({ invoice_number: e.target.value })}
+                  aria-invalid={!editDraft.invoice_number.trim()}
                 />
               </div>
               <div className="space-y-1.5">
@@ -389,6 +395,7 @@ function InvoiceDetail({
                 />
               </div>
             </div>
+            {detailsError ? <FieldError>{detailsError}</FieldError> : null}
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -547,6 +554,27 @@ interface InvoiceDraft {
   items: InvoiceLineItem[];
 }
 
+type InvoiceFieldErrors = Partial<
+  Record<"invoice_number" | "issue_date" | "due_date" | "items", string>
+>;
+
+function validateInvoiceDraft(draft: InvoiceDraft): InvoiceFieldErrors {
+  const errors: InvoiceFieldErrors = {};
+  if (!draft.invoice_number.trim()) {
+    errors.invoice_number = "Enter an invoice number.";
+  }
+  if (!draft.issue_date) {
+    errors.issue_date = "Pick an issue date.";
+  }
+  if (draft.due_date && draft.issue_date && draft.due_date < draft.issue_date) {
+    errors.due_date = "The due date must be on or after the issue date.";
+  }
+  if (!draft.items.some((item) => item.description.trim().length > 0)) {
+    errors.items = "Add at least one line item description.";
+  }
+  return errors;
+}
+
 interface InvoicesPageProps {
   workspaceId: string;
 }
@@ -588,6 +616,9 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
   const [localItems, setLocalItems] = useState<InvoiceLineItem[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [submittingInvoice, setSubmittingInvoice] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const deleteState = useDialogState();
   const [invoiceToDelete, setInvoiceToDelete] = useState<UiInvoice | null>(null);
@@ -862,6 +893,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
 
   const handleStartEditDetails = () => {
     if (!activeInvoice) return;
+    setDetailsError(null);
     setEditDraft({
       invoice_number: activeInvoice.id,
       organization_id: activeInvoice.clientId ?? "",
@@ -876,6 +908,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
 
   const handleCancelEditDetails = () => {
     setEditingDetails(false);
+    setDetailsError(null);
     setEditDraft({
       invoice_number: "",
       organization_id: "",
@@ -896,9 +929,14 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
     if (!activeInvoice) return;
     const number = editDraft.invoice_number.trim();
     if (!number) {
-      setError("Invoice number is required.");
+      setDetailsError("Invoice number is required.");
       return;
     }
+    if (editDraft.due_date && editDraft.issue_date && editDraft.due_date < editDraft.issue_date) {
+      setDetailsError("The due date must be on or after the issue date.");
+      return;
+    }
+    setDetailsError(null);
     setSavingDetails(true);
     try {
       await updateInvoice(activeInvoice.dbId, {
@@ -913,7 +951,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
       await fetchInvoices();
       setSuccessMessage("Invoice details updated.");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update invoice details");
+      setDetailsError(err instanceof Error ? err.message : "Failed to update invoice details");
     } finally {
       setSavingDetails(false);
     }
@@ -921,6 +959,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
 
   const openCreateForm = () => {
     setCreateError(null);
+    setAttemptedSubmit(false);
     setEditingInvoiceId(null);
     const { issueDate, dueDate } = defaultInvoiceDates();
     setDraftInvoice({
@@ -992,21 +1031,16 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
     }
   };
 
-  const submitCreateInvoice = async () => {
-    if (!draftInvoice.invoice_number.trim()) {
-      setCreateError("Invoice number is required.");
-      return;
-    }
+  const submitCreateInvoice = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setAttemptedSubmit(true);
+    if (Object.keys(validateInvoiceDraft(draftInvoice)).length > 0) return;
 
     const cleanedItems = draftInvoice.items
       .map((item) => ({ ...item, description: item.description.trim() }))
       .filter((item) => item.description.length > 0);
 
-    if (cleanedItems.length === 0) {
-      setCreateError("Add at least one line item description.");
-      return;
-    }
-
+    setSubmittingInvoice(true);
     try {
       if (isEditing && editingInvoiceId) {
         await updateInvoice(editingInvoiceId, {
@@ -1057,6 +1091,8 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
       );
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : "Failed to save invoice");
+    } finally {
+      setSubmittingInvoice(false);
     }
   };
 
@@ -1072,6 +1108,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
     const invoiceSubtotal = calcTotal(draftInvoice.items);
     const invoiceVat = invoiceSubtotal * 0.15;
     const invoiceTotal = invoiceSubtotal + invoiceVat;
+    const fieldErrors = attemptedSubmit ? validateInvoiceDraft(draftInvoice) : {};
 
     return (
       <PageForm
@@ -1093,6 +1130,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
             <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="outline"
+                disabled={submittingInvoice}
                 onClick={() => {
                   setIsCreateOpen(false);
                   setEditingInvoiceId(null);
@@ -1100,14 +1138,29 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
               >
                 Cancel
               </Button>
-              <Button onClick={submitCreateInvoice} className="gap-1.5">
-                {isEditing ? "Save Changes" : "Create Invoice"}
+              <Button
+                type="submit"
+                form="invoice-create-form"
+                disabled={submittingInvoice}
+                className="gap-1.5"
+              >
+                {submittingInvoice && <Loader2 size={14} className="animate-spin" />}
+                {submittingInvoice
+                  ? "Saving..."
+                  : isEditing
+                    ? "Save Changes"
+                    : "Create Invoice"}
               </Button>
             </div>
           </div>
         }
       >
-        <div className="mx-auto w-full max-w-6xl">
+        <form
+          id="invoice-create-form"
+          onSubmit={(e) => void submitCreateInvoice(e)}
+          className="mx-auto w-full max-w-6xl"
+          noValidate
+        >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
               {/* ── Invoice Details ──────────────────────────── */}
@@ -1128,7 +1181,9 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
                 <CardContent>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="inv-number">Invoice number</Label>
+                      <Label htmlFor="inv-number">
+                        Invoice number <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         id="inv-number"
                         placeholder="e.g. INV-2026-020"
@@ -1139,7 +1194,14 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
                             invoice_number: e.target.value,
                           }))
                         }
+                        aria-invalid={!!fieldErrors.invoice_number}
+                        aria-describedby={fieldErrors.invoice_number ? "inv-number-error" : undefined}
+                        disabled={submittingInvoice}
+                        autoFocus
                       />
+                      {fieldErrors.invoice_number ? (
+                        <FieldError id="inv-number-error">{fieldErrors.invoice_number}</FieldError>
+                      ) : null}
                     </div>
                     <ComboboxField
                       label="Client"
@@ -1170,7 +1232,9 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
                       optionalLabel="No project"
                     />
                     <div className="space-y-1.5">
-                      <Label htmlFor="inv-issue">Issue date</Label>
+                      <Label htmlFor="inv-issue">
+                        Issue date <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         id="inv-issue"
                         type="date"
@@ -1178,7 +1242,13 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
                         onChange={(e) =>
                           setDraftInvoice((prev) => ({ ...prev, issue_date: e.target.value }))
                         }
+                        aria-invalid={!!fieldErrors.issue_date}
+                        aria-describedby={fieldErrors.issue_date ? "inv-issue-error" : undefined}
+                        disabled={submittingInvoice}
                       />
+                      {fieldErrors.issue_date ? (
+                        <FieldError id="inv-issue-error">{fieldErrors.issue_date}</FieldError>
+                      ) : null}
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="inv-due">Due date</Label>
@@ -1189,7 +1259,13 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
                         onChange={(e) =>
                           setDraftInvoice((prev) => ({ ...prev, due_date: e.target.value }))
                         }
+                        aria-invalid={!!fieldErrors.due_date}
+                        aria-describedby={fieldErrors.due_date ? "inv-due-error" : undefined}
+                        disabled={submittingInvoice}
                       />
+                      {fieldErrors.due_date ? (
+                        <FieldError id="inv-due-error">{fieldErrors.due_date}</FieldError>
+                      ) : null}
                     </div>
                     <div className="space-y-1.5">
                       <Label>Status</Label>
@@ -1252,6 +1328,9 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
                     onRemove={removeDraftItem}
                     bare
                   />
+                  {fieldErrors.items ? (
+                    <FieldError className="mt-2">{fieldErrors.items}</FieldError>
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -1347,7 +1426,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
               </Card>
             </aside>
           </div>
-        </div>
+        </form>
       </PageForm>
     );
   }
@@ -1568,6 +1647,7 @@ export default function InvoicesPage({ workspaceId }: InvoicesPageProps) {
             editing={editingDetails}
             editDraft={editDraft}
             savingDetails={savingDetails}
+            detailsError={detailsError}
             organizations={organizations}
             projectOptions={projectOptions}
             onChange={updateItem}

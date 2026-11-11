@@ -6,6 +6,7 @@ import {
   Eraser,
   ExternalLink,
   Globe,
+  Loader2,
   Mail,
   MapPin,
   Trash2,
@@ -23,7 +24,6 @@ import {
 import { signOut } from "../../lib/auth/session.ts";
 import { initialsOf } from "../../lib/initials";
 import PageLoader from "../../components/PageLoader.tsx";
-import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import { Textarea } from "../../components/ui/textarea.tsx";
@@ -51,6 +51,7 @@ import {
   DashboardHeader,
   DashboardShell,
 } from "../../components/dashboard/DashboardShell.tsx";
+import FieldError from "../../components/errors/FieldError.tsx";
 
 const COUNTRIES: { code: string; name: string }[] = [
   { code: "ZW", name: "Zimbabwe" },
@@ -89,6 +90,7 @@ function isValidUrl(raw: string): boolean {
 export default function ProfileSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -192,14 +194,17 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setAttempted(true);
     setError(null);
-    if (website.trim() && !isValidUrl(website)) {
-      setError("Portfolio website must start with http:// or https:// (or be left blank).");
-      return;
-    }
-    if (linkedin.trim() && !isValidUrl(linkedin)) {
-      setError("LinkedIn URL must start with http:// or https:// (or be left blank).");
+    const emailInvalid =
+      email.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    if (
+      emailInvalid ||
+      (website.trim() && !isValidUrl(website)) ||
+      (linkedin.trim() && !isValidUrl(linkedin))
+    ) {
       return;
     }
     setSaving(true);
@@ -260,6 +265,11 @@ export default function ProfileSettingsPage() {
     .filter(Boolean)
     .join(", ");
 
+  const emailError =
+    attempted && email.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const websiteError = attempted && website.trim() !== "" && !isValidUrl(website);
+  const linkedinError = attempted && linkedin.trim() !== "" && !isValidUrl(linkedin);
+
   if (loading) {
     return (
       <div className="w-full max-w-full">
@@ -290,7 +300,13 @@ export default function ProfileSettingsPage() {
         subtitle="Your professional identity, contact details, portfolio and account security"
         meta={fullName || "Profile incomplete"}
         actions={
-          <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            form="profile-settings-form"
+            disabled={saving}
+            className="w-full gap-1.5 sm:w-auto"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {saving ? "Saving..." : "Save Changes"}
           </Button>
         }
@@ -360,7 +376,12 @@ export default function ProfileSettingsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <form
+        id="profile-settings-form"
+        onSubmit={(e) => void handleSave(e)}
+        noValidate
+        className="grid grid-cols-1 gap-6 lg:grid-cols-2"
+      >
         {/* ── Personal information ── */}
         <Card>
           <CardHeader>
@@ -376,6 +397,8 @@ export default function ProfileSettingsPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Your legal or professional name"
+                  autoComplete="name"
+                  disabled={saving}
                 />
               </div>
               <div className="space-y-2">
@@ -414,18 +437,30 @@ export default function ProfileSettingsPage() {
                 <Input
                   id="email"
                   type="email"
+                  inputMode="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
+                  autoComplete="email"
+                  disabled={saving}
+                  aria-invalid={emailError || undefined}
+                  aria-describedby={emailError ? "email-error" : undefined}
                 />
+                {emailError && (
+                  <FieldError id="email-error">Enter a valid email address.</FieldError>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
                   id="phone"
+                  type="tel"
+                  inputMode="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+263 …"
+                  autoComplete="tel"
+                  disabled={saving}
                 />
               </div>
             </div>
@@ -489,10 +524,20 @@ export default function ProfileSettingsPage() {
                 </Label>
                 <Input
                   id="website"
+                  type="url"
+                  inputMode="url"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                   placeholder="https://yourportfolio.com"
+                  disabled={saving}
+                  aria-invalid={websiteError || undefined}
+                  aria-describedby={websiteError ? "website-error" : undefined}
                 />
+                {websiteError && (
+                  <FieldError id="website-error">
+                    Must start with http:// or https:// (or be left blank).
+                  </FieldError>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="linkedin" className="flex items-center gap-1.5">
@@ -500,10 +545,20 @@ export default function ProfileSettingsPage() {
                 </Label>
                 <Input
                   id="linkedin"
+                  type="url"
+                  inputMode="url"
                   value={linkedin}
                   onChange={(e) => setLinkedin(e.target.value)}
                   placeholder="https://linkedin.com/in/…"
+                  disabled={saving}
+                  aria-invalid={linkedinError || undefined}
+                  aria-describedby={linkedinError ? "linkedin-error" : undefined}
                 />
+                {linkedinError && (
+                  <FieldError id="linkedin-error">
+                    Must start with http:// or https:// (or be left blank).
+                  </FieldError>
+                )}
               </div>
             </div>
             <div className="space-y-2">
@@ -539,7 +594,7 @@ export default function ProfileSettingsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </form>
 
       {/* ── Live professional card preview ── */}
       <Card className="overflow-hidden">

@@ -1,4 +1,7 @@
 import { useState, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Users,
   UserCheck,
@@ -17,7 +20,15 @@ import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -61,6 +72,19 @@ interface TeamPageProps {
   workspaceId: string;
 }
 
+const inviteSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Enter your teammate's email address.")
+    .email("Enter a valid email address."),
+  role: z.enum(["admin", "ops_manager", "finance", "sales", "technician", "viewer"]),
+});
+
+type InviteValues = z.infer<typeof inviteSchema>;
+
+const inviteDefaults: InviteValues = { email: "", role: "viewer" };
+
 const roleLabels: Record<string, string> = {
   owner: "Owner",
   admin: "Admin",
@@ -97,14 +121,16 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
   const [pendingInvitations, setPendingInvitations] = useState<WorkspaceInvitationRow[]>([]);
   const [search, setSearch] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviting, setInviting] = useState(false);
   const [membersPage, setMembersPage] = useState(1);
   const [invitesPage, setInvitesPage] = useState(1);
   const [myRole, setMyRole] = useState<string | null>(null);
-  const [inviteForm, setInviteForm] = useState({
-    email: "",
-    role: "viewer" as "admin" | "ops_manager" | "finance" | "sales" | "technician" | "viewer",
+  const inviteForm = useForm<InviteValues>({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: inviteDefaults,
   });
+  const inviting = inviteForm.formState.isSubmitting;
+  const inviteEmail = inviteForm.watch("email");
+  const inviteRole = inviteForm.watch("role");
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -168,24 +194,26 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
     effectiveInvitesPage * invitesPageSize,
   );
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleInvite = async (values: InviteValues) => {
     if (!canInvite) return;
-    setInviting(true);
     try {
       await inviteWorkspaceMember({
         workspaceId,
-        email: inviteForm.email,
-        role: inviteForm.role,
+        email: values.email,
+        role: values.role,
       });
-      setInviteForm({ email: "", role: "viewer" });
+      inviteForm.reset(inviteDefaults);
       setShowInviteModal(false);
       await fetchMembers();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to invite team member");
-    } finally {
-      setInviting(false);
     }
+  };
+
+  const openInvite = () => {
+    inviteForm.reset(inviteDefaults);
+    setError(null);
+    setShowInviteModal(true);
   };
 
   if (loading) {
@@ -217,6 +245,11 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
         <div className="mx-auto w-full max-w-6xl">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
+              {error ? (
+                <ErrorNotice tone="danger" onDismiss={() => setError(null)}>
+                  {error}
+                </ErrorNotice>
+              ) : null}
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-3">
@@ -232,44 +265,75 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <form id="team-invite-form" onSubmit={handleInvite} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="invite-email">Email</Label>
-                      <Input
-                        id="invite-email"
-                        type="email"
-                        value={inviteForm.email}
-                        onChange={(e) =>
-                          setInviteForm((prev) => ({ ...prev, email: e.target.value }))
-                        }
-                        required
+                  <Form {...inviteForm}>
+                    <form
+                      id="team-invite-form"
+                      onSubmit={inviteForm.handleSubmit(handleInvite)}
+                      className="space-y-4"
+                      noValidate
+                    >
+                      <FormField
+                        control={inviteForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Email <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="colleague@company.com"
+                                autoComplete="email"
+                                inputMode="email"
+                                autoFocus
+                                disabled={inviting}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              They&apos;ll receive an invitation link at this address.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="invite-role">Role</Label>
-                      <Select
-                        value={inviteForm.role}
-                        onValueChange={(val) =>
-                          setInviteForm((prev) => ({
-                            ...prev,
-                            role: val as typeof inviteForm.role,
-                          }))
-                        }
-                      >
-                        <SelectTrigger id="invite-role" className="w-full">
-                          <SelectValue placeholder="Select a role…" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" sideOffset={4}>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                          <SelectItem value="technician">Technician</SelectItem>
-                          <SelectItem value="sales">Sales</SelectItem>
-                          <SelectItem value="finance">Finance</SelectItem>
-                          <SelectItem value="ops_manager">Ops Manager</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </form>
+                      <FormField
+                        control={inviteForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Role</FormLabel>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              disabled={inviting}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select a role…" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent position="popper" sideOffset={4}>
+                                <SelectItem value="viewer">Viewer</SelectItem>
+                                <SelectItem value="technician">Technician</SelectItem>
+                                <SelectItem value="sales">Sales</SelectItem>
+                                <SelectItem value="finance">Finance</SelectItem>
+                                <SelectItem value="ops_manager">Ops Manager</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              {canManageTeam(field.value)
+                                ? "Manager access — can invite members and manage settings."
+                                : "Standard access — can view and work on assigned records."}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </div>
@@ -285,19 +349,19 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Email</dt>
                       <dd className="truncate font-medium">
-                        {inviteForm.email || "—"}
+                        {inviteEmail || "—"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Role</dt>
                       <dd className="truncate font-medium">
-                        {roleLabels[inviteForm.role] ?? inviteForm.role}
+                        {roleLabels[inviteRole] ?? inviteRole}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Access</dt>
                       <dd className="font-medium">
-                        {canManageTeam(inviteForm.role) ? "Manager" : "Standard"}
+                        {canManageTeam(inviteRole) ? "Manager" : "Standard"}
                       </dd>
                     </div>
                   </dl>
@@ -316,7 +380,7 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
         title="Team"
         subtitle="Personnel, certifications, and roles"
         actions={
-          <Button onClick={() => setShowInviteModal(true)} disabled={!canInvite} className="gap-2">
+          <Button onClick={openInvite} disabled={!canInvite} className="gap-2">
             <Plus size={16} />
             Add Member
           </Button>

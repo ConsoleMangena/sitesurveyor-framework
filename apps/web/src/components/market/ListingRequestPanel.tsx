@@ -42,6 +42,7 @@ export function ListingRequestPanel({
   const [cancelling, setCancelling] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +66,16 @@ export function ListingRequestPanel({
   const actionLabel = isHire ? "Request Hire" : "Request Purchase";
   const isOwner =
     sellerWorkspaceId != null && user.workspaceId === sellerWorkspaceId;
+  const dateError =
+    isHire && startDate && endDate && endDate < startDate
+      ? "The end date must be on or after the start date."
+      : null;
+
+  const toggleForm = () => {
+    setFormOpen((open) => !open);
+    setAttempted(false);
+    setError(null);
+  };
 
   if (isOwner) {
     return (
@@ -82,6 +93,8 @@ export function ListingRequestPanel({
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAttempted(true);
+    if (dateError) return;
     if (!sellerWorkspaceId) {
       setError("Unable to find the owner of this listing.");
       return;
@@ -126,6 +139,7 @@ export function ListingRequestPanel({
     <form
       onSubmit={handleSend}
       className="mt-4 space-y-4 border-t border-border/80 pt-4 text-left"
+      noValidate
     >
       <h4 className="text-sm font-semibold text-foreground">{actionLabel}</h4>
       {isHire ? (
@@ -140,6 +154,8 @@ export function ListingRequestPanel({
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               className="mt-1.5 h-10 bg-background text-sm"
+              disabled={sending}
+              aria-invalid={attempted && !!dateError}
             />
           </div>
           <div>
@@ -152,7 +168,15 @@ export function ListingRequestPanel({
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               className="mt-1.5 h-10 bg-background text-sm"
+              disabled={sending}
+              aria-invalid={attempted && !!dateError}
+              aria-describedby={attempted && dateError ? "request-date-error" : undefined}
             />
+            {attempted && dateError ? (
+              <FieldError id="request-date-error" className="mt-1.5">
+                {dateError}
+              </FieldError>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -167,6 +191,7 @@ export function ListingRequestPanel({
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Describe your project timeline, requirements, or delivery location…"
           className="mt-1.5 bg-background text-sm leading-6"
+          disabled={sending}
         />
       </div>
       {error ? <FieldError>{error}</FieldError> : null}
@@ -266,7 +291,7 @@ export function ListingRequestPanel({
               <Button
                 size="sm"
                 className={primaryActionClass}
-                onClick={() => setFormOpen((open) => !open)}
+                onClick={toggleForm}
               >
                 Send New Request
               </Button>
@@ -285,7 +310,7 @@ export function ListingRequestPanel({
         <Button
           size="sm"
           className={primaryActionClass}
-          onClick={() => setFormOpen((open) => !open)}
+          onClick={toggleForm}
         >
           {actionLabel}
         </Button>

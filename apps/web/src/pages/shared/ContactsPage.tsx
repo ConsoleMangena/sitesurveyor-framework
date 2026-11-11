@@ -1,4 +1,7 @@
 import { useState, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Users,
   Building2,
@@ -10,6 +13,7 @@ import {
   Clock,
   Download,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { listContacts, createContact, archiveContact } from "../../lib/repositories/contacts.ts";
 import { listOrganizations } from "../../lib/repositories/organizations.ts";
@@ -19,7 +23,14 @@ import { initialsOf } from "../../lib/initials";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
-import { Label } from "../../components/ui/label.tsx";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../../components/ui/form.tsx";
 import { Badge, type BadgeProps } from "../../components/ui/badge.tsx";
 import {
   Card,
@@ -60,6 +71,29 @@ interface ContactsPageProps {
 
 const CONTACT_TYPES = ["Client", "Subcontractor", "Vendor", "Government", "Lead"] as const;
 
+const contactSchema = z.object({
+  full_name: z.string().trim().min(1, "Enter the contact's name."),
+  organization_id: z.string(),
+  title: z.string(),
+  contact_type: z.enum(CONTACT_TYPES),
+  email: z.union([
+    z.literal(""),
+    z.string().trim().email("Enter a valid email address."),
+  ]),
+  phone: z.string(),
+});
+
+type ContactValues = z.infer<typeof contactSchema>;
+
+const contactDefaults: ContactValues = {
+  full_name: "",
+  organization_id: "",
+  title: "",
+  contact_type: "Client",
+  email: "",
+  phone: "",
+};
+
 const typeVariant: Record<string, BadgeProps['variant']> = {
   Client: "default",
   Subcontractor: "secondary",
@@ -78,16 +112,13 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
   const [selectedContact, setSelectedContact] = useState<UiContact | null>(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    full_name: "",
-    organization_id: "",
-    title: "",
-    contact_type: "Client",
-    email: "",
-    phone: "",
+  const contactForm = useForm<ContactValues>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: contactDefaults,
   });
+  const createValues = contactForm.watch();
+  const saving = contactForm.formState.isSubmitting;
   const [createError, setCreateError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchContacts = useCallback(async () => {
@@ -109,41 +140,30 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
 
   useAsyncAction(fetchContacts, [fetchContacts]);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = createForm.full_name.trim();
-    if (!name) {
-      setCreateError("Name is required.");
-      return;
-    }
-
-    setSaving(true);
+  const handleCreate = async (values: ContactValues) => {
     setCreateError(null);
     try {
       await createContact(workspaceId, {
-        full_name: name,
-        organization_id: createForm.organization_id || null,
-        title: createForm.title || null,
-        contact_type: createForm.contact_type || null,
-        email: createForm.email || null,
-        phone: createForm.phone || null,
+        full_name: values.full_name,
+        organization_id: values.organization_id || null,
+        title: values.title.trim() || null,
+        contact_type: values.contact_type || null,
+        email: values.email || null,
+        phone: values.phone.trim() || null,
       });
       setShowCreateModal(false);
-      setCreateForm({
-        full_name: "",
-        organization_id: "",
-        title: "",
-        contact_type: "Client",
-        email: "",
-        phone: "",
-      });
+      contactForm.reset(contactDefaults);
       await fetchContacts();
       setSuccessMessage("Contact created successfully.");
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create contact.");
-    } finally {
-      setSaving(false);
     }
+  };
+
+  const openCreate = () => {
+    contactForm.reset(contactDefaults);
+    setCreateError(null);
+    setShowCreateModal(true);
   };
 
   const handleArchive = async (dbId: string) => {
@@ -220,14 +240,26 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
               Cancel
             </Button>
             <Button type="submit" form="contact-create-form" disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {saving ? "Saving..." : "Add Contact"}
             </Button>
           </>
         }
       >
-        <form id="contact-create-form" onSubmit={handleCreate} className="mx-auto w-full max-w-6xl">
+        <Form {...contactForm}>
+        <form
+          id="contact-create-form"
+          onSubmit={contactForm.handleSubmit(handleCreate)}
+          className="mx-auto w-full max-w-6xl"
+          noValidate
+        >
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
+              {createError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{createError}</AlertDescription>
+                </Alert>
+              )}
               {/* ── Contact Identity ─────────────────────────── */}
               <Card>
                 <CardHeader>
@@ -247,81 +279,99 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="contact-name">
-                        Full name <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="contact-name"
-                        placeholder="e.g. Jane Doe"
-                        value={createForm.full_name}
-                        onChange={(e) =>
-                          setCreateForm((f) => ({
-                            ...f,
-                            full_name: e.target.value,
-                          }))
-                        }
-                        autoFocus
-                      />
-                    </div>
+                    <FormField
+                      control={contactForm.control}
+                      name="full_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Full name <span className="text-destructive">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Jane Doe"
+                              autoComplete="name"
+                              autoFocus
+                              disabled={saving}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <ComboboxField
-                          label="Organization"
-                          value={createForm.organization_id}
-                          onChange={(val) =>
-                            setCreateForm((f) => ({
-                              ...f,
-                              organization_id: val,
-                            }))
-                          }
-                          options={organizations.map((org) => ({
-                            value: org.id,
-                            label: org.name,
-                          }))}
-                          placeholder="No organization"
-                          emptyText="No organizations found."
-                          optional
-                          optionalLabel="No organization"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="contact-title">Job title</Label>
-                        <Input
-                          id="contact-title"
-                          placeholder="e.g. Project Manager"
-                          value={createForm.title}
-                          onChange={(e) =>
-                            setCreateForm((f) => ({
-                              ...f,
-                              title: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1.5 sm:col-span-2">
-                        <Label htmlFor="contact-type">Contact type</Label>
-                        <Select
-                          value={createForm.contact_type}
-                          onValueChange={(val) =>
-                            setCreateForm((f) => ({
-                              ...f,
-                              contact_type: val,
-                            }))
-                          }
-                        >
-                          <SelectTrigger id="contact-type">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CONTACT_TYPES.map((t) => (
-                              <SelectItem key={t} value={t}>
-                                {t}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <FormField
+                        control={contactForm.control}
+                        name="organization_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Organization</FormLabel>
+                            <FormControl>
+                              <ComboboxField
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                options={organizations.map((org) => ({
+                                  value: org.id,
+                                  label: org.name,
+                                }))}
+                                placeholder="No organization"
+                                emptyText="No organizations found."
+                                optional
+                                optionalLabel="No organization"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Job title</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. Project Manager"
+                                autoComplete="organization-title"
+                                disabled={saving}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="contact_type"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel>Contact type</FormLabel>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              disabled={saving}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {CONTACT_TYPES.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 </CardContent>
@@ -346,44 +396,49 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="contact-email">Email</Label>
-                      <Input
-                        id="contact-email"
-                        type="email"
-                        placeholder="e.g. jane@example.com"
-                        value={createForm.email}
-                        onChange={(e) =>
-                          setCreateForm((f) => ({
-                            ...f,
-                            email: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="contact-phone">Phone</Label>
-                      <Input
-                        id="contact-phone"
-                        placeholder="e.g. +1 234 567 8900"
-                        value={createForm.phone}
-                        onChange={(e) =>
-                          setCreateForm((f) => ({
-                            ...f,
-                            phone: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
+                    <FormField
+                      control={contactForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="e.g. jane@example.com"
+                              autoComplete="email"
+                              inputMode="email"
+                              disabled={saving}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={contactForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="tel"
+                              placeholder="e.g. +1 234 567 8900"
+                              autoComplete="tel"
+                              inputMode="tel"
+                              disabled={saving}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </CardContent>
               </Card>
-
-              {createError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{createError}</AlertDescription>
-                </Alert>
-              )}
             </div>
 
             {/* ── Summary ───────────────────────────────────── */}
@@ -398,35 +453,35 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Organization</dt>
                       <dd className="truncate font-medium">
-                        {createForm.organization_id
+                        {createValues.organization_id
                           ? organizations.find(
-                              (org) => org.id === createForm.organization_id
-                            )?.name || createForm.organization_id
+                              (org) => org.id === createValues.organization_id
+                            )?.name || createValues.organization_id
                           : "—"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Job title</dt>
                       <dd className="truncate font-medium">
-                        {createForm.title || "—"}
+                        {createValues.title || "—"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Type</dt>
                       <dd className="truncate font-medium">
-                        {createForm.contact_type || "—"}
+                        {createValues.contact_type || "—"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Email</dt>
                       <dd className="truncate font-medium">
-                        {createForm.email || "—"}
+                        {createValues.email || "—"}
                       </dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-muted-foreground">Phone</dt>
                       <dd className="truncate font-medium">
-                        {createForm.phone || "—"}
+                        {createValues.phone || "—"}
                       </dd>
                     </div>
                   </dl>
@@ -435,6 +490,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
             </aside>
           </div>
         </form>
+        </Form>
       </PageForm>
     );
   }
@@ -457,7 +513,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4" /> Export CSV
             </Button>
-            <Button size="sm" onClick={() => setShowCreateModal(true)}>
+            <Button size="sm" onClick={openCreate}>
               <Plus className="h-4 w-4" /> Add Contact
             </Button>
           </>
@@ -517,7 +573,7 @@ export default function ContactsPage({ workspaceId }: ContactsPageProps) {
           </EmptyHeader>
           {contacts.length === 0 && (
             <EmptyContent>
-              <Button onClick={() => setShowCreateModal(true)}>Add Contact</Button>
+              <Button onClick={openCreate}>Add Contact</Button>
             </EmptyContent>
           )}
         </Empty>
