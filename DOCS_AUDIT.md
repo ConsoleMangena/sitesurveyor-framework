@@ -3,6 +3,9 @@
 A claim-by-claim check of this repository's documents against its code, run on 2026-11-08.
 Everything found has been fixed except the CAD gap below, which needs a product decision.
 
+> **Note:** the guides were later condensed, so the `file:line` references recorded here point at
+> the pre-condensation text. The findings themselves are unchanged.
+
 > **Correction (same day, after the payment work).** Item 1 of the CAD finding below
 > said the CAD tables do not exist. They do exist in deployed projects — what was
 > missing was the *migration*. `apps/web/src/lib/supabase/types.ts` is generated from a

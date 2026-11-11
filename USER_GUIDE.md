@@ -2,280 +2,182 @@
 
 **Plan the work. Execute the survey. Preserve the evidence. Settle the job.**
 
-SiteSurveyor is an **Eineva Labs product and open-source initiative**: an AI-powered, Web3-enabled framework for safer digital surveying. It gathers the complete set of tools a surveyor needs into one connected workspace, with Solana wallet identity and optional blockchain proofs of file integrity running underneath. Its purpose is to help surveying teams move beyond paper field books and disconnected tools without overlooking cybersecurity.
+This guide covers the implemented web app. Personal and business workspaces expose slightly different
+navigation; platform operators see additional administration views. .NET desktop and Java Android are
+platform targets, not available clients.
 
-> **Privacy by default:** your original survey files stay in Supabase Storage; when you use standard hash-only anchoring, only the attachment ID and SHA-256 hash are written to Solana. Full-file anchoring is a separate opt-in choice in the file manager — it also keeps the file off-chain and writes only the file digest, manifest digest and chunk count to Solana.
-
-This guide describes the implemented responsive React web application. The native platform targets are **.NET for desktop** and **Java Android SDK for mobile**, but those clients are not implemented in the repository yet. Personal and business workspaces expose slightly different navigation, and platform operators have additional administration views.
+> **Private by default.** Original files stay in Supabase Storage. Hash-only anchoring writes only the
+> attachment ID and SHA-256 digest to Solana. Full-file anchoring is a separate per-file choice and
+> also keeps the file off-chain.
 
 ## 1. Getting started
 
-### Choose an account type
-
-- **Personal:** an independent surveyor managing their own work, finances, files, contacts, and professional activity.
-- **Business:** a surveying firm coordinating quotes, projects, dispatch, staff, assets, billing, and marketplace activity.
-- **Platform operator:** an administrative account for platform-level users, workspaces, activity, and audit functions. This is not required for normal surveying work.
-
-### Sign in with a Solana wallet
-
-1. Open the SiteSurveyor sign-in page.
-2. Choose the available wallet flow for your device.
-3. Review the Sign In With Solana message in your wallet. A signature proves control of the wallet; it is not a payment.
-4. Complete the requested profile details and any finish-setup step.
-5. Confirm that you enter the intended personal or business workspace.
-
-Desktop sign-in is designed around Phantom-compatible wallet behaviour. Mobile flows support Solflare hand-off. Available options depend on the browser, wallet, and deployment configuration.
-
-> Never share a seed phrase or private key to sign in. SiteSurveyor sign-in asks for a signature, not your recovery phrase.
-
-### Development networks
-
-Development deployments normally use **Solana devnet**. Devnet SOL and USDC have no production monetary value, and devnet anchors should not be presented as production evidence. Check the network shown in the app and wallet before approving any transaction.
-
-## 2. A typical project workflow
-
-### Step 1: Plan and price
-
-1. Create or select a **contact** for the client.
-2. Prepare a **quote** with its line items, rates, taxes, and notes.
-3. Create a **project** to group the operational record, drawings, files, and settings.
-4. Review the **dashboard** for current work and financial status.
-5. Identify required **assets** and team members. Business workspaces can assign and coordinate crew resources.
-
-You can ask SiteSurveyor AI to summarise existing records or help create allowed projects, contacts, quotes, jobs, invoices, and assets. Review names, dates, quantities, rates, and coordinates before relying on the result.
-
-### Step 2: Prepare and execute
-
-- Use **Dispatch** and **Schedule** to organise jobs, dates, assignments, and job events.
-- Use **Projects** to work with project drawings and CAD content.
-- Use **Team Chat** and **Notifications** to keep coordination beside the work.
-- Record **Time & Expenses** against the relevant activity.
-- Track instruments and equipment in **Assets**, including available calibration and maintenance records.
-
-Instrument calibration, field-notes, and QA-flag cards inside the project tool area are currently marked **coming soon**. Use the implemented asset and project records for current workflows rather than treating those cards as completed tools.
-
-### Step 3: Keep evidence with the work
-
-Use the **File Manager** to upload, organise, preview, download, version, restore, or permanently remove files according to your permissions.
-
-For sensitive material:
-
-1. Select private workspace storage rather than a public bucket.
-2. Link the file to the correct project, quote, job, or other record where that option is available.
-3. Keep file names and descriptions free of unnecessary confidential information.
-4. Use **Verify integrity** on a hashed file to check that its current bytes still match the recorded SHA-256 digest.
-5. Preserve the original file and its version history according to your firm's retention policy.
-
-A successful integrity check detects changes relative to the recorded hash. It does not certify that the survey itself is correct.
-
-### Step 4: Anchor a file hash on Solana
-
-Anchoring adds a public, tamper-evident reference for a file version without publishing the file itself.
-
-1. Connect or unlock the wallet you want to use as the anchor signer.
-2. Ensure the wallet has enough SOL on the **selected cluster** to pay the network fee.
-3. In File Manager, open the menu for a file that has a recorded content hash.
-4. Choose **Anchor hash on Solana**.
-5. Review the file, network, shortened hash, and estimated fee.
-6. Approve the transaction in your wallet.
-7. Wait for confirmation. The attachment record tracks pending, anchored, or failed status and retains the transaction signature.
-8. Open the Solana Explorer link to inspect the transaction on the recorded network.
-
-The Memo has this versioned form:
-
-```text
-ssv1:<attachment-id>:sha256:<lowercase-file-digest>
-```
-
-**What anchoring proves:** the connected wallet signed a transaction containing that attachment ID and digest, and Solana confirmed it on the named cluster.
-
-**What it does not prove:** who authored the file, who owns the land, whether coordinates are accurate, or whether the document satisfies a legal or regulatory requirement.
-
-> Solana transactions are public and effectively permanent. Never place client names, coordinates, legal descriptions, secrets, or other sensitive text in a custom on-chain memo. The built-in flow only includes the attachment ID and digest.
-
-### Optional full-file anchoring
-
-Full-file anchoring is a second mode in the same **Anchor on Solana** dialog. Pick **Hash only** for the digest-only statement, or **Full file** to additionally keep encrypted, ordered chunk copies of the file so the anchor can be rebuilt and re-proved later:
-
-1. Choose **Full file** and supply a passphrase of at least the minimum length the dialog shows.
-2. Review the file, network, chunk plan (256 KiB per chunk) and fee.
-3. Approve the single Memo transaction in your wallet.
-
-The file is split into ordered chunks, each chunk is encrypted with a fresh AES-256-GCM key wrapped under your passphrase, and the chunk copies plus a `manifest.json` are stored privately in workspace storage. Solana receives **one** transaction carrying the file digest, the manifest digest and the chunk count — not the per-chunk digests, and not the bytes. The manifest records how the chunks fit together so the payload can be reassembled and checked.
-
-What you must understand before choosing it:
-
-- It is an explicit per-file choice, never a silent default.
-- The chunk copies are only as recoverable as your passphrase. There is no reset and no recovery service; when the passphrase is lost, the original file and the on-chain record survive but the chunk copies cannot be rebuilt.
-- Verification downloads the chunks, decrypts them, re-hashes each one against the manifest and reassembles the file before offering it for download.
-- Anchors created before encryption existed show their stored copies as **unencrypted (legacy)** in the file manager.
-- Deleting a record removes private copies only; the Solana Memo stays public and permanent.
-
-**Current status:** both modes are available in the web client's file manager. Hash-only is the default.
-
-> **Note:** The **satellite survey engine** (Python worker at `apps/engine`) is a separate, implemented component that runs the actual multi-sensor raster analysis (groundwater, mineral prospectivity, soil capability, site hazard) on DE Africa satellite data. It is **not** the same as full-file anchoring. The engine runs as a background worker, polls `survey_runs` from Supabase, processes the job, and publishes deliverables (GeoTIFF, PNG maps, GeoJSON, KMZ, HTML reports, plus web-map tile layers that the workbench renders as a zoomable classified drape) to Supabase Storage. It exposes an MCP server for AI agent integration.
-
-### Optional: Earth Observation and the map sheet
-
-An Earth Observation session is tied to a workspace job. Enter the target coordinate and the **observation extent (AOI)** once — those two inputs are what the credit quote is priced on — pick the survey type, then launch the run. The engine classifies the imagery and the workbench drapes the result over the basemap.
-
-A mineral exploration run screens multiple mineral systems across the survey area. Alongside the ranked exploration targets, the **Mineral systems indicated** panel (and the report's matching section) screens nine major deposit styles — gold, iron ore, nickel and PGM, chromium, copper-zinc-lead, lithium pegmatite, manganese, bauxite, and rare earth elements (REE) — by re-weighting the alteration, structure, terrain, and endowment evidence for each style.
-
-Read that list as *which mineral systems this ground could support*, with the confidence column saying how well a satellite can see that style at all (high for iron oxide, low for pegmatites). Two honest limits are built in:
-
-- A system is only marked **indicated** when its top decile clears the moderate band *and* the index actually varies across the area — uniform ground has a best cell without having a target.
-- Commodities this dataset cannot screen — kimberlite diamonds, coal, gemstones — are listed separately with the reason and what would be needed. They are not scored, and that is not a statement that they are absent.
-
-Every commodity carries its own verification method in the report; none of them is a grade, a tonnage or an economic assessment.
-
-**Export map sheet** produces an A4 landscape vector PDF. The imagery is fetched at the paper's true resolution (up to 320 DPI, never a screenshot of the screen) and everything that reads as cartography — graticule, frame, ticks, labels, scale bar, north arrow, title block, attribution — is drawn as vector so it stays sharp at any zoom.
-
-- **Sheet extent** frames either the map view or the whole survey area, with a context margin around the AOI when you frame the survey.
-- **Coordinates** switches the graticule between **UTM X/Y** (default) and **degrees**. UTM lines curve with the projection, so each line is anchored where it meets the edge that carries its number: eastings are labelled and ticked along the top edge, northings along the left.
-- **Grid lines** sets how many divisions per axis to aim for (2–12); the printed interval is rounded to a whole metre value or a whole degree step, so the count can come out slightly lower than asked.
-- The AOI is outlined as a dashed red box, survey candidates and the target as markers, and the sheet reports its own resolution and says when the imagery had to be upscaled.
-
-### Step 5: Invoice and settle
-
-1. Confirm delivered work, time, expenses, and quote details.
-2. Create or review the **invoice** and its line items.
-3. Open **Billing & Payments** and choose the appropriate rail.
-4. For **Solana USDC**, verify the cluster, recipient, amount, mint, and wallet prompt before signing. Preserve the transaction signature.
-5. For **PesePay**, follow the separate fiat flow. Development deployments use sandbox behaviour and must not be treated as live payment processing.
-6. Reconcile the final invoice and payment status against the confirmed transaction or provider result.
-
-Solana and fiat are different settlement paths. Do not treat a wallet signature, a pending payment, or a sandbox reference as proof of final settlement.
-
-## 3. Working with SiteSurveyor AI
-
-Open **SiteSurveyor AI** from the workspace navigation. The assistant streams responses and can use allowlisted tools against real workspace data.
-
-### Useful requests
-
-- “Summarise open quotes and overdue invoices in this workspace.”
-- “Show upcoming survey jobs and flag any missing assignments.”
-- “Create a contact using these details, then confirm the saved record.”
-- “Prepare a quote from the line items I provide and read back the total.”
-- “List the layers in this project's CAD drawing and count points by layer.”
-- “Inspect this CAD entity and report its recorded properties.”
-- “Draw the coordinates I provide on the CONTROL layer, then zoom to extents.”
-
-### What the assistant can do
-
-- Query allowlisted project, financial, scheduling, asset, marketplace, and CAD data.
-- Count and summarise records using returned tool results rather than inventing numbers.
-- Create and update allowlisted operational records, with read-back verification after writes.
-- Schedule work through job and job-event workflows.
-- Inspect CAD layers and entities in stored project drawings.
-- Retain conversation history, rolling summaries, and selected durable memory.
-
-### Safety and professional review
-
-- Creates and updates may execute immediately; make the target record and requested change explicit.
-- Permanent deletes require explicit confirmation. Prefer archiving or another reversible action where appropriate.
-- CAD drafting commands are not available yet: the assistant can read drawings and report what is in them, but no screen executes commands against a drawing.
-- Always verify coordinates, datums, units, totals, dates, and record IDs. AI output is not a substitute for a licensed surveyor's review or an independent QA check.
-- Prompts and relevant tool context are processed by the configured AI provider. Follow your client contract and organisational policy before submitting restricted information.
-
-## 4. Marketplace and professional network
-
-The public market at `/market` and workspace network surfaces support discovery of:
-
-- Instruments and related products or services.
-- Surveying professionals and firms.
-- Open jobs and professional opportunities.
-- Training and market events.
-
-Use search, category filters, maps, and listing details to compare options. Workspace data can feed market activity so that supply and demand remain connected to delivery.
-
-### 4.1 Search or ask
-
-The registry search matches exact records — names, types, locations — and is the fastest route when you know what the listing is called. The **concierge** panel on the same page is for the other case: you know what the job needs, not what the thing is called. Ask it in plain language ("a total station that can do reflectorless work in Harare").
-
-The concierge is read-only. It answers from the published market and cannot save, request, book, or buy on your behalf. You do not need an account to use it. Limits are per visitor per minute (8 messages), 2,000 characters per message, and it remembers the last 8 turns of the conversation.
-
-### 4.2 Cart and checkout
-
-Add listings to the cart from the market; the cart is kept in this browser, so the public market and the dashboard market share one basket. Checkout sends **one request per listing** to each seller — it does not take payment. Money moves only after a seller accepts your request, from the accepted request's payment panel.
-
-When you pay:
-
-1. The order is recorded as **pending** before your wallet is asked to sign, so a cancelled or dropped transaction always leaves a record.
-2. Your wallet signs and sends the transfer to the seller's workspace wallet — the address in force at that moment, not the one printed when the listing was created.
-3. The signature is attached to the order, which moves it to **submitted**.
-4. SiteSurveyor checks the transaction on chain and only then marks the order **completed**. Until that check succeeds, the panel says it is still confirming — a signature on its own is not proof of payment.
-
-If the wallet declines, the order is marked cancelled and nothing is charged.
-
-### 4.3 Reviews
-
-Professionals and firms carry star ratings and written reviews. Anyone signed in with a workspace can review; reviews are not currently limited to completed work, so weigh them as community input rather than verified delivery history.
-
-### 4.4 Sample content
-
-A freshly created database ships demo inventory so the market is never empty. Those rows carry a **Sample** badge, a notice above the registry, and a warning inside the detail dialog: they belong to a demo workspace and cannot accept requests or orders. Always confirm a counterparty before paying anything.
-
-### 4.5 Transport hire (preview)
-
-`/transport` plans a route from coordinates you enter and prices it against a sample fleet. It is a **planning preview**, not a dispatch service: the vehicles are generated, the operators are samples, no operator is contacted, nothing is charged, and a confirmed hire lasts only for that browser session. Treat the fares as estimates of what such a run would cost, and arrange real transport directly with an operator.
-
-## 5. Security habits for surveying teams
-
-Survey evidence can reveal property boundaries, infrastructure, client identity, precise coordinates, and commercially sensitive plans. Use these practices together; no single feature is sufficient.
-
-- Use private storage for client evidence and share only through approved access controls.
-- Keep wallet recovery phrases offline and verify every signature request.
-- Use strong, unique PINs for the built-in wallet and prefer an appropriately reviewed external wallet for high-value funds.
-- Separate development/devnet wallets and treasury addresses from production ones.
-- Restrict workspace membership and administrative access to people who need it.
-- Review AI prompts for confidential data before sending them.
-- Keep original evidence, hashes, versions, transaction signatures, and network labels together.
-- Maintain backups and a retention/deletion policy outside the blockchain anchor.
-- Review the [security model](SECURITY.md) before production use.
-
-## 6. Offline and mobile expectations
-
-The application is responsive and includes PWA caching plus offline-status and cached-session handling. Live workspace queries, AI calls, uploads, payment confirmation, and Solana anchoring still require network access.
-
-Do not assume that an offline-cached screen proves that a remote write or payment completed. Reconnect and verify the saved record or transaction.
+**Personal** — an independent surveyor: own work, finances, files, contacts. **Business** — a firm:
+quotes, projects, dispatch, staff, assets, billing. **Platform operator** — platform-level users,
+workspaces, activity and audit; not needed for surveying work.
+
+**Sign in with a wallet.** Choose the wallet flow your device offers, review the Sign In With Solana
+message, and sign. A signature proves control of the wallet; it is not a payment. Complete the profile
+and finish-setup steps, then confirm you landed in the intended workspace. Desktop is built around
+Phantom; mobile supports Solflare hand-off. Never share a seed phrase to sign in — sign-in asks for a
+signature, never a recovery phrase.
+
+Development deployments use **Solana devnet**: devnet SOL and USDC have no monetary value and devnet
+anchors are not production evidence. Check the network in the app and in your wallet before approving.
+
+## 2. The workflow
+
+**1. Plan and price.** Create a contact for the client, prepare a quote with line items, rates, taxes
+and notes, create a project to group the record, drawings, files and settings, review the dashboard,
+and identify required assets and crew. The AI can help create allowed records — check names, dates,
+quantities, rates and coordinates before relying on the result.
+
+**2. Prepare and execute.** Dispatch and Schedule organise jobs, dates, assignments and job events.
+Projects hold drawings and CAD content. Team Chat and Notifications keep coordination beside the work.
+Time & Expenses record effort; Assets track instruments with calibration and maintenance records.
+
+Instrument calibration, field notes and QA flags are **coming soon** in the project tool area — use the
+implemented asset and project records instead.
+
+**3. Keep evidence with the work.** In File Manager you can upload, organise, preview, download,
+version, restore or permanently delete according to your permissions. For sensitive material: use
+private workspace storage, link the file to its project or job, keep names and descriptions free of
+needless confidential detail, run **Verify integrity** to confirm the bytes still match the recorded
+SHA-256, and preserve versions per your firm's retention policy. An integrity check detects change
+relative to the hash; it does not certify that the survey is correct.
+
+**4. Anchor a hash on Solana.** Connect the wallet you want as the anchor signer with enough SOL on the
+selected cluster for the fee. In File Manager open the menu on a file that has a recorded hash, choose
+**Anchor hash on Solana**, review the file, network, shortened hash and estimated fee, approve in the
+wallet, and wait for confirmation — the attachment tracks pending, anchored or failed plus the
+signature. The Memo is `ssv1:<attachment-id>:sha256:<file-digest>`.
+
+Anchoring proves that wallet signed that ID and digest and the cluster confirmed it. It does not prove
+authorship, land ownership, coordinate accuracy or legal sufficiency. Never put client names,
+coordinates, legal descriptions or secrets in a custom memo.
+
+**Optional full-file anchoring.** Pick **Full file** instead of **Hash only** in the same dialog and
+supply a passphrase (the dialog shows the minimum length), review the chunk plan (256 KiB per chunk)
+and fee, then approve one Memo transaction. Each chunk is encrypted with a fresh AES-256-GCM key
+wrapped under your passphrase, and the chunks plus `manifest.json` are stored privately in workspace
+storage. Solana receives one transaction with the file digest, manifest digest and chunk count — not
+per-chunk digests and not the bytes. The chunk copies are only as recoverable as your passphrase:
+there is no reset and no recovery service, and losing it leaves the original file and the chain record
+intact but the copies unrebuildable. Verification downloads, decrypts, re-hashes each chunk against
+the manifest and reassembles before offering the file. Anchors created before encryption existed are
+labelled **unencrypted (legacy)**. Deleting a record removes private copies only; the Memo stays.
+
+**Earth Observation.** A session is tied to a workspace job. Enter the target coordinate and the
+observation extent (AOI) — those two inputs price the credit quote — pick the survey type and launch.
+The engine classifies the imagery and the workbench drapes the result over the basemap. A mineral run
+screens nine deposit styles (gold, iron ore, nickel and PGM, chromium, copper-zinc-lead, lithium
+pegmatite, manganese, bauxite, REE) and lists what this sensor set cannot screen (kimberlite diamonds,
+coal, gemstones) rather than scoring them. A system is only **indicated** when its top decile clears
+the moderate band and the index varies across the area. **Export map sheet** produces an A4 landscape
+vector PDF at the paper's true resolution (up to 320 DPI): graticule in UTM (default) or degrees,
+2–12 divisions per axis rounded to a whole metre or degree step, dashed red AOI, markers and a
+resolution note when imagery had to be upscaled. No commodity result is a grade, tonnage or economic
+assessment.
+
+**5. Invoice and settle.** Confirm delivered work, time, expenses and quote details, then create or
+review the invoice. In Billing & Payments pick the rail: **Solana USDC** (verify cluster, recipient,
+amount, mint and wallet prompt, and keep the signature) or **PesePay** (a separate fiat flow; sandbox
+in development, not live payment processing). Reconcile the invoice against the confirmed transaction
+or provider result. A wallet signature, a pending payment or a sandbox reference is not proof of
+settlement.
+
+## 3. SiteSurveyor AI
+
+The assistant streams responses and calls allowlisted tools against real workspace data. Useful
+requests: summarise open quotes and overdue invoices; show upcoming jobs and flag missing assignments;
+create a contact and confirm the saved record; prepare a quote and read back the total; list CAD layers
+and count points by layer; inspect a CAD entity's recorded properties.
+
+It can query allowlisted project, financial, scheduling, asset, marketplace and CAD data; count and
+summarise from returned results rather than inventing numbers; create and update allowlisted records
+with read-back verification; schedule work through jobs and job events; inspect CAD layers and
+entities; and retain history, rolling summaries and selected memory.
+
+Creates and updates may execute immediately — be explicit about the target record and the change.
+Permanent deletes need confirmation, so prefer archiving. CAD drafting commands are not available:
+the assistant reads drawings but no screen executes commands against one. Always verify coordinates,
+datums, units, totals, dates and record IDs; AI output is not a substitute for a licensed surveyor or
+independent QA. Prompts and tool context go to the configured AI provider — check your client contract
+before submitting restricted information.
+
+## 4. Marketplace
+
+`/market` lists instruments, professionals, firms, open jobs and training, with search, category
+filters, maps and detail views. The registry search matches exact records; the **concierge** is for
+the other case — you know what the job needs, not what the listing is called ("a total station that
+does reflectorless work in Harare"). The concierge is read-only, needs no account, and is limited to 8
+messages per visitor per minute, 2,000 characters per message, remembering the last 8 turns.
+
+The cart lives in this browser, so the public market and the dashboard share one basket. Checkout
+sends **one request per listing** to each seller and takes no payment; money moves only after a seller
+accepts, from that request's payment panel. The order is saved as **pending** before your wallet signs,
+so a cancelled transaction still leaves a record; the signature attaches and moves it to
+**submitted**; SiteSurveyor verifies the transfer on chain and only then marks it **completed**, paying
+the seller's current workspace wallet. If the wallet declines, the order is cancelled and nothing is
+charged.
+
+Professionals and firms carry ratings and reviews. Any signed-in workspace member can review — reviews
+are not limited to completed work, so treat them as community input. A fresh database ships **Sample**
+rows (badged in the registry and in the detail dialog) that belong to a demo workspace and cannot
+accept requests or orders.
+
+`/transport` is a planning preview: it routes from coordinates you enter against a sample fleet. No
+operator is contacted, nothing is charged, and a confirmed hire lasts only for that browser session.
+
+## 5. Security habits
+
+Use private storage for client evidence and share only through approved access control. Keep recovery
+phrases offline and verify every signature request. Use a strong PIN for the built-in wallet and prefer
+an reviewed external wallet for high-value funds. Keep devnet wallets and treasury addresses separate
+from production. Restrict workspace membership and admin access. Review prompts for confidential data.
+Keep originals, hashes, versions, signatures and network labels together. Maintain backups and a
+retention policy outside the anchor. Read the [security model](SECURITY.md) before production use.
+
+## 6. Offline and mobile
+
+The app is responsive with PWA caching, offline status and cached-session handling. Live queries, AI
+calls, uploads, payment confirmation and anchoring still need the network. An offline-cached screen is
+never proof that a remote write or payment completed — reconnect and verify.
 
 ## 7. Troubleshooting
 
-### Wallet sign-in does not complete
+**Wallet sign-in does not complete** — confirm the wallet is unlocked, the browser flow is supported,
+and a mobile hand-off returned to the same session. If the account is partially configured, finish the
+setup form rather than creating a second identity.
 
-Confirm that the wallet is unlocked, the browser flow is supported, and any mobile hand-off returned to the same SiteSurveyor session. If the account is only partially configured, complete the finish-setup form rather than creating a second identity.
+**Network mismatch** — check `VITE_SOLANA_CLUSTER` and the RPC endpoint, and make sure signing and
+payment use the same cluster. Do not switch to mainnet to clear a devnet warning.
 
-### The wallet reports a network mismatch
+**"Pay with Phantom" is unavailable** — the deployment has no Solana treasury address; the on-chain
+action is hidden while `VITE_SOLANA_TREASURY_ADDRESS` is empty. Also check cluster and USDC mint.
 
-Check `VITE_SOLANA_CLUSTER` and the RPC endpoint in the deployment configuration. Ensure the signing and payment flow uses the same cluster. Do not switch to mainnet merely to clear a development-network warning.
+**A file cannot be anchored** — it needs a recorded SHA-256 and a funded wallet on the selected
+network. If confirmation timed out, inspect the retained signature on the correct cluster before
+retrying.
 
-### “Pay with Phantom” is unavailable
+**Integrity verification fails** — the bytes no longer match the digest. Stop distributing the file as
+the anchored version, keep the mismatch detail, inspect version and access history, and follow your
+evidence-handling procedure.
 
-The deployment needs a Solana treasury address. The on-chain payment action is intentionally hidden when `VITE_SOLANA_TREASURY_ADDRESS` is empty. Also check the selected cluster and USDC mint.
+**AI chat is unavailable** — the deployment needs the `ai-chat` Edge Function or a configured gateway;
+the browser holds no NVIDIA key. Admins should check server-side secrets without exposing them.
 
-### A file cannot be anchored
+## 8. Terms
 
-The file needs a recorded SHA-256 content hash and a connected wallet with enough SOL for the selected network's fee. If a transaction was submitted but confirmation timed out, inspect the retained signature on the correct cluster before trying again.
-
-### Integrity verification fails
-
-The downloaded bytes no longer match the recorded digest. Stop distributing the file as the anchored version, preserve the mismatch details, inspect version history and access records, and follow your firm's evidence-handling procedure.
-
-### AI chat is unavailable
-
-The deployment needs the `ai-chat` Edge Function or a configured self-hosted gateway. The browser does not hold the NVIDIA key. Administrators should check server-side secrets and model entitlement without exposing them to the frontend.
-
-## 8. Key terms
-
-| Term | Meaning in SiteSurveyor |
+| Term | Meaning |
 | --- | --- |
-| **Web3** | Wallet-based identity, transactions, and proofs integrated into the application |
-| **SIWS** | Sign In With Solana: authentication through a wallet-signed message |
-| **SHA-256 hash** | A deterministic digest of a file's bytes; a changed file produces a different digest |
-| **Anchor** | A wallet-signed Solana Memo transaction containing an attachment ID and file digest |
-| **Devnet** | Solana's development network for testing without production-value assets |
-| **USDC** | The supported SPL stablecoin for Solana payment flows |
-| **RLS** | Supabase Row Level Security policies used to constrain permitted database access |
-| **MCP** | Model Context Protocol, an optional interface exposing SiteSurveyor tools to compatible agent runtimes |
+| Web3 | Wallet-based identity, transactions and proofs inside the app |
+| SIWS | Sign In With Solana — authentication through a wallet-signed message |
+| SHA-256 | Deterministic digest of a file's bytes; changed bytes give a different digest |
+| Anchor | A wallet-signed Solana Memo carrying an attachment ID and file digest |
+| Devnet | Solana's development network, without production-value assets |
+| USDC | The supported SPL stablecoin for Solana payment flows |
+| RLS | Supabase Row Level Security policies constraining database access |
+| MCP | Model Context Protocol — optional interface exposing SiteSurveyor tools to agent runtimes |
 
-For implementation details, see [System architecture & design](DESIGN.md). For deployment controls and limitations, see [Security model](SECURITY.md).
+Implementation detail: [DESIGN.md](DESIGN.md). Deployment controls: [SECURITY.md](SECURITY.md).

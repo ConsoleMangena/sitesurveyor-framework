@@ -1,68 +1,44 @@
 # Authentication
 
-One account, three ways in: **email**, **GitHub**, and a **crypto wallet**. All
-three resolve to the same Supabase Auth user, so profiles, files, AI credits,
-purchased storage and transaction history keep working exactly as before —
-nothing is migrated or re-keyed.
-
-- Sign-in with an email address and password, or register and confirm by email.
-- Sign in with GitHub (OAuth).
-- Sign in with an Ethereum wallet (EIP-4361 / SIWE) or a Solana wallet
-  (SIWS, the original wallet login). **Private keys never leave the wallet and
-  are never stored anywhere in this repo.**
-- From **Account → Security** a signed-in user can link or unlink the other
-  methods, with a guard that always keeps at least one way back in.
-
----
-
-## 1. Routes and screens
+One account, three ways in — **email**, **GitHub**, and a **crypto wallet** (Ethereum SIWE or Solana
+SIWS). All three resolve to the same Supabase Auth user, so profiles, files, AI credits, storage and
+transaction history are never re-keyed. From **Account → Security** a signed-in user links or unlinks
+methods, guarded so at least one way back in always remains. Private keys never leave the wallet and
+are never stored in this repository.
 
 | Route | Screen | Purpose |
 | --- | --- | --- |
-| `/login` | `pages/auth/SignInPage.tsx` | Email + password sign-in, GitHub, wallet entry point |
+| `/login` | `pages/auth/SignInPage.tsx` | Email + password, GitHub, wallet entry |
 | `/signup` | `pages/auth/SignUpPage.tsx` | Registration (name, account type, company, email, password) |
-| `/forgot-password` | `pages/auth/ForgotPasswordPage.tsx` | Requests a reset link |
-| `/reset-password` | `pages/auth/ResetPasswordPage.tsx` | Sets a new password from the emailed link |
-| `/verify-email` | `pages/auth/VerifyEmailPage.tsx` | Confirmation pending / resend |
-| `/auth/callback` | `pages/auth/AuthCallbackPage.tsx` | OAuth + email-link landing, then routes onward |
-| `/auth/wallet` | — (redirect) | Legacy path; `App.tsx` redirects it to `/login`, where the wallet panel now lives |
-| `/account/security` | `pages/auth/AccountSecurityPage.tsx` | Protected. Method list, link/unlink dialogs |
+| `/forgot-password`, `/reset-password` | `ForgotPasswordPage`, `ResetPasswordPage` | Request and set a new password |
+| `/verify-email` | `VerifyEmailPage.tsx` | Confirmation pending / resend |
+| `/auth/callback` | `AuthCallbackPage.tsx` | OAuth and email-link landing, then routes onward |
+| `/account/security` | `AccountSecurityPage.tsx` | Protected; method list and link/unlink |
 
-All screens share `components/auth/AuthShell.tsx` (animated backdrop, the
-`aside.auth-plat` plate, brand block, theme toggle, working column) plus
-`components/auth/GitHubButton.tsx` and `components/auth/AccountSecurity.tsx`.
+All screens share `components/auth/AuthShell.tsx` plus `GitHubButton.tsx` and `AccountSecurity.tsx`.
 
-## 2. How a sign-in completes
+## 1. How a sign-in completes
 
-Every path runs the same two steps before the router is allowed to move:
+Every path runs the same two steps before the router may move:
 
-1. **Authenticate** with Supabase Auth (`signInWithPassword`,
-   `signInWithOAuth`, `signInWithEthereum` / `signInWithSolana`, …).
-2. **Provision** with `lib/auth/provisioning.ts` → `ensureAccountProvisioned`.
-   `mapAppUserToUiUser` refuses a session that has no `full_name`, `email`,
-   `auth_signup_account_type` or workspace, so this step guarantees all four
-   exist. It is idempotent, only *fills* empty profile columns (an existing
-   value is never overwritten with empty metadata), mirrors into
-   `user_metadata` only when something is actually missing (an unconditional
-   `updateUser` would emit `USER_UPDATED` and double every login), and calls
-   `create_business_workspace` only for business accounts that have no
-   workspace yet. Personal workspaces are created by a database trigger when
-   the profile row lands — there is no `create_personal_workspace` RPC.
+1. **Authenticate** with Supabase Auth (`signInWithPassword`, `signInWithOAuth`, `signInWithEthereum`,
+   `signInWithSolana`).
+2. **Provision** via `lib/auth/provisioning.ts` → `ensureAccountProvisioned`. `mapAppUserToUiUser`
+   refuses a session without `full_name`, `email`, `auth_signup_account_type` or a workspace, so this
+   guarantees all four exist. It is idempotent, only fills empty profile columns (never overwrites a
+   value with empty metadata), mirrors into `user_metadata` only when something is missing (an
+   unconditional `updateUser` would emit `USER_UPDATED` and double every login), and calls
+   `create_business_workspace` only for business accounts with no workspace. Personal workspaces are
+   created by a database trigger on the profile row — there is no `create_personal_workspace` RPC.
 
-Blockers are typed, not parsed:
+Blockers are typed, not parsed: `EMAIL_REQUIRED` (no address on the session — e.g. GitHub "keep my
+email private"; UI asks for one), `DETAILS_REQUIRED` (brand-new account with no name; UI asks for
+details), `PROFILE_UNREADABLE` (profile write failed; retry or support).
 
-| Blocker | Meaning | UI answer |
-| --- | --- | --- |
-| `EMAIL_REQUIRED` | No address on the session (GitHub "keep my email private") | Ask the user to add an email |
-| `DETAILS_REQUIRED` | Brand-new account with no name on record | Ask for name/details |
-| `PROFILE_UNREADABLE` | Profile write failed | Retry / support message |
+## 2. Data model
 
-## 3. Data model
-
-Migration: `supabase/migrations/20261103180000_unified_auth_methods.sql`
-
-Everything is `SECURITY DEFINER` and callable by `service_role` only — the
-browser never touches these tables directly.
+`supabase/migrations/20261103180000_unified_auth_methods.sql` — everything is `SECURITY DEFINER` and
+callable by `service_role` only; the browser never touches these tables directly.
 
 | Object | Purpose |
 | --- | --- |
@@ -70,177 +46,100 @@ browser never touches these tables directly.
 | `auth_nonces` | Single-use SIWE/SIWS challenges (`purpose`, `expires_at`, `consumed_at`) |
 | `prune_auth_nonces()` | Removes expired rows |
 | `sync_auth_providers()` | Keeps `linked_wallets` in step with `auth.identities` |
-| `link_web3_identity()` / `unlink_web3_identity()` | Add/remove a `web3` identity |
-| `link_email_identity()` / `unlink_email_signin()` | Add/remove the `email` identity row |
+| `link_web3_identity()` / `unlink_web3_identity()` | Add or remove a `web3` identity |
+| `link_email_identity()` / `unlink_email_signin()` | Add or remove the `email` identity row |
 | `remaining_signin_methods(user_id)` | Server-side last-method guard |
 
-The **method list shown in the UI comes from `user.identities`**
-(`email`, `github`, `web3:<chain>:<address>`), not from a local table — that
-is the same source Supabase Auth uses to decide what can sign in.
+The method list in the UI comes from `user.identities` (`email`, `github`, `web3:<chain>:<address>`),
+not from a local table — the same source Auth uses to decide what can sign in.
 
-## 4. Edge function `web3-auth`
+## 3. Edge Function `web3-auth`
 
-`supabase/functions/web3-auth/index.ts`, `verify_jwt = false` (it validates
-the caller's bearer token itself and rate-limits per IP).
+`supabase/functions/web3-auth/index.ts` with `verify_jwt = false`: it validates the bearer token itself
+and rate-limits per IP.
 
 | Action | Caller | Notes |
 | --- | --- | --- |
 | `nonce` | anonymous | Issues a single-use challenge (`siwe_link` / `siws_link`) |
 | `consume` | anonymous | Atomic consume; returns the payload used for unlink proof |
 | `link` | signed-in | Verifies the signature, then links the wallet identity |
-| `unlink` | signed-in | Requires a fresh proof: `nonce` → sign → `consume` → `unlink` (valid 5 min) |
-| `link_email` | signed-in | Confirms the new address, then creates the `email` identity |
-| `unlink_email` | signed-in | Removes the `email` identity, guarded by `remaining_signin_methods` |
+| `unlink` | signed-in | Needs fresh proof: `nonce` → sign → `consume` → `unlink` (valid 5 min) |
+| `link_email`, `unlink_email` | signed-in | Confirm the address, create or remove the `email` identity (guarded) |
 
-SIWE/SIWS policy order (all must pass): parse message → `domain` matches the
-URI host → `allowedDomains` (localhost bypassed) → `allowedOrigins` exact match
-→ `issuedAt` / `expiration` / `notBefore` skew (±60 s, max validity 5 min).
-
-Shared code lives in `supabase/functions/_shared/` (`siwe.ts`,
+SIWE/SIWS policy, all of which must pass: parse → `domain` matches the URI host → `allowedDomains`
+(localhost bypassed) → `allowedOrigins` exact match → `issuedAt` / `expiration` / `notBefore` skew
+(±60 s, max validity 5 min). Shared code is in `supabase/functions/_shared/` (`siwe.ts`,
 `web3-verify.ts`, `rate_limit.ts`, `supabase.ts`).
 
-## 5. Client libraries
+## 4. Client modules
 
 | Module | Responsibility |
 | --- | --- |
-| `lib/auth/email-auth.ts` | Sign-up, sign-in, reset, set/change password, verify, resend, add-email-and-password |
-| `lib/auth/oauth.ts` | GitHub sign-in / link / unlink (`linkIdentity`, `unlinkIdentity`), identity helpers |
-| `lib/auth/web3-auth.ts` | `Web3AuthError` + stable codes, the six edge actions, SIWE sign-in |
-| `lib/auth/ethereum-wallet.ts` | EIP-6963 provider discovery, `personal_sign`, chain id, rejection detection |
+| `lib/auth/email-auth.ts` | Sign-up, sign-in, reset, set/change password, verify, resend, add email + password |
+| `lib/auth/oauth.ts` | GitHub sign-in / link / unlink (`linkIdentity`, `unlinkIdentity`) |
+| `lib/auth/web3-auth.ts` | `Web3AuthError` with stable codes, the six edge actions, SIWE sign-in |
+| `lib/auth/ethereum-wallet.ts` | EIP-6963 discovery, `personal_sign`, chain id, rejection detection |
 | `lib/auth/siwe.ts` | Byte-compatible EIP-4361 message builder |
-| `lib/auth/provisioning.ts` | The step described in §2 |
-| `lib/auth/methods.ts` | `buildMethodList`, `loadSignInMethods`, link/unlink wrappers |
-| `lib/auth/auth-errors.ts` | `formatAuthUserFacingError`, including every `web3-auth` error code |
+| `lib/auth/provisioning.ts`, `methods.ts`, `auth-errors.ts` | Provisioning, method list and link/unlink wrappers, user-facing error formatting |
 
-Password policy: sign-in accepts any non-empty password (existing accounts with
-short passwords must not be locked out); sign-up and password reset require at
-least 8 characters with a letter — stricter than the hosted
-`minimum_password_length = 6`, so both agree.
+Password policy: sign-in accepts any non-empty password so existing short-password accounts are not
+locked out; sign-up and reset require at least 8 characters including a letter.
 
-## 6. Security properties
+## 5. Security properties
 
 | Threat | Defence |
 | --- | --- |
-| Replay of a wallet challenge | Nonces are single-use and consumed atomically in the database; 5-minute expiry; signature payload is bound to the nonce |
+| Replay of a wallet challenge | Single-use nonces consumed atomically in the database, 5-minute expiry, signature bound to the nonce |
 | Forged SIWE message | Signature verified server-side (EIP-191 / secp256k1 recovery) in the edge function, never in the browser |
-| Wrong site signing a message | `domain` ↔ URI host, `allowedDomains`, `allowedOrigins` exact match, time-window checks |
-| Account takeover by unlinking the last method | `remaining_signin_methods()` runs server-side; the UI's `removable` flag is only a hint |
-| Unauthorized link/unlink | Edge function requires a valid bearer token; link/unlink actions reject anonymous callers |
-| Wallet unlink without ownership proof | Fresh nonce → sign → `consume` → `unlink` chain, valid 5 minutes |
-| Credential leakage | No private keys, no secrets in the bundle; service-role key only inside edge functions |
-| Email enumeration / abuse | GoTrue rate limits (`sign_in_sign_ups`, `email_sent`, `web3`) plus per-IP limits in the edge function |
+| Wrong site signing | `domain` ↔ URI host, `allowedDomains`, exact `allowedOrigins`, time-window checks |
+| Takeover by unlinking the last method | `remaining_signin_methods()` runs server-side; the UI flag is only a hint |
+| Unauthorized link/unlink | Valid bearer token required; anonymous callers rejected |
+| Wallet unlink without ownership proof | Fresh nonce → sign → consume → unlink chain, valid 5 minutes |
+| Credential leakage | No private keys or secrets in the bundle; service-role key only inside edge functions |
+| Enumeration / abuse | GoTrue rate limits plus per-IP limits in the edge function |
 
-## 7. Configuration you must supply
+## 6. Configuration
 
-Nothing below is committed to the repo. Missing items are called out in §8.
+Web app (`apps/web/.env`): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
-### 7.1 Web app (`apps/web/.env`)
+Local stack (`supabase/config.toml`, committed): `site_url = "http://localhost:5174"` with matching
+`additional_redirect_urls` — **must be `localhost`, not `127.0.0.1`**, because GoTrue rejects
+non-HTTPS SIWE URIs unless the hostname is exactly `localhost`; `enable_confirmations = true`;
+`enable_manual_linking = true` (required by `linkIdentity` / `unlinkIdentity`);
+`[auth.web3.solana]` and `[auth.web3.ethereum]` enabled; `[functions.web3-auth] verify_jwt = false`.
+GitHub stays disabled locally until an OAuth app exists
+(`SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID` / `_SECRET`).
 
-```bash
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon-or-publishable-key>
-```
+Hosted project: enable the Web3 Ethereum and Solana providers, GitHub (callback URL `<origin>/auth/callback`),
+manual linking, email confirmation, and a real SMTP provider — without SMTP, confirmation and reset
+mail never arrive. Set the site URL and redirect URLs
+(`/auth/callback`, `/reset-password`, `/verify-email`, `/*`).
 
-### 7.2 Local stack (`supabase/config.toml`, already committed)
+Edge function secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` are injected
+automatically (the code also accepts `SUPABASE_SECRET_KEY` / `SUPABASE_PUBLISHABLE_KEY`). Set
+`AUTH_ALLOWED_ORIGINS` (comma-separated exact origins) and optionally
+`AUTH_MESSAGE_MAX_VALIDITY_MS` (default 300000).
 
-- `site_url = "http://localhost:5174"` and `additional_redirect_urls`
-  including `http://localhost:5174/*`.
-  **Must be `localhost`, not `127.0.0.1`**: GoTrue rejects non-HTTPS SIWE URIs
-  unless the hostname is exactly `localhost`.
-- `[auth.email] enable_confirmations = true`
-- `enable_manual_linking = true` (required by `linkIdentity` / `unlinkIdentity`)
-- `[auth.web3.solana] enabled = true`, `[auth.web3.ethereum] enabled = true`
-- `[auth.external.github] enabled = false` locally — flip to `true` once the
-  OAuth app exists, with:
-  ```bash
-  SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID=...
-  SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET=...
-  ```
-- `[functions.web3-auth] verify_jwt = false`
+Deploy: `supabase db push`, `supabase functions deploy web3-auth`, `npm --prefix apps/web run build`.
 
-### 7.3 GitHub OAuth app
+## 7. Not verifiable from this repository
 
-1. <https://github.com/settings/applications/new>
-   - **Homepage URL**: the deployed app origin, e.g.
-     `https://<your-app>.onrender.com`
-   - **Authorization callback URL**: `<origin>/auth/callback`
-     (e.g. `https://<your-app>.onrender.com/auth/callback`)
-2. Copy the **Client ID** and generate a **Client secret**.
-3. Supabase dashboard → **Authentication → Providers → GitHub** → enable,
-   paste both values.
-4. Supabase dashboard → **Authentication → URL Configuration** →
-   **Redirect URLs** → add `<origin>/auth/callback`.
+A `SUPABASE_SERVICE_ROLE_KEY` (absent by design) blocks live `web3-auth` calls, the RPCs and the nonce
+table; a GitHub OAuth client ID and secret block GitHub sign-in and linking; hosted project toggles
+block the corresponding providers. Fix the configuration above and the flows go live with no code
+change.
 
-### 7.4 Supabase dashboard (hosted project)
+## 8. Tests
 
-| Setting | Where | Value |
-| --- | --- | --- |
-| Site URL | Authentication → URL Configuration | The deployed web origin |
-| Redirect URLs | Authentication → URL Configuration | `<origin>/auth/callback`, `<origin>/reset-password`, `<origin>/verify-email`, `<origin>/*` |
-| Confirm email | Authentication → Providers → Email | **On** (sign-up returns a pending user, not a session) |
-| Manual linking | Authentication → Settings | **Enabled** |
-| Web3 Ethereum | Authentication → Providers → Web3 | **Enabled** |
-| Web3 Solana | Authentication → Providers → Web3 | **Enabled** |
-| GitHub | Authentication → Providers → GitHub | **Enabled** (after §7.3) |
-| SMTP | Authentication → Email SMTP | A real provider — without it, confirmation and reset mail never arrive |
+`npm --prefix apps/web run typecheck` · `npm --prefix apps/web run test` (auth unit and page tests in
+`src/lib/auth/*.test.ts`, `src/components/auth/AuthShell.test.tsx`, `src/pages/auth/*.test.tsx`) ·
+`deno test supabase/functions/_shared/` for SIWE parsing and signature verification.
 
-### 7.5 Edge function secrets
+## 9. Satellite engine
 
-`SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are
-injected by Supabase automatically (the code also accepts
-`SUPABASE_SECRET_KEY` / `SUPABASE_PUBLISHABLE_KEY` for projects that disabled
-legacy keys). Set these yourself:
-
-```bash
-supabase secrets set \
-  AUTH_ALLOWED_ORIGINS="http://localhost:5174,https://<your-app>.onrender.com" \
-  AUTH_MESSAGE_MAX_VALIDITY_MS=300000   # optional, defaults to 5 minutes
-```
-
-`AUTH_ALLOWED_ORIGINS` is the comma-separated exact-origin allow-list for
-SIWE/SIWS `allowedOrigins`.
-
-### 7.6 Deploy
-
-```bash
-supabase db push                                   # apply the migration
-supabase functions deploy web3-auth                # the link/unlink/nonce function
-npm --prefix apps/web run build                    # the web app
-```
-
-## 8. What is not verifiable from this repo alone
-
-| Missing | Blocks |
-| --- | --- |
-| `SUPABASE_SERVICE_ROLE_KEY` (not present anywhere in the repo) | Live `web3-auth` calls, the RPCs, the nonce table |
-| GitHub OAuth app client ID + secret | GitHub sign-in and link/unlink |
-| Docker / local Supabase stack | Running migrations and functions locally |
-| Hosted project toggles | On `csjjmuexzuewqnopzbik` today: Ethereum Web3 provider disabled (`422 web3_provider_disabled`), GitHub disabled (`400 Unsupported provider`), `mailer_autoconfirm: true` (sign-up returns a session without confirmation) |
-
-Fix each row in §7 and the flows go live with no code change.
-
-## 9. Tests
-
-```bash
-npm --prefix apps/web run typecheck        # tsc -b --noEmit
-npm --prefix apps/web run test             # vitest (auth unit + page tests)
-deno test supabase/functions/_shared/      # SIWE parsing, signature verification
-npm run typecheck && npm test              # repo-wide
-```
-
-Auth coverage lives in `src/lib/auth/*.test.ts` (provisioning, method list),
-`src/components/auth/AuthShell.test.tsx` and `src/pages/auth/*.test.tsx`.
-
----
-
-## 10. Satellite Survey Engine Authentication
-
-The Python engine (`apps/engine`) runs as a **background worker** with no user-facing authentication. It uses:
-
-| Credential | Purpose | Scope |
-| --- | --- | --- |
-| `SUPABASE_SERVICE_ROLE_KEY` | Claims `survey_runs`, writes deliverables, updates job status | Full admin access to `survey_runs`, `survey_deliverables`, `jobs` (restricted by migration grants) |
-| `DE_AFRICA_TOKEN` | Accesses DE Africa WCS 2.1.0 endpoints for satellite rasters | Read-only external API |
-| `SITESURVEYOR_STATE_DIR` | Local disk for cached rasters and outputs | Local filesystem |
-
-The worker runs `FOR UPDATE SKIP LOCKED` on `survey_runs` to claim jobs, processes them, and publishes results back. It does not interact with Supabase Auth, user sessions, or wallet identities. The MCP server (`python -m src.mcp_server`) exposes the same tools over stdio/SSE for AI agents and uses the same `SUPABASE_SERVICE_ROLE_KEY` + `DE_AFRICA_TOKEN` configuration.
+`apps/engine` is a background worker with no user-facing authentication. It claims `survey_runs` with
+`FOR UPDATE SKIP LOCKED` using `SUPABASE_SERVICE_ROLE_KEY` (writes deliverables, updates job status,
+restricted by migration grants) and `DE_AFRICA_TOKEN` for read-only DE Africa WCS raster access, with
+`SITESURVEYOR_STATE_DIR` for cached rasters and outputs. It never touches Auth, sessions or wallet
+identities. The MCP server (`python -m src.mcp_server`) exposes the same tools over stdio/SSE with the
+same credentials.

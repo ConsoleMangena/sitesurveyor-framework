@@ -1,293 +1,216 @@
 # Security model
 
-SiteSurveyor is an **Eineva Labs product and open-source initiative** created to help surveying teams adopt digital fieldwork without overlooking cybersecurity. Survey data can expose property boundaries, critical infrastructure, precise coordinates, client identity, commercial terms, and other sensitive information. SiteSurveyor therefore uses a **hybrid security model by default**: controlled off-chain storage for confidential content, and Solana for explicit wallet authentication, settlement, and minimal integrity proofs.
+SiteSurveyor uses a **hybrid security model by default**: confidential content stays in controlled
+off-chain storage, and Solana carries explicit wallet authentication, settlement, and minimal
+integrity proofs. Survey data can expose boundaries, critical infrastructure, precise coordinates,
+client identity and commercial terms, so the default is private.
 
-> **Blockchain provides tamper-evidence, not confidentiality.** Never put unencrypted confidential survey files, client details, coordinates, private keys, seed phrases, or confidential project notes on-chain. The full-file anchoring mode encrypts every chunk in the browser before it is uploaded and requires the user to choose the passphrase that protects those copies; the chain still only ever sees digests.
+> **Blockchain provides tamper-evidence, not confidentiality.** Never put unencrypted survey files,
+> client details, coordinates, private keys, seed phrases or confidential notes on-chain.
 
-This document describes implemented controls, planned storage behaviour, and important limitations. It is not a security certification, legal opinion, or substitute for an independent production audit.
+This document states implemented controls and real limitations. It is not a certification, a legal
+opinion, or a substitute for an independent production audit.
 
-## 1. Security objectives
+## 1. Objectives
 
-- Keep plaintext sensitive files and operational records out of public blockchain data.
-- Restrict workspace data to authenticated, authorised users and services.
-- Make file alterations detectable against a recorded SHA-256 digest.
-- Require explicit wallet signatures for Solana transactions.
-- Constrain AI tools and keep privileged provider/service keys off the browser.
-- Keep development networks and sandbox payments separate from production activity.
-- Preserve enough network, signature, and status metadata for reconciliation and investigation.
+Keep plaintext files and operational records out of public chain data · restrict workspace data to
+authenticated, authorised users and services · make alteration detectable against a recorded SHA-256
+digest · require explicit wallet signatures · constrain AI tools and keep privileged keys off the
+browser · keep devnet and sandbox activity separate from production · preserve signature, network and
+status metadata for reconciliation.
 
 ## 2. Data boundaries
 
-| Data class | Intended location | Public on Solana? | Key concern |
+| Data class | Location | Public on Solana? | Key concern |
 | --- | --- | --- | --- |
-| Original plans, point clouds, site photos, reports | Supabase Storage; full-file anchoring adds encrypted chunk copies there too | **No in either mode; only digests and the chunk count are written on anchor** | Bucket/object authorization, pre-chunk encryption, key custody, and sharing |
-| Projects, contacts, jobs, quotes, invoices, team data | Supabase Postgres | **No** | Workspace isolation and RLS |
-| AI conversations, summaries, structured memory | Supabase Postgres | **No** | User ownership, retention, provider processing |
-| AI prompts and relevant tool context | Processed by configured NVIDIA NIM service | **No** | Provider policy and confidential-data governance |
-| Attachment ID + SHA-256 digest | Postgres and Solana Memo when anchored | **Yes** | Public permanence and identifier/digest disclosure |
-| Solana wallet address and transaction signature | Wallet, chain, and selected metadata | **Yes when used on-chain** | Address/linkability and cluster correctness |
-| Solana USDC payment | Solana | **Yes** | Recipient, mint, amount, finality, and key security |
-| PesePay payment data | PesePay and off-chain records | **No** | Server secrets, provider status, reconciliation |
-| Satellite survey deliverables (GeoTIFF, PNG, GeoJSON, KMZ, HTML) | Supabase Storage `survey-deliverables` bucket; metadata in `survey_runs` / `survey_deliverables` | **No** | Bucket/object authorization, workspace scoping via RLS |
-| Satellite survey job specification (category, lat/lon, extent) | `jobs.description` (JSON) | **No** | Workspace isolation, pricing integrity |
+| Plans, point clouds, photos, reports | Supabase Storage (full-file mode adds encrypted chunk copies there) | **No** — only digests and chunk count | Bucket authorization, pre-chunk encryption, key custody |
+| Projects, contacts, jobs, quotes, invoices, team | Postgres | **No** | Workspace isolation, RLS |
+| AI conversations, summaries, memory | Postgres | **No** | Ownership, retention, provider processing |
+| Prompts and tool context | NVIDIA NIM | **No** | Provider policy, confidential-data governance |
+| Attachment ID + SHA-256 digest | Postgres + Memo when anchored | **Yes** | Public permanence, digest confirmation |
+| Wallet address, transaction signature | Wallet, chain, metadata | **Yes when on-chain** | Linkability, cluster correctness |
+| USDC payment | Solana | **Yes** | Recipient, mint, amount, finality, key security |
+| PesePay payment data | PesePay + off-chain records | **No** | Server secrets, reconciliation |
+| Satellite deliverables (GeoTIFF, PNG, GeoJSON, KMZ, HTML) | Storage `survey-deliverables`, metadata in `survey_runs` / `survey_deliverables` | **No** | Bucket authorization, workspace RLS |
+| Satellite job spec (category, lat/lon, extent) | `jobs.description` JSON | **No** | Workspace isolation, pricing integrity |
 
-### File-anchor privacy
-
-The built-in hash-only anchor Memo is:
+**Anchor memos.** Neither form carries file name, bytes, client, project title or coordinates:
 
 ```text
-ssv1:<attachment-id>:sha256:<lowercase-file-digest>
-```
-
-Full-file anchoring writes one extra value — the digest of the chunk manifest — and nothing else:
-
-```text
+ssv1:<attachment-id>:sha256:<file-digest>
 ssv2:<attachment-id>:sha256:<file-digest>:<manifest-digest>:<chunk-count>
 ```
 
-Neither contains the file name, file bytes, client name, project title, or coordinates. Nevertheless, the attachment ID and digest are public. A digest can also confirm that a suspected known file matches the anchored version. If even that disclosure is unacceptable for a particular workflow, do not anchor it publicly; use an approved alternative integrity-control design.
+The attachment ID and digest are still public, and a digest can confirm that a suspected known file
+matches. If that disclosure is unacceptable, do not anchor it publicly. Deleting an off-chain row
+never removes an existing Memo — plan retention and client disclosure accordingly.
 
-Deleting an off-chain file or database row does not remove an existing blockchain Memo. Plan retention and client disclosures accordingly.
+**Full-file chunk confidentiality.** Chunk copies are encrypted before they leave the browser: a
+fresh 256-bit key per operation, AES-256-GCM with a random IV per chunk (manifest copy included), and
+the key persisted only wrapped under PBKDF2-SHA-256 (250,000 iterations) from a passphrase that is
+never stored, hashed for lookup, or transmitted. Manifest and on-chain digests describe the
+**plaintext**, so the proof stays about the original file. Consequences: losing the passphrase makes
+the chunk copies unrecoverable (the original file and the chain record remain valid); there is no
+key-recovery service; records anchored before this scheme hold plaintext chunks and are labelled as
+such. Anyone with storage access but no passphrase sees ciphertext; anyone with the passphrase reads
+the anchored bytes.
 
-### Full-file chunk confidentiality
+## 3. Identity and wallets
 
-Full-file anchoring stores private copies of the file so the anchor can be rebuilt and proved later. Those copies are encrypted before they leave the browser:
+**Sign In With Solana.** The wallet signs an authentication statement containing a cryptographically
+random nonce; the app then loads profile and workspace membership. Native desktop SIWS where
+supported, mobile `signMessage` with Solflare hand-off, protected routes, view filtering, session
+expiry and cached-session handling for network interruptions. Users must still inspect domain,
+statement, wallet and network. An authentication signature never needs a seed phrase or a transfer.
 
-- A fresh 256-bit key is generated per anchor operation and is never stored in the clear.
-- Every chunk, and the stored copy of the manifest, is sealed with AES-256-GCM using a random IV per chunk.
-- The operation key is persisted only wrapped under a key derived from the user's anchoring passphrase with PBKDF2-SHA-256 at 250,000 iterations. The passphrase itself is not stored, hashed for lookup, or transmitted.
-- Chunk digests recorded in the manifest and on chain describe the **plaintext** bytes, so the on-chain proof stays about the original file rather than about ciphertext.
-
-Consequences the user must understand before anchoring:
-
-- Losing the passphrase makes the encrypted chunk copies unrecoverable. The original file stays in workspace storage, the on-chain record stays valid, and the stored file can still be compared with the anchored digest, but the chunks cannot be rebuilt.
-- The passphrase is not a password the platform can reset or escrow. There is no key recovery service.
-- Records anchored before this scheme exist with plaintext chunk copies and are labelled as such in the file manager; deleting them removes only the private copies, never the Memo.
-- Server-side confidentiality therefore depends on a secret held by the user. Anyone with the workspace's storage access but not the passphrase sees ciphertext; anyone with the passphrase can read the anchored bytes.
-
-## 3. Identity and wallet security
-
-### Sign In With Solana
-
-The app uses Supabase Web3 authentication and Sign In With Solana (SIWS). The wallet signs an authentication statement with a nonce; the app then loads the user's profile and workspace membership.
-
-Controls include:
-
-- A cryptographically generated SIWS nonce in the normal browser flow.
-- Native desktop wallet SIWS where supported.
-- Mobile-specific signing and Solflare hand-off behaviour.
-- Protected workspace routes and account/view filtering.
-- Session-expiry handling and cached-session logic for network interruptions.
-
-Users must still inspect the domain, statement, wallet, and network context. Authentication signatures should never request a seed phrase or approve a fund transfer.
-
-### Built-in SiteSurveyor wallet
-
-The optional built-in wallet encrypts a generated Solana keypair with:
-
-- PBKDF2 using SHA-256 and 250,000 iterations.
-- A random salt and AES-GCM initialization vector.
-- AES-256-GCM encryption using a key derived from the user's PIN.
-- Ciphertext storage through the custom-wallet repository; the decrypted keypair is held by the adapter while unlocked.
-
-This is not the same trust model as an external hardware or audited software wallet. PIN strength, endpoint security, Supabase access, recovery procedures, and implementation review remain critical. Use an appropriately reviewed external wallet for high-value production funds, and never reuse a development wallet as a production treasury.
+**Built-in wallet.** An optional generated Solana keypair encrypted with PBKDF2-SHA-256 (250,000
+iterations), a random salt and AES-256-GCM under a user PIN; the decrypted keypair lives only in the
+adapter while unlocked. This is a weaker trust model than a hardware or audited software wallet —
+review it, use an external wallet for high-value funds, and never reuse a development wallet as a
+production treasury.
 
 ## 4. Workspace and database controls
 
-SiteSurveyor uses authenticated Supabase access, workspace-scoped repository queries, and Row Level Security on multiple AI, marketplace, portfolio, wallet, storage-purchase, and payment tables. Additional base schema and deployment policies may exist outside the incremental migration files.
+Authenticated Supabase access, workspace-scoped repository queries, and RLS across AI, marketplace,
+portfolio, wallet, storage-purchase and payment tables. Verify the **deployed** schema before
+production rather than assuming every table is covered by a migration in this repository:
 
-Before production, verify the complete deployed schema rather than assuming every table is protected by a migration visible in this repository:
+- every exposed table and view is deny-by-default;
+- membership is enforced server-side for both personal and business workspaces;
+- buckets and object paths enforce the same boundaries as attachment metadata;
+- public market views expose only deliberately public fields;
+- platform-operator capabilities are limited to authorised accounts;
+- `security definer` functions have reviewed search paths, privileges and row exposure;
+- service-role credentials never reach frontend code, Vite variables, logs or bundles.
 
-- Every exposed table and view has the intended deny-by-default policy.
-- Personal and business workspace membership is enforced server-side.
-- Storage buckets and object paths enforce the same workspace boundaries as attachment metadata.
-- Public market views expose only deliberately public fields.
-- Platform-operator capabilities are limited to authorised accounts.
-- Security-definer functions have reviewed search paths, privileges, and row exposure.
-- Service-role credentials are never present in frontend code, Vite variables, logs, screenshots, or static bundles.
-
-RLS is a necessary layer, not a complete authorization review. Test cross-workspace read, insert, update, delete, storage, and function access with real non-privileged roles.
+RLS is a necessary layer, not an authorization review. Test cross-workspace read, insert, update,
+delete, storage and function access with non-privileged roles.
 
 ## 5. AI trust boundaries
 
-### Implemented safeguards
+**Implemented:** the browser holds no NVIDIA or service-role key · endpoints authenticate the user
+and check conversation ownership · models and tables are allowlisted · tool arguments are checked
+against schemas and live columns · workspace context is stamped onto new writes · update/delete need
+a valid UUID and deletes need explicit confirmation · writes are read back before being reported
+verified · tool loops, rounds, history and timeouts are bounded · CAD commands execute only when the
+user runs them, with extra confirmation for erasure.
 
-- The browser does not hold the NVIDIA key or Supabase service-role key.
-- AI endpoints authenticate the user and check conversation ownership.
-- Models and data tables are allowlisted.
-- Tool arguments are checked against expected schemas and live database columns.
-- Workspace context is applied to new business writes where applicable.
-- Update/delete tools require a valid UUID; deletes require explicit confirmation.
-- Insert/update results are read back before being reported as verified.
-- Tool loops, round counts, history sizes, and upstream timeouts are bounded.
-- CAD command blocks require user execution, with additional confirmation for erasure.
+**Service-role warning.** The AI runtime and optional gateway use a service-role key, which can
+bypass RLS. Endpoint authentication, ownership checks, workspace resolution, table allowlists, record
+scoping and tool implementation *are* the authorization boundary. Every new tool needs a review of:
+which user and workspace it serves · which rows it reads or mutates · whether a supplied ID can reach
+another workspace · whether it needs confirmation · what data reaches the model or browser · what is
+logged and how success is verified.
 
-### Service-role warning
+**Prompt and model risk.** Output can be wrong, and record or file content can attempt prompt
+injection. Treat it as untrusted input: verify coordinates, datums, units, totals and record IDs,
+confirm destructive or externally consequential actions, never let a model invent settlement or
+compliance, and review the provider's retention and data-use terms before sending restricted context.
 
-The shared AI runtime and optional gateway use a Supabase service-role key for server-side tool execution. Service-role access can bypass normal RLS. Consequently, endpoint authentication, conversation ownership checks, workspace resolution, table allowlists, record scoping, and tool implementation are critical authorization boundaries.
+## 6. Evidence handling
 
-Do not assume RLS alone protects an AI tool call. Every new tool requires a review of:
+The file manager records SHA-256 digests, verifies integrity, tracks versions, and can anchor a
+digest through a wallet-signed Memo; full-file mode also encrypts chunk copies and rebuilds the bytes
+to prove they still match the chain. These controls detect byte changes. They do **not** establish
+authorship or ownership, correct survey work, capture-time authenticity or legal admissibility,
+that the wallet owner was authorised by the client, or that the off-chain file stays available. A
+defensible process combines hashes with access logs, approved signing identities, version history,
+backups, retention rules, QA and local legal requirements.
 
-1. Which authenticated user and workspace it serves.
-2. Which rows it can read or mutate.
-3. Whether user-supplied IDs can reference another workspace.
-4. Whether the operation needs confirmation.
-5. What sensitive data is sent to the model or returned to the browser.
-6. What is logged and how success is verified.
-
-### Prompt and model risk
-
-AI output can be incorrect, and malicious content in records or files can attempt prompt injection. Treat model output as untrusted input to a professional workflow:
-
-- Verify coordinates, datums, units, calculations, client details, totals, and record IDs.
-- Require confirmation for destructive or externally consequential operations.
-- Do not let a model invent transaction success, payment settlement, survey accuracy, or legal compliance.
-- Review the AI provider's data-use, retention, regional, and contractual terms before sending restricted project context.
-- Avoid placing secrets or unnecessary confidential content in prompts, memory, tool descriptions, or evaluation fixtures.
-
-## 6. File integrity and evidence handling
-
-The file manager calculates and records SHA-256 digests, supports integrity verification, tracks file versions, and optionally anchors a digest through a wallet-signed Solana Memo transaction. Full-file anchoring additionally encrypts chunked copies, records a chunk manifest, and can rebuild the original bytes to prove they still match what the chain committed to.
-
-These controls can detect byte changes relative to a digest. They do not establish:
-
-- Who created or legally owns the file.
-- Whether a survey was performed correctly.
-- Whether the content is complete, authentic at capture time, or legally admissible.
-- Whether the wallet owner was authorised by the client or firm.
-- Whether the off-chain file will remain available.
-
-For a defensible evidence process, combine hashes and anchors with access logs, approved signing identities, capture provenance, version history, backups, retention rules, professional QA, and the legal requirements of the relevant jurisdiction.
-
-If verification fails, stop treating the object as the anchored version. Preserve the file and mismatch details, inspect version/access history, and follow the organisation's incident and evidence-handling procedure.
+If verification fails, stop treating the object as the anchored version: preserve the file and the
+mismatch detail, inspect version and access history, and follow incident procedure.
 
 ## 7. Solana transaction safety
 
-Development defaults to **devnet**. Before approving an anchor or payment, verify:
+Development defaults to **devnet**. Before approving an anchor or payment, verify app origin and
+wallet prompt, cluster and RPC, transaction type and expected Memo or SPL operation, USDC mint,
+amount and treasury, fee payer and available SOL, then the signature and confirmation **on the same
+cluster**. A devnet signature is not mainnet proof; a submitted signature is not a confirmation; an
+anchor is not a payment; and a payment signature is not proof that an invoice reconciled.
 
-- The application origin and wallet prompt.
-- The cluster and RPC endpoint.
-- The transaction type and expected Memo or SPL token operation.
-- The USDC mint, amount, and treasury recipient for payments.
-- The fee payer and available SOL for network fees.
-- The resulting signature and confirmation on the same cluster.
+**Marketplace orders enforce that in code.** Checkout writes the order as `pending` before signing,
+so an abandoned tab leaves a traceable record instead of an untraceable transfer.
+`market_order_attach_signature` moves it to `submitted`; the `guard_marketplace_order_status` trigger
+rejects `completed` from any non-service role and refuses to reopen a completed order or replace a
+recorded signature. Only `market-verify-payment` completes an order, after `getTransaction` shows the
+seller wallet receiving at least the order amount on a non-failing transaction. The payout address is
+resolved at pay time (`market_listing_payout`), not from the copy stored when the listing was created.
 
-A devnet signature is not mainnet proof. A submitted signature is not necessarily a confirmed transaction. A confirmed file anchor is not a payment, and a payment signature is not proof that an invoice's off-chain status was correctly reconciled.
+## 8. Fiat payments
 
-**Marketplace orders enforce that rule in code.** Checkout writes the order as `pending` before the wallet is asked to sign, so an abandoned tab leaves a record rather than an untraceable transfer. `market_order_attach_signature` moves it to `submitted`; a trigger (`guard_marketplace_order_status`) rejects `completed` from any non-service role and refuses to reopen a completed order or replace a recorded signature. Only `supabase/functions/market-verify-payment` marks an order complete, after `getTransaction` shows the seller wallet receiving at least the order amount on a transaction that did not fail. The payout address is resolved from the seller workspace at pay time (`market_listing_payout`), not from the copy taken when the listing was created.
+PesePay is a separate rail and is **sandbox-only in development**: secrets stay server-side and out
+of logs, tickets and chat; no live charge comes from a development session; credentials rotate before
+production; provider callbacks reconcile against invoice records before settlement is reported.
+Solana and fiat confirmations stay behaviourally and visually distinct.
 
-Use a trusted production RPC strategy, explicit mainnet configuration, separate production treasury/wallet controls, and monitoring appropriate to the value and evidence involved.
+**Refunds.** PesePay exposes no refund call, so the money side settles with the provider out of band
+and is then recorded in-product. Both recording paths are database functions, not client writes —
+`record_pesepay_transaction_refund()` and `reverse_workspace_ai_credits()` re-check
+`profiles.is_platform_admin` inside `security definer` functions (the two documented exceptions to
+service-role-only grants), take a `pg_advisory_xact_lock` on the corrected row so the same value
+cannot be clawed back twice, and are idempotent. Reclaims are capped at the current balance and never
+go negative; a storage refund ends the allocation window rather than deleting files. The credit
+ledger stays append-only — a correction is a `reversal` row linked to the entry it corrects — and both
+actions require a written reason of at least three characters. A refund applies only to a payment
+that reached `completed`; a table check requires `refunded` rows to carry `refunded_at` and
+`refund_reason`, which only the function sets.
 
-## 8. Fiat payment safety
+## 9. Secrets
 
-PesePay is a separate fiat rail. The current repository constraint is **sandbox-only for development**:
+All `VITE_*` values are public build-time configuration: the Supabase URL, anon/publishable key,
+Solana cluster, public RPC URL, USDC mint and treasury address are safe there. Never expose
+`SUPABASE_SERVICE_ROLE_KEY`, `NVIDIA_API_KEY`, PesePay secret keys, seed phrases, private keys,
+built-in wallet PINs, database passwords or unrestricted admin tokens. Keep real `.env` files out of
+source control (`.gitignore` allows only `.env.example`), and re-check generated bundles and logs
+after configuration changes.
 
-- Keep PesePay secrets in server-side environment/secrets management only.
-- Do not print, commit, or paste credentials into documentation, tickets, logs, or chat.
-- Do not initiate live charges from a development session.
-- Rotate exposed or development-shared credentials before production.
-- Reconcile provider callbacks/status with invoice records before reporting settlement.
+## 10. Browser and PWA
 
-Solana and PesePay confirmations must remain behaviourally and visually distinct.
-
-### Refunds and ledger corrections
-
-PesePay exposes no refund call to this integration, so the money side of a refund
-is settled with the provider out of band and then recorded in SiteSurveyor. Both
-recording paths are database functions, not client writes:
-
-- `record_pesepay_transaction_refund()` and `reverse_workspace_ai_credits()` each
-  re-check `profiles.is_platform_admin` for the calling user inside a
-  `security definer` function, so the browser's role display is never the
-  authority. They are the two documented exceptions to the service-role-only
-  grant rule, and the administrator test is what replaces that gate.
-- Each takes a `pg_advisory_xact_lock` on the payment or entry it is correcting,
-  so two administrators cannot claw back the same value twice, and repeating the
-  same call returns the original result instead of appending a second correction.
-- Nothing is ever taken from a workspace that is not there: credit and wallet
-  reclaim is capped at the current balance, balances cannot go below zero, and a
-  storage refund ends the purchased allocation window rather than deleting files.
-- The credit ledger stays append-only. A correction is a new `reversal` row that
-  links to the entry it corrects; the payment row records who marked it refunded,
-  when, and the written reason. Both actions refuse to run without a reason of at
-  least three characters.
-- A refund only ever applies to a payment that reached `completed`. The status
-  cannot be set from a bare update: a table check requires `refunded` rows to
-  carry `refunded_at` and `refund_reason`, both of which only the function sets.
-
-## 9. Secrets and public frontend configuration
-
-All `VITE_*` values are public build-time configuration. Safe examples include the Supabase project URL, anon/publishable key, Solana cluster, public RPC URL, USDC mint, and treasury address.
-
-Never expose:
-
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `NVIDIA_API_KEY`
-- PesePay secret keys
-- Wallet seed phrases or private keys
-- Built-in wallet PINs
-- Production database passwords or unrestricted administrative tokens
-
-Keep real `.env` files out of source control. The repository's `.gitignore` excludes them while allowing `.env.example` templates. Review generated bundles and logs after configuration changes to ensure no privileged value was introduced.
-
-## 10. Browser and PWA considerations
-
-The PWA service worker caches application assets and selected public images/public storage objects. Authenticated Supabase REST calls use `NetworkOnly`, reducing the risk of serving stale private workspace API responses from the service-worker cache.
-
-Public storage objects should still be considered public. Do not place confidential survey evidence in a public bucket merely because the surrounding page requires sign-in.
-
-Cached sessions and offline screens are usability features, not proof of current authorization or completed remote writes. Revalidate sensitive operations after reconnecting.
+The service worker caches app assets and selected public images; authenticated Supabase REST calls use
+`NetworkOnly`, so private workspace responses are not served stale. Public storage objects are public
+— never place confidential evidence in a public bucket because the surrounding page requires sign-in.
+Cached sessions and offline screens are usability features, not proof of current authorisation. A
+workspace session left open on a shared device keeps whatever that browser had cached; treat it as a
+physical-access risk and sign out.
 
 ## 11. Production readiness checklist
 
-Complete and record these checks before using live client data, mainnet assets, or live payments:
+Access and data — review the whole deployed schema, views and storage policies; test cross-workspace
+access with non-privileged accounts; confirm sensitive buckets are private; configure backups,
+restoration tests, retention and deletion; review public market and public storage exposure.
 
-### Access and data
+AI — threat-model every service-role tool and every ID that can cross workspaces; configure provider
+retention terms and an approved confidential-data policy; test prompt injection, unauthorised access,
+destructive actions and misleading success responses; keep logs and eval fixtures free of project
+data.
 
-- [ ] Review the entire deployed schema, views, functions, and storage policies, not only incremental migrations.
-- [ ] Test cross-user and cross-workspace access with non-privileged accounts.
-- [ ] Confirm sensitive buckets are private and sharing/download URLs follow policy.
-- [ ] Configure backups, restoration tests, retention, deletion, and evidence-export procedures.
-- [ ] Review public market and public storage exposure.
+Web3 and payments — use separate reviewed production wallets, treasury, RPC and mint; confirm cluster
+consistency across sign-in, anchors, payments and Explorer links; complete a key-management review
+including the built-in wallet; rehearse the full-file flow (passphrase custody, loss consequence,
+chunk recovery, retention) in staging; rotate sandbox or exposed credentials and enable live payments
+only via an approved release; test pending, failed, delayed, duplicate and reconciled states; agree the
+refund procedure — who settles with the provider, who records it, how revoked credits and storage
+windows are confirmed — **before** taking money.
 
-### AI
-
-- [ ] Threat-model every AI tool with service-role privileges and workspace-crossing IDs.
-- [ ] Configure provider retention/data-use terms and an approved confidential-data policy.
-- [ ] Test prompt injection, unauthorized record access, destructive actions, and misleading success responses.
-- [ ] Restrict logs and evaluation datasets so they do not leak project data or secrets.
-
-### Web3 and payments
-
-- [ ] Use separate reviewed production wallets, treasury addresses, RPC endpoints, and USDC mint.
-- [ ] Confirm cluster consistency across sign-in UX, anchors, payments, Explorer links, and records.
-- [ ] Complete a wallet/key-management review, including the optional built-in wallet and recovery process.
-- [ ] Review the full-file anchoring flow in a staging workspace before promoting it: passphrase custody, the consequences of losing it, chunk recovery, and retention.
-- [ ] Rotate sandbox or previously exposed payment credentials and enable live payments only through an approved release.
-- [ ] Test pending, failed, delayed, duplicate, and reconciled transaction states.
-- [ ] Agree the refund procedure before taking money: who settles with the provider, who records the refund in SiteSurveyor, and how the revoked credits, storage window, or wallet balance is confirmed.
-
-### Application and operations
-
-- [ ] Run typecheck, lint, unit/integration tests, production build, and relevant AI evaluation suites.
-- [ ] Perform dependency, secret, static-bundle, and deployment-configuration scans.
-- [ ] Configure TLS, security headers, rate limiting, monitoring, audit retention, and incident response.
-- [ ] Complete an independent security review appropriate to the sensitivity and value at stake.
+Application and operations — run typecheck, lint, tests, production build and AI evaluations; scan
+dependencies, secrets, the static bundle and deployment config; configure TLS, security headers, rate
+limiting, monitoring, audit retention and incident response; complete an independent review
+proportionate to the value at stake.
 
 ## 12. Explicit non-claims
 
-Unless separately implemented and verified in a deployment, do not describe SiteSurveyor as providing:
+Do not describe SiteSurveyor as providing end-to-end encryption of all workspace data or prompts;
+automatic decentralised storage of original files (full-file mode keeps encrypted copies in the same
+Supabase buckets — it does not replicate to a decentralised network); confidential blockchain storage
+merely because a payload is chunked (only digests reach the chain); legal certification of document
+authenticity, land ownership or survey accuracy; automatic regulatory compliance; fully offline AI,
+payments or blockchain verification; or production-ready live fiat processing on sandbox credentials.
 
-- End-to-end encryption of all workspace data or AI prompts.
-- Automatic decentralised storage of all original survey files. Full-file anchoring keeps encrypted chunk copies in the same Supabase buckets as the workspace; it does not replicate bytes to a decentralised network.
-- Confidential blockchain storage merely because a payload is chunked. Only digests reach the chain; the confidentiality of the chunk copies rests on the user's anchoring passphrase.
-- Legal certification of document authenticity, land ownership, or survey accuracy.
-- Automatic regulatory compliance.
-- Fully offline AI, payments, or blockchain verification.
-- Production-ready live fiat processing while using sandbox credentials.
-
-Precise language is a security control: users must understand what is protected, where data goes, and which guarantees the system does not make.
+Precise language is a security control: users must understand what is protected, where data goes, and
+which guarantees the system does not make.
 
 ## Reporting a security concern
 
-Contact the repository maintainer through a private channel. Do not open a public issue containing credentials, private keys, client data, sensitive coordinates, or an exploitable proof of concept. Remove secrets from logs before sharing them, and rotate any credential that may have been exposed.
+Contact the maintainer privately. Do not open a public issue containing credentials, private keys,
+client data, sensitive coordinates or an exploitable proof of concept. Strip secrets from logs before
+sharing and rotate anything that may have been exposed.

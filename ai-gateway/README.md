@@ -1,200 +1,126 @@
 # SiteSurveyor AI gateway
 
-Part of **SiteSurveyor, an Eineva Labs product and open-source initiative**, this directory provides an optional Node.js host for the built SiteSurveyor web app and an authenticated `/api/chat` endpoint.
-
-The **primary AI runtime** is the `ai-chat` Supabase Edge Function. This gateway is a **self-hosted fallback/serving path** using the same agent core and NDJSON event contract. It is not an offline inference engine: both runtimes require network access to Supabase and NVIDIA NIM.
-
-## Components
+An optional Node host for the built web app and an authenticated `/api/chat` endpoint. The **primary**
+AI runtime is the `ai-chat` Supabase Edge Function; this gateway is a self-hosted serving and fallback
+path that imports the same agent core and NDJSON event contract. It is not offline inference — both
+runtimes need network access to Supabase and NVIDIA NIM.
 
 | Path | Responsibility |
 | --- | --- |
-| `ai-gateway-server.ts` | Serves `apps/web/dist`, authenticates chat requests, resolves workspace context, persists turns, and streams agent events |
-| `openclaw-runner.ts` | Optional OpenClaw agent execution and environment mapping |
-| `openclaw.config.json` | Example OpenClaw model/MCP/agent configuration |
-| `sitesurveyor-mcp/` | Model Context Protocol server exposing SiteSurveyor data, workflow, CAD, and memory tools over stdio |
-| `../supabase/functions/_shared/` | Shared model policy, agent core, skills, memory, and workflows |
-| `../supabase/functions/ai-chat/` | Primary hosted Edge Function runtime |
+| `ai-gateway-server.ts` | Serves `apps/web/dist`, authenticates chat, resolves workspace, persists turns, streams events |
+| `openclaw-runner.ts`, `openclaw.config.json` | Optional buffered OpenClaw agent path and its example config |
+| `sitesurveyor-mcp/` | MCP server exposing data, workflow, CAD and memory tools over stdio |
+| `../supabase/functions/_shared/` | Shared model policy, agent core, skills, memory, workflows |
 
-## Runtime behaviour
+## Request lifecycle
 
-For each chat request, the gateway:
+Validate the bearer token → load the conversation and reject another user's chat → resolve the
+default or first active workspace → persist the user turn and load bounded history → resolve an
+allowlisted model by task complexity → run the shared tool-calling agent (or OpenClaw) → stream
+`status`/`tool`/`delta`/`final`/`error` events → persist the assistant turn.
 
-1. Validates the user's Supabase bearer token.
-2. Loads the conversation and rejects access to another user's chat.
-3. Resolves the user's default or first active workspace.
-4. Persists the user turn and loads bounded history.
-5. Resolves an allowlisted model using task complexity.
-6. Runs the shared tool-calling agent, or optional OpenClaw path.
-7. Streams NDJSON status/tool/delta/final/error events.
-8. Persists the final assistant turn.
+The agent uses server-side service-role access, so endpoint authorisation, workspace scoping, table
+allowlists and tool implementation **are** the security controls. Read [SECURITY.md](../SECURITY.md)
+before deploying or changing a tool.
 
-The agent uses server-side Supabase service-role access. Endpoint authorization, workspace scoping, table allowlists, and tool implementation are therefore critical security controls. Review [SECURITY.md](../SECURITY.md) before deployment or tool changes.
+## Build and run
 
-## Prerequisites
-
-- Node.js 22 and npm.
-- A built frontend in `apps/web/dist`.
-- A built MCP server in `sitesurveyor-mcp/dist` (the host checks for it at startup even when using the inline agent).
-- A Supabase project with the SiteSurveyor AI tables and operational schema.
-- An NVIDIA NIM API key entitled to the models in the shared allowlist.
-
-## Build
-
-From the repository root:
+Needs Node 22, a built frontend in `apps/web/dist`, a built MCP server in `sitesurveyor-mcp/dist` (the
+host checks at startup even when using the inline agent), and a Supabase project with the AI tables.
 
 ```bash
-npm --prefix apps/web install
-npm --prefix apps/web run build
+npm --prefix apps/web install && npm --prefix apps/web run build
 npm --prefix ai-gateway install
-npm --prefix ai-gateway/sitesurveyor-mcp install
-npm --prefix ai-gateway/sitesurveyor-mcp run build
+npm --prefix ai-gateway/sitesurveyor-mcp install && npm --prefix ai-gateway/sitesurveyor-mcp run build
+npm --prefix ai-gateway start        # http://localhost:8787
 ```
 
 ## Configuration
 
-Create `ai-gateway/.env`. It is excluded by the repository's `.gitignore`.
+`ai-gateway/.env` (git-ignored):
 
 ```dotenv
 NVIDIA_API_KEY=nvapi-your-server-side-key
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-server-side-service-role-key
-
-# Optional server settings
-PORT=8787
-HOST=127.0.0.1
-
-# Optional comma-separated browser origins allowed to call /api/market-chat
-# cross-origin. Leave empty for same-origin only.
-# ALLOWED_ORIGINS=https://app.example.com
-
-# Optional buffered OpenClaw path; disabled by default
-# USE_OPENCLAW=1
+# PORT=8787
+# HOST=127.0.0.1
+# ALLOWED_ORIGINS=https://app.example.com   # for cross-origin /api/market-chat
+# USE_OPENCLAW=1                             # buffered OpenClaw path
 ```
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NVIDIA_API_KEY` | For chat | Authenticates to NVIDIA NIM |
-| `SUPABASE_URL` | For chat | Supabase Auth/REST base URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | For chat | Privileged server-side persistence and tool access |
-| `PORT` | No | HTTP port; defaults to `8787` |
-| `HOST` | No | Bind address; defaults to `0.0.0.0` in code, so use a restricted address for local-only work |
-| `ALLOWED_ORIGINS` | No | Comma-separated origins allowed to call `/api/market-chat` cross-origin; empty means same-origin only |
-| `USE_OPENCLAW` | No | Set to `1` to use the optional buffered OpenClaw runtime |
+`NVIDIA_API_KEY`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are required for chat; `PORT`
+(default 8787), `HOST`, `ALLOWED_ORIGINS` and `USE_OPENCLAW` are optional. The code defaults `HOST` to
+`0.0.0.0`, so set a restricted address for local-only work. Never copy these into `apps/web/.env`, a
+`VITE_*` variable, the bundle, logs or screenshots.
 
-Never copy these values into `apps/web/.env`, a `VITE_*` variable, the frontend bundle, logs, screenshots, or documentation containing real credentials.
-
-## Run
-
-```bash
-npm --prefix ai-gateway start
-```
-
-With the default port, open **http://localhost:8787**. The host serves the production SPA and exposes **`POST /api/chat`**.
-
-The server exits at startup if the frontend or MCP build artifacts are missing. If required AI environment values are absent, static serving can still run but `/api/chat` returns a configuration error.
+Missing build artifacts exit at startup; static serving still works without AI values, but
+`/api/chat` returns a configuration error.
 
 ## Chat API
-
-### Request
 
 ```http
 POST /api/chat
 Authorization: Bearer <user-supabase-access-token>
 Content-Type: application/json
+
+{"conversation_id":"<uuid>","message":"Summarise upcoming jobs.","project_id":"<optional uuid>","model":"<optional allowlisted id>"}
 ```
 
-```json
-{
-  "conversation_id": "existing-conversation-uuid",
-  "message": "Summarise upcoming jobs in this workspace.",
-  "project_id": "optional-project-uuid",
-  "model": "optional-allowlisted-model-id"
-}
-```
+`conversation_id` and a non-empty `message` are required; `project_id` adds CAD-workspace context. An
+unknown model ID cannot bypass the shared model policy — resolution falls back to an allowed model,
+and provider entitlement is still checked at call time.
 
-`conversation_id` and a non-empty `message` are required. `project_id` supplies optional CAD-workspace context. Unknown or unentitled model IDs must not be treated as a way around the shared model policy; model resolution falls back to an allowed model, while provider entitlement is still required at call time.
-
-### Streaming response
-
-Content type: `application/x-ndjson; charset=utf-8`.
+The response is `application/x-ndjson; charset=utf-8`:
 
 ```text
-{"type":"status","phase":"..."}
-{"type":"tool","name":"query_site_data"}
-{"type":"delta","text":"Partial response..."}
-{"type":"final","text":"Completed response."}
+{"type":"status","phase":"..."}   {"type":"tool","name":"query_site_data"}
+{"type":"delta","text":"Partial..."}   {"type":"final","text":"Completed."}
 ```
 
-Errors use the `error` event or an HTTP error before streaming begins. Clients must not report a record write, payment, or other action as successful unless the relevant verified tool result confirms it.
+Errors arrive as an `error` event or an HTTP error before streaming. Clients must not report a write,
+payment or other action as successful unless a verified tool result confirms it.
 
-## Primary Supabase Edge Function
-
-For normal hosted deployment, configure the NVIDIA secret through Supabase's server-side secret store and deploy the function:
+## Primary path: the Edge Function
 
 ```bash
 npx supabase secrets set NVIDIA_API_KEY=nvapi-your-server-side-key
 npx supabase functions deploy ai-chat
 ```
 
-Run these against the intended linked Supabase project. Supabase provides the function's own Supabase URL and service-role environment in its managed runtime; do not move those credentials into the browser.
+Run these against the intended linked project. Supabase supplies the function's own URL and
+service-role environment; those never move into the browser. Model allowlist and complexity routing
+live in `../supabase/functions/_shared/models.ts`, imported by both runtimes so they cannot drift.
 
-The model allowlist and complexity routing live in `../supabase/functions/_shared/models.ts`. The Edge Function and Node gateway import the same policy to prevent model drift.
+## OpenClaw path
 
-## Optional OpenClaw path
-
-The default gateway path uses the inline shared agent and streams token deltas. Setting `USE_OPENCLAW=1` instead delegates to an externally installed/configured OpenClaw runtime and returns a buffered result.
-
-`openclaw.config.json` shows the intended integration:
-
-- NVIDIA NIM as an OpenAI-compatible provider.
-- `sitesurveyor-mcp/dist/index.js` as an MCP stdio server.
-- A named `sitesurveyor` agent with the shared model policy.
-
-OpenClaw is not installed by this package. Configure it separately, ensure its ambient agent/MCP configuration matches this repository, and keep service credentials in server-side environment mappings only.
+`USE_OPENCLAW=1` delegates to an externally installed OpenClaw runtime and returns a buffered result
+instead of streamed deltas. `openclaw.config.json` shows the intended integration: NVIDIA NIM as an
+OpenAI-compatible provider, `sitesurveyor-mcp/dist/index.js` as an MCP stdio server, and a named
+`sitesurveyor` agent using the shared model policy. OpenClaw is not installed by this package.
 
 ## MCP server
 
-The MCP package exposes equivalents of the cloud agent tools:
-
-- Schema inspection, table query, and record counts.
-- Allowlisted record insert, update, and confirmed delete.
-- Quote, overdue-invoice, and scheduling workflows.
-- CAD drawing, layer, entity-count, and entity-inspection tools.
-- Conversation-scoped remember/forget memory.
-
-Useful commands from the repository root:
+Exposes schema inspection, allowlisted query/insert/update/confirmed delete, quote and overdue-invoice
+workflows, scheduling, CAD drawing/layer/entity tools, and conversation-scoped memory.
 
 ```bash
-npm --prefix ai-gateway/sitesurveyor-mcp run build
-npm --prefix ai-gateway/sitesurveyor-mcp test
-npm --prefix ai-gateway/sitesurveyor-mcp start
+npm --prefix ai-gateway/sitesurveyor-mcp run build   # or test, start
 ```
 
-The standalone server expects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. `SITESURVEYOR_WORKSPACE_ID` is required for any business-data tool: the service-role key bypasses row-level security, so every read, write, and workflow is pinned to that workspace and a call without it is refused (only the published market views stay readable). `SITESURVEYOR_STATE_DIR` is optional. Its MCP memory files can contain sensitive project preferences; protect the state directory and include it in retention/deletion planning.
+It requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. `SITESURVEYOR_WORKSPACE_ID` is **required**
+for any business-data tool: the service-role key bypasses RLS, so every read, write and workflow is
+pinned to that workspace and a call without it is refused (only published market views stay readable).
+`SITESURVEYOR_STATE_DIR` is optional, and its memory files can hold sensitive project preferences —
+protect the directory and include it in retention and deletion planning.
 
-## AI consistency checks
+## Checks and deployment hygiene
 
-From the repository root:
+`npm run ai:eval` · `ai:skills-check` · `ai:memory-check` · `ai:models-check` · `ai:rounds-check`, each
+with non-production fixtures. Before exposing the gateway: bind to a restricted interface, put TLS,
+rate limits, request-size limits and monitoring in front of it, keep service-role and NVIDIA secrets in
+the server process or an approved secret manager, prove one user cannot load another's conversation or
+workspace records, review every new tool for cross-workspace IDs, prompt injection, excessive data
+return and confirmation requirements, and avoid logging bearer tokens, secrets or tool payloads.
 
-```bash
-npm run ai:eval
-npm run ai:skills-check
-npm run ai:memory-check
-npm run ai:models-check
-npm run ai:rounds-check
-```
-
-Use non-production fixtures and credentials appropriate to each harness. Review a script before running it against a shared environment, especially where evaluation includes tool writes.
-
-## Security checklist
-
-- Bind to a restricted interface unless external access is intentionally required.
-- Put TLS, authentication-preserving proxying, request-size limits, rate limits, and monitoring in front of a public deployment.
-- Restrict service-role and NVIDIA secrets to the server process and approved secret manager.
-- Test that one user cannot load another user's conversation or workspace records.
-- Review every new tool for cross-workspace IDs, prompt injection, excessive data return, destructive actions, and confirmation requirements.
-- Do not log bearer tokens, secrets, sensitive prompts, or unrestricted tool payloads.
-- Protect MCP state files and apply the same retention policy as other AI conversation data.
-- Use development networks and non-production project data for integration testing.
-
-See the [system architecture](../DESIGN.md#6-ai-agent-architecture) and [AI trust boundaries](../SECURITY.md#5-ai-trust-boundaries) for the complete design context.
+Design context: [DESIGN.md](../DESIGN.md). Trust boundaries: [SECURITY.md](../SECURITY.md).
