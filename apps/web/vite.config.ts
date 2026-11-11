@@ -149,6 +149,15 @@ export default defineConfig({
     // constructors, and `tweetnacl` then rejects encoded input as
     // "unexpected type, use Uint8Array".
     pool: 'vmThreads',
+    // vmThreads workers share one process heap, and v8 coverage data
+    // accumulates across the run until CI workers die ("Maximum call stack
+    // size exceeded", "Worker exited unexpectedly"). Fewer workers bounds the
+    // concurrent VM count. Keep the parallel path: serial runs (maxWorkers 1
+    // or fileParallelism false) skip per-file VM teardown and leak RTL's DOM
+    // cleanup across files.
+    maxWorkers: process.env.CI ? 2 : undefined,
+    // One retry absorbs the rare runner hiccup on CI; local runs stay strict.
+    retry: process.env.CI ? 1 : 0,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'html', 'lcov'],
