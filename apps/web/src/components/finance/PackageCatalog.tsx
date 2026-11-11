@@ -21,7 +21,7 @@ export type PurchaseMessage = {
 interface PackageCatalogProps {
   workspaceId: string;
   kind: BillingPackageKind;
-  /** SiteSurveyor (PesePay) balance in the package currency, used for balance purchases. */
+  /** Prepaid balance in the package currency, used for balance purchases. */
   walletBalance: number;
   /** What the buyer receives, e.g. "500 credits" or "10 GB · 30 days". */
   headline: (pkg: BillingPackage) => string;
@@ -87,7 +87,7 @@ export default function PackageCatalog({
           text:
             err instanceof Error
               ? err.message
-              : "Unable to open PesePay checkout. Try again.",
+              : "Unable to open checkout. Try again.",
         });
         setBusyId(null);
       }
@@ -103,7 +103,7 @@ export default function PackageCatalog({
         const paid = await payPackageWithBalance({ workspaceId, packageId: pkg.id });
         onMessage({
           tone: "success",
-          text: `${pkg.label} added to this workspace. SiteSurveyor balance is now $${paid.balance.toFixed(2)}.`,
+          text: `${pkg.label} added to this workspace. Prepaid balance is now $${paid.balance.toFixed(2)}.`,
         });
         onChanged();
       } catch (err: unknown) {
@@ -123,9 +123,9 @@ export default function PackageCatalog({
 
   if (loading) {
     return (
-      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid max-w-4xl gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-36 w-full rounded-xl" />
+          <Skeleton key={i} className="h-28 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -146,48 +146,48 @@ export default function PackageCatalog({
   }
 
   return (
-    <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid max-w-4xl gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
       {packages.map((pkg) => {
         const covered = walletBalance >= pkg.amount;
         const busy = busyId === pkg.id;
         return (
           <Card
             key={pkg.id}
-            className="flex flex-col justify-between h-full rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 shadow-sm"
+            className="flex h-full flex-col justify-between rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40"
           >
             <div>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h4 className="text-sm font-semibold text-foreground truncate">
+                  <h4 className="truncate text-[13px] font-semibold text-foreground">
                     {headline(pkg)}
                   </h4>
                   {unitNote && unitNote(pkg) ? (
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {unitNote(pkg)}
                     </p>
                   ) : null}
                 </div>
                 <div className="shrink-0 text-right">
-                  <span className="text-base sm:text-lg font-bold font-mono tabular-nums text-foreground">
+                  <span className="font-mono text-sm font-bold tabular-nums text-foreground">
                     ${pkg.amount.toFixed(2)}
                   </span>
                 </div>
               </div>
 
               {pkg.description ? (
-                <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                <p className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
                   {pkg.description}
                 </p>
               ) : null}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-border/60 flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="mt-2.5 flex flex-col gap-1.5 border-t border-border/60 pt-2.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <Button
                   size="sm"
                   disabled={busy}
                   onClick={() => void buyFromBalance(pkg)}
-                  className="w-full text-xs h-8 px-2"
+                  className="h-7 w-full px-2 text-xs"
                   variant={covered ? "default" : "secondary"}
                 >
                   {busy ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
@@ -198,14 +198,14 @@ export default function PackageCatalog({
                   variant="outline"
                   disabled={busy}
                   onClick={() => void buyWithCheckout(pkg)}
-                  className="w-full text-xs h-8 px-2"
+                  className="h-7 w-full px-2 text-xs"
                 >
-                  Pay with PesePay
+                  Pay by card
                 </Button>
               </div>
               {!covered && (
-                <span className="text-[11px] text-muted-foreground truncate">
-                  Balance is ${walletBalance.toFixed(2)} — PesePay checkout covers this.
+                <span className="truncate text-[11px] text-muted-foreground">
+                  Balance is ${walletBalance.toFixed(2)} — card checkout covers this.
                 </span>
               )}
             </div>

@@ -72,11 +72,13 @@ transactions and minimal SHA-256 anchor statements go to Solana.
   file digest, manifest digest and chunk count). Both keep file bytes off-chain.
 - **Market:** listings by category (instruments, professionals, jobs, firms, training), geo map,
   search and filters, and a terminal showing a Solana-priced index, chart, ticker and portfolio.
-- **Payments:** Solana USDC and PesePay fiat rails, kept visually and behaviourally distinct so the
-  two settlement paths never read as one.
+- **Payments:** Solana USDC and a card/mobile-money prepaid rail, kept visually and behaviourally
+  distinct so the two settlement paths never read as one. The UI names the rail by method ("Card &
+  mobile money", "Prepaid balance"), never by the provider behind it.
 - **Wallet sign-in** records account type, name and email; incomplete accounts are pre-filled into a
   finish-setup flow rather than dropped.
-- **Constraints:** PesePay runs on sandbox keys only — no live charge from a development session.
+- **Constraints:** the fiat provider runs on sandbox keys only — no live charge from a development
+  session.
   Solana targets devnet by default; wallet hand-off is Solflare on mobile, Phantom on desktop.
 - **Explicitly not built:** the project-tool cards for instrument calibration, field notes and QA
   flags. They must not be described as working tools.

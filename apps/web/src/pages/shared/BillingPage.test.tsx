@@ -164,7 +164,7 @@ beforeEach(() => {
 });
 
 describe("BillingPage payment rails", () => {
-  it("shows crypto wallets and the PesePay balance as separate rails", async () => {
+  it("shows crypto wallets and the prepaid balance as separate rails", async () => {
     renderBilling();
 
     expect(await screen.findByText("Payment rails")).toBeInTheDocument();
@@ -172,7 +172,7 @@ describe("BillingPage payment rails", () => {
       screen.getByRole("heading", { name: "Crypto wallets" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "PesePay balance" }),
+      screen.getByRole("heading", { name: "Card & mobile money" }),
     ).toBeInTheDocument();
     expect(screen.getByText("No wallet connected")).toBeInTheDocument();
     expect(screen.getByText("120.00")).toBeInTheDocument();
@@ -214,12 +214,12 @@ describe("BillingPage payment rails", () => {
     expect(screen.getAllByText("120.00 USDC").length).toBeGreaterThan(0);
   });
 
-  it("defaults the composer to the PesePay rail and separates the two payment paths", async () => {
+  it("defaults the composer to the card rail and separates the two payment paths", async () => {
     const { onNavigate } = renderBilling();
     await openComposer();
 
     const cryptoChoice = screen.getByRole("button", { name: /^Crypto wallet/ });
-    const balanceChoice = screen.getByRole("button", { name: /^PesePay balance/ });
+    const balanceChoice = screen.getByRole("button", { name: /^Card & mobile money/ });
     expect(cryptoChoice).toHaveAttribute("aria-pressed", "false");
     expect(balanceChoice).toHaveAttribute("aria-pressed", "true");
     expect(
@@ -237,7 +237,7 @@ describe("BillingPage payment rails", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /pay from pesepay balance/i }),
+      screen.getByRole("button", { name: /pay from balance/i }),
     ).toBeDisabled();
 
     await userEvent.click(screen.getByRole("button", { name: /add funds/i }));
@@ -261,14 +261,14 @@ describe("BillingPage payment rails", () => {
     expect(screen.getByText("Payment rail")).toBeInTheDocument();
   });
 
-  it("pays an invoice from the PesePay balance when it is covered", async () => {
+  it("pays an invoice from the prepaid balance when it is covered", async () => {
     vi.mocked(getPesepayWallet).mockResolvedValue(pesepayWallet(100));
     renderBilling();
     await openComposer();
     await selectInvoice();
 
     const payButton = screen.getByRole("button", {
-      name: /pay from pesepay balance/i,
+      name: /pay from balance/i,
     });
     await waitFor(() => expect(payButton).toBeEnabled());
     await userEvent.click(payButton);
@@ -280,7 +280,7 @@ describe("BillingPage payment rails", () => {
       }),
     );
     expect(
-      await screen.findByText("Invoice paid from your PesePay balance."),
+      await screen.findByText("Invoice paid from your prepaid balance."),
     ).toBeInTheDocument();
     expect(screen.queryByText("Payment rail")).not.toBeInTheDocument();
   });

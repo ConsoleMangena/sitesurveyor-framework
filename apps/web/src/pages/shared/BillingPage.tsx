@@ -77,7 +77,7 @@ import {
   type WorkspaceMemberRow,
 } from "../../lib/repositories/workspaces.ts";
 import SolanaLogo from "../../features/phantom/components/SolanaLogo.tsx";
-import PesepayLogo from "../../features/phantom/components/PesepayLogo.tsx";
+import { CreditCard } from "lucide-react";
 import { useSiteSurveyorWallet } from "../../features/phantom/hooks/useSiteSurveyorWallet.ts";
 import { useSolanaBalances } from "../../features/phantom/hooks/useSolanaBalances.ts";
 import { CUSTOM_WALLET_NAME } from "../../features/phantom/lib/customWalletAdapter.ts";
@@ -226,7 +226,7 @@ export default function BillingPage({
     let cancelled = false;
     setPurchaseMessage({
       tone: "pending",
-      text: "Confirming your purchase with PesePay…",
+      text: "Confirming your purchase…",
     });
     void verifyOrder({ workspaceId, orderId: returnedPurchaseId })
       .then((result) => {
@@ -239,17 +239,17 @@ export default function BillingPage({
                 ? "Payment confirmed. The storage you bought is active on this workspace."
                 : result.kind === "ai_credits"
                   ? "Payment confirmed. Your SiteSurveyor credits are ready to use."
-                  : "Payment confirmed by PesePay.",
+                  : "Payment confirmed.",
           });
         } else if (result.status === "pending") {
           setPurchaseMessage({
             tone: "pending",
-            text: "PesePay has not confirmed this payment yet. If you completed it, check the transactions tab again in a moment.",
+            text: "This payment has not been confirmed yet. If you completed it, check the transactions tab again in a moment.",
           });
         } else {
           setPurchaseMessage({
             tone: "error",
-            text: `PesePay reported this payment as ${result.status}. Nothing was added to the workspace.`,
+            text: `The provider reported this payment as ${result.status}. Nothing was added to the workspace.`,
           });
         }
         setPurchaseRefresh((count) => count + 1);
@@ -261,7 +261,7 @@ export default function BillingPage({
           text:
             err instanceof Error
               ? err.message
-              : "Unable to confirm this purchase with PesePay. Check the transactions tab.",
+              : "Unable to confirm this purchase. Check the transactions tab.",
         });
       });
     return () => {
@@ -349,7 +349,7 @@ export default function BillingPage({
       setPesepayBalanceError(null);
       setPesepayBalance(await getPesepayWallet(workspaceId));
     } catch (err: unknown) {
-      setPesepayBalanceError(err instanceof Error ? err.message : "Failed to load your PesePay balance.");
+      setPesepayBalanceError(err instanceof Error ? err.message : "Failed to load your prepaid balance.");
     } finally {
       setPesepayBalanceLoading(false);
     }
@@ -579,11 +579,11 @@ export default function BillingPage({
       return;
     }
     if (selectedInvoice.currency_code !== "USD") {
-      setRecordPaymentError("The PesePay balance currently supports USD invoices only.");
+      setRecordPaymentError("The prepaid balance currently supports USD invoices only.");
       return;
     }
     if (!balanceCoversInvoice) {
-      setRecordPaymentError("Your PesePay balance does not cover this invoice. Add funds first.");
+      setRecordPaymentError("Your prepaid balance does not cover this invoice. Add funds first.");
       return;
     }
     setRecordPaymentError(null);
@@ -596,9 +596,9 @@ export default function BillingPage({
       await Promise.all([fetchHistory(), fetchInvoices(), fetchPesepayBalance()]);
       setIsPaymentOpen(false);
       resetRecordPaymentForm();
-      showNotice("Invoice paid from your PesePay balance.");
+      showNotice("Invoice paid from your prepaid balance.");
     } catch (err: unknown) {
-      setRecordPaymentError(err instanceof Error ? err.message : "PesePay balance payment failed.");
+      setRecordPaymentError(err instanceof Error ? err.message : "Prepaid balance payment failed.");
     } finally {
       setBalancePaymentBusy(false);
     }
@@ -626,7 +626,7 @@ export default function BillingPage({
       return;
     }
     if (selectedInvoice.currency_code !== "USD") {
-      setRecordPaymentError("Crypto wallets settle USD invoices. Use PesePay checkout for this invoice.");
+      setRecordPaymentError("Crypto wallets settle USD invoices. Use card checkout for this invoice.");
       return;
     }
     setRecordPaymentError(null);
@@ -885,10 +885,10 @@ export default function BillingPage({
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
-                                <PesepayLogo size={16} />
+                                <CreditCard className="h-3.5 w-3.5" />
                               </span>
                               <span className="truncate text-xs font-semibold">
-                                PesePay balance
+                                Card &amp; mobile money
                               </span>
                             </div>
                             <span
@@ -910,7 +910,7 @@ export default function BillingPage({
                                 : "Prepaid USD · invoices and storage"}
                             </span>
                             <span className="mt-1 flex items-center gap-1 font-mono text-xs font-semibold tabular-nums text-foreground">
-                              <PesepayLogo size={11} />
+                              <CreditCard className="h-3 w-3" />
                               {pesepayBalanceLoading ? "—" : formatCurrency(pesepayBalanceValue)}
                             </span>
                           </div>
@@ -975,7 +975,7 @@ export default function BillingPage({
                                 {!selectedInvoice
                                   ? "Select an invoice to pay with a wallet."
                                   : !currencySupported
-                                    ? "Crypto wallets settle USD invoices in USDC. Use PesePay checkout for this currency."
+                                    ? "Crypto wallets settle USD invoices in USDC. Use card checkout for this currency."
                                     : !cryptoConnected
                                       ? `${cryptoWalletName ?? "This wallet"} is saved for payments but isn't connected in this session. Connect it to sign the USDC transfer — your invoice stays selected.`
                                       : `Sends ${formatCurrency(selectedInvoice.total)} in USDC on Solana ${clusterLabel} to the workspace treasury.${
@@ -1009,9 +1009,9 @@ export default function BillingPage({
                       ) : (
                         <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-3.5">
                           <div className="flex items-baseline justify-between gap-4 text-xs text-muted-foreground">
-                            <span>PesePay balance</span>
+                            <span>Prepaid balance</span>
                             <span className="flex items-center gap-1 font-mono text-xs font-semibold text-foreground">
-                              <PesepayLogo size={10} />
+                              <CreditCard className="h-3 w-3" />
                               {pesepayBalanceLoading ? "Loading…" : formatCurrency(pesepayBalanceValue)}
                             </span>
                           </div>
@@ -1041,15 +1041,15 @@ export default function BillingPage({
                             {balancePaymentBusy ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <PesepayLogo size={15} />
+                              <CreditCard className="h-4 w-4" />
                             )}
-                            {balancePaymentBusy ? "Paying…" : "Pay from PesePay balance"}
+                            {balancePaymentBusy ? "Paying…" : "Pay from balance"}
                           </Button>
                           <p className="text-xs leading-relaxed text-muted-foreground">
                             {!selectedInvoice
                               ? "Select a USD invoice to pay from your balance."
                               : !currencySupported
-                                ? "The PesePay balance settles USD invoices only. Use checkout for this invoice."
+                                ? "The prepaid balance settles USD invoices only. Use card checkout for this invoice."
                                 : balanceCoversInvoice
                                   ? `Uses ${formatCurrency(invoiceAmount)} from your prepaid balance. Deposits cannot be refunded or withdrawn.`
                                   : `Your balance covers ${formatCurrency(pesepayBalanceValue)} of ${formatCurrency(invoiceAmount)}. Add funds to pay this invoice.`}
@@ -1092,12 +1092,12 @@ export default function BillingPage({
                             {pesepayBusy ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <PesepayLogo size={18} />
+                              <CreditCard className="h-4 w-4" />
                             )}
-                            {pesepayBusy ? "Opening PesePay…" : "Pay with PesePay checkout"}
+                            {pesepayBusy ? "Opening…" : "Pay by card or mobile money"}
                           </Button>
                           <p className="text-xs leading-relaxed text-muted-foreground">
-                            EcoCash, InnBucks, cards, and Zimswitch open in a secure PesePay
+                            EcoCash, InnBucks, cards, and Zimswitch open in a secure
                             checkout.
                           </p>
                           {pesepayReference ? (
@@ -1244,7 +1244,7 @@ export default function BillingPage({
                       <div className="flex items-center justify-between gap-3">
                         <dt className="text-muted-foreground">Rail</dt>
                         <dd className="truncate font-medium">
-                          {paymentSource === "crypto" ? "Crypto wallet" : "PesePay balance"}
+                          {paymentSource === "crypto" ? "Crypto wallet" : "Prepaid balance"}
                         </dd>
                       </div>
                     ) : null}

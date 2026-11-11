@@ -93,9 +93,9 @@ export default function BillingOverviewSection({
             icon: <Sparkles />,
           },
           {
-            label: "SiteSurveyor balance",
+            label: "Prepaid balance",
             value: formatCurrency(Number(overview.wallet_balance)),
-            subtext: "Prepaid via PesePay",
+            subtext: "Prepaid by card",
             icon: <Wallet />,
           },
           {
@@ -127,7 +127,7 @@ export default function BillingOverviewSection({
                 <p className="flex items-start gap-2 text-warning">
                   <Hourglass className="mt-0.5 h-4 w-4 shrink-0" />
                   {overview.pending_payments} payment{overview.pending_payments === 1 ? "" : "s"}{" "}
-                  still awaiting PesePay confirmation. Credits and storage arrive only once it lands.
+                  still awaiting confirmation. Credits and storage arrive only once it lands.
                 </p>
               ) : null}
               {overview.failed_payments > 0 ? (

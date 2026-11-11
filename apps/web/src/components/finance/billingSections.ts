@@ -38,7 +38,7 @@ export const BILLING_SECTIONS: BillingSectionMeta[] = [
   {
     id: "methods",
     label: "Payment methods",
-    description: "Crypto rails, PesePay balance and saved accounts.",
+    description: "Crypto rails, prepaid balance and saved accounts.",
   },
   {
     id: "insights",

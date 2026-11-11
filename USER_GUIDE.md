@@ -81,8 +81,8 @@ assessment.
 
 **5. Invoice and settle.** Confirm delivered work, time, expenses and quote details, then create or
 review the invoice. In Billing & Payments pick the rail: **Solana USDC** (verify cluster, recipient,
-amount, mint and wallet prompt, and keep the signature) or **PesePay** (a separate fiat flow; sandbox
-in development, not live payment processing). Reconcile the invoice against the confirmed transaction
+amount, mint and wallet prompt, and keep the signature) or **Card & mobile money** (a prepaid USD
+balance funded by card or mobile money; sandbox in development, not live payment processing). Reconcile the invoice against the confirmed transaction
 or provider result. A wallet signature, a pending payment or a sandbox reference is not proof of
 settlement.
 

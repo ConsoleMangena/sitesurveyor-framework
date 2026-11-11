@@ -192,7 +192,7 @@ describe("PesePay wallet repository", () => {
 
     await expect(
       initiatePackageCheckout({ workspaceId: "workspace-1", packageId: "credits-500" }),
-    ).rejects.toThrow("PesePay did not return a package checkout URL.");
+    ).rejects.toThrow("Checkout is unavailable right now. Try again.");
   });
 });
 

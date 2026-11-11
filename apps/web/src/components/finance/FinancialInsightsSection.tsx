@@ -298,7 +298,7 @@ export default function FinancialInsightsSection({
                 </dl>
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                   Cost basis: {platform.cost_basis} Reconcile against the provider invoice
-                  before quoting these margins externally. PesePay exposes no refund call, so
+                  before quoting these margins externally. The payment provider exposes no refund call, so
                   the money is settled with the provider first and then recorded on the
                   Transactions tab; recording it moves the payment out of revenue and into
                   refunds, and takes back whatever the purchase still granted.

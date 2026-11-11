@@ -87,7 +87,7 @@ export async function initiatePesepayCheckout(input: {
     error?: string;
   }>({ ...input, action: "pay-invoice" });
   if (!result.redirectUrl || !result.referenceNumber) {
-    throw new Error(result.error || "Pesepay did not return a checkout URL.");
+    throw new Error(result.error || "Checkout is unavailable right now. Try again.");
   }
   return {
     redirectUrl: result.redirectUrl,
@@ -113,7 +113,7 @@ export async function initiatePackageCheckout(input: {
     error?: string;
   }>({ ...input, action: "checkout-package" });
   if (!result.redirectUrl || !result.referenceNumber || !result.purchaseId) {
-    throw new Error(result.error || "PesePay did not return a package checkout URL.");
+    throw new Error(result.error || "Checkout is unavailable right now. Try again.");
   }
   return {
     redirectUrl: result.redirectUrl,
@@ -131,7 +131,7 @@ export async function verifyOrder(input: {
     ...input,
     action: "verify-order",
   });
-  if (!result.status) throw new Error(result.error || "Unable to verify this PesePay payment.");
+  if (!result.status) throw new Error(result.error || "Unable to verify this payment.");
   return result;
 }
 
@@ -146,7 +146,7 @@ export async function payPackageWithBalance(input: {
     error?: string;
   }>({ ...input, action: "pay-package-balance", requestId: crypto.randomUUID() });
   if (result.status !== "paid" || !result.purchaseId || typeof result.balance !== "number") {
-    throw new Error(result.error || "Unable to pay for this package from the PesePay balance.");
+    throw new Error(result.error || "Unable to pay for this package from your prepaid balance.");
   }
   return { status: result.status, purchaseId: result.purchaseId, balance: result.balance };
 }
@@ -162,7 +162,7 @@ export async function payInvoiceWithBalance(input: {
     error?: string;
   }>({ ...input, action: "pay-invoice-balance", requestId: crypto.randomUUID() });
   if (result.status !== "paid" || !result.paymentId || typeof result.balance !== "number") {
-    throw new Error(result.error || "Unable to pay the invoice from the PesePay balance.");
+    throw new Error(result.error || "Unable to pay the invoice from your prepaid balance.");
   }
   return { status: result.status, paymentId: result.paymentId, balance: result.balance };
 }
@@ -341,7 +341,7 @@ export async function initiateWalletDeposit(input: {
     error?: string;
   }>({ ...input, action: "deposit" });
   if (!result.redirectUrl || !result.referenceNumber || !result.depositId) {
-    throw new Error(result.error || "PesePay did not return a deposit checkout URL.");
+    throw new Error(result.error || "Deposit checkout is unavailable right now. Try again.");
   }
   return {
     redirectUrl: result.redirectUrl,

@@ -175,7 +175,7 @@ export default function WorkspaceSettingsPage({
       setWalletTransactions(nextTransactions);
       setWalletError(null);
     } catch (loadError) {
-      setWalletError(loadError instanceof Error ? loadError.message : "Unable to load the PesePay balance.");
+      setWalletError(loadError instanceof Error ? loadError.message : "Unable to load the prepaid balance.");
     } finally {
       setWalletLoaded(true);
     }
@@ -192,13 +192,13 @@ export default function WorkspaceSettingsPage({
   const checkDeposit = useCallback(async (depositId: string) => {
     setActiveDepositId(depositId);
     setWalletBusy("verify");
-    setWalletMessage({ tone: "pending", text: "Checking your PesePay deposit…" });
+    setWalletMessage({ tone: "pending", text: "Checking your deposit…" });
     try {
       const result = await verifyWalletDeposit({ depositId, workspaceId });
       if (result.status === "completed") {
         setWalletMessage({
           tone: "success",
-          text: "Deposit confirmed. Your SiteSurveyor balance is ready to use.",
+          text: "Deposit confirmed. Your prepaid balance is ready to use.",
         });
       } else if (result.status === "failed") {
         setWalletMessage({
@@ -208,7 +208,7 @@ export default function WorkspaceSettingsPage({
       } else {
         setWalletMessage({
           tone: "pending",
-          text: "PesePay has not confirmed this deposit yet. If you completed payment, check again in a moment.",
+          text: "This deposit has not been confirmed yet. If you completed payment, check again in a moment.",
         });
       }
       await loadWallet();
@@ -252,7 +252,7 @@ export default function WorkspaceSettingsPage({
     } catch (depositError) {
       setWalletMessage({
         tone: "error",
-        text: depositError instanceof Error ? depositError.message : "Unable to open PesePay checkout. Try again.",
+        text: depositError instanceof Error ? depositError.message : "Unable to open checkout. Try again.",
       });
       setWalletBusy(null);
     }
@@ -376,7 +376,7 @@ export default function WorkspaceSettingsPage({
         }
       />
 
-      <DashboardSection title="PesePay balance">
+      <DashboardSection title="Prepaid balance">
         <Card>
           <CardContent className="space-y-5">
             {walletLoading ? (
@@ -388,7 +388,7 @@ export default function WorkspaceSettingsPage({
               <ErrorNotice
                 tone="danger"
                 layout="banner"
-                title="Unable to load your PesePay balance"
+                title="Unable to load your prepaid balance"
                 action={<Button variant="outline" size="sm" onClick={() => void loadWallet()}>Try again</Button>}
               >
                 {walletError}
@@ -439,7 +439,7 @@ export default function WorkspaceSettingsPage({
                       />
                       <Button type="submit" size="sm" className="shrink-0 gap-2" disabled={walletBusy !== null}>
                         {walletBusy === "deposit" && <Loader2 size={14} className="animate-spin" />}
-                        {walletBusy === "deposit" ? "Opening…" : "Add with PesePay"}
+                        {walletBusy === "deposit" ? "Opening…" : "Add funds by card"}
                       </Button>
                     </div>
                     {depositAmountError && (
@@ -755,9 +755,9 @@ export default function WorkspaceSettingsPage({
                           </TableCell>
                           <TableCell data-label="Method">
                             {purchase.payment_method === "balance"
-                              ? "PesePay balance"
+                              ? "Prepaid balance"
                               : purchase.payment_method === "pesepay"
-                                ? "PesePay checkout"
+                                ? "Card checkout"
                                 : purchase.payment_method}
                           </TableCell>
                           <TableCell data-label="Valid until">

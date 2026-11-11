@@ -68,7 +68,7 @@ const depositTransaction: PesepayTransactionRow = {
   amount: 125,
   currency_code: "USD",
   status: "completed",
-  description: "PesePay balance deposit",
+  description: "Prepaid balance deposit",
   pesepay_reference: "PESE-DEPOSIT",
   refund_reason: null,
   refunded_at: null,
@@ -122,7 +122,7 @@ async function enabledButton(name: string | RegExp) {
   return button;
 }
 
-describe("WorkspaceSettingsPage PesePay balance", () => {
+describe("WorkspaceSettingsPage prepaid balance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(listStoragePurchases).mockResolvedValue([]);
@@ -131,14 +131,14 @@ describe("WorkspaceSettingsPage PesePay balance", () => {
     vi.mocked(verifyWalletDeposit).mockResolvedValue({ status: "pending" });
   });
 
-  it("opens a PesePay deposit checkout for the entered amount", async () => {
+  it("opens a deposit checkout for the entered amount", async () => {
     vi.mocked(initiateWalletDeposit).mockImplementation(() => new Promise(() => {}));
     renderSettings();
 
     const input = await screen.findByLabelText("Add money");
     await userEvent.clear(input);
     await userEvent.type(input, "125");
-    await userEvent.click(await enabledButton("Add with PesePay"));
+    await userEvent.click(await enabledButton("Add funds by card"));
 
     expect(initiateWalletDeposit).toHaveBeenCalledWith({ amount: 125, workspaceId: "workspace-1" });
     expect(screen.getByRole("button", { name: "Opening…" })).toBeDisabled();
@@ -150,7 +150,7 @@ describe("WorkspaceSettingsPage PesePay balance", () => {
     vi.mocked(listPesepayTransactions).mockResolvedValue([depositTransaction]);
     renderSettings("/?view=settings&pesepay=wallet-return&deposit=deposit-1");
 
-    expect(await screen.findByText("Deposit confirmed. Your SiteSurveyor balance is ready to use.")).toBeInTheDocument();
+    expect(await screen.findByText("Deposit confirmed. Your prepaid balance is ready to use.")).toBeInTheDocument();
     expect(verifyWalletDeposit).toHaveBeenCalledWith({ depositId: "deposit-1", workspaceId: "workspace-1" });
     expect(screen.getByText("$145.00")).toBeInTheDocument();
     expect(screen.getByText("+ $125.00")).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe("WorkspaceSettingsPage PesePay balance", () => {
     renderSettings("/?view=settings&pesepay=wallet-return&deposit=deposit-1");
 
     const checkButton = await enabledButton("Check deposit status");
-    expect(screen.getByText("PesePay has not confirmed this deposit yet. If you completed payment, check again in a moment.")).toBeInTheDocument();
+    expect(screen.getByText("This deposit has not been confirmed yet. If you completed payment, check again in a moment.")).toBeInTheDocument();
     await userEvent.click(checkButton);
 
     await waitFor(() => expect(verifyWalletDeposit).toHaveBeenCalledTimes(2));
@@ -201,7 +201,7 @@ describe("WorkspaceSettingsPage storage", () => {
 
     expect(await screen.findByRole("cell", { name: "Active" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Expired" })).toBeInTheDocument();
-    expect(screen.getAllByRole("cell", { name: "PesePay balance" })).toHaveLength(2);
+    expect(screen.getAllByRole("cell", { name: "Prepaid balance" })).toHaveLength(2);
     expect(screen.getAllByText("$5.00").length).toBeGreaterThan(0);
   });
 });

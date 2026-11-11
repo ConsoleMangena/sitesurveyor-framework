@@ -94,8 +94,8 @@ function describeRefund(row: PesepayTransactionRow, outcome: RefundOutcome): str
   if (row.kind === "deposit") {
     parts.push(
       Number(outcome.balanceReclaimed) >= Number(row.amount)
-        ? `${formatMoney(Number(row.amount), row.currency_code)} removed from the PesePay balance.`
-        : `Only ${formatMoney(Number(outcome.balanceReclaimed), row.currency_code)} was left in the PesePay balance to take back.`,
+        ? `${formatMoney(Number(row.amount), row.currency_code)} removed from the prepaid balance.`
+        : `Only ${formatMoney(Number(outcome.balanceReclaimed), row.currency_code)} was left in the prepaid balance to take back.`,
     );
   }
   if (row.kind === "invoice_payment") {
@@ -137,7 +137,7 @@ function downloadCsv(rows: PesepayTransactionRow[]) {
       row.description,
       row.amount,
       row.currency_code,
-      row.kind === "deposit" ? "PesePay deposit" : row.status === "completed" && row.pesepay_reference ? "PesePay" : "Balance",
+      row.kind === "deposit" ? "Card deposit" : row.status === "completed" && row.pesepay_reference ? "Card" : "Balance",
       row.status,
       row.provider_status,
       row.package_id,
@@ -237,12 +237,12 @@ export default function BillingLedgerSection({
       if (result.status === "completed") {
         onMessage({
           tone: "success",
-          text: `${pesepayKindLabel(row.kind)} confirmed by PesePay and added to this workspace.`,
+          text: `${pesepayKindLabel(row.kind)} confirmed and added to this workspace.`,
         });
       } else if (result.status === "pending") {
         onMessage({
           tone: "pending",
-          text: "PesePay has not confirmed this payment yet. If you completed it, check again shortly.",
+          text: "This payment has not been confirmed yet. If you completed it, check again shortly.",
         });
       } else {
         onMessage({
@@ -258,7 +258,7 @@ export default function BillingLedgerSection({
         text:
           err instanceof Error
             ? err.message
-            : "Unable to check this payment with PesePay right now.",
+            : "Unable to check this payment right now.",
       });
     } finally {
       setCheckingId(null);
@@ -524,9 +524,9 @@ export default function BillingLedgerSection({
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            Statuses come from PesePay&rsquo;s encrypted check-payment response, never from
+            Statuses come from the provider&rsquo;s encrypted check-payment response, never from
             the browser. Allocation happens in the same database transaction that marks the
-            payment completed, so a payment is never counted twice. PesePay exposes no refund
+            payment completed, so a payment is never counted twice. The provider exposes no refund
             call to this integration, so the money is settled with the provider first and then
             recorded here; recording it takes back the credits, storage window or wallet
             balance the payment granted, capped at what the workspace still holds.
