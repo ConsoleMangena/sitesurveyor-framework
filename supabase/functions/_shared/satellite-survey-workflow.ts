@@ -219,9 +219,154 @@ export async function quoteSatelliteSurvey(
 }
 
 /**
+ * The structured line the assistant copies into its reply so the app's
+ * "Open in Satellite Workbench" button navigates with the run's own context
+ * instead of dropping the reader on the project picker. The assistant reply
+ * persists as plain text (ai_messages.content), so the block is the only
+ * handoff channel that survives a history reload — same mechanism as the
+ * [ASK] quick-reply chip.
+ */
+function workbenchHandoff(run: {
+  id: string;
+  job_id?: string | null;
+  project_id?: string | null;
+}): {
+  handoff: { run_id: string; job_id: string | null; project_id: string | null };
+  reply_instructions: string;
+} {
+  const jobId = run.job_id ?? null;
+  const projectId = run.project_id ?? null;
+  const parts = [`runId=${run.id}`];
+  if (jobId) parts.push(`jobId=${jobId}`);
+  if (projectId) parts.push(`projectId=${projectId}`);
+  const block = `[WORKBENCH ${parts.join(" ")}]`;
+  return {
+    handoff: { run_id: run.id, job_id: jobId, project_id: projectId },
+    reply_instructions:
+      `End your reply with this line verbatim so the app can wire the ` +
+      `Open in Satellite Workbench button: ${block}`,
+  };
+}
+
+/** Resolve the project an AI-launched survey belongs to, BEFORE any credits
+ *  are charged, per the attach-first policy: Earth Observation jobs live
+ *  inside projects. Explicit arguments win, then the project the chat
+ *  session is anchored to, then the workspace's only active project.
+ *  Anything ambiguous is refused so the assistant can ask the operator —
+ *  a survey is never filed under a guessed project and never left unassigned. */
+async function resolveLaunchProject(
+  db: Db,
+  opts: CallOpts,
+  workspaceId: string,
+  args: { project_id?: string; project_name?: string },
+  sessionProjectId?: string | null,
+): Promise<{ ok: true; id: string; name: string | null } | { ok: false; refusal: string }> {
+  const base = `projects?select=id,name&${workspaceParam(workspaceId)}&archived_at=is.null`;
+  type ProjectRow = { id: string; name: string | null };
+  const rowsOf = (json: unknown): ProjectRow[] => Array.isArray(json) ? json as ProjectRow[] : [];
+  const refusal = (error: string, message: string): string => JSON.stringify({ error, message });
+
+  // 1. An explicit project id must exist, belong to this workspace and be active.
+  if (args.project_id?.trim()) {
+    const res = await db.supabaseFetch({
+      ...opts,
+      method: "GET",
+      path: `${base}&id=eq.${encodeURIComponent(args.project_id.trim())}`,
+    });
+    if (!res.ok) return { ok: false, refusal: refusal("PROJECT_LOOKUP_FAILED", "Could not read the workspace's projects.") };
+    const rows = rowsOf(res.json);
+    if (rows.length === 0) {
+      return {
+        ok: false,
+        refusal: refusal(
+          "PROJECT_NOT_FOUND",
+          "No active project with that id exists in this workspace. Ask the user which project the survey belongs to and relaunch with that project's id.",
+        ),
+      };
+    }
+    return { ok: true, id: rows[0].id, name: rows[0].name };
+  }
+
+  // 2. An explicit name resolves case-insensitively within the workspace.
+  if (args.project_name?.trim()) {
+    const name = args.project_name.trim().replace(/["%]/g, "").slice(0, 160);
+    if (!name) return { ok: false, refusal: refusal("PROJECT_NOT_FOUND", "That project name could not be read. Ask the user which project the survey belongs to.") };
+    const res = await db.supabaseFetch({
+      ...opts,
+      method: "GET",
+      path: `${base}&name=ilike.${encodeURIComponent(`"${name}"`)}`,
+    });
+    if (!res.ok) return { ok: false, refusal: refusal("PROJECT_LOOKUP_FAILED", "Could not read the workspace's projects.") };
+    const rows = rowsOf(res.json);
+    if (rows.length === 0) {
+      return {
+        ok: false,
+        refusal: refusal(
+          "PROJECT_NOT_FOUND",
+          `No active project named "${name}" exists in this workspace. Ask the user which project the survey belongs to, or offer the project names below, and relaunch with project_id.`,
+        ),
+      };
+    }
+    if (rows.length > 1) {
+      return {
+        ok: false,
+        refusal: refusal(
+          "PROJECT_AMBIGUOUS",
+          `Several active projects are named "${name}". Ask the user which one, then relaunch with its project_id.`,
+        ),
+      };
+    }
+    return { ok: true, id: rows[0].id, name: rows[0].name };
+  }
+
+  // 3. The project the chat session is anchored to is a strong default — but a
+  //    stale or foreign session id falls through rather than failing the launch.
+  if (sessionProjectId?.trim()) {
+    const res = await db.supabaseFetch({
+      ...opts,
+      method: "GET",
+      path: `${base}&id=eq.${encodeURIComponent(sessionProjectId.trim())}`,
+    });
+    const rows = rowsOf(res.json);
+    if (res.ok && rows.length === 1) return { ok: true, id: rows[0].id, name: rows[0].name };
+  }
+
+  // 4. No signal at all: a single-project workspace is unambiguous, anything
+  //    else is the operator's call.
+  const res = await db.supabaseFetch({
+    ...opts,
+    method: "GET",
+    path: `${base}&order=created_at.asc&limit=50`,
+  });
+  if (!res.ok) return { ok: false, refusal: refusal("PROJECT_LOOKUP_FAILED", "Could not read the workspace's projects.") };
+  const rows = rowsOf(res.json);
+  if (rows.length === 1) return { ok: true, id: rows[0].id, name: rows[0].name };
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      refusal: refusal(
+        "NO_PROJECT",
+        "This workspace has no projects yet, and Earth Observation jobs live inside projects. Ask the user for a project name — you can create one in the projects table — then relaunch the survey.",
+      ),
+    };
+  }
+  const names = rows.slice(0, 10).map((row) => row.name || row.id.slice(0, 8));
+  return {
+    ok: false,
+    refusal: refusal(
+      "PROJECT_REQUIRED",
+      `Which project should this survey be filed under? Active projects: ${names.join(", ")}` +
+        (rows.length > 10 ? ", …" : "") +
+        ". Ask the user to choose one, then relaunch with project_id set.",
+    ),
+  };
+}
+
+/**
  * 2. Launch an Earth Observation survey:
  *    - Validates user confirmation
  *    - Re-checks active survey lock
+ *    - Resolves the owning project (attach-first: never unassigned, never guessed)
  *    - Debits credits atomically using charge_satellite_survey RPC
  *    - Inserts row into survey_runs table
  *    - Refunds credits automatically if queue insert fails
@@ -238,8 +383,11 @@ export async function launchSatelliteSurvey(
     client_name?: string;
     notes?: string;
     address?: string;
+    project_id?: string;
+    project_name?: string;
     confirmed: boolean;
   },
+  sessionProjectId?: string | null,
 ): Promise<string> {
   const owner = scopeWrite(opts.workspaceId);
   if (!owner.ok) return JSON.stringify({ error: owner.error });
@@ -282,6 +430,12 @@ export async function launchSatelliteSurvey(
   );
   const clientName = (args.client_name || "Site Survey").trim().slice(0, 160);
   const runId = crypto.randomUUID();
+
+  // 3.5. File the survey under a project before anything is charged. A refusal
+  //      here costs nothing: the assistant asks the operator and relaunches.
+  const project = await resolveLaunchProject(db, opts, owner.workspaceId, args, sessionProjectId);
+  if (!project.ok) return project.refusal;
+  const projectId = project.id;
 
   // 4. Charge credits atomically via Postgres RPC
   const chargeRes = await db.supabaseFetch({
@@ -356,6 +510,7 @@ export async function launchSatelliteSurvey(
     body: {
       id: jobId,
       workspace_id: owner.workspaceId,
+      project_id: projectId,
       title: clientName,
       description: JSON.stringify({ category, latitude: lat, longitude: lon, halfDeg }),
       job_type: categoryLabel,
@@ -373,8 +528,8 @@ export async function launchSatelliteSurvey(
     });
   }
 
-  // 6. Insert the queued run, linked to the job. This new job is intentionally
-  //    unassigned, so the run has no project either.
+  // 6. Insert the queued run, linked to the job and to the resolved project.
+  //    Both links are what let the workbench open the run with full context.
   const insertRes = await db.supabaseFetch({
     ...opts,
     method: "POST",
@@ -384,7 +539,7 @@ export async function launchSatelliteSurvey(
       workspace_id: owner.workspaceId,
       created_by: userId || null,
       job_id: jobId,
-      project_id: null,
+      project_id: projectId,
       status: "queued",
       stage: "Queued for a survey worker",
       latitude: lat,
@@ -420,6 +575,8 @@ export async function launchSatelliteSurvey(
     run_id: runId,
     job_id: jobId,
     job_title: clientName,
+    project_id: projectId,
+    project_name: project.name,
     category,
     category_label: categoryLabel,
     latitude: lat,
@@ -430,7 +587,8 @@ export async function launchSatelliteSurvey(
     status: "queued",
     stage: "Queued for a survey worker",
     estimated_minutes: 4,
-    message: `🛰️ ${categoryLabel} survey successfully launched and debited (${creditsCharged} credits). Saved as job "${clientName}" in your workspace; the worker is processing satellite rasters.`,
+    message: `🛰️ ${categoryLabel} survey successfully launched and debited (${creditsCharged} credits). Filed under project "${project.name ?? projectId}" as job "${clientName}"; the worker is processing satellite rasters.`,
+    ...workbenchHandoff({ id: runId, job_id: jobId, project_id: projectId }),
   });
 }
 
@@ -455,7 +613,7 @@ export async function getSatelliteSurveyStatus(
   const runRes = await db.supabaseFetch({
     ...opts,
     method: "GET",
-    path: `survey_runs?select=id,status,stage,progress,categories,client_name,latitude,longitude,quoted_credits,surface_area_km2,result,error_message,created_at,completed_at&${workspaceParam(
+    path: `survey_runs?select=id,job_id,project_id,status,stage,progress,categories,client_name,latitude,longitude,quoted_credits,surface_area_km2,result,error_message,created_at,completed_at&${workspaceParam(
       owner.workspaceId,
     )}&${filter}&order=created_at.desc&limit=1`,
   });
@@ -471,6 +629,8 @@ export async function getSatelliteSurveyStatus(
 
   const run = runRes.json[0] as {
     id: string;
+    job_id: string | null;
+    project_id: string | null;
     status: string;
     stage: string | null;
     progress: number;
@@ -488,6 +648,7 @@ export async function getSatelliteSurveyStatus(
 
   const category = (run.categories?.[0] as EoCategory) || "water";
   const categoryLabel = EO_CATEGORY_LABELS[category] || category;
+  const handoff = workbenchHandoff(run);
 
   if (run.status === "succeeded") {
     // Read top ranked targets
@@ -502,6 +663,8 @@ export async function getSatelliteSurveyStatus(
     return JSON.stringify({
       found: true,
       id: run.id,
+      job_id: run.job_id,
+      project_id: run.project_id,
       category,
       category_label: categoryLabel,
       status: "succeeded",
@@ -514,6 +677,7 @@ export async function getSatelliteSurveyStatus(
       targets,
       executive_summary: run.result?.executive_summary || null,
       message: `Survey complete for ${categoryLabel}. Top targets are available.`,
+      ...handoff,
     });
   }
 
@@ -521,10 +685,13 @@ export async function getSatelliteSurveyStatus(
     return JSON.stringify({
       found: true,
       id: run.id,
+      job_id: run.job_id,
+      project_id: run.project_id,
       category,
       category_label: categoryLabel,
       status: "failed",
       error_message: run.error_message || "The survey worker encountered an unrecoverable error.",
+      ...handoff,
     });
   }
 
@@ -532,6 +699,8 @@ export async function getSatelliteSurveyStatus(
   return JSON.stringify({
     found: true,
     id: run.id,
+    job_id: run.job_id,
+    project_id: run.project_id,
     category,
     category_label: categoryLabel,
     status: run.status,
@@ -539,6 +708,7 @@ export async function getSatelliteSurveyStatus(
     progress: run.progress,
     created_at: run.created_at,
     message: `Survey is actively ${run.status} (${run.progress}% complete: ${run.stage || "processing"}).`,
+    ...handoff,
   });
 }
 
@@ -584,7 +754,7 @@ export async function getSatelliteSurveyResult(
   const runRes = await db.supabaseFetch({
     ...opts,
     method: "GET",
-    path: `survey_runs?select=id,status,stage,progress,categories,client_name,latitude,longitude,half_deg,surface_area_km2,quoted_credits,result,error_message,created_at,completed_at&${workspaceParam(
+    path: `survey_runs?select=id,job_id,project_id,status,stage,progress,categories,client_name,latitude,longitude,half_deg,surface_area_km2,quoted_credits,result,error_message,created_at,completed_at&${workspaceParam(
       owner.workspaceId,
     )}&${filter}order=created_at.desc&limit=1`,
   });
@@ -600,6 +770,8 @@ export async function getSatelliteSurveyResult(
 
   const run = runRes.json[0] as {
     id: string;
+    job_id: string | null;
+    project_id: string | null;
     status: string;
     stage: string | null;
     progress: number;
@@ -621,6 +793,8 @@ export async function getSatelliteSurveyResult(
   const header = {
     found: true,
     id: run.id,
+    job_id: run.job_id,
+    project_id: run.project_id,
     category,
     category_label: categoryLabel,
     client_name: run.client_name,
@@ -631,6 +805,7 @@ export async function getSatelliteSurveyResult(
     credits_charged: run.quoted_credits,
     created_at: run.created_at,
     completed_at: run.completed_at,
+    ...workbenchHandoff(run),
   };
 
   if (run.status === "failed") {

@@ -241,6 +241,7 @@ Deno.serve(async (req) => {
   let body: {
     conversation_id?: string;
     message?: string;
+    workspace_id?: string;
     project_id?: string;
     survey_run_id?: string;
     model?: string;

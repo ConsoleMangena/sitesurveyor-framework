@@ -637,6 +637,16 @@ const TOOLS: ToolSchema[] = [
             type: "string",
             description: "Client or site name.",
           },
+          project_id: {
+            type: "string",
+            description:
+              "UUID of the project this survey job belongs to. Pass it when the user named or chose a project; Earth Observation jobs are always filed under a project.",
+          },
+          project_name: {
+            type: "string",
+            description:
+              "Project NAME to resolve when no id is known (case-insensitive match). The launch tool files a single-project workspace automatically; with several projects and no hint it refuses and asks you to ask the user.",
+          },
           notes: {
             type: "string",
             description: "Questionnaire answers or site notes.",
@@ -894,8 +904,13 @@ function systemPrompt(supabaseUrl: string): string {
     "",
     "6. ATOMIC LAUNCH & WORKBENCH HANDOVER:",
     "   When user confirms, invoke launch_satellite_survey with confirmed=true and pass notes.",
-    "   Provide the new run ID, estimated runtime (~4 minutes), and direct workbench link:",
-    "   [Open in Survey Workbench](?view=satellite&runId={RUN_ID})",
+    "   Earth Observation jobs always live inside a project: pass project_id (or",
+    "   project_name) when the user or conversation names one. The launch tool files a",
+    "   single-project workspace automatically; when it refuses with PROJECT_REQUIRED,",
+    "   ask the user which project to file the survey under, then relaunch.",
+    "   Provide the new run ID and estimated runtime (~4 minutes). Copy the result's",
+    "   [WORKBENCH runId=... jobId=... projectId=...] line verbatim into your reply —",
+    "   it is what powers the app's Open in Satellite Workbench button.",
     "",
     "7. READING COMPLETED SURVEYS:",
     "   When the user asks what a survey found, call get_satellite_survey_result",
@@ -907,6 +922,8 @@ function systemPrompt(supabaseUrl: string): string {
     "   not grade, not tonnage, and two different sites cannot be compared on them.",
     "   While a run is still queued/acquiring/surveying/publishing, report progress",
     "   from get_satellite_survey_status instead of guessing findings.",
+    "   When you report on a run, copy its result's [WORKBENCH ...] line verbatim",
+    "   so the reader can open that exact run in the workbench.",
     "   If a SURVEY CONTEXT line names an open run, 'this survey' means that run_id.",
     "CAD WORKFLOW:",
     "Before drawing onto an existing drawing, read it first (list_cad_layers)",
@@ -1168,6 +1185,9 @@ export async function executeTool(
     conversationId?: string;
     /** Signed-in user, stamped onto survey runs the agent launches. */
     userId?: string;
+    /** Project the user has open — the default project an AI satellite
+     *  survey files under when no explicit project is given. */
+    projectId?: string;
     schemas: Map<string, TableSchemaInfo>;
     /** When set, only these tools may execute (public market concierge). */
     allowedTools?: ReadonlySet<string>;
@@ -1477,8 +1497,11 @@ export async function executeTool(
         half_deg?: number;
         client_name?: string;
         notes?: string;
+        project_id?: string;
+        project_name?: string;
         confirmed: boolean;
       },
+      ctx.projectId,
     );
   }
   if (name === "get_satellite_survey_status") {
@@ -1947,6 +1970,7 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     workspaceId: opts.workspaceId,
     conversationId: opts.conversationId,
     userId: opts.userId,
+    projectId: opts.projectId,
     schemas,
     allowedTools: market ? MARKET_TOOL_NAMES : undefined,
   };

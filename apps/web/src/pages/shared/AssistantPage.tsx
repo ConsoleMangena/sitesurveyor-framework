@@ -50,7 +50,9 @@ import {
 } from "@/features/ai/surveyHandover.ts";
 
 export interface AssistantPageProps {
-  onNavigate?: (view: string) => void;
+  /** Full workspace navigation; the context record carries deep-link params
+   *  such as the workbench handoff (jobId/projectId/runId). */
+  onNavigate?: (view: string, context?: Record<string, string>) => void;
   /** The workspace the user is viewing, so surveys and writes land here. */
   workspaceId?: string;
 }
@@ -745,7 +747,6 @@ export default function AssistantPage({ onNavigate, workspaceId }: AssistantPage
                           </div>
                         )}
 
-                        
                         {message.role === "assistant" &&
                           !message.streaming &&
                           (message.text.includes("survey successfully launched") ||
@@ -758,7 +759,18 @@ export default function AssistantPage({ onNavigate, workspaceId }: AssistantPage
                                 variant="outline"
                                 size="sm"
                                 className="h-7 gap-1.5 text-xs text-primary hover:text-primary hover:bg-primary/10"
-                                onClick={() => onNavigate("satellite")}
+                                onClick={() => {
+                                  // The agent echoes a [WORKBENCH ...] line from
+                                  // the survey tool result; with it the reader
+                                  // lands on that exact run, without it on the
+                                  // project picker (pre-handoff replies).
+                                  const workbench = parsed?.workbench;
+                                  onNavigate("satellite", workbench ? {
+                                    ...(workbench.jobId ? { jobId: workbench.jobId } : {}),
+                                    ...(workbench.projectId ? { projectId: workbench.projectId } : {}),
+                                    ...(workbench.runId ? { runId: workbench.runId } : {}),
+                                  } : undefined);
+                                }}
                               >
                                 <Globe className="size-3.5 shrink-0" />
                                 <span className="hidden sm:inline">Open in Satellite Workbench</span>

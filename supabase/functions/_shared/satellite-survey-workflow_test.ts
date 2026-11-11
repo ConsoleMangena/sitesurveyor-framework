@@ -317,7 +317,11 @@ Deno.test("executeTool routes get_satellite_survey_result inside the workspace",
 // The AI launch path used to queue an orphaned run: it charged credits and
 // inserted survey_runs with no job, so the survey never appeared under the
 // workspace's jobs and could not be opened in the workbench. These tests pin
-// the job into existence and the run's job_id to it, without inventing a project.
+// the job into existence and the run's job_id to it. Per the attach-first
+// policy they also pin the project: the launch resolves a project BEFORE any
+// credits are charged — explicit argument, then the session's project, then a
+// single-project workspace — and refuses ambiguity instead of guessing or
+// leaving the job unassigned.
 
 interface LaunchCall {
   method: string;
@@ -326,17 +330,31 @@ interface LaunchCall {
 }
 
 /** POST-aware stub: no run in flight, a successful charge, and controllable
- *  job/run insert outcomes so the refund paths can be exercised. */
+ *  job/run insert outcomes so the refund paths can be exercised. The project
+ *  fixture drives the attach-first resolution paths. */
 function launchDb(
-  opts: { failJobInsert?: boolean; failRunInsert?: boolean } = {},
+  opts: { failJobInsert?: boolean; failRunInsert?: boolean; projects?: Row[] } = {},
 ): { db: Db; calls: LaunchCall[] } {
   const calls: LaunchCall[] = [];
+  const projects = opts.projects ?? [
+    { id: "aaaaaaaa-0000-4000-8000-000000000001", name: "Gweru South Grid" },
+  ];
   const db: Db = {
     supabaseFetch(o) {
       calls.push({ method: o.method, path: o.path, body: o.body });
       const [table] = o.path.split("?");
       if (o.method === "GET" && table === "survey_runs") {
         return Promise.resolve({ ok: true, status: 200, json: [], count: 0 });
+      }
+      if (o.method === "GET" && table === "projects") {
+        const params = new URLSearchParams(o.path.split("?")[1] ?? "");
+        const wantId = params.get("id")?.replace(/^eq\./, "");
+        const namePattern = params.get("name")?.replace(/^ilike\./, "").replaceAll('"', "").toLowerCase();
+        const rows = projects.filter((p) =>
+          (!wantId || p.id === wantId) &&
+          (!namePattern || String(p.name).toLowerCase() === namePattern)
+        );
+        return Promise.resolve({ ok: true, status: 200, json: rows, count: rows.length });
       }
       if (o.method === "POST" && table === "rpc/charge_satellite_survey") {
         return Promise.resolve({
@@ -368,11 +386,16 @@ const LAUNCH_ARGS = {
   confirmed: true,
 };
 
-Deno.test("launch creates a job and links the run to it", async () => {
+const PROJECT = "aaaaaaaa-0000-4000-8000-000000000001";
+
+Deno.test("launch creates a job and links the run to it and to the workspace's project", async () => {
   const { db, calls } = launchDb();
   const result = JSON.parse(
     await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS),
-  ) as { success: boolean; job_id: string; run_id: string };
+  ) as {
+    success: boolean; job_id: string; run_id: string;
+    project_id: string; project_name: string; reply_instructions: string;
+  };
 
   assertEquals(result.success, true);
   const jobCall = calls.find((c) => c.method === "POST" && c.path === "jobs");
@@ -386,17 +409,151 @@ Deno.test("launch creates a job and links the run to it", async () => {
   assertEquals(job.title, "Gweru South");
   assertEquals(job.status, "planned");
   assertEquals(job.created_by, "user-1");
+  assertEquals(job.project_id, PROJECT, "a single-project workspace is filed automatically");
   // The specification travels in description so opening the job restores it.
   const spec = JSON.parse(job.description as string) as Row;
   assertEquals(spec.category, "minerals");
   assertEquals(spec.latitude, -19.5);
   assertEquals(spec.longitude, 29.8);
   assertEquals(spec.halfDeg, 0.06);
-  // The run points at the job, exactly as the workbench's own launch does.
+  // The run points at the job AND the project, exactly as the workbench's own
+  // launch does.
   assertEquals(run.job_id, job.id);
-  assertEquals(run.project_id, null, "an unassigned job must not become a project");
+  assertEquals(run.project_id, PROJECT, "the run carries the project too");
   assertEquals(run.workspace_id, "ws-1");
   assertEquals(result.job_id, job.id);
+  assertEquals(result.project_id, PROJECT);
+  assertEquals(result.project_name, "Gweru South Grid");
+  // The reply must carry the verbatim handoff block the app's button parses.
+  assertStringIncludes(
+    result.reply_instructions,
+    `[WORKBENCH runId=${result.run_id} jobId=${result.job_id} projectId=${PROJECT}]`,
+  );
+  // Project resolution happens BEFORE any credits move.
+  const projectRead = calls.findIndex((c) => c.method === "GET" && c.path.startsWith("projects?"));
+  const charge = calls.findIndex((c) => c.path === "rpc/charge_satellite_survey");
+  assert(projectRead >= 0 && charge >= 0 && projectRead < charge, "the project must resolve before the charge");
+});
+
+Deno.test("an explicit project_id wins over every other signal", async () => {
+  const other = "aaaaaaaa-0000-4000-8000-000000000002";
+  const { db, calls } = launchDb({
+    projects: [
+      { id: PROJECT, name: "Gweru South Grid" },
+      { id: other, name: "Kwekwe North" },
+    ],
+  });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", { ...LAUNCH_ARGS, project_id: other }, PROJECT),
+  ) as { success: boolean; project_id: string };
+
+  assertEquals(result.success, true);
+  assertEquals(result.project_id, other, "the explicit id beats the session project");
+  const jobCall = calls.find((c) => c.method === "POST" && c.path === "jobs");
+  assertEquals((jobCall?.body as Row).project_id, other);
+});
+
+Deno.test("an explicit project_name resolves case-insensitively", async () => {
+  const { db } = launchDb();
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", { ...LAUNCH_ARGS, project_name: "GWERU SOUTH GRID" }),
+  ) as { success: boolean; project_id: string; project_name: string };
+
+  assertEquals(result.success, true);
+  assertEquals(result.project_id, PROJECT);
+  assertEquals(result.project_name, "Gweru South Grid");
+});
+
+Deno.test("an unknown project id refuses before any credits are charged", async () => {
+  const { db, calls } = launchDb();
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", { ...LAUNCH_ARGS, project_id: "bbbbbbbb-0000-4000-8000-000000000009" }),
+  ) as { error: string };
+
+  assertEquals(result.error, "PROJECT_NOT_FOUND");
+  assert(
+    !calls.some((c) => c.path === "rpc/charge_satellite_survey"),
+    "a refused project must not reach the charge",
+  );
+});
+
+Deno.test("a project name matching several rows refuses instead of guessing", async () => {
+  const { db, calls } = launchDb({
+    projects: [
+      { id: PROJECT, name: "Gweru South Grid" },
+      { id: "aaaaaaaa-0000-4000-8000-000000000002", name: "gweru south grid" },
+    ],
+  });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", { ...LAUNCH_ARGS, project_name: "Gweru South Grid" }),
+  ) as { error: string };
+
+  assertEquals(result.error, "PROJECT_AMBIGUOUS");
+  assert(!calls.some((c) => c.path === "rpc/charge_satellite_survey"));
+});
+
+Deno.test("several projects and no signal ask the operator instead of picking one", async () => {
+  const { db, calls } = launchDb({
+    projects: [
+      { id: PROJECT, name: "Gweru South Grid" },
+      { id: "aaaaaaaa-0000-4000-8000-000000000002", name: "Kwekwe North" },
+    ],
+  });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS),
+  ) as { error: string; message: string };
+
+  assertEquals(result.error, "PROJECT_REQUIRED");
+  assertStringIncludes(result.message, "Gweru South Grid");
+  assertStringIncludes(result.message, "Kwekwe North");
+  assert(!calls.some((c) => c.path === "rpc/charge_satellite_survey"));
+  assert(
+    !calls.some((c) => c.method === "POST" && c.path === "jobs"),
+    "no job may be created for an unfiled survey",
+  );
+});
+
+Deno.test("the session's project anchors the launch when no argument names one", async () => {
+  const sessionProject = "aaaaaaaa-0000-4000-8000-000000000003";
+  const { db, calls } = launchDb({
+    projects: [
+      { id: PROJECT, name: "Gweru South Grid" },
+      { id: sessionProject, name: "Kwekwe North" },
+    ],
+  });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS, sessionProject),
+  ) as { success: boolean; project_id: string };
+
+  assertEquals(result.success, true);
+  assertEquals(result.project_id, sessionProject);
+  const runCall = calls.find((c) => c.method === "POST" && c.path === "survey_runs");
+  assertEquals((runCall?.body as Row).project_id, sessionProject);
+});
+
+Deno.test("a stale session project falls through to the operator question", async () => {
+  const { db, calls } = launchDb({
+    projects: [
+      { id: PROJECT, name: "Gweru South Grid" },
+      { id: "aaaaaaaa-0000-4000-8000-000000000002", name: "Kwekwe North" },
+    ],
+  });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS, "cccccccc-0000-4000-8000-000000000099"),
+  ) as { error: string };
+
+  assertEquals(result.error, "PROJECT_REQUIRED");
+  assert(!calls.some((c) => c.path === "rpc/charge_satellite_survey"));
+});
+
+Deno.test("a workspace with no projects cannot file a survey", async () => {
+  const { db, calls } = launchDb({ projects: [] });
+  const result = JSON.parse(
+    await launchSatelliteSurvey(db, OPTS, "user-1", LAUNCH_ARGS),
+  ) as { error: string };
+
+  assertEquals(result.error, "NO_PROJECT");
+  assert(!calls.some((c) => c.path === "rpc/charge_satellite_survey"));
 });
 
 Deno.test("a failed run insert refunds credits and removes the orphaned job", async () => {

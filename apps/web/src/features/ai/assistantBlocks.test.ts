@@ -38,4 +38,42 @@ describe("parseAssistantBlocks", () => {
     const r = parseAssistantBlocks("top\n[ASK]q?\n- a[/ASK]\n\n\n\nbottom");
     expect(r.clean).toBe("top\n\nbottom");
   });
+
+  it("parses a WORKBENCH block into the run/job/project handoff", () => {
+    const text =
+      "🛰️ Survey queued. [WORKBENCH runId=11111111-1111-1111-1111-111111111111 " +
+      "jobId=22222222-2222-2222-2222-222222222222 projectId=33333333-3333-3333-3333-333333333333]";
+    const r = parseAssistantBlocks(text);
+    expect(r.workbench).toEqual({
+      runId: "11111111-1111-1111-1111-111111111111",
+      jobId: "22222222-2222-2222-2222-222222222222",
+      projectId: "33333333-3333-3333-3333-333333333333",
+    });
+    expect(r.clean).toBe("🛰️ Survey queued.");
+  });
+
+  it("accepts snake_case tool-echo variants and any attribute subset", () => {
+    const r = parseAssistantBlocks(
+      "Done. [WORKBENCH run_id=44444444-4444-4444-4444-444444444444 job_id=55555555-5555-5555-5555-555555555555]",
+    );
+    expect(r.workbench).toEqual({
+      runId: "44444444-4444-4444-4444-444444444444",
+      jobId: "55555555-5555-5555-5555-555555555555",
+      projectId: null,
+    });
+  });
+
+  it("keeps only the first WORKBENCH block and ignores malformed ones", () => {
+    const r = parseAssistantBlocks(
+      "a [WORKBENCH runId=11111111-1111-1111-1111-111111111111] b [WORKBENCH runId=99999999-9999-9999-9999-999999999999] c [WORKBENCH nothing=here]",
+    );
+    expect(r.workbench?.runId).toBe("11111111-1111-1111-1111-111111111111");
+    expect(r.clean).toBe("a  b  c");
+  });
+
+  it("reports no workbench when no block exists", () => {
+    const r = parseAssistantBlocks("Plain reply, no handoff.");
+    expect(r.workbench).toBeNull();
+    expect(r.clean).toBe("Plain reply, no handoff.");
+  });
 });
