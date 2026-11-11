@@ -8,10 +8,7 @@ import {
   FolderGit2,
   Hand,
   Layers,
-  LogOut,
   MapPin,
-  Maximize2,
-  Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -72,9 +69,6 @@ interface WorkbenchBarProps {
   rightOpen: boolean;
   onToggleLeft: () => void;
   onToggleRight: () => void;
-  isFullscreen?: boolean;
-  onToggleFullscreen?: () => void;
-  onBackToProject?: () => void;
   /** True once a completed run is on screen; nothing can be published before then. */
   published: boolean;
   onExportPdf: () => void;
@@ -124,9 +118,6 @@ export function WorkbenchBar({
   rightOpen,
   onToggleLeft,
   onToggleRight,
-  isFullscreen,
-  onToggleFullscreen,
-  onBackToProject,
   published,
   onExportPdf,
   downloads,
@@ -158,34 +149,6 @@ export function WorkbenchBar({
             <i aria-hidden="true" />
             <span className="font-mono text-[11px]">{pill.text}</span>
           </span>
-
-          {onToggleFullscreen ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? "Show the workspace navigation" : "Fill the window with the workbench"}
-            >
-              {isFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
-              <span className="sr-only">Toggle fullscreen</span>
-            </Button>
-          ) : null}
-
-          {onBackToProject ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              onClick={onBackToProject}
-              title="Back to project"
-            >
-              <LogOut className="size-3.5" />
-              <span className="sr-only">Back to project</span>
-            </Button>
-          ) : null}
         </div>
       </div>
 

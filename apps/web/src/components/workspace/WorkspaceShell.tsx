@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { ConfigDrawer } from "@/components/config-drawer";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -8,7 +8,7 @@ import { Search } from "@/components/layout/search";
 import { SkipToMain } from "@/components/layout/skip-to-main";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ProfileDropdown } from "@/components/profile-dropdown";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { WorkspaceNotifications } from "@/components/workspace/WorkspaceNotifications";
 import { WorkspaceCredits } from "@/components/workspace/WorkspaceCredits";
 import { LayoutProvider } from "@/context/layout-provider";
@@ -32,6 +32,29 @@ interface WorkspaceShellProps {
   onChangeView: (view: WorkspaceView) => void;
   onLogout: () => Promise<void> | void;
   children: React.ReactNode;
+}
+
+/**
+ * Folds the dashboard sidebar while the Earth Observation engine is open, and
+ * hands the reader their previous fold state back on the way out. The fold is
+ * only entered once per visit, so a reader who deliberately re-expands the
+ * sidebar mid-session is not fought over it.
+ */
+function FoldSidebarWhileActive({ active }: { active: boolean }) {
+  const { open, setOpen } = useSidebar();
+  const restoreToRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (active) {
+      if (restoreToRef.current === null) restoreToRef.current = open;
+      if (open) setOpen(false);
+    } else if (restoreToRef.current !== null) {
+      setOpen(restoreToRef.current);
+      restoreToRef.current = null;
+    }
+  }, [active, open, setOpen]);
+
+  return null;
 }
 
 export default function WorkspaceShell({
@@ -75,6 +98,7 @@ export default function WorkspaceShell({
             shouldHideGlobalChrome && "h-dvh min-h-0 overflow-hidden",
           )}
         >
+          <FoldSidebarWhileActive active={activeView === "satellite"} />
           {shouldHideGlobalChrome ? null : <SkipToMain />}
           {shouldHideGlobalChrome ? null : (
             <AppSidebar

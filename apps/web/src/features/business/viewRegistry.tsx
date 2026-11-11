@@ -184,7 +184,6 @@ export function renderBusinessView(
           <SatelliteSurveyPage
             workspaceId={user.workspaceId}
             onNavigate={onNavigate}
-            onEnterFullscreen={onEnterFullscreenProject}
             onExitFullscreen={onExitFullscreenProject}
             isFullscreen={options.isProjectFullscreen}
           />

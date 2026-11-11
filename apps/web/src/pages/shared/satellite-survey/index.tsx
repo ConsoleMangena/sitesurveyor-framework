@@ -107,7 +107,6 @@ import {
 interface SatelliteSurveyPageProps {
   workspaceId: string;
   onNavigate?: (view: string, context?: Record<string, string>) => void;
-  onEnterFullscreen?: () => void;
   onExitFullscreen?: () => void;
   isFullscreen?: boolean;
 }
@@ -130,26 +129,10 @@ export default function SatelliteSurveyPage(props: SatelliteSurveyPageProps) {
 function SurveyWorkbench({
   workspaceId,
   onNavigate,
-  onEnterFullscreen,
   onExitFullscreen,
-  isFullscreen: externalIsFullscreen,
+  isFullscreen = false,
 }: SatelliteSurveyPageProps) {
-  const [localFullscreen, setLocalFullscreen] = useState(false);
   const [resizeToken, setResizeToken] = useState(0);
-  const isFullscreen = externalIsFullscreen ?? localFullscreen;
-
-  const toggleFullscreen = useCallback(() => {
-    const next = !isFullscreen;
-    if (next) {
-      onEnterFullscreen?.();
-    } else {
-      onExitFullscreen?.();
-    }
-    setLocalFullscreen(next);
-    setTimeout(() => {
-      setResizeToken((token) => token + 1);
-    }, 200);
-  }, [isFullscreen, onEnterFullscreen, onExitFullscreen]);
 
   const [params, setParams] = useSearchParams();
   const jobProjectContext = params.get("projectId");
@@ -187,16 +170,7 @@ function SurveyWorkbench({
 
   function switchJob() {
     onExitFullscreen?.();
-    setLocalFullscreen(false);
     setParams({ view: "satellite", ...(jobProjectContext ? { projectId: jobProjectContext } : {}) });
-  }
-
-  function backToProject() {
-    onExitFullscreen?.();
-    const projectId = openedJob?.project_id ?? jobProjectContext;
-    const context: Record<string, string> = projectId ? { projectId, tab: "jobs" } : {};
-    if (onNavigate) onNavigate("projects", context);
-    else setParams({ view: "projects", ...context });
   }
 
   /** Attach-first for legacy unassigned jobs: file the job under a project,
@@ -1028,17 +1002,6 @@ function SurveyWorkbench({
           : "max-w-[1780px] gap-4 sm:gap-5"
       )}
     >
-      <nav aria-label="Project and job" className="flex flex-wrap items-center gap-2 text-sm">
-        {openedJob.project_id ? <Button variant="link" className="h-auto p-0" onClick={backToProject}>
-          {project?.name ?? openedJob.project_name ?? "Project"}
-        </Button> : <span className="text-muted-foreground">Unassigned</span>}
-        <span aria-hidden="true">/</span>
-        <span className="min-w-0 break-words font-medium">{openedJob.title}</span>
-        <span aria-hidden="true">/</span>
-        <span className="text-muted-foreground">Earth Observation</span>
-        <Button variant="outline" size="sm" className="ml-auto" onClick={switchJob}>Switch job</Button>
-      </nav>
-
       <WorkbenchBar
         tab={ribbonTab}
         onTab={setRibbonTab}
@@ -1060,9 +1023,6 @@ function SurveyWorkbench({
         rightOpen={rightOpen}
         onToggleLeft={() => togglePanel("left")}
         onToggleRight={() => togglePanel("right")}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
-        onBackToProject={openedJob.project_id ? backToProject : undefined}
         published={selected !== null && !selected.active}
         onExportPdf={() => setExportModalOpen(true)}
         downloads={downloads}

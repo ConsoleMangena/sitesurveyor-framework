@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useNavigate, useSearchParams } from "react-router-dom";
 import SatelliteSurveyPage from "./index.tsx";
 import type { SurveyRun } from "../../../lib/repositories/satelliteSurveys.ts";
@@ -95,13 +95,6 @@ describe("EO project/job routing", () => {
     expect(screen.getByRole("button", { name: "Run survey" })).toBeEnabled();
   });
 
-  it("returns to the owning project's Jobs tab", async () => {
-    open("?view=satellite&projectId=project-a&jobId=job-a");
-    await screen.findByTestId("map");
-    fireEvent.click(screen.getByRole("button", { name: "Back to project" }));
-    expect(mocks.navigate).toHaveBeenCalledWith("projects", { projectId: "project-a", tab: "jobs" });
-  });
-
   it("clears another job's selection when switching jobs and restores browser history", async () => {
     open("?view=satellite&projectId=project-a&jobId=job-a&runId=run-a");
     await screen.findByTestId("map");
@@ -134,15 +127,6 @@ describe("EO project/job routing", () => {
   it("shows missing run errors rather than a different result", async () => {
     open("?view=satellite&runId=missing");
     expect(await screen.findByText(/This survey run could not be opened/)).toBeInTheDocument();
-    expect(screen.queryByTestId("map")).not.toBeInTheDocument();
-  });
-
-  it("closes an active job to its project launcher", async () => {
-    open("?view=satellite&projectId=project-b&jobId=job-b");
-    await screen.findByTestId("map");
-    fireEvent.click(within(screen.getByRole("navigation", { name: "Project and job" })).getByRole("button", { name: "Switch job" }));
-    expect(await screen.findByText("Project Jobs")).toBeInTheDocument();
-    expect(screen.getByTestId("route")).toHaveTextContent("projectId=project-b");
     expect(screen.queryByTestId("map")).not.toBeInTheDocument();
   });
 

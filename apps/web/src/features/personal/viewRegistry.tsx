@@ -138,7 +138,6 @@ export function renderPersonalView(
           <SatelliteSurveyPage
             workspaceId={user.workspaceId}
             onNavigate={onNavigate}
-            onEnterFullscreen={onEnterFullscreenProject}
             onExitFullscreen={onExitFullscreenProject}
             isFullscreen={options.isProjectFullscreen}
           />
