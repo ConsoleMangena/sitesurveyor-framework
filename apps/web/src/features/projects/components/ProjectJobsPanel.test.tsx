@@ -103,11 +103,9 @@ describe("ProjectJobsPanel", () => {
     fireEvent.click(await screen.findByText("Masvingo Groundwater Siting"));
     fireEvent.click(screen.getByRole("button", { name: /open in earth observation/i }));
 
-    expect(onNavigate).toHaveBeenCalledWith("satellite");
-    expect(sessionStorage.getItem("sitesurveyor:selected_job_id")).toBe("job-eo");
-    expect(sessionStorage.getItem("sitesurveyor:selected_job_name")).toBe(
-      "Masvingo Groundwater Siting",
-    );
+    expect(onNavigate).toHaveBeenCalledWith("satellite", { jobId: "job-eo", projectId: PROJECT });
+    expect(sessionStorage.getItem("sitesurveyor:selected_job_id")).toBeNull();
+    expect(sessionStorage.getItem("sitesurveyor:selected_job_name")).toBeNull();
   });
 
   it("hands the project context to new Earth Observation jobs", async () => {
@@ -116,8 +114,8 @@ describe("ProjectJobsPanel", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /new earth observation/i }));
 
-    expect(onNavigate).toHaveBeenCalledWith("satellite");
-    expect(sessionStorage.getItem("sitesurveyor:selected_job_project_id")).toBe(PROJECT);
+    expect(onNavigate).toHaveBeenCalledWith("satellite", { projectId: PROJECT });
+    expect(sessionStorage.getItem("sitesurveyor:selected_job_project_id")).toBeNull();
   });
 
   it("attaches an unassigned job to the project", async () => {

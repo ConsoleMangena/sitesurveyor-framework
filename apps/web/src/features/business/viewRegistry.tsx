@@ -43,7 +43,7 @@ interface BusinessViewRegistryOptions {
   isProjectFullscreen?: boolean;
   onEnterFullscreenProject: () => void;
   onExitFullscreenProject: () => void;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, context?: Record<string, string>) => void;
 }
 
 export function renderBusinessView(

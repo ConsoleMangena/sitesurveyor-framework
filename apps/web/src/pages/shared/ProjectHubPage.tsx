@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Plus,
   ArrowLeft,
@@ -111,15 +112,12 @@ export type HubProject = UiHubProject
 interface ProjectHubPageProps {
   userName: string
   workspaceId: string
-  onNavigate?: (view: string) => void
+  onNavigate?: (view: string, context?: Record<string, string>) => void
   onEnterFullscreenProject?: () => void
   onExitFullscreenProject?: () => void
 }
 
 type ProjectTab = 'overview' | 'jobs' | 'settings'
-
-const ACTIVE_PROJECT_KEY = 'sitesurveyorActiveProjectId'
-const ACTIVE_PROJECT_TAB_KEY = 'sitesurveyorActiveProjectTab'
 
 const VALID_TABS: ProjectTab[] = ['overview', 'jobs', 'settings']
 
@@ -148,7 +146,17 @@ const tabLabels: Record<ProjectTab, string> = {
 }
 
 export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEnterFullscreenProject, onExitFullscreenProject }: ProjectHubPageProps) {
-  const [projects, setProjects] = useState<HubProject[]>([])
+  const { projects: projectRows, loading: projectsLoading, error: projectsError, refresh: refreshProjectRows } = useProjects(workspaceId)
+  const [projectSnapshot, setProjectSnapshot] = useState<{
+    workspaceId: string
+    source: typeof projectRows
+    projects: HubProject[]
+  } | null>(null)
+  const projects = useMemo(
+    () => projectSnapshot?.workspaceId === workspaceId ? projectSnapshot.projects : [],
+    [projectSnapshot, workspaceId],
+  )
+  const resolvingProjects = projectsLoading || projectSnapshot?.workspaceId !== workspaceId || projectSnapshot?.source !== projectRows
   const [organizations, setOrganizations] = useState<OrganizationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -162,14 +170,21 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   const [assignEmail, setAssignEmail] = useState('')
   const [assigningMember, setAssigningMember] = useState(false)
   const [myRole, setMyRole] = useState<'owner' | 'admin' | 'ops_manager' | 'finance' | 'sales' | 'technician' | 'viewer' | null>(null)
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(() => localStorage.getItem(ACTIVE_PROJECT_KEY))
-  const [activeProjectTab, setActiveProjectTab] = useState<ProjectTab>(() => {
-    const raw = localStorage.getItem(ACTIVE_PROJECT_TAB_KEY)
-    return isValidProjectTab(raw) ? raw : 'overview'
-  })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeProjectId = searchParams.get('projectId')
+  const routeTab = searchParams.get('tab')
+  const activeProjectTab: ProjectTab = isValidProjectTab(routeTab) ? routeTab : 'overview'
+  const setProjectRoute = (projectId: string | null, tab: ProjectTab = 'overview') => {
+    setSearchParams(projectId ? { view: 'projects', projectId, tab } : { view: 'projects' })
+  }
+  const setActiveProjectTab = (tab: ProjectTab) => setProjectRoute(activeProjectId, tab)
   const [deployedAssets, setDeployedAssets] = useState<AssetRow[]>([])
 
-  const { projects: projectRows, refresh: refreshProjectRows } = useProjects(workspaceId)
+  // Only resolve project routes against rows belonging to the current workspace.
+  const activeProject = activeProjectId && projectRows.some(row => row.id === activeProjectId && row.workspace_id === workspaceId)
+    ? projects.find(project => project.dbId === activeProjectId) ?? null
+    : null
+  const resolvedProjectId = activeProject?.dbId
 
   const syncStatus = useOfflineSyncStatus()
   const prevSyncStatusRef = useRef(syncStatus.status)
@@ -215,18 +230,9 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   const projectTabs = useMemo<ProjectTab[]>(() => VALID_TABS, [])
 
   useEffect(() => {
-    if (activeProjectId) localStorage.setItem(ACTIVE_PROJECT_KEY, activeProjectId)
-    else localStorage.removeItem(ACTIVE_PROJECT_KEY)
-  }, [activeProjectId])
-
-  useEffect(() => {
-    localStorage.setItem(ACTIVE_PROJECT_TAB_KEY, activeProjectTab)
-  }, [activeProjectTab])
-
-  useEffect(() => {
     let cancelled = false
-    if (!activeProjectId) return
-    const activeProjectName = projects.find(p => p.dbId === activeProjectId || p.id === activeProjectId)?.name
+    if (!resolvedProjectId) return
+    const activeProjectName = projects.find(p => p.dbId === resolvedProjectId)?.name
     listAssets(workspaceId).then((allAssets) => {
       if (cancelled) return
       const projAssets = allAssets.filter(a => {
@@ -236,7 +242,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
       setDeployedAssets(projAssets)
     }).catch(() => { if (!cancelled) setDeployedAssets([]) })
     return () => { cancelled = true }
-  }, [activeProjectId, projects, workspaceId])
+  }, [resolvedProjectId, projects, workspaceId])
 
   // Keep the HubProject list in sync with the local-first projectRows.
   // Members are resolved in two bulk queries total — never one fetch per
@@ -244,16 +250,17 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   useEffect(() => {
     let cancelled = false
     const map = async () => {
+      const workspaceRows = projectRows.filter(row => row.workspace_id === workspaceId)
       let membersByProject = new Map<string, ProjectMemberWithProfile[]>()
       try {
         membersByProject = await listProjectMembersForProjects(
-          projectRows.map((row) => row.id),
+          workspaceRows.map((row) => row.id),
         )
       } catch {
         // Member resolution is best-effort; rows still render without names.
       }
       if (cancelled) return
-      const mapped = projectRows.map((row) =>
+      const mapped = workspaceRows.map((row) =>
         mapProjectRowToHubProject(
           row,
           (membersByProject.get(row.id) ?? []).map((m) => ({
@@ -263,11 +270,11 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
           })),
         ),
       )
-      setProjects(mapped)
+      setProjectSnapshot({ workspaceId, source: projectRows, projects: mapped })
     }
     void map()
     return () => { cancelled = true }
-  }, [projectRows])
+  }, [projectRows, workspaceId])
 
   const fetchProjects = useCallback(async (opts?: { silent?: boolean }) => {
     try {
@@ -312,8 +319,6 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
     }, 15000)
     return () => clearInterval(id)
   }, [fetchProjects])
-
-  const activeProject = activeProjectId ? projects.find(p => p.dbId === activeProjectId || p.id === activeProjectId) ?? null : null
 
   const effectiveProjectTab = useMemo<ProjectTab>(
     () => (projectTabs.includes(activeProjectTab) ? activeProjectTab : 'overview'),
@@ -382,32 +387,32 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   }
 
   const fetchActivities = useCallback(async () => {
-    if (!activeProjectId) return
+    if (!resolvedProjectId) return
 
-    const cached = readCachedActivities(activeProjectId)
-    const queue = readActivityQueue(activeProjectId)
+    const cached = readCachedActivities(resolvedProjectId)
+    const queue = readActivityQueue(resolvedProjectId)
 
     if (!navigator.onLine) {
-      setActivities(mergeActivities(activeProjectId, cached, queue))
+      setActivities(mergeActivities(resolvedProjectId, cached, queue))
       return
     }
 
     try {
-      const remote = await listProjectActivities(activeProjectId)
-      writeCachedActivities(activeProjectId, remote.map((a) => ({ ...a, queued: false })))
-      setActivities(mergeActivities(activeProjectId, remote, queue))
+      const remote = await listProjectActivities(resolvedProjectId)
+      writeCachedActivities(resolvedProjectId, remote.map((a) => ({ ...a, queued: false })))
+      setActivities(mergeActivities(resolvedProjectId, remote, queue))
     } catch (err) {
       // Use the locally cached timeline if the server cannot be reached.
-      setActivities(mergeActivities(activeProjectId, cached, queue))
+      setActivities(mergeActivities(resolvedProjectId, cached, queue))
       if (navigator.onLine) {
         setError(err instanceof Error ? err.message : 'Failed to load activity timeline.')
       }
     }
-  }, [activeProjectId])
+  }, [resolvedProjectId])
 
   const flushActivityQueue = useCallback(async () => {
-    if (!activeProjectId || !navigator.onLine) return
-    const queue = readActivityQueue(activeProjectId)
+    if (!resolvedProjectId || !navigator.onLine) return
+    const queue = readActivityQueue(resolvedProjectId)
     if (queue.creates.length === 0 && queue.deletes.length === 0) return
 
     for (const id of queue.deletes) {
@@ -422,11 +427,11 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
     while (queue.creates.length > 0) {
       const create = queue.creates[0]
       try {
-        await createProjectActivity(activeProjectId, create.content, create.type)
+        await createProjectActivity(resolvedProjectId, create.content, create.type)
       } catch (err) {
         // Leave the remaining queue in place and stop flushing; the next online
         // event or refresh will retry.
-        writeActivityQueue(activeProjectId, queue)
+        writeActivityQueue(resolvedProjectId, queue)
         if (navigator.onLine) {
           setError(err instanceof Error ? err.message : 'Failed to sync activity.')
         }
@@ -435,9 +440,9 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
       queue.creates.shift()
     }
 
-    clearActivityQueue(activeProjectId)
+    clearActivityQueue(resolvedProjectId)
     await fetchActivities()
-  }, [activeProjectId, fetchActivities])
+  }, [resolvedProjectId, fetchActivities])
 
   useAsyncAction(fetchActivities, [fetchActivities])
 
@@ -483,7 +488,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
       setEditDesc(proj.description)
     }, 0)
     return () => window.clearTimeout(id)
-  }, [activeProjectId])
+  }, [resolvedProjectId])
 
   const handleUpdateProject = async () => {
     if (!activeProject) return
@@ -625,7 +630,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
       setShowDeleteConfirm(false)
       setDeleteConfirmText('')
       if (activeProjectId === dbId) {
-        setActiveProjectId(null)
+        setProjectRoute(null)
       }
       await fetchProjects()
     } catch (err) {
@@ -650,7 +655,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
       setShowPermanentDeleteConfirm(false)
       setDeleteConfirmText('')
       if (activeProjectId === dbId) {
-        setActiveProjectId(null)
+        setProjectRoute(null)
       }
       await fetchProjects()
     } catch (err) {
@@ -659,22 +664,14 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   }
 
   const openProject = (p: HubProject) => {
-    setActiveProjectTab('overview')
-    setActiveProjectId(p.dbId)
-    // Persist synchronously: the fullscreen toggle remounts this page in some
-    // layouts, and the effect below never runs on an instance that is torn
-    // down first. Writing here means a remount still finds the active id and
-    // reopens the project instead of bouncing back to the list.
-    localStorage.setItem(ACTIVE_PROJECT_KEY, p.dbId)
-    onEnterFullscreenProject?.()
+    setProjectRoute(p.dbId)
     setSelectedProject(null)
     setShowDeleteConfirm(false)
     setDeleteConfirmText('')
   }
 
   const exitProject = () => {
-    setActiveProjectId(null)
-    localStorage.removeItem(ACTIVE_PROJECT_KEY)
+    setProjectRoute(null)
     onExitFullscreenProject?.()
   }
 
@@ -761,15 +758,35 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   useEffect(() => { fullscreenEnterRef.current = onEnterFullscreenProject }, [onEnterFullscreenProject])
   useEffect(() => { fullscreenExitRef.current = onExitFullscreenProject }, [onExitFullscreenProject])
   useEffect(() => {
-    if (activeProjectId) fullscreenEnterRef.current?.()
+    if (resolvedProjectId) fullscreenEnterRef.current?.()
     else fullscreenExitRef.current?.()
-  }, [activeProjectId])
+  }, [resolvedProjectId])
 
-  if (loading) {
+  if (loading || (activeProjectId && !activeProject && resolvingProjects)) {
     return (
       <div className="w-full p-6">
         <PageLoader />
       </div>
+    )
+  }
+
+  if (activeProjectId && !activeProject) {
+    return (
+      <DashboardShell>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><FolderOpen /></EmptyMedia>
+            <EmptyTitle>Project unavailable</EmptyTitle>
+            <EmptyDescription>
+              {projectsError || error || 'This project could not be found in the current workspace. It may have been removed or you may no longer have access.'}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" onClick={exitProject}>Back to Projects</Button>
+            <Button onClick={() => void fetchProjects()}>Retry</Button>
+          </EmptyContent>
+        </Empty>
+      </DashboardShell>
     )
   }
 

@@ -32,7 +32,7 @@ const MAX_HALF_DEG = 0.5;
 interface StartInput {
   workspaceId: string;
   projectId?: string | null;
-  jobId?: string | null;
+  jobId: string;
   latitude: number;
   longitude: number;
   halfDeg: number;
@@ -54,11 +54,16 @@ function isUuid(value: unknown): value is string {
  * discover the category list was empty. A survey costs credits, so the form should be
  * able to fail completely before it fails expensively.
  */
-function validate(body: Record<string, unknown>): { input?: StartInput; problems: string[] } {
+export function validate(rawBody: unknown): { input?: StartInput; problems: string[] } {
   const problems: string[] = [];
-  const { workspaceId, projectId, latitude, longitude, halfDeg, categories } = body;
+  if (!rawBody || typeof rawBody !== "object" || Array.isArray(rawBody)) {
+    return { problems: ["The survey request must be an object."] };
+  }
+  const body = rawBody as Record<string, unknown>;
+  const { workspaceId, projectId, jobId, latitude, longitude, halfDeg, categories } = body;
 
   if (!isUuid(workspaceId)) problems.push("A valid workspace is required.");
+  if (!isUuid(jobId)) problems.push("A valid job is required.");
 
   const lat = Number(latitude);
   const lon = Number(longitude);
@@ -97,14 +102,12 @@ function validate(body: Record<string, unknown>): { input?: StartInput; problems
 
   if (problems.length) return { problems };
 
-  const validJobId = isUuid(body.jobId) ? (body.jobId as string) : isUuid(projectId) ? (projectId as string) : null;
-
   return {
     problems,
     input: {
-      workspaceId: workspaceId as string,
-      projectId: isUuid(projectId) ? (projectId as string) : validJobId,
-      jobId: validJobId,
+      workspaceId: (workspaceId as string).toLowerCase(),
+      projectId: isUuid(projectId) ? projectId.toLowerCase() : null,
+      jobId: (jobId as string).toLowerCase(),
       latitude: lat,
       longitude: lon,
       halfDeg: size,
@@ -236,8 +239,11 @@ async function refundQuietly(
   if (error) console.error("survey credit refund failed", runId, error.message);
 }
 
-async function start(req: Request): Promise<Response> {
-  const caller = await getCaller(req);
+export async function start(
+  req: Request,
+  dependencies = { getCaller, adminClient },
+): Promise<Response> {
+  const caller = await dependencies.getCaller(req);
   if (!caller) return json({ error: "Sign in to run a satellite survey." }, 401);
 
   let body: Record<string, unknown>;
@@ -251,10 +257,43 @@ async function start(req: Request): Promise<Response> {
   if (!checked.input) return json({ error: checked.problems.join(" "), problems: checked.problems }, 400);
   const input = checked.input;
 
-  const admin = adminClient();
+  const admin = dependencies.adminClient();
   const membership = await getMembership(admin, input.workspaceId, caller.id).catch(() => null);
   if (!membership) {
     return json({ error: "Only an active member of this workspace can run a satellite survey." }, 403);
+  }
+
+  // Service-role inserts bypass RLS: prove the entire linkage before charging.
+  const { data: job, error: jobError } = await admin
+    .from("jobs")
+    .select("id, project_id")
+    .eq("id", input.jobId)
+    .eq("workspace_id", input.workspaceId)
+    .eq("_deleted", false)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (jobError) throw jobError;
+  if (!job) {
+    return json({ error: "Choose an available job in this workspace." }, 400);
+  }
+
+  const projectId: string | null = job.project_id ?? null;
+  if (input.projectId !== null && input.projectId !== undefined && input.projectId !== projectId) {
+    return json({ error: "The linked project does not match this job's project." }, 400);
+  }
+  if (projectId !== null) {
+    const { data: project, error: projectError } = await admin
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("workspace_id", input.workspaceId)
+      .eq("_deleted", false)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (projectError) throw projectError;
+    if (!project) {
+      return json({ error: "The job's linked project is not available in this workspace." }, 400);
+    }
   }
 
   const runId = crypto.randomUUID();
@@ -271,7 +310,7 @@ async function start(req: Request): Promise<Response> {
       id: runId,
       workspace_id: input.workspaceId,
       created_by: caller.id,
-      project_id: input.projectId,
+      project_id: projectId,
       job_id: input.jobId,
       status: "queued",
       stage: "Queued for a survey worker",
@@ -308,7 +347,7 @@ async function start(req: Request): Promise<Response> {
   });
 }
 
-Deno.serve(async (req) => {
+if (import.meta.main) Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

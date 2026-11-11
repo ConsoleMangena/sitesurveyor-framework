@@ -74,7 +74,7 @@ interface WorkbenchBarProps {
   onToggleRight: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
-  onExitProject?: () => void;
+  onBackToProject?: () => void;
   /** True once a completed run is on screen; nothing can be published before then. */
   published: boolean;
   onExportPdf: () => void;
@@ -126,7 +126,7 @@ export function WorkbenchBar({
   onToggleRight,
   isFullscreen,
   onToggleFullscreen,
-  onExitProject,
+  onBackToProject,
   published,
   onExportPdf,
   downloads,
@@ -173,17 +173,17 @@ export function WorkbenchBar({
             </Button>
           ) : null}
 
-          {onExitProject ? (
+          {onBackToProject ? (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7 text-destructive hover:bg-destructive/10"
-              onClick={onExitProject}
-              title="Close this job and choose another"
+              className="size-7 text-muted-foreground hover:text-foreground"
+              onClick={onBackToProject}
+              title="Back to project"
             >
               <LogOut className="size-3.5" />
-              <span className="sr-only">Exit project</span>
+              <span className="sr-only">Back to project</span>
             </Button>
           ) : null}
         </div>

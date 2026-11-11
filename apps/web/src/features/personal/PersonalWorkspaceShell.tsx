@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import WorkspaceShell from "../../components/workspace/WorkspaceShell";
 import { platformAdminNavGroup } from "../admin/adminNav.ts";
 import {
@@ -24,11 +25,14 @@ export default function PersonalWorkspaceShell({
   initialView,
 }: PersonalWorkspaceShellProps) {
   const storageKey = `sitesurveyor:lastView:personal:${user.workspaceId}`;
-  const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fallbackView = useMemo<WorkspaceView>(() => {
     if (initialView !== undefined) return initialView;
     const saved = localStorage.getItem(storageKey);
     return isWorkspaceView(saved) ? saved : "dashboard";
-  });
+  }, [initialView, storageKey]);
+  const routeView = searchParams.get("view");
+  const currentView = isWorkspaceView(routeView) ? routeView : fallbackView;
   const [isProjectFullscreen, setIsProjectFullscreen] = useState(false);
 
   const activeView = useMemo(
@@ -65,7 +69,18 @@ export default function PersonalWorkspaceShell({
 
   useEffect(() => {
     localStorage.setItem(storageKey, activeView);
-  }, [activeView, storageKey]);
+    if (routeView !== activeView) {
+      setSearchParams({ view: activeView }, { replace: true });
+    }
+  }, [activeView, routeView, setSearchParams, storageKey]);
+
+  const navigate = (view: string, context?: Record<string, string>) => {
+    if (!isWorkspaceView(view)) return;
+    const accessibleView = getAccessibleView("personal", view, user.isPlatformAdmin);
+    setIsProjectFullscreen(false);
+    // Replace, rather than merge, context so ordinary navigation clears old EO routes.
+    setSearchParams({ ...(accessibleView === view ? context : {}), view: accessibleView });
+  };
 
   return (
     <WorkspaceShell
@@ -74,7 +89,7 @@ export default function PersonalWorkspaceShell({
       navGroups={navGroups}
       accountLabel={getWorkspaceShellAccountLabel(user)}
       isProjectFullscreen={isProjectFullscreen}
-      onChangeView={setCurrentView}
+      onChangeView={navigate}
       onLogout={onLogout}
     >
       {renderPersonalView(activeView, {
@@ -82,10 +97,7 @@ export default function PersonalWorkspaceShell({
         isProjectFullscreen,
         onEnterFullscreenProject: () => setIsProjectFullscreen(true),
         onExitFullscreenProject: () => setIsProjectFullscreen(false),
-        onNavigate: (view) => {
-          setIsProjectFullscreen(false);
-          setCurrentView(view as import("../../features/workspace/types").WorkspaceView);
-        },
+        onNavigate: navigate,
       })}
     </WorkspaceShell>
   );

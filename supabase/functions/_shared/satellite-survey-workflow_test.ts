@@ -317,7 +317,7 @@ Deno.test("executeTool routes get_satellite_survey_result inside the workspace",
 // The AI launch path used to queue an orphaned run: it charged credits and
 // inserted survey_runs with no job, so the survey never appeared under the
 // workspace's jobs and could not be opened in the workbench. These tests pin
-// the job into existence and the run's job_id/project_id to it.
+// the job into existence and the run's job_id to it, without inventing a project.
 
 interface LaunchCall {
   method: string;
@@ -394,7 +394,7 @@ Deno.test("launch creates a job and links the run to it", async () => {
   assertEquals(spec.halfDeg, 0.06);
   // The run points at the job, exactly as the workbench's own launch does.
   assertEquals(run.job_id, job.id);
-  assertEquals(run.project_id, job.id);
+  assertEquals(run.project_id, null, "an unassigned job must not become a project");
   assertEquals(run.workspace_id, "ws-1");
   assertEquals(result.job_id, job.id);
 });

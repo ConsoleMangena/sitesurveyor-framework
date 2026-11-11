@@ -92,7 +92,7 @@ function scheduleText(job: JobWithProject): string | null {
 interface ProjectJobsPanelProps {
   workspaceId: string;
   projectId: string;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, context?: Record<string, string>) => void;
 }
 
 /**
@@ -135,16 +135,15 @@ export function ProjectJobsPanel({ workspaceId, projectId, onNavigate }: Project
   const attachable = allJobs.filter((job) => !job.project_id && !job.archived_at);
 
   const openInEarthObservation = (job: JobWithProject) => {
-    // Same handoff the job board uses: the satellite view picks the job up on mount.
-    sessionStorage.setItem("sitesurveyor:selected_job_id", job.id);
-    sessionStorage.setItem("sitesurveyor:selected_job_name", job.title);
-    onNavigate?.("satellite");
+    onNavigate?.("satellite", {
+      jobId: job.id,
+      ...(job.project_id ? { projectId: job.project_id } : {}),
+    });
   };
 
   const newEarthObservation = () => {
     // The EO setup screen creates the job; this context makes it join this project.
-    sessionStorage.setItem("sitesurveyor:selected_job_project_id", projectId);
-    onNavigate?.("satellite");
+    onNavigate?.("satellite", { projectId });
   };
 
   const handleAttach = async (job: JobWithProject) => {

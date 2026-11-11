@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { isWorkspaceView } from "../workspace/types";
 import WorkspaceShell from "../../components/workspace/WorkspaceShell";
 import { platformAdminNavGroup } from "../admin/adminNav.ts";
 import {
@@ -23,12 +25,15 @@ export default function PlatformOperatorWorkspaceShell({
   initialView,
 }: PlatformOperatorWorkspaceShellProps) {
   const storageKey = `sitesurveyor:lastView:platform:${user.workspaceId}`;
-  const [currentView, setCurrentView] = useState<WorkspaceView>(() => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fallbackView = useMemo<WorkspaceView>(() => {
     if (initialView !== undefined) return initialView;
-    const saved = localStorage.getItem(storageKey) as WorkspaceView | null;
-    if (saved) return saved;
+    const saved = localStorage.getItem(storageKey);
+    if (isWorkspaceView(saved)) return saved;
     return user.isPlatformAdmin ? "admin_overview" : "dashboard";
-  });
+  }, [initialView, storageKey, user.isPlatformAdmin]);
+  const routeView = searchParams.get("view");
+  const currentView = isWorkspaceView(routeView) ? routeView : fallbackView;
   const [isProjectFullscreen, setIsProjectFullscreen] = useState(false);
 
   const activeView = useMemo(
@@ -68,7 +73,18 @@ export default function PlatformOperatorWorkspaceShell({
 
   useEffect(() => {
     localStorage.setItem(storageKey, activeView);
-  }, [activeView, storageKey]);
+    if (routeView !== activeView) {
+      setSearchParams({ view: activeView }, { replace: true });
+    }
+  }, [activeView, routeView, setSearchParams, storageKey]);
+
+  const navigate = (view: string, context?: Record<string, string>) => {
+    if (!isWorkspaceView(view)) return;
+    const accessibleView = getAccessibleView("personal", view, user.isPlatformAdmin);
+    setIsProjectFullscreen(false);
+    // Replace, rather than merge, context so ordinary navigation clears old EO routes.
+    setSearchParams({ ...(accessibleView === view ? context : {}), view: accessibleView });
+  };
 
   const noticeBanner =
     user.isPlatformAdmin ? undefined : (
@@ -93,7 +109,7 @@ export default function PlatformOperatorWorkspaceShell({
       accountLabel={getWorkspaceShellAccountLabel(user)}
       noticeBanner={noticeBanner}
       isProjectFullscreen={isProjectFullscreen}
-      onChangeView={setCurrentView}
+      onChangeView={navigate}
       onLogout={onLogout}
     >
       {renderPersonalView(activeView, {
@@ -101,10 +117,7 @@ export default function PlatformOperatorWorkspaceShell({
         isProjectFullscreen,
         onEnterFullscreenProject: () => setIsProjectFullscreen(true),
         onExitFullscreenProject: () => setIsProjectFullscreen(false),
-        onNavigate: (view) => {
-          setIsProjectFullscreen(false);
-          setCurrentView(view as import("../../features/workspace/types").WorkspaceView);
-        },
+        onNavigate: navigate,
       })}
     </WorkspaceShell>
   );

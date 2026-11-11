@@ -12,7 +12,6 @@ import {
   Plus,
   Satellite,
   Search,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -51,7 +50,7 @@ import {
   windowOptions,
   yearOptions,
 } from "../../../lib/surveys/sources.ts";
-import { canAfford, areaText, type SurveyQuote } from "../../../lib/surveys/pricing.ts";
+import { areaText, type SurveyQuote } from "../../../lib/surveys/pricing.ts";
 import { useSurveyQuote } from "../../../lib/hooks/useSurveyQuote.ts";
 import {
   jobSpecFrom,
@@ -75,8 +74,10 @@ interface EarthObservationSetupFormProps {
   jobsLoading: boolean;
   openedJob: JobWithProject | null;
   onSelectJob: (job: JobWithProject) => void;
+  onClearJob?: () => void;
   onProceedToWorkbench: (job: JobWithProject) => void;
-  onLaunchSurvey: (job: JobWithProject) => void;
+  projects?: { id: string; name: string }[];
+  onProjectChange?: (projectId: string | null) => void;
   onRefreshJobs?: () => Promise<JobWithProject[]>;
   /** Set when the operator came from a project, so newly created jobs join that project. */
   projectContextId?: string | null;
@@ -88,7 +89,7 @@ interface EarthObservationSetupFormProps {
   /** The workspace's credit balance, or null when it has not been reported. */
   balance: number | null;
   onNavigateBilling?: () => void;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, context?: Record<string, string>) => void;
 }
 
 export default function EarthObservationSetupForm({
@@ -99,10 +100,12 @@ export default function EarthObservationSetupForm({
   jobsLoading,
   openedJob,
   onSelectJob,
+  onClearJob,
   onProceedToWorkbench,
-  onLaunchSurvey,
   onRefreshJobs,
   projectContextId,
+  projects = [],
+  onProjectChange,
   busy,
   queueing,
   quote,
@@ -114,6 +117,7 @@ export default function EarthObservationSetupForm({
   // Job creation state
   const [creatingJob, setCreatingJob] = useState(false);
   const [newJobTitle, setNewJobTitle] = useState("");
+  const [newJobProjectId, setNewJobProjectId] = useState(projectContextId ?? "");
   const [newJobLocation, setNewJobLocation] = useState("");
   const [newJobCategory, setNewJobCategory] = useState<SurveyCategory>("water");
   /**
@@ -142,7 +146,7 @@ export default function EarthObservationSetupForm({
     try {
       await deleteJob(job.id);
       if (currentJob?.id === job.id || openedJob?.id === job.id) {
-        onSelectJob(null as any);
+        onClearJob?.();
         onChange({ jobId: "", clientName: "", address: "" });
       }
       await onRefreshJobs?.();
@@ -228,7 +232,7 @@ export default function EarthObservationSetupForm({
         location: newJobLocation.trim() || undefined,
         job_type: typeLabel,
         description: serializeJobSpec(spec),
-        project_id: projectContextId ?? undefined,
+        project_id: projectContextId || newJobProjectId || undefined,
         status: "planned",
       });
       const asProjectJob: JobWithProject = { ...created, project_name: null };
@@ -267,9 +271,6 @@ export default function EarthObservationSetupForm({
 
   const activeCategory = values.categories[0] ?? "water";
 
-  /** Whether the workspace can pay for the job as it is currently specified. */
-  const affordable = canAfford(quote, balance);
-
   function handleProceed() {
     if (!currentJob) {
       setValidationProblems(["A job must be opened before entering the Earth Observation UI."]);
@@ -282,27 +283,6 @@ export default function EarthObservationSetupForm({
     }
     setValidationProblems([]);
     onProceedToWorkbench(currentJob);
-  }
-
-  function handleLaunch() {
-    if (!currentJob) {
-      setValidationProblems(["A job must be opened before launching Earth Observation screening."]);
-      return;
-    }
-    if (!affordable) {
-      setValidationProblems([
-        `This workspace has ${balance?.toLocaleString()} SiteSurveyor credits and this survey costs ` +
-          `${quote?.credits}. Buy more credits from Billing before running it.`,
-      ]);
-      return;
-    }
-    const check = validateForm(values);
-    if (!check.draft) {
-      setValidationProblems(check.problems);
-      return;
-    }
-    setValidationProblems([]);
-    onLaunchSurvey(currentJob);
   }
 
   return (
@@ -329,11 +309,11 @@ export default function EarthObservationSetupForm({
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 text-xs font-medium"
-              onClick={() => onNavigate("projects")}
-              title="Return to Projects"
+              onClick={() => onNavigate("projects", projectContextId ? { projectId: projectContextId, tab: "jobs" } : undefined)}
+              title={projectContextId ? "Back to project" : "Return to Projects"}
             >
               <ArrowLeft className="size-3.5" />
-              <span>Projects</span>
+              <span>{projectContextId ? "Back to project" : "Projects"}</span>
             </Button>
           ) : null}
 
@@ -367,6 +347,18 @@ export default function EarthObservationSetupForm({
         </div>
       </div>
 
+      {onProjectChange ? (
+        <div className="space-y-2">
+          <Label htmlFor="eo-project-filter">Project</Label>
+          <select id="eo-project-filter" className={`w-full ${fieldClass}`} value={projectContextId ?? ""}
+            onChange={(event) => onProjectChange(event.target.value || null)}>
+            <option value="">All projects and unassigned jobs</option>
+            {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+          </select>
+          <p className="text-sm text-muted-foreground">Choose a project, then open a job. Survey runs and results stay with that job.</p>
+        </div>
+      ) : null}
+
       {validationProblems.length > 0 ? (
         <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3.5 text-xs text-destructive">
           <ul className="list-disc space-y-0.5 pl-4">
@@ -387,6 +379,16 @@ export default function EarthObservationSetupForm({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
+            <div className="space-y-1.5">
+              <Label htmlFor="eo-new-project">Project for this job</Label>
+              <select id="eo-new-project" className={`w-full ${fieldClass}`}
+                value={projectContextId ?? newJobProjectId} disabled={savingJob || Boolean(projectContextId)}
+                onChange={(event) => setNewJobProjectId(event.target.value)}>
+                <option value="">Unassigned — no project</option>
+                {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </select>
+              {!projectContextId && !newJobProjectId ? <p className="text-xs text-muted-foreground">This job will be unassigned. You can attach it from a project's Jobs tab later.</p> : null}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="eo-create-title" className={labelClass}>
@@ -582,7 +584,7 @@ export default function EarthObservationSetupForm({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">Recent Jobs</CardTitle>
+                  <CardTitle className="text-base">{projectContextId ? "Project Jobs" : "Recent Jobs"}</CardTitle>
                   <Badge variant="secondary" className="text-[11px] font-mono px-1.5 py-0">
                     {jobs.length}
                   </Badge>
@@ -614,7 +616,7 @@ export default function EarthObservationSetupForm({
             <div className="rounded-lg border border-dashed border-border/80 py-8 text-center space-y-2">
               <Briefcase className="size-8 mx-auto text-muted-foreground/60" />
               <p className="text-xs font-medium text-foreground">
-                {filterQuery.trim() ? "No jobs match your filter." : "No jobs found in this workspace yet."}
+                {filterQuery.trim() ? "No jobs match your filter." : projectContextId ? "No jobs found in this project yet." : "No jobs found in this workspace yet."}
               </p>
               <Button
                 type="button"
@@ -653,6 +655,7 @@ export default function EarthObservationSetupForm({
                       </div>
 
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span>{job.project_name ?? projects.find((project) => project.id === job.project_id)?.name ?? (job.project_id ? "Project job" : "Unassigned")}</span>
                         {job.location ? (
                           <span className="flex items-center gap-1 truncate">
                             <MapPin className="size-3 text-muted-foreground/80 shrink-0" />
@@ -1091,32 +1094,6 @@ export default function EarthObservationSetupForm({
                 <ArrowRight className="size-4 shrink-0" />
               </Button>
 
-              <Button
-                type="button"
-                variant="default"
-                className="flex-1 sm:flex-initial h-10 gap-2 text-xs font-semibold justify-center"
-                disabled={busy || queueing || !affordable}
-                title={
-                  affordable
-                    ? undefined
-                    : "This workspace does not have enough credits for this survey."
-                }
-                onClick={handleLaunch}
-              >
-                {queueing || busy ? <Loader className="size-3.5 animate-spin shrink-0" /> : <Sparkles className="size-3.5 shrink-0" />}
-                {busy ? (
-                  "Screening in progress…"
-                ) : quote ? (
-                  <>
-                    <span>Run Screening</span>
-                    <span>· {quote.credits} credit{quote.credits === 1 ? "" : "s"}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Run Screening</span>
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         </div>

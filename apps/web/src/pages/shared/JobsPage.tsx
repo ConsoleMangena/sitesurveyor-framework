@@ -78,7 +78,7 @@ type JobStatus = Database["public"]["Enums"]["job_status"];
 interface JobsPageProps {
   workspaceId: string;
   isPlatformAdmin?: boolean;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, context?: Record<string, string>) => void;
 }
 
 function toDatetimeLocal(iso: string | null): string {
@@ -716,10 +716,11 @@ export default function JobsPage({
               variant="default"
               className="gap-1.5"
               onClick={() => {
-                sessionStorage.setItem("sitesurveyor:selected_job_id", selectedJob.id);
-                sessionStorage.setItem("sitesurveyor:selected_job_name", selectedJob.title);
+                onNavigate?.("satellite", {
+                  jobId: selectedJob.id,
+                  ...(selectedJob.project_id ? { projectId: selectedJob.project_id } : {}),
+                });
                 setSelectedJob(null);
-                onNavigate?.("satellite");
               }}
             >
               <Satellite className="size-4" />

@@ -10,7 +10,7 @@ import { listJobs, type JobWithProject } from "@/lib/repositories/jobs.ts";
 
 interface SatelliteSurveyCardProps {
   workspaceId: string;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, context?: Record<string, string>) => void;
 }
 
 /**
@@ -45,9 +45,10 @@ export default function SatelliteSurveyCard({
   const loading = !loaded;
 
   function handleOpenJob(job: JobWithProject) {
-    sessionStorage.setItem("sitesurveyor:selected_job_id", job.id);
-    sessionStorage.setItem("sitesurveyor:selected_job_name", job.title);
-    onNavigate?.("satellite");
+    onNavigate?.("satellite", {
+      jobId: job.id,
+      ...(job.project_id ? { projectId: job.project_id } : {}),
+    });
   }
 
   return (

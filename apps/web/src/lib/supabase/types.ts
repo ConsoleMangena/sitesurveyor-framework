@@ -3365,6 +3365,7 @@ export type Database = {
           error_message: string | null
           half_deg: number
           id: string
+          job_id: string | null
           latitude: number
           longitude: number
           progress: number
@@ -3393,6 +3394,7 @@ export type Database = {
           error_message?: string | null
           half_deg?: number
           id?: string
+          job_id?: string | null
           latitude: number
           longitude: number
           progress?: number
@@ -3421,6 +3423,7 @@ export type Database = {
           error_message?: string | null
           half_deg?: number
           id?: string
+          job_id?: string | null
           latitude?: number
           longitude?: number
           progress?: number
@@ -3435,6 +3438,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "survey_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "survey_runs_workspace_id_fkey"
             columns: ["workspace_id"]

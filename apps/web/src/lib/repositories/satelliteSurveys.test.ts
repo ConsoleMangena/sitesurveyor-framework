@@ -28,6 +28,8 @@ function runRow(overrides: Record<string, unknown> = {}) {
   return {
     id: "0f0f0f0f-0000-4000-8000-000000000001",
     workspace_id: "0f0f0f0f-0000-4000-8000-000000000002",
+    job_id: null,
+    project_id: null,
     status: "succeeded",
     stage: "done",
     progress: 100,
@@ -208,6 +210,16 @@ describe("parseSurveyResult", () => {
 });
 
 describe("toSurveyRun", () => {
+  it.each([
+    { job_id: "job-1", project_id: "project-1", jobId: "job-1", projectId: "project-1" },
+    { job_id: "job-1", project_id: null, jobId: "job-1", projectId: null },
+    { job_id: null, project_id: "project-1", jobId: null, projectId: "project-1" },
+    { job_id: null, project_id: null, jobId: null, projectId: null },
+    { job_id: undefined, project_id: undefined, jobId: null, projectId: null },
+  ])("maps job/project independently: $jobId / $projectId", ({ job_id, project_id, jobId, projectId }) => {
+    expect(toSurveyRun(runRow({ job_id, project_id }) as never)).toMatchObject({ jobId, projectId });
+  });
+
   it("flags only the statuses a worker can still move", () => {
     expect(toSurveyRun(runRow({ status: "surveying" }) as never).active).toBe(true);
     expect(toSurveyRun(runRow({ status: "queued" }) as never).active).toBe(true);
@@ -245,6 +257,23 @@ describe("startSurvey", () => {
     clientName: "Kopje Farm",
     address: "",
   };
+
+  it.each([
+    { jobId: "job-1", projectId: "project-1" },
+    { jobId: "job-1", projectId: null },
+    { jobId: null, projectId: "project-1" },
+    { jobId: undefined, projectId: undefined },
+  ])("never mirrors request IDs: $jobId / $projectId", async ({ jobId, projectId }) => {
+    invokeMock.mockResolvedValue({
+      data: { run: runRow({ job_id: jobId ?? null, project_id: projectId ?? null }) },
+      error: null,
+    } as never);
+    const outcome = await startSurvey({ ...input, categories: ["water"], jobId, projectId });
+    expect(invokeMock).toHaveBeenCalledWith("satellite-survey", {
+      body: expect.objectContaining({ jobId: jobId ?? null, projectId: projectId ?? null }),
+    });
+    expect(outcome.run).toMatchObject({ jobId: jobId ?? null, projectId: projectId ?? null });
+  });
 
   it("returns the row the platform queued", async () => {
     invokeMock.mockResolvedValue({

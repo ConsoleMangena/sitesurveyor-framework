@@ -373,8 +373,8 @@ export async function launchSatelliteSurvey(
     });
   }
 
-  // 6. Insert the queued run, linked to the job. project_id carries the job id
-  //    exactly as the workbench does — survey_runs.project_id has no project FK.
+  // 6. Insert the queued run, linked to the job. This new job is intentionally
+  //    unassigned, so the run has no project either.
   const insertRes = await db.supabaseFetch({
     ...opts,
     method: "POST",
@@ -384,7 +384,7 @@ export async function launchSatelliteSurvey(
       workspace_id: owner.workspaceId,
       created_by: userId || null,
       job_id: jobId,
-      project_id: jobId,
+      project_id: null,
       status: "queued",
       stage: "Queued for a survey worker",
       latitude: lat,

@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Briefcase,
   ChevronDown,
   ChevronUp,
   Loader,
   LogOut,
-  MapPin,
-  Plus,
   Sparkles,
 } from "lucide-react";
 
@@ -15,17 +13,11 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 
-import type { SurveyCategory } from "../../../lib/repositories/satelliteSurveys.ts";
-import {
-  createJob,
-  listJobs,
-  type JobWithProject,
-} from "../../../lib/repositories/jobs.ts";
+import type { JobWithProject } from "../../../lib/repositories/jobs.ts";
 import {
   AOI_CHOICES,
   CATEGORY_LABELS,
   SURVEY_CATEGORY_OPTIONS,
-  getJobCategory,
   coverageNoteFor,
   parseCoordinate,
 } from "../../../lib/surveys/labels.ts";
@@ -35,7 +27,6 @@ import {
   FIXED_SOURCES,
   OPTICAL_PRODUCTS,
   imageryChip,
-  productById,
   windowOptions,
   yearOptions,
 } from "../../../lib/surveys/sources.ts";
@@ -50,7 +41,7 @@ const labelClass =
   "text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground";
 
 interface TargetFormProps {
-  workspaceId: string;
+  currentJob: JobWithProject;
   values: SurveyFormValues;
   onChange: (patch: Partial<SurveyFormValues>) => void;
   onOpenSetup?: () => void;
@@ -73,7 +64,7 @@ interface TargetFormProps {
 }
 
 export default function TargetForm({
-  workspaceId,
+  currentJob,
   values,
   onChange,
   onOpenSetup,
@@ -92,91 +83,12 @@ export default function TargetForm({
 }: TargetFormProps) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
 
-  // Job management state
-  const [jobs, setJobs] = useState<JobWithProject[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
-  const [creatingJob, setCreatingJob] = useState(false);
-  const [newJobTitle, setNewJobTitle] = useState("");
-  const [newJobLocation, setNewJobLocation] = useState("");
-  const [savingJob, setSavingJob] = useState(false);
-  const [jobError, setJobError] = useState<string | null>(null);
-
-  // Load workspace jobs and handle sessionStorage pre-selection
-  useEffect(() => {
-    let active = true;
-    async function loadJobs() {
-      setJobsLoading(true);
-      try {
-        const rows = await listJobs(workspaceId);
-        if (!active) return;
-        setJobs(rows);
-
-        const storedJobId = sessionStorage.getItem("sitesurveyor:selected_job_id");
-        if (storedJobId) {
-          sessionStorage.removeItem("sitesurveyor:selected_job_id");
-          sessionStorage.removeItem("sitesurveyor:selected_job_name");
-          const matched = rows.find((j) => j.id === storedJobId);
-          if (matched) {
-            applyJob(matched);
-          }
-        }
-      } catch {
-        // Soft fail on jobs loading
-      } finally {
-        if (active) setJobsLoading(false);
-      }
-    }
-    void loadJobs();
-    return () => {
-      active = false;
-    };
-  }, [workspaceId]);
-
-  function applyJob(job: JobWithProject) {
-    const patch: Partial<SurveyFormValues> = {
-      jobId: job.id,
-      clientName: job.title,
-      address: job.location ?? "",
-    };
-
-    patch.categories = [getJobCategory(job)];
-
-    onChange(patch);
-  }
-
-  async function handleCreateJob() {
-    if (!newJobTitle.trim()) {
-      setJobError("Job title is required.");
-      return;
-    }
-    setJobError(null);
-    setSavingJob(true);
-    try {
-      const created = await createJob(workspaceId, {
-        title: newJobTitle.trim(),
-        location: newJobLocation.trim() || undefined,
-        status: "planned",
-      });
-      const asProjectJob: JobWithProject = { ...created, project_name: null };
-      setJobs((prev) => [asProjectJob, ...prev]);
-      applyJob(asProjectJob);
-      setCreatingJob(false);
-      setNewJobTitle("");
-      setNewJobLocation("");
-    } catch (err) {
-      setJobError(err instanceof Error ? err.message : "Failed to create job.");
-    } finally {
-      setSavingJob(false);
-    }
-  }
-
   const latitude = parseCoordinate(values.latitude);
   const longitude = parseCoordinate(values.longitude);
   const typedBoth = latitude !== null && longitude !== null;
   const note = typedBoth ? coverageNoteFor(latitude, longitude) : "";
 
   const optical = values.dataSources?.optical ?? OPTICAL_PRODUCTS[0].id;
-  const product = productById(optical);
   const windows = windowOptions(optical);
   const composite = values.composite ?? DEFAULT_COMPOSITE;
   const deadWindow = windows.find((window) => !window.available);
@@ -192,12 +104,6 @@ export default function TargetForm({
   }
 
   const activeCategory = values.categories[0] ?? "water";
-
-  function selectCategory(id: SurveyCategory) {
-    onChange({ categories: [id] });
-  }
-
-  const currentJob = jobs.find((j) => j.id === values.jobId) ?? null;
 
   /** Whether the workspace can pay for the job as it is currently specified. */
   const affordable = canAfford(quote, balance);
@@ -221,147 +127,39 @@ export default function TargetForm({
             size="sm"
             className="h-6 px-2 text-[10.5px] text-muted-foreground hover:text-destructive gap-1"
             onClick={onOpenSetup}
-            title="Exit project or switch to another job"
+            title="Choose another job"
           >
             <LogOut className="size-3 shrink-0" />
-            <span>Exit Project</span>
+            <span>Switch job</span>
           </Button>
         ) : null}
       </div>
 
-      {/* ── STEP 1: Job Selection / Creation ────────────────────────────── */}
+      {/* ── STEP 1: Current Job ─────────────────────────────────────────── */}
       <section className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
-              1
-            </span>
-            <Label htmlFor="survey-job-select" className={labelClass}>
-              Workspace Job
-            </Label>
-          </div>
-          {!creatingJob ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-[11px] text-primary hover:text-primary/90"
-              onClick={() => setCreatingJob(true)}
-              disabled={busy}
-            >
-              <Plus className="mr-1 size-3" />
-              New Job
-            </Button>
-          ) : null}
+        <div className="flex items-center gap-2">
+          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+            1
+          </span>
+          <span className={labelClass}>Current Job</span>
         </div>
 
-        {!creatingJob ? (
-          <div className="mt-2 space-y-2">
-            <select
-              id="survey-job-select"
-              className={`w-full ${fieldClass}`}
-              value={values.jobId ?? ""}
-              disabled={busy || jobsLoading}
-              onChange={(e) => {
-                const id = e.target.value;
-                if (!id) {
-                  onChange({ jobId: "", clientName: "", address: "" });
-                  return;
-                }
-                const found = jobs.find((j) => j.id === id);
-                if (found) applyJob(found);
-              }}
-            >
-              <option value="">
-                {jobsLoading ? "Loading workspace jobs…" : "— Select or link a Job —"}
-              </option>
-              {jobs.map((job) => (
-                <option key={job.id} value={job.id}>
-                  {job.title} {job.location ? `(${job.location})` : ""}
-                </option>
-              ))}
-            </select>
-
-            {currentJob ? (
-              <div className="flex items-center justify-between rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-[11.5px]">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 font-medium text-foreground">
-                    <Briefcase className="size-3.5 text-primary" />
-                    <span className="truncate">{currentJob.title}</span>
-                  </div>
-                  {currentJob.location ? (
-                    <p className="truncate text-[10.5px] text-muted-foreground">
-                      {currentJob.location}
-                    </p>
-                  ) : null}
-                </div>
-                <Badge variant="outline" className="text-[10px] uppercase">
-                  {currentJob.status}
-                </Badge>
-              </div>
+        <div className="mt-2 flex items-center justify-between rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-[11.5px]">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 font-medium text-foreground">
+              <Briefcase className="size-3.5 text-primary" />
+              <span className="truncate">{currentJob.title}</span>
+            </div>
+            {currentJob.location ? (
+              <p className="truncate text-[10.5px] text-muted-foreground">
+                {currentJob.location}
+              </p>
             ) : null}
           </div>
-        ) : (
-          <div className="mt-2.5 space-y-2 rounded-md border border-primary/30 bg-accent/40 p-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-foreground">
-                Create New Job for Earth Observation
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-5 px-1.5 text-[10.5px]"
-                onClick={() => {
-                  setCreatingJob(false);
-                  setJobError(null);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="new-job-title" className="text-[10px] text-muted-foreground">
-                Job Title *
-              </Label>
-              <Input
-                id="new-job-title"
-                className={fieldClass}
-                placeholder="e.g. Gweru Groundwater Siting"
-                value={newJobTitle}
-                disabled={savingJob}
-                onChange={(e) => setNewJobTitle(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="new-job-loc" className="text-[10px] text-muted-foreground">
-                Location / Address
-              </Label>
-              <Input
-                id="new-job-loc"
-                className={fieldClass}
-                placeholder="e.g. Plot 4, Masvingo North"
-                value={newJobLocation}
-                disabled={savingJob}
-                onChange={(e) => setNewJobLocation(e.target.value)}
-              />
-            </div>
-            {jobError ? (
-              <p className="text-[11px] text-destructive">{jobError}</p>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              className="mt-1 h-7 w-full text-xs font-medium"
-              disabled={savingJob || !newJobTitle.trim()}
-              onClick={() => void handleCreateJob()}
-            >
-              {savingJob ? <Loader className="mr-1.5 size-3 animate-spin" /> : null}
-              {savingJob ? "Creating Job…" : "Create & Link Job"}
-            </Button>
-          </div>
-        )}
+          <Badge variant="outline" className="text-[10px] uppercase">
+            {currentJob.status}
+          </Badge>
+        </div>
       </section>
 
       {/* ── STEP 2: Survey Type / Domain ────────────────────────────────── */}

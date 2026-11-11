@@ -29,7 +29,7 @@ const priced = {
   lines: [],
 };
 
-function renderForm() {
+function renderForm(props: Partial<React.ComponentProps<typeof EarthObservationSetupForm>> = {}) {
   return render(
     <EarthObservationSetupForm
       workspaceId="11111111-1111-1111-1111-111111111111"
@@ -40,12 +40,12 @@ function renderForm() {
       openedJob={null}
       onSelectJob={vi.fn()}
       onProceedToWorkbench={vi.fn()}
-      onLaunchSurvey={vi.fn()}
       busy={false}
       queueing={false}
       quote={null}
       quoteLoading={false}
       balance={500}
+      {...props}
     />,
   );
 }
@@ -109,8 +109,7 @@ describe("Earth Observation job creation", () => {
         openedJob={selectedJob}
         onSelectJob={vi.fn()}
         onProceedToWorkbench={vi.fn()}
-        onLaunchSurvey={vi.fn()}
-        busy={false}
+          busy={false}
         queueing={false}
         quote={null}
         quoteLoading={false}
@@ -171,6 +170,30 @@ describe("Earth Observation job creation", () => {
       longitude: 29.85,
       halfDeg: 0.23,
     });
+  });
+
+  it("lets direct-entry users assign a project before creating a job", async () => {
+    renderForm({ projects: [{ id: "project-1", name: "Project One" }] });
+    fireEvent.click(screen.getByRole("button", { name: /create new job/i }));
+    expect(screen.getByLabelText("Project for this job")).toHaveValue("");
+    expect(screen.getByText(/This job will be unassigned/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Project for this job"), { target: { value: "project-1" } });
+    fireEvent.change(screen.getByLabelText(/job title/i), { target: { value: "Survey job" } });
+    fireEvent.click(screen.getByRole("button", { name: /save & open/i }));
+    await waitFor(() => expect(createJob).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ project_id: "project-1" })));
+  });
+
+  it("keeps project-launched creation attached and returns to that project's Jobs tab", async () => {
+    const onNavigate = vi.fn();
+    renderForm({ projectContextId: "project-1", projects: [{ id: "project-1", name: "Project One" }], onNavigate });
+    fireEvent.click(screen.getByRole("button", { name: "Back to project" }));
+    expect(onNavigate).toHaveBeenCalledWith("projects", { projectId: "project-1", tab: "jobs" });
+    fireEvent.click(screen.getByRole("button", { name: /create new job/i }));
+    expect(screen.getByLabelText("Project for this job")).toBeDisabled();
+    expect(screen.getByLabelText("Project for this job")).toHaveValue("project-1");
+    fireEvent.change(screen.getByLabelText(/job title/i), { target: { value: "Survey job" } });
+    fireEvent.click(screen.getByRole("button", { name: /save & open/i }));
+    await waitFor(() => expect(createJob).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ project_id: "project-1" })));
   });
 
   it("will not create a job the engine could not read", async () => {

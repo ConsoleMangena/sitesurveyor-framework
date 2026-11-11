@@ -133,6 +133,8 @@ export interface SurveyUnscreenedCommodity {
 export interface SurveyRun {
   id: string;
   workspaceId: string;
+  projectId: string | null;
+  jobId: string | null;
   status: SurveyStatus;
   stage: string | null;
   progress: number;
@@ -408,6 +410,8 @@ export function toSurveyRun(row: SurveyRunRow): SurveyRun {
   return {
     id: row.id,
     workspaceId: row.workspace_id,
+    projectId: row.project_id ?? null,
+    jobId: row.job_id ?? null,
     status,
     stage: row.stage,
     progress: num(row.progress),
@@ -544,8 +548,8 @@ export async function startSurvey(input: StartSurveyInput): Promise<StartSurveyO
   const { data, error } = await supabase.functions.invoke("satellite-survey", {
     body: {
       workspaceId: input.workspaceId,
-      projectId: input.projectId ?? input.jobId ?? null,
-      jobId: input.jobId ?? input.projectId ?? null,
+      projectId: input.projectId ?? null,
+      jobId: input.jobId ?? null,
       latitude: input.latitude,
       longitude: input.longitude,
       halfDeg: input.halfDeg,

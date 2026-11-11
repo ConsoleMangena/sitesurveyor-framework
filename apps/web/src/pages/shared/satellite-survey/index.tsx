@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useProjects } from "../../../lib/hooks/useProjects.ts";
 import { ChevronLeft, Coins } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import type { Map as LeafletMap } from "leaflet";
@@ -29,6 +31,7 @@ import {
   InsufficientCreditsError,
   cancelSurveyRun,
   deliverableUrl,
+  getSurveyRunDetail,
   startSurvey,
   surveyTilesSource,
   type SurveyProvenance,
@@ -99,7 +102,7 @@ import {
 
 interface SatelliteSurveyPageProps {
   workspaceId: string;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, context?: Record<string, string>) => void;
   onEnterFullscreen?: () => void;
   onExitFullscreen?: () => void;
   isFullscreen?: boolean;
@@ -115,7 +118,12 @@ interface SatelliteSurveyPageProps {
  * the survey a teammate sees moving, and closing the tab costs a reader nothing but the
  * waiting.
  */
-export default function SatelliteSurveyPage({
+export default function SatelliteSurveyPage(props: SatelliteSurveyPageProps) {
+  const [params] = useSearchParams();
+  return <SurveyWorkbench key={`${props.workspaceId}:${params.get("projectId") ?? ""}:${params.get("jobId") ?? ""}`} {...props} />;
+}
+
+function SurveyWorkbench({
   workspaceId,
   onNavigate,
   onEnterFullscreen,
@@ -123,6 +131,7 @@ export default function SatelliteSurveyPage({
   isFullscreen: externalIsFullscreen,
 }: SatelliteSurveyPageProps) {
   const [localFullscreen, setLocalFullscreen] = useState(false);
+  const [resizeToken, setResizeToken] = useState(0);
   const isFullscreen = externalIsFullscreen ?? localFullscreen;
 
   const toggleFullscreen = useCallback(() => {
@@ -138,37 +147,42 @@ export default function SatelliteSurveyPage({
     }, 200);
   }, [isFullscreen, onEnterFullscreen, onExitFullscreen]);
 
-  const handleExitProject = useCallback(() => {
-    if (isFullscreen) {
-      onExitFullscreen?.();
-      setLocalFullscreen(false);
-    }
-    setOpenedJob(null);
-    patch({ jobId: "", clientName: "", address: "" });
-    sessionStorage.removeItem("sitesurveyor:selected_job_id");
-    sessionStorage.removeItem("sitesurveyor:selected_job_name");
-    setTimeout(() => {
-      setResizeToken((token) => token + 1);
-    }, 200);
-  }, [isFullscreen, onExitFullscreen, patch]);
-  const { runs, error: listError, loaded, refresh, adopt } = useSurveyRuns(workspaceId);
-
+  const [params, setParams] = useSearchParams();
+  const jobProjectContext = params.get("projectId");
+  const routeJobId = params.get("jobId");
+  const selectedId = params.get("runId");
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const { runs: workspaceRuns, error: listError, loaded, refresh, adopt } = useSurveyRuns(workspaceId);
+  const { projects: workspaceProjects, loading: projectsLoading, error: projectsError, refresh: refreshProjects } = useProjects(workspaceId);
+  const projects = workspaceProjects.filter((item) => !item.archived_at);
+  const project = projects.find((item) => item.id === jobProjectContext);
   const [jobs, setJobs] = useState<JobWithProject[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobsError, setJobsError] = useState<string | null>(null);
+  const [runLinkError, setRunLinkError] = useState<string | null>(null);
+  const [resolvedRunId, setResolvedRunId] = useState<string | null>(null);
   const [openedJob, setOpenedJob] = useState<JobWithProject | null>(null);
-  // Set when the operator came here from a project, so new jobs join that project.
-  // Read once and cleared on mount: the handoff is one-shot.
-  const [jobProjectContext] = useState<string | null>(() =>
-    sessionStorage.getItem("sitesurveyor:selected_job_project_id"),
-  );
-
   const [values, setValues] = useState<SurveyFormValues>(initialForm);
-  // A workbench deep link (?view=satellite&runId=…) pins the run it names. Seeding
-  // the id once means the `selected` lookup below matches it when the queue loads,
-  // and later polls cannot drag the selection back to the latest run.
-  const [selectedId, setSelectedId] = useState<string | null>(
-    () => new URLSearchParams(window.location.search).get("runId"),
-  );
+  const [boardCleared, setBoardCleared] = useState(false);
+  const scopedJobs = jobs.filter((job) => !job.archived_at && (!jobProjectContext || job.project_id === jobProjectContext));
+
+  function switchJob() {
+    onExitFullscreen?.();
+    setLocalFullscreen(false);
+    setParams({ view: "satellite", ...(jobProjectContext ? { projectId: jobProjectContext } : {}) });
+  }
+
+  function backToProject() {
+    onExitFullscreen?.();
+    const projectId = openedJob?.project_id ?? jobProjectContext;
+    const context: Record<string, string> = projectId ? { projectId, tab: "jobs" } : {};
+    if (onNavigate) onNavigate("projects", context);
+    else setParams({ view: "projects", ...context });
+  }
   const [queuedThisSession, setQueuedThisSession] = useState<string | null>(null);
   const [queueing, setQueueing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -193,51 +207,7 @@ export default function SatelliteSurveyPage({
   /** What the last queued survey was charged, and what was left afterwards. */
   const [charged, setCharged] = useState<{ credits: number; remaining: number | null } | null>(null);
 
-  const fetchJobs = useCallback(async () => {
-    setJobsLoading(true);
-    try {
-      const rows = await listJobs(workspaceId);
-      setJobs(rows);
-      return rows;
-    } catch {
-      return [];
-    } finally {
-      setJobsLoading(false);
-    }
-  }, [workspaceId]);
-
-  const handleDeleteJob = useCallback(async (jobId: string) => {
-    try {
-      await deleteJob(jobId);
-      if (openedJob?.id === jobId) {
-        setOpenedJob(null);
-        setValues((prev) => ({ ...prev, jobId: "", clientName: "", address: "" }));
-      }
-      await fetchJobs();
-      setSelectedId(null);
-      void refresh();
-    } catch (err) {
-      console.error("Failed to delete job:", err);
-    }
-  }, [openedJob, fetchJobs, refresh]);
-
-  const handleRenameJob = useCallback(
-    async (jobId: string, title: string) => {
-      try {
-        await updateJob(jobId, { title });
-        if (openedJob?.id === jobId) {
-          setOpenedJob((prev) => (prev ? { ...prev, title } : prev));
-          setValues((prev) => (prev.jobId === jobId ? { ...prev, clientName: title } : prev));
-        }
-        await fetchJobs();
-      } catch (err) {
-        console.error("Failed to rename job:", err);
-      }
-    },
-    [openedJob, fetchJobs],
-  );
-
-  function applyAndOpenJob(job: JobWithProject) {
+  function restoreJob(job: JobWithProject) {
     const spec = parseJobSpec(job.description);
     const cat = spec?.category ?? getJobCategory(job);
     const patchValues: Partial<SurveyFormValues> = {
@@ -261,20 +231,99 @@ export default function SatelliteSurveyPage({
     setRasterOverride(null);
   }
 
-  useEffect(() => {
-    sessionStorage.removeItem("sitesurveyor:selected_job_project_id");
-    void fetchJobs().then((rows) => {
-      const storedJobId = sessionStorage.getItem("sitesurveyor:selected_job_id");
-      if (storedJobId) {
-        sessionStorage.removeItem("sitesurveyor:selected_job_id");
-        sessionStorage.removeItem("sitesurveyor:selected_job_name");
-        const matched = rows.find((j) => j.id === storedJobId);
-        if (matched) {
-          applyAndOpenJob(matched);
+  const fetchJobs = useCallback(async () => {
+    setJobsLoading(true);
+    try {
+      const rows = await listJobs(workspaceId);
+      if (mounted.current) {
+        setJobs(rows);
+        setJobsError(null);
+        const matched = rows.find((job) => job.id === routeJobId && !job.archived_at);
+        if (matched && (!jobProjectContext || matched.project_id === jobProjectContext)) {
+          if (!jobProjectContext && matched.project_id) {
+            setParams((current) => {
+              const next = new URLSearchParams(current);
+              next.set("projectId", matched.project_id!);
+              return next;
+            }, { replace: true });
+          } else {
+            restoreJob(matched);
+          }
         }
       }
-    });
+      return rows;
+    } catch (err) {
+      if (mounted.current) setJobsError(err instanceof Error ? err.message : "Jobs could not be loaded.");
+      return [];
+    } finally {
+      if (mounted.current) setJobsLoading(false);
+    }
+  }, [workspaceId, routeJobId, jobProjectContext, setParams]);
+
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    try {
+      await deleteJob(jobId);
+      if (openedJob?.id === jobId) {
+        onExitFullscreen?.();
+        setParams({ view: "satellite", ...(jobProjectContext ? { projectId: jobProjectContext } : {}) });
+      }
+      await fetchJobs();
+      void refresh();
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+    }
+  }, [openedJob, fetchJobs, refresh, onExitFullscreen, setParams, jobProjectContext]);
+
+  const handleRenameJob = useCallback(
+    async (jobId: string, title: string) => {
+      try {
+        await updateJob(jobId, { title });
+        if (openedJob?.id === jobId) {
+          setOpenedJob((prev) => (prev ? { ...prev, title } : prev));
+          setValues((prev) => (prev.jobId === jobId ? { ...prev, clientName: title } : prev));
+        }
+        await fetchJobs();
+      } catch (err) {
+        console.error("Failed to rename job:", err);
+      }
+    },
+    [openedJob, fetchJobs],
+  );
+
+  function applyAndOpenJob(job: JobWithProject) {
+    setParams({ view: "satellite", jobId: job.id, ...(job.project_id ? { projectId: job.project_id } : {}) });
+  }
+
+  useEffect(() => {
+    void fetchJobs();
   }, [fetchJobs]);
+
+  useEffect(() => {
+    if (!selectedId || jobsLoading || jobsError) return;
+    let active = true;
+    void getSurveyRunDetail(selectedId).then((detail) => {
+      if (!active) return;
+      if (!detail) throw new Error("Run unavailable");
+      const { run } = detail;
+      const job = jobs.find((item) => item.id === run.jobId && !item.archived_at);
+      if (run.workspaceId !== workspaceId || !job ||
+          (routeJobId && job.id !== routeJobId) ||
+          (jobProjectContext && job.project_id !== jobProjectContext)) {
+        setRunLinkError("This run does not belong to the selected job and project, or is no longer available.");
+        return;
+      }
+      adopt(run);
+      setRunLinkError(null);
+      setResolvedRunId(selectedId);
+      if (!routeJobId) {
+        setParams({ view: "satellite", jobId: job.id, runId: selectedId,
+          ...(job.project_id ? { projectId: job.project_id } : {}) }, { replace: true });
+      }
+    }).catch(() => {
+      if (active) setRunLinkError("This survey run could not be opened. It may have been removed or you may not have access.");
+    });
+    return () => { active = false; };
+  }, [selectedId, workspaceId, jobs, jobsLoading, jobsError, routeJobId, jobProjectContext, adopt, setParams]);
 
   const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -284,7 +333,6 @@ export default function SatelliteSurveyPage({
   const [rightOpen, setRightOpen] = useState(true);
   const [view, setView] = useState<MapViewInfo | null>(null);
   const [fitToken, setFitToken] = useState(0);
-  const [resizeToken, setResizeToken] = useState(0);
   const [focus, setFocus] = useState<{
     latitude: number;
     longitude: number;
@@ -297,20 +345,23 @@ export default function SatelliteSurveyPage({
   const [tableOpen, setTableOpen] = useState(false);
   const [measureText, setMeasureText] = useState<string | null>(null);
 
-  const selected = runs.find((run) => run.id === selectedId) ?? runs[0] ?? null;
+  const runs = workspaceRuns.filter((run) => run.workspaceId === workspaceId && run.jobId === openedJob?.id);
+  const selected = selectedId
+    ? runs.find((run) => run.id === selectedId) ?? null
+    : boardCleared ? null : runs[0] ?? null;
   const running = runs.find((run) => run.active) ?? null;
   const { detail, error: detailError } = useSurveyDetail(selected);
 
   /** Hand the survey on screen to the assistant, which forwards the run id to
    *  the agent so "this survey" answers from this run's dossier. */
-  const handleAskAi = useCallback(() => {
+  function handleAskAi() {
     if (!selected || !onNavigate) return;
     writeAiSurveyContext(sessionStorage, {
       runId: selected.id,
       label: selected.clientName || "Satellite survey",
     });
     onNavigate("assistant");
-  }, [selected, onNavigate]);
+  }
 
   // Elapsed time is a timer, not `Date.now()` in render: reading the wall clock while
   // rendering would make the number jump on any unrelated re-render of the page.
@@ -639,7 +690,12 @@ export default function SatelliteSurveyPage({
   }
 
   function selectRun(runId: string) {
-    setSelectedId(runId);
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("runId", runId);
+      return next;
+    });
+    setBoardCleared(false);
     setFocusedKey(null);
     // Another survey decides for itself whether it needs the drape.
     setRasterOverride(null);
@@ -648,7 +704,12 @@ export default function SatelliteSurveyPage({
 
   /** Take this survey off the workbench. The workspace keeps every run it has made. */
   function clearBoard() {
-    setSelectedId(null);
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("runId");
+      return next;
+    });
+    setBoardCleared(true);
     setQueuedThisSession(null);
     setFocusedKey(null);
     setFocus(null);
@@ -706,6 +767,7 @@ export default function SatelliteSurveyPage({
   }
 
   async function submit() {
+    if (!openedJob || openedJob.id !== routeJobId || queueing || running) return;
     const checked = validateForm(values);
     setProblems(checked.problems);
     if (!checked.draft) return;
@@ -728,9 +790,10 @@ export default function SatelliteSurveyPage({
       const outcome = await startSurvey({
         ...checked.draft,
         workspaceId,
-        jobId: values.jobId || openedJob?.id || null,
-        projectId: values.jobId || openedJob?.id || null,
+        jobId: openedJob.id,
+        projectId: openedJob.project_id,
       });
+      if (!mounted.current) return;
       adopt(outcome.run);
       selectRun(outcome.run.id);
       setQueuedThisSession(outcome.run.id);
@@ -771,17 +834,43 @@ export default function SatelliteSurveyPage({
   // the server or database used for the pool's name.
   const outOfCredits = refused !== null && /credits/i.test(refused);
 
-  // The EO UI must NEVER open unless a job is opened!
-  const isJobOpened = Boolean(openedJob && values.jobId);
+  const contextError = jobsError || projectsError ||
+    (!projectsLoading && jobProjectContext && !project ? "This project is unavailable in this workspace." : null) ||
+    (!jobsLoading && routeJobId && !jobs.some((job) => job.id === routeJobId && !job.archived_at &&
+      (!jobProjectContext || job.project_id === jobProjectContext)) ? "This job is unavailable in the selected project or workspace." : null) ||
+    (selectedId ? runLinkError : null);
 
-  if (!isJobOpened && !running) {
+  if (contextError) {
+    return (
+      <DashboardShell>
+        <DashboardHeader title="Earth Observation" />
+        <ErrorNotice title="Unable to open Earth Observation" tone="danger" action={
+          <Button variant="outline" onClick={() => { void fetchJobs(); void refreshProjects(); }}>Retry</Button>
+        }>{contextError}</ErrorNotice>
+        <Button variant="outline" onClick={switchJob}>Choose another job</Button>
+        <Button variant="ghost" onClick={() => {
+          if (onNavigate) onNavigate("projects");
+          else setParams({ view: "projects" });
+        }}>Projects</Button>
+      </DashboardShell>
+    );
+  }
+
+  if (jobsLoading || projectsLoading || (routeJobId && !openedJob) ||
+      (selectedId && resolvedRunId !== selectedId)) {
+    return <DashboardShell><p role="status">Opening Earth Observation…</p></DashboardShell>;
+  }
+
+  if (!openedJob) {
     return (
       <DashboardShell className="w-full max-w-none">
         <EarthObservationSetupForm
           workspaceId={workspaceId}
           values={values}
           onChange={patch}
-          jobs={jobs}
+          jobs={scopedJobs}
+          projects={projects}
+          onProjectChange={(projectId) => setParams({ view: "satellite", ...(projectId ? { projectId } : {}) })}
           jobsLoading={jobsLoading}
           openedJob={openedJob}
           onSelectJob={(job) => {
@@ -789,10 +878,6 @@ export default function SatelliteSurveyPage({
           }}
           onProceedToWorkbench={(job) => {
             applyAndOpenJob(job);
-          }}
-          onLaunchSurvey={(job) => {
-            applyAndOpenJob(job);
-            void submit();
           }}
           onRefreshJobs={fetchJobs}
           projectContextId={jobProjectContext}
@@ -831,6 +916,17 @@ export default function SatelliteSurveyPage({
         }
       />
 
+      <nav aria-label="Project and job" className="flex flex-wrap items-center gap-2 text-sm">
+        {openedJob.project_id ? <Button variant="link" className="h-auto p-0" onClick={backToProject}>
+          {project?.name ?? openedJob.project_name ?? "Project"}
+        </Button> : <span className="text-muted-foreground">Unassigned</span>}
+        <span aria-hidden="true">/</span>
+        <span className="min-w-0 break-words font-medium">{openedJob.title}</span>
+        <span aria-hidden="true">/</span>
+        <span className="text-muted-foreground">Earth Observation</span>
+        <Button variant="outline" size="sm" className="ml-auto" onClick={switchJob}>Switch job</Button>
+      </nav>
+
       <WorkbenchBar
         tab={ribbonTab}
         onTab={setRibbonTab}
@@ -854,7 +950,7 @@ export default function SatelliteSurveyPage({
         onToggleRight={() => togglePanel("right")}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        onExitProject={handleExitProject}
+        onBackToProject={openedJob.project_id ? backToProject : undefined}
         published={selected !== null && !selected.active}
         onExportPdf={() => setExportModalOpen(true)}
         downloads={downloads}
@@ -943,10 +1039,10 @@ export default function SatelliteSurveyPage({
           cancelling={cancelling}
           onCancel={(runId) => void cancel(runId)}
           onCollapse={() => togglePanel("left")}
-          jobs={jobs}
+          jobs={scopedJobs}
           currentJob={openedJob}
           onSelectJob={(job) => applyAndOpenJob(job)}
-          onOpenJobSetup={handleExitProject}
+          onOpenJobSetup={switchJob}
           onDeleteJob={handleDeleteJob}
           onRenameJob={handleRenameJob}
           activeDossierCategory={jobDossierCategory}
@@ -1038,10 +1134,10 @@ export default function SatelliteSurveyPage({
 
           <div className="sw-panel__body flex-1">
             <TargetForm
-              workspaceId={workspaceId}
+              currentJob={openedJob}
               values={values}
               onChange={patch}
-              onOpenSetup={handleExitProject}
+              onOpenSetup={switchJob}
               queueing={queueing}
               busy={running !== null}
               stage={running?.stage ?? null}
