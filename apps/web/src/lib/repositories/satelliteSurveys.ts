@@ -675,6 +675,18 @@ export function surveyTilesSource(deliverable: SurveyDeliverable): SurveyTilesSo
 }
 
 /**
+ * The delete-cleanup RPCs (`delete_survey_run`, `delete_survey_runs_for_job`)
+ * are intentionally absent from the generated Database types, so the client is
+ * narrowed through this structural shape instead of an `any` cast.
+ */
+type RpcCapableClient = {
+  rpc: (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+/**
  * Delete a single survey run, all its database child rows, and all its deliverables from storage.
  */
 export async function deleteSurveyRun(
@@ -685,7 +697,7 @@ export async function deleteSurveyRun(
 
   try {
     // 1. First attempt to call the RPC function
-    const { data: rpcPaths, error: rpcErr } = await (supabase as any).rpc(
+    const { data: rpcPaths, error: rpcErr } = await (supabase as unknown as RpcCapableClient).rpc(
       "delete_survey_run",
       { p_run_id: runId },
     );
@@ -693,8 +705,8 @@ export async function deleteSurveyRun(
     let storagePaths: string[] = [];
     if (!rpcErr && Array.isArray(rpcPaths)) {
       storagePaths = rpcPaths
-        .map((r: any) => (typeof r === "string" ? r : r?.storage_path))
-        .filter(Boolean);
+        .map((r) => (typeof r === "string" ? r : (r as { storage_path?: string } | null)?.storage_path))
+        .filter((path): path is string => Boolean(path));
     } else {
       // Fallback: query deliverables directly
       const { data: deliverables } = await supabase
@@ -749,7 +761,7 @@ export async function deleteSurveyRunsForJob(
 
   try {
     // 1. Call RPC function delete_survey_runs_for_job
-    const { data: rpcPaths, error: rpcErr } = await (supabase as any).rpc(
+    const { data: rpcPaths, error: rpcErr } = await (supabase as unknown as RpcCapableClient).rpc(
       "delete_survey_runs_for_job",
       {
         p_workspace_id: workspaceId,
@@ -763,8 +775,8 @@ export async function deleteSurveyRunsForJob(
 
     if (!rpcErr && Array.isArray(rpcPaths)) {
       storagePaths = rpcPaths
-        .map((r: any) => (typeof r === "string" ? r : r?.storage_path))
-        .filter(Boolean);
+        .map((r) => (typeof r === "string" ? r : (r as { storage_path?: string } | null)?.storage_path))
+        .filter((path): path is string => Boolean(path));
     } else {
       // Fallback: directly find runs matching job_id, project_id, or client_name
       let query = supabase

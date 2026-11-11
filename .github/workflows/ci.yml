@@ -41,8 +41,10 @@ jobs:
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_ANON_KEY"
           } > .env
 
+      # --max-warnings freezes the current warning count (72) so lint debt
+      # cannot grow; lower it as warnings are fixed, never raise it.
       - name: Lint
-        run: npm run lint
+        run: npm run lint -- --max-warnings 72
 
       - name: Typecheck
         run: npm run typecheck
@@ -125,7 +127,9 @@ jobs:
           deno-version: v2.x
 
       - name: Test
-        run: deno test --allow-env --allow-net supabase/functions/_shared/
+        # Shared workflow tests plus the satellite-survey function tests and
+        # the migration fixture tests in supabase/tests/.
+        run: deno test --allow-env --allow-net --allow-read supabase/functions/ supabase/tests/
 
   database:
     name: Migrations apply from empty
@@ -134,11 +138,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Pinned to the version the baseline dump was verified against locally.
+      # Pinned to the version verified locally (2.122.1); v3 changes CLI
+      # defaults such as `db push` targeting and removes the deprecated
+      # [inbucket] config section, so upgrade config.toml alongside it.
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: 2.98.0
+          version: 2.122.1
 
       # Every migration is applied to an empty PostgreSQL, in order, starting
       # with the captured base schema. This is the check that was missing when

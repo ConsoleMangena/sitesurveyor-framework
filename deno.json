@@ -1,0 +1,5 @@
+{
+  // The root package.json's node_modules confuses Deno's npm resolution; use
+  // the global cache for npm/jsr imports so plain `deno test` works everywhere.
+  "nodeModulesDir": "none"
+}

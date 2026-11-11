@@ -22,7 +22,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  archiveJob,
   createJob,
   deleteJob,
   listJobs,
@@ -292,19 +291,6 @@ export default function JobsPage({
       setError(e instanceof Error ? e.message : "Failed to save job.");
     } finally {
       setSavingJob(false);
-    }
-  };
-
-  const handleArchiveJob = async (id: string) => {
-    if (!window.confirm("Archive this job? It will be hidden from the list.")) return;
-    setError(null);
-    try {
-      await archiveJob(id);
-      setSelectedJob(null);
-      await fetchJobs();
-      setSuccessMessage("Job archived successfully.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to archive job.");
     }
   };
 

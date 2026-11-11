@@ -34,7 +34,9 @@ import {
   getSurveyRunDetail,
   startSurvey,
   surveyTilesSource,
+  type SurveyDeliverable,
   type SurveyProvenance,
+  type SurveyTilesSource,
 } from "../../../lib/repositories/satelliteSurveys.ts";
 import { getAiCreditBalance } from "../../../lib/repositories/pesepay.ts";
 import {
@@ -295,7 +297,9 @@ function SurveyWorkbench({
   }
 
   useEffect(() => {
-    void fetchJobs();
+    // Deferred to a microtask: fetchJobs flags loading synchronously, and
+    // doing it inside the effect body would cascade a render mid-commit.
+    void Promise.resolve().then(fetchJobs);
   }, [fetchJobs]);
 
   useEffect(() => {
@@ -455,9 +459,6 @@ function SurveyWorkbench({
     return (detail?.deliverables ?? []).find((d) => d.kind === kinds.tiles) ?? null;
   }, [detail?.deliverables, jobDossierCategory]);
 
-  const [rasterUrl, setRasterUrl] = useState<string | null>(null);
-  const [geoTiffUrl, setGeoTiffUrl] = useState<string | null>(null);
-
   // The tile archive is not fetched through a signed URL: the PMTiles reader
   // pulls byte slices through the deliverable-range edge function, which
   // re-proves this session's workspace ownership on every request.
@@ -469,18 +470,21 @@ function SurveyWorkbench({
   // Whether the tile archive worked on-screen. The PDF export drops its own
   // classified-tiles pull when it did not, counting on the same image-drape
   // fallback the live map fell back to.
-  const [tilesUnavailable, setTilesUnavailable] = useState(false);
-  useEffect(() => {
-    setTilesUnavailable(false);
-  }, [tilesSource]);
-  const handleTilesUnavailable = useCallback(() => setTilesUnavailable(true), []);
+  const [unavailableTilesSource, setUnavailableTilesSource] = useState<SurveyTilesSource | null>(null);
+  const tilesUnavailable = unavailableTilesSource !== null && unavailableTilesSource === tilesSource;
+  const handleTilesUnavailable = useCallback(() => setUnavailableTilesSource(tilesSource), [tilesSource]);
+
+  // Signed deliverable URLs are keyed by the deliverable they were resolved
+  // from, so a changed or removed deliverable reads as null without any
+  // synchronous state reset in an effect.
+  const [rasterUrlEntry, setRasterUrlEntry] = useState<{ deliverable: SurveyDeliverable; url: string | null } | null>(null);
+  const rasterUrl = rasterUrlEntry?.deliverable === overlayDeliverable ? rasterUrlEntry.url : null;
 
   useEffect(() => {
-    let active = true;
-    setRasterUrl(null);
     if (!overlayDeliverable) return;
+    let active = true;
     void deliverableUrl(overlayDeliverable).then((url) => {
-      if (active) setRasterUrl(url);
+      if (active) setRasterUrlEntry({ deliverable: overlayDeliverable, url });
     });
     return () => {
       active = false;
@@ -492,12 +496,14 @@ function SurveyWorkbench({
   // UTM-zone original is the fallback for runs published before this change.
   const decodeTiffDeliverable = webTiffDeliverable ?? tifDeliverable;
 
+  const [geoTiffUrlEntry, setGeoTiffUrlEntry] = useState<{ deliverable: SurveyDeliverable; url: string | null } | null>(null);
+  const geoTiffUrl = geoTiffUrlEntry?.deliverable === decodeTiffDeliverable ? geoTiffUrlEntry.url : null;
+
   useEffect(() => {
-    let active = true;
-    setGeoTiffUrl(null);
     if (!decodeTiffDeliverable) return;
+    let active = true;
     void deliverableUrl(decodeTiffDeliverable).then((url) => {
-      if (active) setGeoTiffUrl(url);
+      if (active) setGeoTiffUrlEntry({ deliverable: decodeTiffDeliverable, url });
     });
     return () => {
       active = false;
