@@ -908,20 +908,6 @@ function SurveyWorkbench({
           : "max-w-[1780px] gap-4 sm:gap-5"
       )}
     >
-      <DashboardHeader
-        title="Earth Observation"
-        description={
-          isFullscreen
-            ? undefined
-            : "Screen a coordinate for groundwater, mineral prospectivity, soil capability and site safety using multi-spectral Earth Observation."
-        }
-        meta={
-          openedJob
-            ? `Job: ${openedJob.title}${openedJob.location ? ` · ${openedJob.location}` : ""}`
-            : undefined
-        }
-      />
-
       <nav aria-label="Project and job" className="flex flex-wrap items-center gap-2 text-sm">
         {openedJob.project_id ? <Button variant="link" className="h-auto p-0" onClick={backToProject}>
           {project?.name ?? openedJob.project_name ?? "Project"}
