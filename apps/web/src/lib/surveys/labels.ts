@@ -127,6 +127,14 @@ export const SHARED_EXPORTS = {
   commoditiesCsv: "mineral_commodities_csv",
 } as const;
 
+/** Gravimetry products a minerals run writes when a Bouguer grid was provisioned.
+ *  Keyed as `SURVEY_DELIVERABLES` in `apps/engine/worker.py`; absent on a gravity-free
+ *  run, so the rows render disabled rather than promising a file that is not there. */
+export const GRAVITY_EXPORTS = {
+  zonesTif: "gravity_zones_tif",
+  residualTif: "gravity_residual_tif",
+} as const;
+
 /**
  * Class colours, in zone-code order. Water/soil/hazard run 0 water, 1 very low, …,
  * 5 very high, 6 built-up; minerals is a catalogue instead — 0 water, 1-9 one code per

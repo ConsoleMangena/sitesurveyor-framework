@@ -56,6 +56,7 @@ import {
   CATEGORY_RASTER_PALETTE,
   CATEGORY_TRANSPARENT_CODES,
   CATEGORY_ZONE_LABELS,
+  GRAVITY_EXPORTS,
   SHARED_EXPORTS,
   fromDossierCategory,
   outsideCoverage,
@@ -654,7 +655,11 @@ function SurveyWorkbench({
       { kind: kinds.tif, label: "GeoTIFF" },
       { kind: SHARED_EXPORTS.dossier, label: "Dossier JSON" },
       ...(jobDossierCategory === "minerals"
-        ? [{ kind: SHARED_EXPORTS.commoditiesCsv, label: "Commodity CSV" }]
+        ? [
+            { kind: SHARED_EXPORTS.commoditiesCsv, label: "Commodity CSV" },
+            { kind: GRAVITY_EXPORTS.zonesTif, label: "Gravity Zones GeoTIFF" },
+            { kind: GRAVITY_EXPORTS.residualTif, label: "Gravity Residual GeoTIFF" },
+          ]
         : []),
     ];
     return files.map((file) => ({ ...file, available: available.has(file.kind) }));

@@ -209,3 +209,24 @@ describe("EO project/job routing", () => {
     await waitFor(() => expect(mocks.startSurvey).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-a", projectId: "project-a" })));
   });
 });
+
+describe("EO gravity deliverables", () => {
+  it("offers the gravity rasters on a minerals job, disabled until the run publishes them", async () => {
+    mocks.jobs = [
+      ...mocks.jobs,
+      { ...job("job-m", "project-a"), description: JSON.stringify({ category: "minerals", latitude: -17.8, longitude: 31, halfDeg: 0.06 }) } as JobWithProject,
+    ];
+    open("?view=satellite&projectId=project-a&jobId=job-m");
+    await screen.findByTestId("map");
+    fireEvent.click(screen.getByRole("tab", { name: "Publish" }));
+    expect(screen.getByRole("button", { name: "Gravity Zones GeoTIFF" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Gravity Residual GeoTIFF" })).toBeDisabled();
+  });
+
+  it("keeps the gravity rows off categories that never write them", async () => {
+    open("?view=satellite&projectId=project-a&jobId=job-a");
+    await screen.findByTestId("map");
+    fireEvent.click(screen.getByRole("tab", { name: "Publish" }));
+    expect(screen.queryByRole("button", { name: /Gravity/ })).not.toBeInTheDocument();
+  });
+});
