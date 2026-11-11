@@ -17,7 +17,6 @@ export const personalNavGroups: WorkspaceNavGroup[] = [
       { view: "assets", label: "Asset Management", icon: "asset" },
       { view: "files", label: "File Manager", icon: "file-manager" },
       { view: "quotes", label: "Quotes", icon: "document" },
-      { view: "satellite", label: "Earth Observation", icon: "satellite" },
     ],
   },
   {

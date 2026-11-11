@@ -698,20 +698,25 @@ export default function JobsPage({
         size="screen"
         footer={selectedJob ? (
           <>
-            <Button
-              variant="default"
-              className="gap-1.5"
-              onClick={() => {
-                onNavigate?.("satellite", {
-                  jobId: selectedJob.id,
-                  ...(selectedJob.project_id ? { projectId: selectedJob.project_id } : {}),
-                });
-                setSelectedJob(null);
-              }}
-            >
-              <Satellite className="size-4" />
-              Launch Earth Observation
-            </Button>
+            {selectedJob.project_id ? (
+              <Button
+                variant="default"
+                className="gap-1.5"
+                onClick={() => {
+                  const projectId = selectedJob.project_id;
+                  if (!projectId) return;
+                  onNavigate?.("satellite", { jobId: selectedJob.id, projectId });
+                  setSelectedJob(null);
+                }}
+              >
+                <Satellite className="size-4" />
+                Launch Earth Observation
+              </Button>
+            ) : (
+              <p className="max-w-[16rem] text-xs leading-snug text-muted-foreground">
+                Attach this job to a project to launch Earth Observation.
+              </p>
+            )}
             <Button variant="outline" onClick={() => setSelectedJob(null)}>
               Close
             </Button>

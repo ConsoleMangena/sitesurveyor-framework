@@ -17,7 +17,6 @@ export const businessNavGroups: WorkspaceNavGroup[] = [
       { view: "files", label: "File Manager", icon: "file-manager" },
       { view: "dispatch", label: "Dispatch", icon: "clipboard" },
       { view: "schedule", label: "Schedule", icon: "calendar" },
-      { view: "satellite", label: "Earth Observation", icon: "satellite" },
     ],
   },
   {

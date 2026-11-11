@@ -77,11 +77,13 @@ beforeEach(() => {
 });
 
 describe("EO project/job routing", () => {
-  it("keeps the launcher visible when another workspace job is running", async () => {
+  it("keeps the project picker visible when another workspace job is running", async () => {
     open();
-    expect(await screen.findByRole("button", { name: /create new job/i })).toBeInTheDocument();
+    expect(await screen.findByLabelText("Project")).toBeInTheDocument();
     expect(screen.queryByTestId("map")).not.toBeInTheDocument();
-    expect(screen.getByText("Unassigned")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create new job/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Unassigned")).not.toBeInTheDocument();
+    expect(screen.getByText(/Choose a project to continue/)).toBeInTheDocument();
   });
 
   it("restores a job from its URL and only exposes its runs and project jobs", async () => {

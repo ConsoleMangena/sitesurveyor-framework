@@ -117,7 +117,6 @@ export default function EarthObservationSetupForm({
   // Job creation state
   const [creatingJob, setCreatingJob] = useState(false);
   const [newJobTitle, setNewJobTitle] = useState("");
-  const [newJobProjectId, setNewJobProjectId] = useState(projectContextId ?? "");
   const [newJobLocation, setNewJobLocation] = useState("");
   const [newJobCategory, setNewJobCategory] = useState<SurveyCategory>("water");
   /**
@@ -232,7 +231,7 @@ export default function EarthObservationSetupForm({
         location: newJobLocation.trim() || undefined,
         job_type: typeLabel,
         description: serializeJobSpec(spec),
-        project_id: projectContextId || newJobProjectId || undefined,
+        project_id: projectContextId || undefined,
         status: "planned",
       });
       const asProjectJob: JobWithProject = { ...created, project_name: null };
@@ -317,33 +316,35 @@ export default function EarthObservationSetupForm({
             </Button>
           ) : null}
 
-          {!creatingJob ? (
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-medium"
-              onClick={() => setCreatingJob(true)}
-              disabled={busy}
-            >
-              <Plus className="size-3.5" />
-              Create New Job
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-medium"
-              onClick={() => {
-                setCreatingJob(false);
-                setJobError(null);
-              }}
-            >
-              <X className="size-3.5" />
-              Cancel New Job
-            </Button>
-          )}
+          {projectContextId ? (
+            !creatingJob ? (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="h-8 gap-1.5 text-xs font-medium"
+                onClick={() => setCreatingJob(true)}
+                disabled={busy}
+              >
+                <Plus className="size-3.5" />
+                Create New Job
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs font-medium"
+                onClick={() => {
+                  setCreatingJob(false);
+                  setJobError(null);
+                }}
+              >
+                <X className="size-3.5" />
+                Cancel New Job
+              </Button>
+            )
+          ) : null}
         </div>
       </div>
 
@@ -359,6 +360,15 @@ export default function EarthObservationSetupForm({
         </div>
       ) : null}
 
+      {!projectContextId ? (
+        <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-6 text-center space-y-1.5">
+          <p className="text-sm font-medium text-foreground">Choose a project to continue</p>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+            Earth Observation jobs live inside projects. Pick a project above to create a new job or open an existing one.
+          </p>
+        </div>
+      ) : null}
+
       {validationProblems.length > 0 ? (
         <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3.5 text-xs text-destructive">
           <ul className="list-disc space-y-0.5 pl-4">
@@ -370,7 +380,7 @@ export default function EarthObservationSetupForm({
       ) : null}
 
       {/* ── Inline Job Creation Form ────────────────────────────────────── */}
-      {creatingJob ? (
+      {creatingJob && projectContextId ? (
         <Card className="border-primary/40 bg-primary/5 shadow-xs">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -379,16 +389,6 @@ export default function EarthObservationSetupForm({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
-            <div className="space-y-1.5">
-              <Label htmlFor="eo-new-project">Project for this job</Label>
-              <select id="eo-new-project" className={`w-full ${fieldClass}`}
-                value={projectContextId ?? newJobProjectId} disabled={savingJob || Boolean(projectContextId)}
-                onChange={(event) => setNewJobProjectId(event.target.value)}>
-                <option value="">Unassigned — no project</option>
-                {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-              </select>
-              {!projectContextId && !newJobProjectId ? <p className="text-xs text-muted-foreground">This job will be unassigned. You can attach it from a project's Jobs tab later.</p> : null}
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="eo-create-title" className={labelClass}>
@@ -574,7 +574,8 @@ export default function EarthObservationSetupForm({
         </Card>
       ) : null}
 
-      {/* ── RECENT JOBS SECTION ─────────────────────────────────────────── */}
+      {/* ── PROJECT JOBS SECTION ────────────────────────────────────────── */}
+      {projectContextId ? (
       <Card className="border-border/70 shadow-xs">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -584,7 +585,7 @@ export default function EarthObservationSetupForm({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">{projectContextId ? "Project Jobs" : "Recent Jobs"}</CardTitle>
+                  <CardTitle className="text-base">Project Jobs</CardTitle>
                   <Badge variant="secondary" className="text-[11px] font-mono px-1.5 py-0">
                     {jobs.length}
                   </Badge>
@@ -610,13 +611,13 @@ export default function EarthObservationSetupForm({
           {jobsLoading ? (
             <div className="space-y-2 py-4 text-center text-xs text-muted-foreground">
               <Loader className="size-4 animate-spin mx-auto text-primary" />
-              <p>Loading recent workspace jobs…</p>
+              <p>Loading project jobs…</p>
             </div>
           ) : filteredJobs.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/80 py-8 text-center space-y-2">
               <Briefcase className="size-8 mx-auto text-muted-foreground/60" />
               <p className="text-xs font-medium text-foreground">
-                {filterQuery.trim() ? "No jobs match your filter." : projectContextId ? "No jobs found in this project yet." : "No jobs found in this workspace yet."}
+                {filterQuery.trim() ? "No jobs match your filter." : "No jobs found in this project yet."}
               </p>
               <Button
                 type="button"
@@ -717,6 +718,7 @@ export default function EarthObservationSetupForm({
           )}
         </CardContent>
       </Card>
+      ) : null}
 
       {/* ── SELECTED JOB CONFIGURATION & PARAMETERS ─────────────────────── */}
       {/* Hidden while a job is being created: the new-job card carries its own
@@ -1097,11 +1099,11 @@ export default function EarthObservationSetupForm({
             </div>
           </div>
         </div>
-      ) : (
+      ) : projectContextId ? (
         <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center text-xs text-muted-foreground">
           No job selected.
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
