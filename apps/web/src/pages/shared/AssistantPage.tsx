@@ -769,7 +769,9 @@ export default function AssistantPage({ onNavigate, workspaceId }: AssistantPage
                                     ...(workbench.jobId ? { jobId: workbench.jobId } : {}),
                                     ...(workbench.projectId ? { projectId: workbench.projectId } : {}),
                                     ...(workbench.runId ? { runId: workbench.runId } : {}),
-                                  } : undefined);
+                                  } : parsed?.legacyRunId
+                                    ? { runId: parsed.legacyRunId }
+                                    : undefined);
                                 }}
                               >
                                 <Globe className="size-3.5 shrink-0" />

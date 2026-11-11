@@ -160,6 +160,30 @@ describe("EO project/job routing", () => {
     expect(screen.getByTestId("route")).toHaveTextContent("projectId=project-a");
   });
 
+  it("refuses an unassigned job and offers to attach it instead", async () => {
+    open("?view=satellite&jobId=unassigned");
+    expect(await screen.findByText(/Attach this job to a project/)).toBeInTheDocument();
+    expect(screen.queryByTestId("map")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Project")).toBeInTheDocument();
+  });
+
+  it("attaches a legacy unassigned job to a project and opens it", async () => {
+    // The job list must reflect the patch, or the re-resolve would still see
+    // the job unassigned and bounce back to the attach prompt.
+    mocks.updateJob.mockImplementation(async (id: string, patch: Record<string, unknown>) => {
+      const target = mocks.jobs.find((item) => item.id === id);
+      if (target) Object.assign(target, patch);
+      return {};
+    });
+    open("?view=satellite&jobId=unassigned");
+    await screen.findByText(/Attach this job to a project/);
+    fireEvent.change(screen.getByLabelText("Project"), { target: { value: "project-a" } });
+    fireEvent.click(screen.getByRole("button", { name: /attach & open/i }));
+    expect(mocks.updateJob).toHaveBeenCalledWith("unassigned", { project_id: "project-a" });
+    expect(await screen.findByTestId("map")).toBeInTheDocument();
+    expect(screen.getByTestId("route")).toHaveTextContent("projectId=project-a");
+  });
+
   it("ignores stale session selection and does not offer another job creator in Analysis", async () => {
     sessionStorage.setItem("sitesurveyor:selected_job_id", "job-b");
     open("?view=satellite&projectId=project-a&jobId=job-a");

@@ -76,4 +76,19 @@ describe("parseAssistantBlocks", () => {
     expect(r.workbench).toBeNull();
     expect(r.clean).toBe("Plain reply, no handoff.");
   });
+
+  it("recovers the run id from a legacy markdown workbench link", () => {
+    const text =
+      "🛰️ Queued! [Open in Survey Workbench](?view=satellite&runId=11111111-1111-1111-1111-111111111111)";
+    const r = parseAssistantBlocks(text);
+    expect(r.legacyRunId).toBe("11111111-1111-1111-1111-111111111111");
+    expect(r.workbench).toBeNull();
+    // The link stays in the prose; only structured blocks are stripped.
+    expect(r.clean).toContain("Open in Survey Workbench");
+  });
+
+  it("recovers nothing from links that name no run", () => {
+    const r = parseAssistantBlocks("See [the project](?view=projects&projectId=abc).");
+    expect(r.legacyRunId).toBeNull();
+  });
 });

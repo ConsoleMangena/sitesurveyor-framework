@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils.ts";
 import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
+import { Label } from "@/components/ui/label.tsx";
 import {
   DashboardHeader,
   DashboardShell,
@@ -160,7 +161,12 @@ function SurveyWorkbench({
   }, []);
   const { runs: workspaceRuns, error: listError, loaded, refresh, adopt } = useSurveyRuns(workspaceId);
   const { projects: workspaceProjects, loading: projectsLoading, error: projectsError, refresh: refreshProjects } = useProjects(workspaceId);
-  const projects = workspaceProjects.filter((item) => !item.archived_at);
+  // Memoized: the project list feeds option lists and the launcher, and the
+  // compiler has to preserve the component's manual memoization around it.
+  const projects = useMemo(
+    () => workspaceProjects.filter((item) => !item.archived_at),
+    [workspaceProjects],
+  );
   const project = projects.find((item) => item.id === jobProjectContext);
   const [jobs, setJobs] = useState<JobWithProject[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -170,6 +176,12 @@ function SurveyWorkbench({
   const [openedJob, setOpenedJob] = useState<JobWithProject | null>(null);
   const [values, setValues] = useState<SurveyFormValues>(initialForm);
   const [boardCleared, setBoardCleared] = useState(false);
+  /** An unassigned job a deep link or selection asked to open. Attach-first:
+   *  it may not enter the workbench until it belongs to a project. */
+  const [needsAttachment, setNeedsAttachment] = useState<JobWithProject | null>(null);
+  const [attachProjectId, setAttachProjectId] = useState("");
+  const [attaching, setAttaching] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const scopedJobs = jobs.filter((job) => !job.archived_at && (!jobProjectContext || job.project_id === jobProjectContext));
 
   function switchJob() {
@@ -185,6 +197,30 @@ function SurveyWorkbench({
     if (onNavigate) onNavigate("projects", context);
     else setParams({ view: "projects", ...context });
   }
+
+  /** Attach-first for legacy unassigned jobs: file the job under a project,
+   *  then open it with full context. The params change re-resolves the job
+   *  through fetchJobs, which restores the workbench. */
+  const attachAndOpen = useCallback(async () => {
+    const job = needsAttachment;
+    const projectId = attachProjectId;
+    if (!job || !projectId) return;
+    setAttaching(true);
+    setAttachError(null);
+    try {
+      await updateJob(job.id, { project_id: projectId });
+      setParams({
+        view: "satellite",
+        projectId,
+        jobId: job.id,
+        ...(selectedId ? { runId: selectedId } : {}),
+      });
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : "Could not attach the job to a project.");
+    } finally {
+      setAttaching(false);
+    }
+  }, [needsAttachment, attachProjectId, selectedId, setParams]);
   const [queuedThisSession, setQueuedThisSession] = useState<string | null>(null);
   const [queueing, setQueueing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -229,6 +265,8 @@ function SurveyWorkbench({
 
     setValues((prev) => ({ ...prev, ...patchValues }));
     setOpenedJob(job);
+    // A job that opened clears any attachment prompt from an earlier deep link.
+    setNeedsAttachment(null);
     // The new job may classify a different category, and the drape follows the category.
     setRasterOverride(null);
   }
@@ -242,7 +280,11 @@ function SurveyWorkbench({
         setJobsError(null);
         const matched = rows.find((job) => job.id === routeJobId && !job.archived_at);
         if (matched && (!jobProjectContext || matched.project_id === jobProjectContext)) {
-          if (!jobProjectContext && matched.project_id) {
+          if (!matched.project_id) {
+            // Attach-first: an unassigned job may not enter the workbench; the
+            // deep link lands on the attach prompt instead.
+            setNeedsAttachment(matched);
+          } else if (!jobProjectContext) {
             setParams((current) => {
               const next = new URLSearchParams(current);
               next.set("projectId", matched.project_id!);
@@ -251,6 +293,10 @@ function SurveyWorkbench({
           } else {
             restoreJob(matched);
           }
+        } else if (!matched) {
+          // The route no longer names a job (or it vanished) — drop any stale
+          // attachment prompt.
+          setNeedsAttachment(null);
         }
       }
       return rows;
@@ -862,9 +908,55 @@ function SurveyWorkbench({
     );
   }
 
-  if (jobsLoading || projectsLoading || (routeJobId && !openedJob) ||
+  if (jobsLoading || projectsLoading || (routeJobId && !openedJob && !needsAttachment) ||
       (selectedId && resolvedRunId !== selectedId)) {
     return <DashboardShell><p role="status">Opening Earth Observation…</p></DashboardShell>;
+  }
+
+  if (needsAttachment && !openedJob) {
+    return (
+      <DashboardShell className="w-full max-w-2xl">
+        <DashboardHeader title="Earth Observation" />
+        <ErrorNotice title="Attach this job to a project" tone="warning">
+          "{needsAttachment.title}" is not attached to a project. Earth Observation jobs live
+          inside projects — choose one and the job and its survey runs move there.
+        </ErrorNotice>
+        {projects.length > 0 ? (
+          <div className="space-y-1.5">
+            <Label htmlFor="eo-attach-project">Project</Label>
+            <select
+              id="eo-attach-project"
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+              value={attachProjectId}
+              disabled={attaching}
+              onChange={(event) => setAttachProjectId(event.target.value)}
+            >
+              <option value="">Choose a project…</option>
+              {projects.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+            {attachError ? <p className="text-xs text-destructive">{attachError}</p> : null}
+            <Button
+              className="gap-1.5"
+              disabled={!attachProjectId || attaching}
+              onClick={() => void attachAndOpen()}
+            >
+              {attaching ? "Attaching…" : "Attach & open"}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">This workspace has no projects yet — create one first.</p>
+        )}
+        <Button variant="ghost" onClick={() => {
+          setNeedsAttachment(null);
+          setAttachError(null);
+          setParams({ view: "satellite" });
+        }}>
+          Back to the project picker
+        </Button>
+      </DashboardShell>
+    );
   }
 
   if (!openedJob) {

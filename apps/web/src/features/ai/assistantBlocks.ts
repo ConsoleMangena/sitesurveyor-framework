@@ -30,10 +30,18 @@ export interface ParsedAssistantText {
   clean: string;
   ask: AssistantAsk | null;
   workbench: AssistantWorkbench | null;
+  /** Run id recovered from a pre-protocol markdown workbench link, if any. */
+  legacyRunId: string | null;
 }
 
 const ASK_RE = /\[ASK\]([\s\S]*?)\[\/ASK\]/gi;
 const WORKBENCH_RE = /\[WORKBENCH\b([^\]]*)\]/gi;
+
+/** Replies written before the [WORKBENCH] protocol carried the run context only
+ *  as a markdown workbench link the model interpolated from its prompt. Parse
+ *  a run id out of such a link so older replies still open the right run. */
+const LEGACY_WORKBENCH_RE =
+  /\[[^\]]*\]\([^)]*view=satellite[^)]*?runId=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
 function stripBlocks(text: string): string {
   return text
@@ -91,5 +99,6 @@ export function parseAssistantBlocks(text: string): ParsedAssistantText {
     const parsed = parseWorkbench(m[1]);
     if (parsed && !workbench) workbench = parsed;
   }
-  return { clean: stripBlocks(text), ask, workbench };
+  const legacy = LEGACY_WORKBENCH_RE.exec(text);
+  return { clean: stripBlocks(text), ask, workbench, legacyRunId: legacy?.[1] ?? null };
 }
