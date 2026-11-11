@@ -13,6 +13,7 @@ import {
   padBounds,
   representativeFraction,
   scaleBarLayout,
+  sheetGeometryFor,
   sheetMapRect,
   sheetPanelRect,
   utmGridLines,
@@ -169,6 +170,45 @@ describe("sheetMapRect", () => {
     expect(left.x + left.w).toBeLessThanOrEqual(842 - 18);
     expect(sheetPanelRect("left").x).toBe(18);
     expect(sheetPanelRect("right").x).toBeGreaterThan(sheetPanelRect("left").x);
+  });
+});
+
+describe("sheetGeometryFor", () => {
+  it("defaults to the A4 landscape sheet the layout was built on", () => {
+    const geometry = sheetGeometryFor();
+    expect(geometry.widthPt).toBe(842);
+    expect(geometry.heightPt).toBe(595);
+    expect(geometry.panelWidthPt).toBe(216);
+  });
+
+  it("swaps the sides for portrait without changing the paper", () => {
+    const landscape = sheetGeometryFor("a4", "landscape");
+    const portrait = sheetGeometryFor("a4", "portrait");
+    expect(portrait.widthPt).toBe(landscape.heightPt);
+    expect(portrait.heightPt).toBe(landscape.widthPt);
+  });
+
+  it("offers the four papers at their true point sizes", () => {
+    expect(sheetGeometryFor("a3", "landscape").widthPt).toBe(1191);
+    expect(sheetGeometryFor("letter", "landscape").widthPt).toBe(792);
+    expect(sheetGeometryFor("tabloid", "landscape").widthPt).toBe(1224);
+  });
+
+  it("keeps the panel's share of the page as the paper grows", () => {
+    const a4 = sheetGeometryFor("a4");
+    const a3 = sheetGeometryFor("a3");
+    const letter = sheetGeometryFor("letter");
+    expect(a3.panelWidthPt).toBeGreaterThan(a4.panelWidthPt);
+    expect(letter.panelWidthPt).toBeLessThan(a4.panelWidthPt);
+    // The map frame keeps a positive size on every paper and orientation.
+    for (const size of ["a4", "a3", "letter", "tabloid"] as const) {
+      for (const orientation of ["landscape", "portrait"] as const) {
+        const geometry = sheetGeometryFor(size, orientation);
+        const mapW =
+          geometry.widthPt - geometry.marginPt * 2 - geometry.panelWidthPt - geometry.panelGapPt;
+        expect(mapW).toBeGreaterThan(100);
+      }
+    }
   });
 });
 

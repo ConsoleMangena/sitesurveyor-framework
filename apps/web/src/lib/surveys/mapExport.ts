@@ -11,8 +11,8 @@ import { ImageOverlay as LeafletImageOverlay, type Map as LeafletMap } from "lea
 import { metersPerPixel, type SheetSummaryRow } from "./workbench.ts";
 
 /**
- * A4 landscape sheet geometry in PDF points (72 pt = 1 inch).
- * The sheet is a map frame on the left and a title/legend panel on the right.
+ * Default A4 landscape sheet geometry in PDF points (72 pt = 1 inch).
+ * The sheet is a map frame on one side and a title/legend panel on the other.
  */
 export const SHEET = {
   widthPt: 842,
@@ -22,6 +22,51 @@ export const SHEET = {
   panelGapPt: 10,
 } as const;
 
+export type SheetPageSizeId = "a4" | "a3" | "letter" | "tabloid";
+export type SheetOrientation = "landscape" | "portrait";
+
+/** Paper sizes the layout tool offers, in points, shortest side first. */
+export const SHEET_PAGE_SIZES: Record<
+  SheetPageSizeId,
+  { label: string; shortPt: number; longPt: number }
+> = {
+  a4: { label: "A4 · 210 × 297 mm", shortPt: 595, longPt: 842 },
+  a3: { label: "A3 · 297 × 420 mm", shortPt: 842, longPt: 1191 },
+  letter: { label: "Letter · 8.5 × 11 in", shortPt: 612, longPt: 792 },
+  tabloid: { label: "Tabloid · 11 × 17 in", shortPt: 792, longPt: 1224 },
+};
+
+export interface SheetGeometry {
+  widthPt: number;
+  heightPt: number;
+  marginPt: number;
+  panelWidthPt: number;
+  panelGapPt: number;
+}
+
+/** The geometry a build draws against. Every drawing routine is synchronous,
+ *  so a build swaps this in around its draw phase and restores it after. */
+let activeSheet: SheetGeometry = { ...SHEET };
+
+export function sheetGeometryFor(
+  pageSize: SheetPageSizeId = "a4",
+  orientation: SheetOrientation = "landscape",
+): SheetGeometry {
+  const size = SHEET_PAGE_SIZES[pageSize] ?? SHEET_PAGE_SIZES.a4;
+  const landscape = orientation !== "portrait";
+  const widthPt = landscape ? size.longPt : size.shortPt;
+  const heightPt = landscape ? size.shortPt : size.longPt;
+  return {
+    widthPt,
+    heightPt,
+    marginPt: SHEET.marginPt,
+    // The panel keeps its share of the page as the paper grows, so an A3
+    // title block carries the same proportion of metadata as an A4 one.
+    panelWidthPt: Math.round(Math.min(320, Math.max(190, 216 * (widthPt / 842)))),
+    panelGapPt: SHEET.panelGapPt,
+  };
+}
+
 export interface SheetMapRect {
   x: number;
   y: number;
@@ -29,28 +74,36 @@ export interface SheetMapRect {
   h: number;
 }
 
-export function sheetMapRect(panelSide: "right" | "left" = "right"): SheetMapRect {
+function mapRectFor(geometry: SheetGeometry, panelSide: "right" | "left"): SheetMapRect {
   return {
     x:
       panelSide === "right"
-        ? SHEET.marginPt
-        : SHEET.marginPt + SHEET.panelWidthPt + SHEET.panelGapPt,
-    y: SHEET.marginPt,
-    w: SHEET.widthPt - SHEET.marginPt * 2 - SHEET.panelWidthPt - SHEET.panelGapPt,
-    h: SHEET.heightPt - SHEET.marginPt * 2,
+        ? geometry.marginPt
+        : geometry.marginPt + geometry.panelWidthPt + geometry.panelGapPt,
+    y: geometry.marginPt,
+    w: geometry.widthPt - geometry.marginPt * 2 - geometry.panelWidthPt - geometry.panelGapPt,
+    h: geometry.heightPt - geometry.marginPt * 2,
   };
 }
 
-export function sheetPanelRect(panelSide: "right" | "left" = "right"): SheetMapRect {
+function panelRectFor(geometry: SheetGeometry, panelSide: "right" | "left"): SheetMapRect {
   return {
     x:
       panelSide === "right"
-        ? SHEET.marginPt + sheetMapRect().w + SHEET.panelGapPt
-        : SHEET.marginPt,
-    y: SHEET.marginPt,
-    w: SHEET.panelWidthPt,
-    h: SHEET.heightPt - SHEET.marginPt * 2,
+        ? geometry.marginPt + mapRectFor(geometry, "right").w + geometry.panelGapPt
+        : geometry.marginPt,
+    y: geometry.marginPt,
+    w: geometry.panelWidthPt,
+    h: geometry.heightPt - geometry.marginPt * 2,
   };
+}
+
+export function sheetMapRect(panelSide: "right" | "left" = "right"): SheetMapRect {
+  return mapRectFor(activeSheet, panelSide);
+}
+
+export function sheetPanelRect(panelSide: "right" | "left" = "right"): SheetMapRect {
+  return panelRectFor(activeSheet, panelSide);
 }
 
 export type LegendItemKind = "zone" | "station" | "target" | "aoi" | "imagery";
@@ -96,6 +149,18 @@ export interface MapExportOptions {
   coords?: string;
   /** Print resolution of the sheet; defaults to what detectOptimalQuality() picks. */
   dpi?: number;
+  /** Paper the layout is composed on. Default "a4". */
+  pageSize?: SheetPageSizeId;
+  /** Default "landscape". */
+  orientation?: SheetOrientation;
+  /** Professional who takes responsibility for the sheet, printed in the title block. */
+  surveyor?: string;
+  /** Firm or agency the sheet is issued under. */
+  organization?: string;
+  /** Project the survey belongs to, named in the title block. */
+  projectName?: string;
+  /** Overrides the auto-generated EO-date-time sheet number. */
+  sheetNumber?: string;
   includeLegend?: boolean;
   includeHeader?: boolean;
   includeNorthArrow?: boolean;
@@ -174,6 +239,18 @@ export interface ClassifiedTilesOption {
   loadArchive: () => Promise<ArrayBuffer>;
   opacity: number;
 }
+
+/** The stages a sheet build passes through, for the export progress readout. */
+export type SheetBuildStage = "tiles" | "classification" | "layout" | "finalize";
+export type SheetBuildProgress = (stage: SheetBuildStage) => void;
+
+/** One copy of the classified archive per loader: the preview rebuilds the
+ *  sheet on every layout change, and the archive is the same file each time.
+ *  Keyed by the loader so a new run's archive is fetched fresh. */
+const archiveBytesCache = new WeakMap<
+  ClassifiedTilesOption["loadArchive"],
+  Promise<ArrayBuffer>
+>();
 
 export interface OptimalQuality {
   dpr: number;
@@ -606,6 +683,40 @@ const MAX_TILES = 512;
 const TILE_FETCH_CONCURRENCY = 8;
 const TILE_FETCH_TIMEOUT_MS = 15000;
 
+/** The live preview rebuilds the sheet on every layout change; the imagery it
+ *  already fetched is kept so only the vector layout is recomposed. Bounded so
+ *  a long session cannot hold every tile it ever saw. */
+const TILE_CACHE_MAX = 480;
+interface TileCacheEntry {
+  drawable: Drawable | null;
+  blank: boolean;
+}
+const tileCache = new Map<string, Promise<TileCacheEntry>>();
+
+function loadTileCached(url: string): Promise<TileCacheEntry> {
+  const hit = tileCache.get(url);
+  if (hit) {
+    tileCache.delete(url);
+    tileCache.set(url, hit);
+    return hit;
+  }
+  const entry = (async (): Promise<TileCacheEntry> => {
+    const drawable = await loadTileImage(url);
+    if (!drawable) {
+      // A failed fetch may be a passing network fault; let the next build retry.
+      tileCache.delete(url);
+      return { drawable: null, blank: true };
+    }
+    return { drawable, blank: await isBlankTile(drawable) };
+  })();
+  tileCache.set(url, entry);
+  if (tileCache.size > TILE_CACHE_MAX) {
+    const oldest = tileCache.keys().next().value;
+    if (oldest !== undefined) tileCache.delete(oldest);
+  }
+  return entry;
+}
+
 // The classified archive's usable zoom band, kept in step with the live
 // PMTiles overlay: below the floor nothing paints, above the cap the parent
 // tile is over-zoomed with the right quadrant scaled up.
@@ -790,7 +901,18 @@ async function buildSheetTilesLayer(
     // slice -- an auth check, an ownership query and a storage fetch each --
     // and a sheet spans dozens of slices. The archive itself is small, so it
     // arrives once and every tile is then read from memory.
-    const bytes = await option.loadArchive();
+    let bytesPromise = archiveBytesCache.get(option.loadArchive);
+    if (!bytesPromise) {
+      bytesPromise = option.loadArchive();
+      archiveBytesCache.set(option.loadArchive, bytesPromise);
+    }
+    let bytes: ArrayBuffer;
+    try {
+      bytes = await bytesPromise;
+    } catch (error) {
+      archiveBytesCache.delete(option.loadArchive);
+      throw error;
+    }
     if (bytes.byteLength === 0) return null;
     const memorySource = {
       getKey: () => "sheet://classified-archive",
@@ -862,6 +984,7 @@ interface ComposeInput {
   tilesLayer?: SheetTilesLayer | null;
   /** Ground the sheet must cover. When absent, the map's current view is used. */
   extent?: { south: number; west: number; north: number; east: number };
+  onProgress?: SheetBuildProgress;
 }
 
 async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
@@ -954,29 +1077,30 @@ async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
   const template = input.tileUrlTemplate;
   let missingTiles = 0;
 
+  input.onProgress?.("tiles");
   await mapInChunks(tiles, TILE_FETCH_CONCURRENCY, async (tile) => {
     // Direct tile first; on failure (including blank provider placeholders)
     // walk up to parent tiles and crop the quadrant, so one failed request
     // never leaves a hole in the sheet.
-    const drawable = await loadTileImage(
+    const direct = await loadTileCached(
       tileUrlFor(template, tile.x, tile.y, tileZoom),
     );
-    if (drawable && !(await isBlankTile(drawable))) {
-      drawTile(ctx, drawable, tile.x, tile.y, origin, scale, mapWPx, mapHPx);
+    if (direct.drawable && !direct.blank) {
+      drawTile(ctx, direct.drawable, tile.x, tile.y, origin, scale, mapWPx, mapHPx);
       return;
     }
     let drew = false;
     for (let p = 1; p <= 3 && tileZoom - p >= 0; p += 1) {
       const q = 2 ** p;
-      const parent = await loadTileImage(
+      const parent = await loadTileCached(
         tileUrlFor(template, tile.x >> p, tile.y >> p, tileZoom - p),
       );
-      if (!parent || (await isBlankTile(parent))) continue;
+      if (!parent.drawable || parent.blank) continue;
       const qx = tile.x & (q - 1);
       const qy = tile.y & (q - 1);
       const srcSize = TILE_SIZE / q;
       ctx.drawImage(
-        parent,
+        parent.drawable,
         qx * srcSize,
         qy * srcSize,
         srcSize,
@@ -1015,6 +1139,7 @@ async function composeImagery(input: ComposeInput): Promise<ComposeResult> {
   // half-pixel trick, a blend-mode overlap would print a doubled seam under a
   // translucent raster.
   if (input.tilesLayer && tileZoom >= input.tilesLayer.minZoom) {
+    input.onProgress?.("classification");
     const layer = input.tilesLayer;
     const nativeZoom = Math.min(tileZoom, layer.maxNativeZoom);
     await mapInChunks(tiles, TILE_FETCH_CONCURRENCY, async (tile) => {
@@ -1117,7 +1242,7 @@ const GRID_STROKES = [
 ] as const;
 
 function yFlip(yTop: number): number {
-  return SHEET.heightPt - yTop;
+  return activeSheet.heightPt - yTop;
 }
 
 /** Standard fonts cannot encode characters outside WinAnsi; drop the rest. */
@@ -1277,6 +1402,9 @@ export interface PanelData {
   title: string;
   client: string;
   categoryName: string;
+  projectName: string;
+  organization: string;
+  surveyor: string;
   coords: string;
   coverageText: string;
   gridText: string;
@@ -1284,6 +1412,7 @@ export interface PanelData {
   imageryText: string;
   scaleText: string;
   scaleRatioText: string;
+  paperText: string;
   sheetNo: string;
   generatedText: string;
   waterTableText: string;
@@ -1736,7 +1865,10 @@ function drawPanel(
 
     const metaRows = [
       { label: "CLIENT", value: data.client },
+      { label: "PROJECT", value: data.projectName },
       { label: "SURVEY DOMAIN", value: domainLabel(data.categoryName) },
+      { label: "ORGANIZATION", value: data.organization },
+      { label: "SURVEYOR", value: data.surveyor },
       { label: "WATER TABLE", value: data.waterTableText },
       { label: "FIELD TARGET", value: data.fieldTargetText },
       { label: "CENTRE", value: data.coords },
@@ -1745,6 +1877,7 @@ function drawPanel(
       { label: "OPTICAL SOURCE", value: data.opticalSource },
       { label: "IMAGERY", value: data.imageryText },
       { label: "PRINT SCALE", value: data.scaleText },
+      { label: "PAPER", value: data.paperText },
       { label: "SHEET NO.", value: data.sheetNo },
       { label: "GENERATED", value: data.generatedText },
     ].filter((row) => row.value);
@@ -1917,11 +2050,11 @@ function drawLegendSheet(
   ctx: SheetCtx,
   data: PanelData,
 ): void {
-  const page = pdf.addPage([SHEET.widthPt, SHEET.heightPt]);
+  const page = pdf.addPage([activeSheet.widthPt, activeSheet.heightPt]);
   const sheet: SheetCtx = { ...ctx, page };
   const margin = 18;
   const leftX = margin;
-  const contentW = SHEET.widthPt - margin * 2;
+  const contentW = activeSheet.widthPt - margin * 2;
   const columnGap = 20;
   const columnW = (contentW - columnGap) / 2;
   const rightX = leftX + columnW + columnGap;
@@ -1930,9 +2063,9 @@ function drawLegendSheet(
 
   page.drawRectangle({
     x: margin - 6,
-    y: yFlip(SHEET.heightPt - margin + 6),
-    width: SHEET.widthPt - (margin - 6) * 2,
-    height: SHEET.heightPt - (margin - 6) * 2,
+    y: yFlip(activeSheet.heightPt - margin + 6),
+    width: activeSheet.widthPt - (margin - 6) * 2,
+    height: activeSheet.heightPt - (margin - 6) * 2,
     borderColor: PAPER_LINE,
     borderWidth: 0.8,
   });
@@ -1968,16 +2101,16 @@ function drawLegendSheet(
     5.6,
     { color: INK_SOFT },
   );
-  drawTextRight(sheet, `SHEET NO. ${data.sheetNo}`, SHEET.widthPt - margin, y, 7, {
+  drawTextRight(sheet, `SHEET NO. ${data.sheetNo}`, activeSheet.widthPt - margin, y, 7, {
     font: ctx.bold,
   });
-  drawTextRight(sheet, data.generatedText, SHEET.widthPt - margin, y + 11, 6.5, {
+  drawTextRight(sheet, data.generatedText, activeSheet.widthPt - margin, y + 11, 6.5, {
     color: INK_SOFT,
   });
 
   y += 34;
   const cleanTitle = normalizePdfTitle(data.title);
-  const titleLines = wrapText(sheet, cleanTitle, 16, SHEET.widthPt - margin * 2, ctx.bold, 2);
+  const titleLines = wrapText(sheet, cleanTitle, 16, activeSheet.widthPt - margin * 2, ctx.bold, 2);
   for (const line of titleLines) {
     drawTextLine(sheet, line, leftX, y, 16, { font: ctx.bold });
     y += 19;
@@ -1989,14 +2122,14 @@ function drawLegendSheet(
   y += 14;
   sheet.page.drawLine({
     start: { x: leftX, y: yFlip(y) },
-    end: { x: SHEET.widthPt - margin, y: yFlip(y) },
+    end: { x: activeSheet.widthPt - margin, y: yFlip(y) },
     thickness: 0.9,
     color: INK,
   });
   y += 18;
 
   const bodyTop = y;
-  const bodyBottom = SHEET.heightPt - margin - 18;
+  const bodyBottom = activeSheet.heightPt - margin - 18;
 
   // What the sheet carries.
   const keyItems = keyOnPanel ? [] : data.legendItems;
@@ -2009,13 +2142,17 @@ function drawLegendSheet(
   }
   const reference: SheetSummaryRow[] = [
     { label: "CLIENT", value: data.client },
+    { label: "PROJECT", value: data.projectName },
     { label: "SURVEY DOMAIN", value: domainLabel(data.categoryName) },
+    { label: "ORGANIZATION", value: data.organization },
+    { label: "SURVEYOR", value: data.surveyor },
     { label: "CENTRE", value: data.coords },
     { label: "SHEET COVERAGE", value: data.coverageText },
     { label: "GRID", value: data.gridText },
     { label: "OPTICAL SOURCE", value: data.opticalSource },
     { label: "IMAGERY", value: data.imageryText },
     { label: "PRINT SCALE", value: data.scaleText },
+    { label: "PAPER", value: data.paperText },
     { label: "SHEET NO.", value: data.sheetNo },
     { label: "GENERATED", value: data.generatedText },
   ].filter((row) => row.value);
@@ -2132,7 +2269,7 @@ function drawLegendSheet(
       ? "Sheet 2 of 2 · recommended targets and survey record"
       : "Sheet 2 of 2 · classification legend, targets and survey record",
     leftX,
-    SHEET.heightPt - margin - 4,
+    activeSheet.heightPt - margin - 4,
     6.5,
     { color: INK_SOFT },
   );
@@ -2541,7 +2678,7 @@ function drawMapFurniture(
     scaleText: string;
   },
 ): void {
-  const { page, font, bold } = ctx;
+  const { page, bold } = ctx;
   const { canvas, mapRef, originRef, upscale } = compose;
   const ptPerPx = mapRect.w / canvas.width;
   const toPtX = (xPx: number) => mapRect.x + xPx * ptPerPx;
@@ -2884,8 +3021,14 @@ function drawMapFurniture(
   }
 }
 
+/** The composed sheet: its PDF bytes and how many pages the layout needed. */
+export interface BuiltMapSheet {
+  bytes: Uint8Array;
+  pageCount: number;
+}
+
 /**
- * Generate a standard A4 landscape map sheet as vector PDF.
+ * Compose the map sheet as a vector PDF and return its bytes.
  *
  * Imagery is fetched tile-by-tile at the paper's true resolution (never a
  * screenshot of the screen), and every cartographic element — graticule,
@@ -2899,18 +3042,19 @@ function drawMapFurniture(
  * private archive; older runs fall back to the georeferenced drape overlays
  * collected from the live map.
  */
-export async function exportMapAsPdf(
+export async function buildMapSheetPdf(
   map: LeafletMap,
-  filename = "sitesurveyor_map_sheet.pdf",
   options: MapExportOptions = {},
-): Promise<void> {
+  onProgress?: SheetBuildProgress,
+): Promise<BuiltMapSheet> {
   if (!map) throw new Error("Map view is not ready yet. Please wait and try again.");
 
   const quality = detectOptimalQuality();
   const dpi = Math.max(96, Math.min(320, Math.round(options.dpi ?? quality.dpi)));
   const panelSide = options.panelSide === "left" ? "left" : "right";
-  const mapRect = sheetMapRect(panelSide);
-  const panelRect = sheetPanelRect(panelSide);
+  const geometry = sheetGeometryFor(options.pageSize, options.orientation);
+  const mapRect = mapRectFor(geometry, panelSide);
+  const panelRect = panelRectFor(geometry, panelSide);
   const mapWPx = Math.round((mapRect.w / 72) * dpi);
   const mapHPx = Math.round((mapRect.h / 72) * dpi);
 
@@ -2942,10 +3086,11 @@ export async function exportMapAsPdf(
     overlays,
     tilesLayer,
     extent,
+    onProgress,
   });
 
   const pdf = await PDFDocument.create();
-  const page = pdf.addPage([SHEET.widthPt, SHEET.heightPt]);
+  const page = pdf.addPage([geometry.widthPt, geometry.heightPt]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const ctx: SheetCtx = { page, font, bold };
@@ -2953,12 +3098,6 @@ export async function exportMapAsPdf(
 
   const pngBytes = await canvasToPngBytes(compose.canvas);
   const image = await pdf.embedPng(pngBytes);
-  page.drawImage(image, {
-    x: mapRect.x,
-    y: yFlip(mapRect.y + mapRect.h),
-    width: mapRect.w,
-    height: mapRect.h,
-  });
 
   const groundPerPt = compose.groundWidthM / mapRect.w;
   const rf = representativeFraction(groundPerPt);
@@ -2970,19 +3109,15 @@ export async function exportMapAsPdf(
   const upscaledNote =
     compose.upscale > 1.02 ? ` (upscaled x${compose.upscale.toFixed(1)})` : "";
 
-  drawMapFurniture(ctx, mapRect, compose, options, {
-    northOnMap: options.northArrowPlacement === "map",
-    scaleOnMap: options.scaleBarPlacement === "map",
-    bar,
-    scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
-  });
   const now = new Date();
   const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(
     now.getDate(),
   ).padStart(2, "0")}`;
-  const sheetNo = `EO-${dateStamp}-${String(now.getHours()).padStart(2, "0")}${String(
-    now.getMinutes(),
-  ).padStart(2, "0")}`;
+  const sheetNo =
+    options.sheetNumber?.trim() ||
+    `EO-${dateStamp}-${String(now.getHours()).padStart(2, "0")}${String(
+      now.getMinutes(),
+    ).padStart(2, "0")}`;
   const generatedText = now.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -2999,12 +3134,19 @@ export async function exportMapAsPdf(
   const cleanTitle = normalizePdfTitle(
     options.title || `${domain} — ${options.client || "SITE AREA"}`,
   );
+  const orientation = options.orientation === "portrait" ? "portrait" : "landscape";
+  const paperText = `${
+    (SHEET_PAGE_SIZES[options.pageSize ?? "a4"] ?? SHEET_PAGE_SIZES.a4).label
+  } · ${orientation}`;
 
   const panelData: PanelData = {
     includeHeader: options.includeHeader !== false,
     title: cleanTitle,
     client: options.client || "Site Survey",
     categoryName: domain,
+    projectName: options.projectName?.trim() ?? "",
+    organization: options.organization?.trim() ?? "",
+    surveyor: options.surveyor?.trim() ?? "",
     coords: options.coords || "—",
     coverageText: `${formatMeters(compose.groundWidthM)} E-W x ${formatMeters(
       compose.groundHeightM,
@@ -3014,6 +3156,7 @@ export async function exportMapAsPdf(
     imageryText: `z${compose.tileZoom} · ~${srcMppText} m/px source · sheet ~${sheetMppText} m/px${upscaledNote}`,
     scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
     scaleRatioText: `1:${rf.toLocaleString("en-US")} (approx.)`,
+    paperText,
     sheetNo,
     generatedText,
     waterTableText: options.targetDepthLabel ?? "",
@@ -3038,16 +3181,49 @@ export async function exportMapAsPdf(
     logo,
   };
 
-  // The map sheet, plus the sheet behind it when the key or the schedule of stations
-  // had no room beside the map.
-  drawSurveySheets(pdf, ctx, panelRect, panelData);
+  // Every drawing routine reads the active sheet geometry, and all of them are
+  // synchronous: the swap is held only across the draw phase, so a concurrent
+  // build's async imagery phase never sees another build's paper size.
+  onProgress?.("layout");
+  const previousSheet = activeSheet;
+  activeSheet = geometry;
+  try {
+    page.drawImage(image, {
+      x: mapRect.x,
+      y: yFlip(mapRect.y + mapRect.h),
+      width: mapRect.w,
+      height: mapRect.h,
+    });
+    drawMapFurniture(ctx, mapRect, compose, options, {
+      northOnMap: options.northArrowPlacement === "map",
+      scaleOnMap: options.scaleBarPlacement === "map",
+      bar,
+      scaleText: `1:${rf.toLocaleString("en-US")} (approx.) · ${sheetMppText} m/px at ${dpi} DPI`,
+    });
+    // The map sheet, plus the sheet behind it when the key or the schedule of
+    // stations had no room beside the map.
+    drawSurveySheets(pdf, ctx, panelRect, panelData);
+  } finally {
+    activeSheet = previousSheet;
+  }
 
   pdf.setTitle(safeText(cleanTitle));
-  pdf.setAuthor("SiteSurveyor");
+  pdf.setAuthor(options.surveyor?.trim() || options.organization?.trim() || "SiteSurveyor");
   pdf.setSubject("Earth Observation Map Sheet");
   pdf.setCreator("SiteSurveyor");
 
+  onProgress?.("finalize");
   const bytes = await pdf.save();
+  return { bytes: new Uint8Array(bytes), pageCount: pdf.getPageCount() };
+}
+
+/** Build the sheet and hand it to the browser as a PDF download. */
+export async function exportMapAsPdf(
+  map: LeafletMap,
+  filename = "sitesurveyor_map_sheet.pdf",
+  options: MapExportOptions = {},
+): Promise<void> {
+  const { bytes } = await buildMapSheetPdf(map, options);
   downloadBlob(new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), filename);
 }
 

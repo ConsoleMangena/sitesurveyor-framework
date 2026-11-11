@@ -174,6 +174,9 @@ function panelFor(category: DossierCategory): PanelData {
     title: `${category.replace("_", " ").toUpperCase()} — SITE SURVEY`,
     client: "Site Survey",
     categoryName: category.toUpperCase(),
+    projectName: "",
+    organization: "",
+    surveyor: "",
     coords: "19.5049°S, 29.8460°E",
     coverageText: "18.4 km E-W x 18.4 km N-S",
     gridText: "WGS 84 / UTM zone 35S · X=Easting, Y=Northing (m)",
@@ -181,6 +184,7 @@ function panelFor(category: DossierCategory): PanelData {
     imageryText: "z15 · ~4.9 m/px source · sheet ~2.4 m/px",
     scaleText: "1:48,000 (approx.) · 2.40 m/px at 240 DPI",
     scaleRatioText: "1:48,000 (approx.)",
+    paperText: "",
     sheetNo: "EO-20261109-0730",
     generatedText: "Nov 9, 2026",
     waterTableText: category === "water" ? "28 m below ground" : "",
@@ -237,7 +241,7 @@ function panelFor(category: DossierCategory): PanelData {
   };
 }
 
-async function render(category: DossierCategory) {
+async function render(category: DossierCategory, overrides: Partial<PanelData> = {}) {
   const pdf = await PDFDocument.create();
   const tracks = new Map<number, Mark[]>();
   const originalAddPage = pdf.addPage.bind(pdf);
@@ -250,7 +254,7 @@ async function render(category: DossierCategory) {
   const page = pdf.addPage([SHEET.widthPt, SHEET.heightPt]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const data = panelFor(category);
+  const data = { ...panelFor(category), ...overrides };
 
   drawSurveySheets(pdf, { page, font, bold }, sheetPanelRect("right"), data);
 
@@ -406,5 +410,33 @@ describe("survey sheet layout", () => {
     expect(texts).toContain("SURVEY REFERENCE");
     expect(texts).toContain("RECOMMENDED TARGETS");
     expect(texts).toContain("61.2 / 100 · Moderate");
+  });
+
+  it("prints the title-block metadata and keeps the layout whole when it is filled in", async () => {
+    const { marks, secondMarks, data } = await render("minerals", {
+      projectName: "Gweru Greenstone Belt",
+      organization: "Consolation Geospatial (Pvt) Ltd",
+      surveyor: "C. Mangena",
+      paperText: "A3 · 297 × 420 mm · landscape",
+    });
+    const texts = marks.map((mark) => mark.text).filter((text): text is string => text !== undefined);
+    expect(texts).toContain("PROJECT");
+    expect(texts).toContain("Gweru Greenstone Belt");
+    expect(texts).toContain("ORGANIZATION");
+    expect(texts).toContain("SURVEYOR");
+    expect(texts).toContain("PAPER");
+
+    // The extra rows must not push any mark out of the panel, and the key and
+    // the schedule still print whole on one sheet or the other.
+    const rect = sheetPanelRect("right");
+    for (const mark of marks) {
+      expect(mark.top).toBeGreaterThanOrEqual(rect.y - 0.01);
+      expect(mark.bottom).toBeLessThanOrEqual(rect.y + rect.h + 0.01);
+    }
+    const keyTitle = CATEGORY_LEGEND_TITLES.minerals.toUpperCase();
+    const allTexts = [...texts, ...secondMarks.map((mark) => mark.text)];
+    expect(allTexts).toContain(keyTitle);
+    expect(allTexts).toContain("RECOMMENDED TARGETS");
+    expect(data.keyOnPanel || data.scheduleOnPanel || secondMarks.length > 0).toBe(true);
   });
 });

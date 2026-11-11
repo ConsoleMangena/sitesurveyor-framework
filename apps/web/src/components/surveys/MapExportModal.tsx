@@ -1,19 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check, Download, FileText, Loader, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Download, FileText, Image as ImageIcon, Loader, X } from "lucide-react";
 import type { Map as LeafletMap } from "leaflet";
 
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 import type { MapViewInfo } from "./SurveyMap.tsx";
 import {
+  buildMapSheetPdf,
   domainLabel,
-  exportMapAsPdf,
+  downloadBlob,
   normalizePdfTitle,
+  sheetGeometryFor,
+  SHEET_PAGE_SIZES,
   type ClassifiedTilesOption,
   type MapExportOptions,
+  type SheetBuildStage,
   type SheetLegendItem,
+  type SheetOrientation,
+  type SheetPageSizeId,
   type SheetTable,
 } from "../../lib/surveys/mapExport.ts";
+import type { SheetImageFormat } from "../../lib/surveys/sheetRender.ts";
 import type { SheetSummaryRow } from "../../lib/surveys/workbench.ts";
 
 export interface ExportBasemapConfig {
@@ -30,6 +37,8 @@ interface MapExportModalProps {
   viewInfo: MapViewInfo;
   categoryName?: string;
   clientName?: string;
+  /** Project the survey belongs to; seeds the title block's project line. */
+  projectName?: string;
   aoiBounds?: [[number, number], [number, number]];
   candidates?: {
     latitude: number;
@@ -61,6 +70,20 @@ interface MapExportModalProps {
   classifiedTiles?: ClassifiedTilesOption | null;
   basemap: ExportBasemapConfig;
 }
+
+type ExportFormat = "pdf" | SheetImageFormat;
+
+const STAGE_LABELS: Record<SheetBuildStage, string> = {
+  tiles: "Fetching map imagery…",
+  classification: "Draping classified zones…",
+  layout: "Composing sheet layout…",
+  finalize: "Writing document…",
+};
+
+/** The preview is composed at screen resolution; the export re-composes the
+ *  imagery at the chosen print DPI, so the preview stays cheap to regenerate. */
+const PREVIEW_DPI = 96;
+const PREVIEW_DEBOUNCE_MS = 600;
 
 function PlacementRow<T extends string>({
   label,
@@ -97,6 +120,39 @@ function PlacementRow<T extends string>({
   );
 }
 
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-medium text-foreground">{label}</span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+      />
+    </label>
+  );
+}
+
 export default function MapExportModal({
   open,
   onClose,
@@ -105,6 +161,7 @@ export default function MapExportModal({
   viewInfo,
   categoryName = "Survey Map",
   clientName = "Site Survey",
+  projectName,
   aoiBounds,
   candidates,
   targetDepthLabel,
@@ -120,10 +177,15 @@ export default function MapExportModal({
   const domain = domainLabel(categoryName);
   const defaultTitle = `${domain} — ${clientName || "SITE AREA"}`;
   const [title, setTitle] = useState(defaultTitle);
+  const [project, setProject] = useState(projectName ?? "");
 
   useEffect(() => {
     setTitle(defaultTitle);
   }, [defaultTitle]);
+  useEffect(() => {
+    setProject(projectName ?? "");
+  }, [projectName]);
+
   const [includeLegend, setIncludeLegend] = useState(true);
   const [includeHeader, setIncludeHeader] = useState(true);
   const [includeNorthArrow, setIncludeNorthArrow] = useState(true);
@@ -133,14 +195,30 @@ export default function MapExportModal({
   // map's extent and zoom level. The exact survey-ground framing stays
   // available for the whole-area product.
   const [frame, setFrame] = useState<"view" | "survey">("view");
+  const [pageSize, setPageSize] = useState<SheetPageSizeId>("a4");
+  const [orientation, setOrientation] = useState<SheetOrientation>("landscape");
   const [panelSide, setPanelSide] = useState<"right" | "left">("right");
   const [northPlacement, setNorthPlacement] = useState<"panel" | "map">("panel");
   const [scalePlacement, setScalePlacement] = useState<"panel" | "map">("panel");
   const [gridLineCount, setGridLineCount] = useState(6);
   const [coordMode, setCoordMode] = useState<"degrees" | "utm">("utm");
+  const [organization, setOrganization] = useState("");
+  const [surveyor, setSurveyor] = useState("");
+  const [sheetNumber, setSheetNumber] = useState("");
+  const [format, setFormat] = useState<ExportFormat>("pdf");
+  const [dpi, setDpi] = useState(300);
   const [exporting, setExporting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [stageLabel, setStageLabel] = useState<string | null>(null);
+
+  const [previewDoc, setPreviewDoc] = useState<{ bytes: Uint8Array; pageCount: number } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewPage, setPreviewPage] = useState(0);
+  const buildGeneration = useRef(0);
+  const renderGeneration = useRef(0);
 
   const extentHintKm = useMemo(() => {
     if (!aoiBounds) return null;
@@ -148,6 +226,117 @@ export default function MapExportModal({
     const midLat = ((s + n) / 2) * (Math.PI / 180);
     return (e - w) * 111.32 * Math.cos(midLat) * (1 + 2 * contextFraction);
   }, [aoiBounds, contextFraction]);
+
+  // Everything the sheet is composed from. The preview and the export share
+  // this object so the preview cannot drift from the product.
+  const layoutOptions = useMemo<MapExportOptions>(
+    () => ({
+      title: normalizePdfTitle(title),
+      client: clientName,
+      categoryName: domain,
+      coords: viewInfo.coords || `${target.latitude.toFixed(4)}°, ${target.longitude.toFixed(4)}°`,
+      includeLegend,
+      includeHeader,
+      includeNorthArrow,
+      includeScaleBar,
+      includeNeatline: true,
+      target,
+      aoiBounds,
+      frame,
+      pageSize,
+      orientation,
+      classifiedTiles,
+      candidates,
+      targetDepthLabel,
+      fieldTargetLabel,
+      summaryRows,
+      table,
+      legendItems,
+      legendTitle,
+      attribution: basemap.attribution,
+      tileUrlTemplate: basemap.tileUrlTemplate,
+      maxNativeZoom: basemap.maxNativeZoom,
+      contextFraction,
+      panelSide,
+      northArrowPlacement: northPlacement,
+      scaleBarPlacement: scalePlacement,
+      gridLineCount,
+      coordMode,
+      opticalSource,
+      surveyor: surveyor.trim() || undefined,
+      organization: organization.trim() || undefined,
+      projectName: project.trim() || undefined,
+      sheetNumber: sheetNumber.trim() || undefined,
+    }),
+    [
+      title, clientName, domain, viewInfo.coords, target, includeLegend, includeHeader,
+      includeNorthArrow, includeScaleBar, aoiBounds, frame, pageSize, orientation,
+      classifiedTiles, candidates, targetDepthLabel, fieldTargetLabel, summaryRows,
+      table, legendItems, legendTitle, basemap, contextFraction, panelSide,
+      northPlacement, scalePlacement, gridLineCount, coordMode, opticalSource,
+      surveyor, organization, project, sheetNumber,
+    ],
+  );
+
+  const geometry = sheetGeometryFor(pageSize, orientation);
+  const previewScale = Math.min(1.25, 660 / geometry.widthPt);
+
+  // Reset on the way out so the next open starts from a clean sheet, without
+  // an effect that cascades renders on the way in.
+  function close() {
+    setPreviewPage(0);
+    setPreviewError(null);
+    setErrorMessage(null);
+    setSuccess(false);
+    onClose();
+  }
+
+  // Compose the real PDF at preview resolution, debounced so a slider drag or
+  // a keystroke does not rebuild on every intermediate value. A generation
+  // counter drops any build that a newer one has superseded.
+  useEffect(() => {
+    if (!open || !map) return;
+    const generation = ++buildGeneration.current;
+    const timer = setTimeout(() => {
+      void (async () => {
+        setPreviewBusy(true);
+        try {
+          const built = await buildMapSheetPdf(map, { ...layoutOptions, dpi: PREVIEW_DPI });
+          if (buildGeneration.current !== generation) return;
+          setPreviewDoc({ bytes: built.bytes, pageCount: built.pageCount });
+          setPreviewPage((page) => Math.min(page, built.pageCount - 1));
+          setPreviewError(null);
+        } catch (err) {
+          if (buildGeneration.current !== generation) return;
+          setPreviewError(
+            err instanceof Error ? err.message : "The preview could not be composed.",
+          );
+        } finally {
+          if (buildGeneration.current === generation) setPreviewBusy(false);
+        }
+      })();
+    }, PREVIEW_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [open, map, layoutOptions]);
+
+  // Render the composed page to pixels. Switching sheets re-renders from the
+  // same bytes instead of recomposing the document.
+  useEffect(() => {
+    if (!previewDoc) return;
+    const generation = ++renderGeneration.current;
+    void (async () => {
+      try {
+        const { renderSheetPreview } = await import("../../lib/surveys/sheetRender.ts");
+        const { canvas } = await renderSheetPreview(previewDoc.bytes, previewPage, previewScale);
+        if (renderGeneration.current !== generation) return;
+        setPreviewUrl(canvas.toDataURL("image/png"));
+      } catch {
+        if (renderGeneration.current === generation) {
+          setPreviewError("The preview renderer could not draw the sheet.");
+        }
+      }
+    })();
+  }, [previewDoc, previewPage, previewScale]);
 
   if (!open) return null;
 
@@ -159,61 +348,44 @@ export default function MapExportModal({
     setExporting(true);
     setSuccess(false);
     setErrorMessage(null);
+    setStageLabel(STAGE_LABELS.tiles);
 
     try {
       const slug = (clientName || "survey")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "_");
       const timestamp = new Date().toISOString().slice(0, 10);
+      const baseName = `${slug}_survey_sheet_${timestamp}`;
 
-      const options: MapExportOptions = {
-        title: normalizePdfTitle(title),
-        client: clientName,
-        categoryName: domain,
-        coords: viewInfo.coords || `${target.latitude.toFixed(4)}°, ${target.longitude.toFixed(4)}°`,
-        includeLegend,
-        includeHeader,
-        includeNorthArrow,
-        includeScaleBar,
-        includeNeatline: true,
-        target,
-        aoiBounds,
-        frame,
-        classifiedTiles,
-        candidates,
-        targetDepthLabel,
-        fieldTargetLabel,
-        summaryRows,
-        table,
-        legendItems,
-        legendTitle,
-        attribution: basemap.attribution,
-        tileUrlTemplate: basemap.tileUrlTemplate,
-        maxNativeZoom: basemap.maxNativeZoom,
-        contextFraction,
-        panelSide,
-        northArrowPlacement: northPlacement,
-        scaleBarPlacement: scalePlacement,
-        gridLineCount,
-        coordMode,
-        opticalSource,
-      };
-
-      await exportMapAsPdf(map, `${slug}_survey_sheet_${timestamp}.pdf`, options);
+      const built = await buildMapSheetPdf(map, { ...layoutOptions, dpi }, setStageLabel);
+      if (format === "pdf") {
+        downloadBlob(
+          new Blob([new Uint8Array(built.bytes)], { type: "application/pdf" }),
+          `${baseName}.pdf`,
+        );
+      } else {
+        setStageLabel("Rendering sheet image…");
+        const { downloadSheetImages } = await import("../../lib/surveys/sheetRender.ts");
+        await downloadSheetImages(built.bytes, baseName, format, dpi, (page, total) =>
+          setStageLabel(`Rendering sheet image ${page} of ${total}…`),
+        );
+      }
       setSuccess(true);
       setTimeout(() => {
-        setSuccess(false);
-        onClose();
+        close();
       }, 1400);
     } catch (err) {
-      console.error("Failed to export map sheet PDF:", err);
+      console.error("Failed to export map sheet:", err);
       setErrorMessage(
-        err instanceof Error ? err.message : "Failed to export map sheet PDF. Please try again."
+        err instanceof Error ? err.message : "Failed to export the map sheet. Please try again.",
       );
     } finally {
       setExporting(false);
+      setStageLabel(null);
     }
   }
+
+  const pageCount = previewDoc?.pageCount ?? 1;
 
   return (
     <div
@@ -222,8 +394,8 @@ export default function MapExportModal({
       aria-modal="true"
       aria-labelledby="export-modal-title"
     >
-      <div className="relative w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between border-b border-border pb-3">
+      <div className="relative flex h-[min(94vh,880px)] w-full max-w-6xl flex-col rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <FileText className="size-4.5" />
@@ -231,13 +403,18 @@ export default function MapExportModal({
             <div>
               <h3 id="export-modal-title" className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                 <span>Export Map Sheet</span>
-                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">PDF</span>
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary uppercase">
+                  {format}
+                </span>
               </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Cartographic layout · live preview · {SHEET_PAGE_SIZES[pageSize].label}
+              </p>
             </div>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <X className="size-4" />
@@ -245,204 +422,329 @@ export default function MapExportModal({
           </button>
         </div>
 
-        <div className="mt-4 space-y-3.5">
-          {/* Document Title */}
-          <div>
-            <label className="text-xs font-medium text-foreground">Map Sheet Title Block</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium"
-              placeholder="Official map sheet title..."
-            />
-          </div>
-
-          {/* Surveyor Elements Options */}
-          <div className="rounded-lg border border-border/70 bg-card/60 p-3 space-y-2 text-xs">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground block">
-              Cartographic Elements
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeHeader}
-                  onChange={(e) => setIncludeHeader(e.target.checked)}
-                  className="rounded border-input text-primary focus:ring-primary"
-                />
-                <span>Title block &amp; GPS</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeNorthArrow}
-                  onChange={(e) => setIncludeNorthArrow(e.target.checked)}
-                  className="rounded border-input text-primary focus:ring-primary"
-                />
-                <span>North arrow</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeScaleBar}
-                  onChange={(e) => setIncludeScaleBar(e.target.checked)}
-                  className="rounded border-input text-primary focus:ring-primary"
-                />
-                <span>Segmented scale bar</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeLegend}
-                  onChange={(e) => setIncludeLegend(e.target.checked)}
-                  className="rounded border-input text-primary focus:ring-primary"
-                />
-                <span>Classification legend</span>
-              </label>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          {/* Live preview of the real document */}
+          <div className="flex min-h-0 flex-1 flex-col border-b border-border bg-muted/40 lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between gap-2 border-b border-border/70 px-4 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Live preview
+                </span>
+                {previewBusy ? (
+                  <Loader className="size-3 animate-spin text-muted-foreground" aria-label="Updating preview" />
+                ) : null}
+              </div>
+              {pageCount > 1 ? (
+                <div className="flex rounded-md border border-border p-0.5" role="tablist" aria-label="Sheet pages">
+                  {Array.from({ length: pageCount }, (_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      role="tab"
+                      aria-selected={previewPage === index}
+                      onClick={() => setPreviewPage(index)}
+                      className={cn(
+                        "rounded px-2 py-0.5 text-[11px] transition-colors",
+                        previewPage === index
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {index === 0 ? "Sheet 1 · Map" : `Sheet ${index + 1} · Record`}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <span className="hidden text-[10.5px] font-mono text-muted-foreground sm:block">
+                {orientation === "landscape" ? "Landscape" : "Portrait"} · {Math.round(geometry.widthPt)}×{Math.round(geometry.heightPt)} pt
+              </span>
             </div>
+
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt={`Preview of ${title}, sheet ${previewPage + 1}`}
+                  className="max-h-full max-w-full border border-border bg-white shadow-lg"
+                  draggable={false}
+                />
+              ) : previewError ? null : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <Loader className="size-5 animate-spin" />
+                  <span className="text-xs">Composing the sheet preview…</span>
+                </div>
+              )}
+            </div>
+
+            {previewError ? (
+              <div className="border-t border-destructive/40 bg-destructive/10 px-4 py-2 text-[11px] text-destructive">
+                {previewError}
+              </div>
+            ) : (
+              <div className="border-t border-border/70 px-4 py-1.5 text-[10.5px] text-muted-foreground">
+                Preview at screen resolution — the export re-renders imagery at {dpi} DPI.
+              </div>
+            )}
           </div>
 
-          {/* Sheet layout & extent */}
-          <div className="rounded-lg border border-border/70 bg-card/60 p-3 space-y-3 text-xs">
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground block">
-              Sheet Layout &amp; Extent
-            </span>
-            <PlacementRow
-              label="Sheet extent"
-              value={frame}
-              onChange={setFrame}
-              options={[
-                ["view", "Map view"],
-                ["survey", "Survey area"],
-              ]}
-            />
-            {frame === "survey" ? (
+          {/* Layout controls */}
+          <div className="w-full shrink-0 space-y-4 overflow-y-auto p-4 lg:w-[340px]">
+            <div className="rounded-lg border border-border/70 bg-card/60 p-3 space-y-3 text-xs">
+              <SectionTitle>Layout &amp; Paper</SectionTitle>
+              <label className="block">
+                <span className="font-medium text-foreground">Page size</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(e.target.value as SheetPageSizeId)}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  {(Object.keys(SHEET_PAGE_SIZES) as SheetPageSizeId[]).map((id) => (
+                    <option key={id} value={id}>
+                      {SHEET_PAGE_SIZES[id].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <PlacementRow
+                label="Orientation"
+                value={orientation}
+                onChange={setOrientation}
+                options={[
+                  ["landscape", "Landscape"],
+                  ["portrait", "Portrait"],
+                ]}
+              />
+              <PlacementRow
+                label="Title panel"
+                value={panelSide}
+                onChange={setPanelSide}
+                options={[
+                  ["right", "Right"],
+                  ["left", "Left"],
+                ]}
+              />
+              <PlacementRow
+                label="Sheet extent"
+                value={frame}
+                onChange={setFrame}
+                options={[
+                  ["view", "Map view"],
+                  ["survey", "Survey area"],
+                ]}
+              />
+              {frame === "survey" ? (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">Context around survey area</span>
+                    <span className="font-mono text-muted-foreground">
+                      {Math.round(contextFraction * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={contextFraction}
+                    onChange={(e) => setContextFraction(Number(e.target.value))}
+                    className="mt-1.5 w-full accent-primary"
+                    aria-label="Context around the survey area"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>AOI only</span>
+                    <span>
+                      {extentHintKm !== null
+                        ? `Sheet ≈ ${extentHintKm < 10 ? extentHintKm.toFixed(1) : Math.round(extentHintKm)} km across`
+                        : "Wide"}
+                    </span>
+                    <span>Wide</span>
+                  </div>
+                </div>
+              ) : null}
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">Context around survey area</span>
-                  <span className="font-mono text-muted-foreground">
-                    {Math.round(contextFraction * 100)}%
-                  </span>
+                  <span className="font-medium text-foreground">Grid lines</span>
+                  <span className="font-mono text-muted-foreground">{gridLineCount}</span>
                 </div>
                 <input
                   type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={contextFraction}
-                  onChange={(e) => setContextFraction(Number(e.target.value))}
+                  min={2}
+                  max={12}
+                  step={1}
+                  value={gridLineCount}
+                  onChange={(e) => setGridLineCount(Number(e.target.value))}
                   className="mt-1.5 w-full accent-primary"
-                  aria-label="Context around the survey area"
+                  aria-label="Number of grid lines per axis"
                 />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>AOI only</span>
-                  <span>
-                    {extentHintKm !== null
-                      ? `Sheet ≈ ${extentHintKm < 10 ? extentHintKm.toFixed(1) : Math.round(extentHintKm)} km across`
-                      : "Wide"}
-                  </span>
-                  <span>Wide</span>
-                </div>
               </div>
-            ) : null}
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-foreground">Grid lines</span>
-                <span className="font-mono text-muted-foreground">{gridLineCount}</span>
-              </div>
-              <input
-                type="range"
-                min={2}
-                max={12}
-                step={1}
-                value={gridLineCount}
-                onChange={(e) => setGridLineCount(Number(e.target.value))}
-                className="mt-1.5 w-full accent-primary"
-                aria-label="Number of grid lines per axis"
+              <PlacementRow
+                label="Coordinates"
+                value={coordMode}
+                onChange={setCoordMode}
+                options={[
+                  ["utm", "UTM X/Y"],
+                  ["degrees", "Degrees"],
+                ]}
               />
             </div>
+
+            <div className="rounded-lg border border-border/70 bg-card/60 p-3 space-y-2 text-xs">
+              <SectionTitle>Cartographic Elements</SectionTitle>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeHeader}
+                    onChange={(e) => setIncludeHeader(e.target.checked)}
+                    className="rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span>Title block &amp; GPS</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeNorthArrow}
+                    onChange={(e) => setIncludeNorthArrow(e.target.checked)}
+                    className="rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span>North arrow</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeScaleBar}
+                    onChange={(e) => setIncludeScaleBar(e.target.checked)}
+                    className="rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span>Segmented scale bar</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeLegend}
+                    onChange={(e) => setIncludeLegend(e.target.checked)}
+                    className="rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span>Classification legend</span>
+                </label>
+              </div>
+              <PlacementRow
+                label="North arrow"
+                value={northPlacement}
+                onChange={setNorthPlacement}
+                options={[
+                  ["panel", "Title panel"],
+                  ["map", "On map"],
+                ]}
+              />
+              <PlacementRow
+                label="Scale bar"
+                value={scalePlacement}
+                onChange={setScalePlacement}
+                options={[
+                  ["panel", "Title panel"],
+                  ["map", "On map"],
+                ]}
+              />
+            </div>
+
+            <div className="rounded-lg border border-border/70 bg-card/60 p-3 space-y-2.5 text-xs">
+              <SectionTitle>Title Block</SectionTitle>
+              <TextField label="Map sheet title" value={title} onChange={setTitle} placeholder="Official map sheet title…" />
+              <TextField label="Project" value={project} onChange={setProject} placeholder="Project name…" />
+              <TextField label="Organization" value={organization} onChange={setOrganization} placeholder="Firm or agency…" />
+              <TextField label="Surveyor" value={surveyor} onChange={setSurveyor} placeholder="Responsible professional…" />
+              <TextField
+                label="Sheet number"
+                value={sheetNumber}
+                onChange={setSheetNumber}
+                placeholder="Auto · EO-YYYYMMDD-HHMM"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
+          <div className="flex flex-wrap items-center gap-3">
             <PlacementRow
-              label="Coordinates"
-              value={coordMode}
-              onChange={setCoordMode}
+              label="Format"
+              value={format}
+              onChange={setFormat}
               options={[
-                ["utm", "UTM X/Y"],
-                ["degrees", "Degrees"],
+                ["pdf", "PDF"],
+                ["png", "PNG"],
+                ["jpeg", "JPEG"],
               ]}
             />
-            <PlacementRow
-              label="Title panel"
-              value={panelSide}
-              onChange={setPanelSide}
-              options={[
-                ["right", "Right"],
-                ["left", "Left"],
-              ]}
-            />
-            <PlacementRow
-              label="North arrow"
-              value={northPlacement}
-              onChange={setNorthPlacement}
-              options={[
-                ["panel", "Title panel"],
-                ["map", "On map"],
-              ]}
-            />
-            <PlacementRow
-              label="Scale bar"
-              value={scalePlacement}
-              onChange={setScalePlacement}
-              options={[
-                ["panel", "Title panel"],
-                ["map", "On map"],
-              ]}
-            />
+            <label className="flex items-center gap-2 text-xs">
+              <span className="font-medium text-foreground">DPI</span>
+              <select
+                value={dpi}
+                onChange={(e) => setDpi(Number(e.target.value))}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                aria-label="Export resolution"
+              >
+                <option value={150}>150 · Draft</option>
+                <option value={220}>220 · Standard</option>
+                <option value={300}>300 · Print</option>
+              </select>
+            </label>
+            <span className="hidden text-[10.5px] text-muted-foreground md:block">
+              {format === "pdf"
+                ? "Vector PDF — text stays crisp at any zoom"
+                : "One image per sheet at the chosen DPI"}
+            </span>
           </div>
 
-          {errorMessage ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive flex items-center justify-between">
-              <span>{errorMessage}</span>
-              <button
-                type="button"
-                onClick={() => setErrorMessage(null)}
-                className="text-destructive font-bold ml-2 hover:opacity-75"
-              >
-                ×
-              </button>
-            </div>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {exporting && stageLabel ? (
+              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Loader className="size-3 animate-spin" />
+                {stageLabel}
+              </span>
+            ) : null}
+            <Button type="button" variant="ghost" size="sm" onClick={close} disabled={exporting}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleExport()}
+              disabled={exporting || !map}
+              className="gap-1.5"
+            >
+              {exporting ? (
+                <>
+                  <Loader className="size-3.5 animate-spin" />
+                  <span>Exporting…</span>
+                </>
+              ) : success ? (
+                <>
+                  <Check className="size-3.5 text-success" />
+                  <span>Downloaded!</span>
+                </>
+              ) : (
+                <>
+                  {format === "pdf" ? <Download className="size-3.5" /> : <ImageIcon className="size-3.5" />}
+                  <span>Export {format === "pdf" ? "Map Sheet (PDF)" : `Sheet (${format.toUpperCase()})`}</span>
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-end gap-2 border-t border-border pt-3">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={exporting}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => void handleExport()}
-            disabled={exporting || !map}
-            className="gap-1.5"
-          >
-            {exporting ? (
-              <>
-                <Loader className="size-3.5 animate-spin" />
-                <span>Generating High-Res PDF...</span>
-              </>
-            ) : success ? (
-              <>
-                <Check className="size-3.5 text-success" />
-                <span>Downloaded PDF!</span>
-              </>
-            ) : (
-              <>
-                <Download className="size-3.5" />
-                <span>Download Map Sheet (PDF)</span>
-              </>
-            )}
-          </Button>
-        </div>
+        {errorMessage ? (
+          <div className="absolute inset-x-5 bottom-16 rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive flex items-center justify-between">
+            <span>{errorMessage}</span>
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className="text-destructive font-bold ml-2 hover:opacity-75"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

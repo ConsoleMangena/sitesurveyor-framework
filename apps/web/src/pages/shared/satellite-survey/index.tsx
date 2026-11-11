@@ -521,6 +521,29 @@ function SurveyWorkbench({
   const tilesUnavailable = unavailableTilesSource !== null && unavailableTilesSource === tilesSource;
   const handleTilesUnavailable = useCallback(() => setUnavailableTilesSource(tilesSource), [tilesSource]);
 
+  // One stable loader per deliverable: the sheet export caches the archive
+  // bytes by this function's identity, so the live preview's repeated builds
+  // read the same copy instead of re-minting a link and re-fetching the file.
+  const loadTilesArchive = useCallback(async () => {
+    if (!tilesDeliverable) {
+      throw new Error("This run did not publish a tile archive.");
+    }
+    const url = await deliverableUrl(tilesDeliverable);
+    if (!url) {
+      throw new Error("The tile archive link could not be minted.");
+    }
+    const res = await fetch(url, {
+      signal:
+        typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(30000)
+          : undefined,
+    });
+    if (!res.ok) {
+      throw new Error(`The tile archive answered ${res.status}.`);
+    }
+    return await res.arrayBuffer();
+  }, [tilesDeliverable]);
+
   // Signed deliverable URLs are keyed by the deliverable they were resolved
   // from, so a changed or removed deliverable reads as null without any
   // synchronous state reset in an effect.
@@ -1290,28 +1313,13 @@ function SurveyWorkbench({
                 // short-lived link is minted as the export starts, the file is
                 // fetched once, and nothing is ranged per tile through the
                 // delivery proxy.
-                loadArchive: async () => {
-                  const url = await deliverableUrl(tilesDeliverable);
-                  if (!url) {
-                    throw new Error("The tile archive link could not be minted.");
-                  }
-                  const res = await fetch(url, {
-                    signal:
-                      typeof AbortSignal !== "undefined" &&
-                      typeof AbortSignal.timeout === "function"
-                        ? AbortSignal.timeout(30000)
-                        : undefined,
-                  });
-                  if (!res.ok) {
-                    throw new Error(`The tile archive answered ${res.status}.`);
-                  }
-                  return await res.arrayBuffer();
-                },
+                loadArchive: loadTilesArchive,
               }
             : null
         }
         categoryName={CATEGORY_LABELS[jobDossierCategory].sheet}
         clientName={values.clientName}
+        projectName={project?.name ?? openedJob?.project_name ?? undefined}
         aoiBounds={surveyBounds}
         candidates={exportCandidates}
         targetDepthLabel={exportTargetDepthLabel}
