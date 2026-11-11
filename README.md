@@ -4,12 +4,13 @@
 
 <h1 align="center">SiteSurveyor</h1>
 
-<p align="center"><strong>Your surveying reference point.</strong><br />
-An Eineva Labs product: an open-source workspace for running surveying projects end to end.</p>
+<p align="center"><strong>The only workspace a surveyor needs to manage and execute a project.</strong><br />
+An Eineva Labs product and open-source initiative for safer digital surveying.</p>
 
-SiteSurveyor is a web application that replaces a paper field book and a patchwork of disconnected
-tools with one workspace. A surveyor plans the job, prices the quote, dispatches the crew, collects
-evidence, and invoices — and every record stays attached to the project it belongs to.
+Surveying work usually lives in a paper field book, a spreadsheet and three disconnected systems.
+SiteSurveyor keeps it in one continuous record instead: plan the job, price the quote, dispatch the
+crew, collect the evidence, invoice the client — and every record stays attached to the project it
+belongs to.
 
 Sensitive survey content stays off-chain in Supabase. Solana is used only where it adds something:
 wallet sign-in, USDC settlement, and a wallet-signed SHA-256 digest that proves a file has not
