@@ -82,3 +82,6 @@ apps/web/coverage/
 /manifests/
 /manifests-v2/
 /metadata/
+
+# Working documents kept local
+/PROMO_VIDEO.md
