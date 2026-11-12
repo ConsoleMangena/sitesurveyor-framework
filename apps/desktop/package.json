@@ -1,0 +1,19 @@
+{
+  "name": "@sitesurveyor/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri",
+    "tauri:info": "tauri info",
+    "icon": "tauri icon ../web/public/logo.png"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@sitesurveyor/web": "*"
+  }
+}

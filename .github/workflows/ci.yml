@@ -66,6 +66,62 @@ jobs:
       - name: Build
         run: npm run build
 
+  desktop:
+    name: Desktop shell (Rust)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # The shell wraps the web frontend, so the frontend must exist before the
+      # Rust build embeds it. A placeholder .env is enough: the values end up
+      # in a CI artifact, not a deployment.
+      - name: Build the frontend
+        working-directory: apps/web
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://test.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'test-anon-key' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --legacy-peer-deps
+          {
+            printf 'VITE_SUPABASE_URL=%s\n' "$VITE_SUPABASE_URL"
+            printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_ANON_KEY"
+          } > .env
+          npm run build
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      # `cargo check` compiles the shell and the Tauri config (capabilities,
+      # bundle metadata, embedded assets) without the cost of a release build.
+      - name: Check
+        run: cargo check --locked
+
+      - name: Clippy
+        run: cargo clippy --locked -- -D warnings
+
+      - name: Format
+        run: cargo fmt --check
+
   engine:
     name: Engine tests (Python)
     runs-on: ubuntu-latest

@@ -2,7 +2,8 @@
 
 The implemented client is a responsive React web app backed by Supabase, with Solana for identity,
 payments and file-integrity anchors, plus an AI agent that can inspect and act on allowlisted
-workspace data. .NET desktop and Java Android are platform targets, not current implementations.
+workspace data. The desktop shell is a Tauri (Rust) window over the same web frontend; the mobile
+shell is still a placeholder.
 
 The architecture is **hybrid by default**: confidential survey content and operational records stay
 off-chain, and Solana carries only explicit transactions and the minimal file-digest statement.
@@ -20,8 +21,8 @@ Neither anchoring mode treats blockchain as a substitute for confidential storag
    behaviour and confirmation semantics.
 5. **Support field and office use.** Responsive, accessible, installable PWA that is explicit about
    offline and network state.
-6. **State limitations honestly.** Coming-soon tools, synthetic market data, devnet defaults and
-   unimplemented native shells stay identifiable.
+6. **State limitations honestly.** Coming-soon tools, synthetic market data, devnet defaults and the
+   unimplemented mobile shell stay identifiable.
 
 ## 2. System context
 
@@ -66,6 +67,7 @@ flowchart TB
 | Component | Responsibility |
 | --- | --- |
 | `apps/web` | React SPA/PWA: workspaces, projects, jobs, files, finance, market, transport preview |
+| `apps/desktop` | Tauri (Rust) shell over `apps/web`: native window, installers, external-link handling |
 | `apps/engine` | Python satellite engine — worker polls `survey_runs`, runs raster pipelines (water, minerals, soil, hazard), publishes deliverables, exposes MCP |
 | `supabase/functions/ai-chat` | Authenticated AI endpoint; streams NDJSON events into the shared agent core |
 | `supabase/functions/_shared` | Model routing, tools, memory, skills, workflows |
@@ -104,6 +106,37 @@ drafting plate beside a working column, split 44/56 above 1024 px, one `--auth-m
 working column, and a full-bleed column on phones. Each page owns only its form state, validation and
 copy, which is why the screens stay identical. The plate is decorative (`aria-hidden`) and states
 that its digests are a specimen.
+
+## 4.1 Desktop shell
+
+`apps/desktop` is a Tauri v2 shell that packages the built `apps/web` bundle as a native window.
+It owns no business logic: the window loads the same SPA, and auth, data, AI chat and payments
+run exactly as they do in a browser.
+
+The shell's one real responsibility is keeping the user inside the app. The frontend links out to
+documentation, Solana Explorer and the public site; in a browser those open a new tab, but in a
+native window an unhandled navigation would replace the app with the target page. The shell
+therefore cancels off-origin navigations and opens them in the system browser, and refuses to
+create a second native window for `target="_blank"`.
+
+Two further differences from the browser build: the desktop bundle does not register the PWA
+service worker (the installer already controls the version on disk, so a worker would only serve a
+stale bundle after an update), and the packaged window runs under a content security policy.
+The policy allows any HTTPS origin for `connect-src` and `img-src` because the app talks to a
+configurable Supabase project, a configurable Solana RPC and third-party map tiles — those origins
+are not knowable when the installer is built.
+
+**Auth redirects come back through a bridge.** GitHub sign-in, email confirmation and password reset
+are finished by the *system browser*, which knows nothing about the app's window — and GoTrue only
+redirects that browser to a URL the Supabase project allowlists, which can never include
+`http://tauri.localhost`. The browser is therefore sent to a bridge page on the hosted web build
+(already covered by the web origin's allowlist entry); that page forwards the URL to the app's
+registered `sitesurveyor://app` protocol, the operating system launches the app, and the shell turns
+the URL back into an in-app path. The frontend then sees exactly the URL it would have seen in a
+browser, and the Supabase client exchanges the PKCE code as usual — the verifier is waiting in the
+window's local storage, because the app origin does not change between runs. No dashboard
+configuration is needed, but the bridge pages ship with the web bundle, so they must be deployed
+before the desktop flow can return. See [AUTHENTICATION.md](AUTHENTICATION.md).
 
 ## 5. Authentication
 

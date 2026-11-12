@@ -85,6 +85,43 @@ SIWE/SIWS policy, all of which must pass: parse → `domain` matches the URI hos
 Password policy: sign-in accepts any non-empty password so existing short-password accounts are not
 locked out; sign-up and reset require at least 8 characters including a letter.
 
+### Redirect targets
+
+Every redirect-based flow (GitHub, email confirmation, password reset) ends at one URL. In the browser
+that URL is this origin plus the app path — `/auth/callback`, `/reset-password`, `/verify-email`.
+
+In the desktop shell the flow is finished by the **system browser**, which knows nothing about the
+app's window, and GoTrue will only redirect that browser to a URL the Supabase project allowlists.
+The shell's own origin — `http://tauri.localhost` — is one a browser can never reach, so it cannot be
+allowlisted. The browser is therefore sent to a **bridge page on the hosted web build**, and that
+page forwards the URL to the app over its registered `sitesurveyor://app` protocol:
+
+```text
+app → system browser → GitHub → Supabase → https://sitesurveyor.tech/auth/desktop-callback.html?code=…
+    → sitesurveyor://app/auth/callback?code=… → operating system → app → /auth/callback?code=…
+```
+
+The bridge lives in `apps/web/public/auth/` and is deployed with the web build. It works because the
+web origin is already in the allowlist (`https://sitesurveyor.tech/*`); **no custom-scheme allowlist
+entry is needed**. The page copies the query and fragment across verbatim and never reads the code —
+the code is only usable with the PKCE verifier held by the desktop window.
+
+| Flow | Browser | Desktop shell |
+| --- | --- | --- |
+| GitHub sign-in / link | `<origin>/auth/callback` | `<web origin>/auth/desktop-callback.html` → `sitesurveyor://app/auth/callback` |
+| Email confirmation | `<origin>/auth/callback` | `<web origin>/auth/desktop-callback.html` → `sitesurveyor://app/auth/callback` |
+| Password reset | `<origin>/reset-password` | `<web origin>/auth/desktop-reset.html` → `sitesurveyor://app/reset-password` |
+
+There is one bridge page per flow rather than one page with a destination parameter, so a crafted
+link cannot make the bridge forward somewhere unexpected. The web origin comes from
+`VITE_PUBLIC_APP_URL` (default `https://sitesurveyor.tech`); `apps/web/src/lib/platform.ts` builds
+the targets and `apps/desktop/src-tauri/src/lib.rs` routes the deep links back in.
+
+**Deploy the web app after changing the bridge**, or the browser will land on a 404 instead of
+handing the flow back. Setting the site URL to the web origin in the Supabase dashboard is not
+enough on its own: GoTrue falls back to the site URL root when a redirect target is not allowlisted,
+which loses the callback entirely.
+
 ## 5. Security properties
 
 | Threat | Defence |
@@ -112,8 +149,9 @@ GitHub stays disabled locally until an OAuth app exists
 
 Hosted project: enable the Web3 Ethereum and Solana providers, GitHub (callback URL `<origin>/auth/callback`),
 manual linking, email confirmation, and a real SMTP provider — without SMTP, confirmation and reset
-mail never arrive. Set the site URL and redirect URLs
-(`/auth/callback`, `/reset-password`, `/verify-email`, `/*`).
+mail never arrive. Set the site URL and redirect URLs (`/auth/callback`, `/reset-password`,
+`/verify-email`, `/*`). The desktop shell needs no entry of its own: it comes back through the bridge
+page on this origin, which is covered by `/*`.
 
 Edge function secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` are injected
 automatically (the code also accepts `SUPABASE_SECRET_KEY` / `SUPABASE_PUBLISHABLE_KEY`). Set

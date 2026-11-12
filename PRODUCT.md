@@ -7,8 +7,9 @@
 web
 
 Vite + React single-page app in `apps/web`, shipped as a responsive web app with desktop-console and
-mobile-web layouts. `apps/desktop` (.NET) and `apps/mobile` (Java Android) are placeholders for platform
-targets, not working clients. The Python engine at `apps/engine` is a backend worker.
+mobile-web layouts. `apps/desktop` is a Tauri (Rust) shell that packages the same web frontend as a
+native desktop window; `apps/mobile` is a placeholder for the mobile shell. The Python engine at
+`apps/engine` is a backend worker.
 
 ## Users
 

@@ -20,6 +20,7 @@ import { FontProvider } from './context/font-provider.tsx'
 import { SolanaWalletProvider } from './features/phantom/SolanaWalletProvider.tsx'
 import { registerSW } from 'virtual:pwa-register'
 import { clearSiteData } from './lib/clearSiteData.ts'
+import { isDesktopShell, isMobileShell } from './lib/platform.ts'
 import { initTheme } from './lib/theme.ts'
 
 // Apply the persisted/system theme before the first paint so there is no
@@ -35,7 +36,11 @@ declare global {
 
 // Register the generated service worker in production builds so the app shell
 // (HTML, JS, CSS, assets) is cached for offline use.
-if (import.meta.env.PROD) {
+//
+// The desktop shell skips it: the app ships as an installer, so the service
+// worker would only serve a stale bundle after an update — the installer
+// already controls the version on disk.
+if (import.meta.env.PROD && !isDesktopShell()) {
   registerSW({
     immediate: true,
     onOfflineReady() {
@@ -56,7 +61,7 @@ window.clearSiteSurveyorCache = () => clearSiteData()
 // Mobile web builds can run edge-to-edge under the system status/navigation
 // bars. Add a class so CSS can apply safe-area fallbacks on devices that do not
 // expose env(safe-area-inset-*) values (common in older Android WebViews).
-if (import.meta.env.VITE_MOBILE_BUILD === 'true') {
+if (isMobileShell()) {
   document.documentElement.classList.add('mobile-build')
 }
 

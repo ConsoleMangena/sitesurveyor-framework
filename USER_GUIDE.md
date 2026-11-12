@@ -3,8 +3,8 @@
 **Plan the work. Execute the survey. Preserve the evidence. Settle the job.**
 
 This guide covers the implemented web app. Personal and business workspaces expose slightly different
-navigation; platform operators see additional administration views. .NET desktop and Java Android are
-platform targets, not available clients.
+navigation; platform operators see additional administration views. The desktop shell is a Tauri
+(Rust) window over the same web app.
 
 > **Private by default.** Original files stay in Supabase Storage. Hash-only anchoring writes only the
 > attachment ID and SHA-256 digest to Solana. Full-file anchoring is a separate per-file choice and

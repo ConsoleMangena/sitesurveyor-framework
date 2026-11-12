@@ -14,6 +14,7 @@
 
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client.ts";
+import { authRedirectTo } from "../platform.ts";
 import type { AccountType } from "./provisioning.ts";
 
 export interface EmailSignUpInput {
@@ -71,7 +72,7 @@ export async function signUpWithEmail(input: EmailSignUpInput): Promise<AuthResu
           ? { workspace_name: company }
           : {}),
       },
-      emailRedirectTo: buildEmailRedirect(`${window.location.origin}/auth/callback`),
+      emailRedirectTo: buildEmailRedirect("/auth/callback"),
     },
   });
 
@@ -109,7 +110,7 @@ export async function signInWithEmail(
 export async function sendPasswordReset(email: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(
     email.trim().toLowerCase(),
-    { redirectTo: buildEmailRedirect(`${window.location.origin}/reset-password`) },
+    { redirectTo: buildEmailRedirect("/reset-password") },
   );
   if (error) throw authFailure(error);
 }
@@ -176,7 +177,7 @@ export async function resendVerification(email: string): Promise<void> {
     type: "signup",
     email: email.trim().toLowerCase(),
     options: {
-      emailRedirectTo: buildEmailRedirect(`${window.location.origin}/auth/callback`),
+      emailRedirectTo: buildEmailRedirect("/auth/callback"),
     },
   });
   if (error) throw authFailure(error);
@@ -212,7 +213,13 @@ export async function addEmailAndPassword(input: {
   return { needsEmailVerification: !confirmed };
 }
 
-/** Append the current origin so email links land back in this app. */
-function buildEmailRedirect(url: string): string {
-  return url;
+/**
+ * Append the current origin so email links land back in this app.
+ *
+ * In the desktop shell the link goes to the bridge page on the hosted web
+ * build, which hands it to the app over its `sitesurveyor://` protocol — see
+ * `authRedirectTo`.
+ */
+function buildEmailRedirect(path: string): string {
+  return authRedirectTo(path)
 }

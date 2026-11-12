@@ -1,0 +1,84 @@
+:root {
+  color-scheme: light dark;
+  --paper: #f6f5f1;
+  --ink: #1c1b18;
+  --muted: #55524a;
+  --button-bg: #1c1b18;
+  --button-ink: #f6f5f1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171614;
+    --ink: #f2efe8;
+    --muted: #b8b3a6;
+    --button-bg: #f2efe8;
+    --button-ink: #171614;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font:
+    15px/1.5 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
+main {
+  width: 100%;
+  max-width: 26rem;
+  text-align: center;
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+}
+
+button {
+  padding: 0.7rem 1.35rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--button-bg);
+  color: var(--button-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.hint {
+  margin: 1.25rem 0 0;
+  font-size: 0.8125rem;
+}

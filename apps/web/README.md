@@ -62,8 +62,11 @@ src/
 └── main.tsx        # bootstrap and polyfills
 ```
 
-`apps/desktop`, `apps/mobile` and `apps/live` are placeholders for the .NET and Java targets; this
-package is the only implemented client. `apps/engine` is a backend worker.
+`apps/desktop` is a Tauri (Rust) shell that packages this web frontend as a native window;
+`apps/mobile` and `apps/live` remain placeholders. This package is the shared frontend.
+`apps/engine` is a backend worker. The desktop shell skips the service worker and sends external
+links to the system browser. Auth redirects in the desktop shell come back through the bridge pages
+in `public/auth/`, which ship with this app — see the [desktop shell guide](../desktop/README.md).
 
 ## Implementation contracts
 

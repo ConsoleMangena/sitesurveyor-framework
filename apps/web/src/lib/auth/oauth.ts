@@ -14,13 +14,21 @@
 
 import type { User, UserIdentity } from "@supabase/supabase-js";
 import { supabase } from "../supabase/client.ts";
+import { authRedirectTo } from "../platform.ts";
 
 export const GITHUB_PROVIDER = "github";
 
-/** Where GitHub sends the browser back after authorising. */
+/**
+ * Where GitHub sends the browser back after authorising.
+ *
+ * In the browser that is this origin. In the desktop shell the sign-in is
+ * completed by the system browser, so the redirect goes to the bridge page on
+ * the hosted web build, which hands the result to the app over its
+ * `sitesurveyor://` protocol — see `authRedirectTo`.
+ */
 function githubRedirectTo(): string {
   if (typeof window === "undefined") return "";
-  return `${window.location.origin}/auth/callback`;
+  return authRedirectTo("/auth/callback");
 }
 
 /**

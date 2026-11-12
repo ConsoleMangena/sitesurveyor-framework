@@ -28,14 +28,16 @@ set, so a question can turn into a verified action.
 | Market | Instruments, professionals, firms, jobs, training and map discovery, with on-chain payment |
 | Workspaces | Personal and business workspaces with row-level security, plus platform administration views |
 
-The **web app is the only implemented client**. `apps/desktop` (.NET) and `apps/mobile` (Java) are
-placeholders for platform targets, not working clients. Commit defaults are **Solana devnet** and
-**PesePay sandbox** — demonstration values, not production settlement.
+The **web app is the shared frontend**. `apps/desktop` is a Tauri (Rust) shell that packages it as a
+native window; `apps/mobile` is still a placeholder for the mobile shell. Commit defaults are **Solana
+devnet** and **PesePay sandbox** — demonstration values, not production settlement.
 
 ## Repository layout
 
 ```text
-apps/web/         React 19 + TypeScript PWA (the application)
+apps/web/         React 19 + TypeScript PWA (the shared frontend)
+apps/desktop/     Tauri (Rust) desktop shell over apps/web (Windows, macOS, Linux)
+apps/mobile/      Placeholder for the Tauri (Rust) mobile shell (Android / iOS)
 apps/engine/      Python satellite survey engine (worker, MCP server, CLI)
 ai-gateway/       Optional self-hosted AI host + SiteSurveyor MCP tools
 supabase/         Postgres schema, RLS policies and Edge Functions (AI, payments, anchoring)
@@ -57,6 +59,15 @@ Root scripts: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run lint
 Only `VITE_*` values reach the browser, so they must be treated as public — never put service-role
 keys, seed phrases or provider secrets in `apps/web/.env`.
 
+The desktop shell packages the same web app as a native window. It needs a Rust toolchain and
+the platform build tools — see the [desktop shell guide](apps/desktop/README.md).
+
+```bash
+npm --prefix apps/desktop install
+npm run dev:desktop        # native window against the dev server
+npm run build:desktop      # installers in apps/desktop/src-tauri/target/release/bundle
+```
+
 ## Read next
 
 | Document | Contents |
@@ -67,6 +78,7 @@ keys, seed phrases or provider secrets in `apps/web/.env`.
 | [Authentication](AUTHENTICATION.md) | Email, GitHub and wallet sign-in |
 | [Product brief](PRODUCT.md) | Users, positioning and constraints |
 | [Web app guide](apps/web/README.md) | Frontend setup, structure, PWA and testing |
+| [Desktop shell guide](apps/desktop/README.md) | Tauri shell: toolchain, dev loop, installers |
 | [Engine guide](apps/engine/README.md) | Satellite analysis worker and MCP server |
 | [Contributing](CONTRIBUTING.md) | Setup, checks and pull request expectations |
 

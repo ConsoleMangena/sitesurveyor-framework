@@ -2,14 +2,26 @@
   "name": "sitesurveyorsdk",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.16.0",
+  "workspaces": [
+    "apps/web",
+    "apps/desktop",
+    "packages/*",
+    "ai-gateway",
+    "ai-gateway/sitesurveyor-mcp",
+    "scripts/ai-eval"
+  ],
   "scripts": {
-    "dev": "npm --prefix apps/web run dev",
-    "dev:web": "npm --prefix apps/web run dev",
-    "build": "npm --prefix apps/web run build",
-    "lint": "npm --prefix apps/web run lint",
-    "typecheck": "npm --prefix apps/web run typecheck",
-    "test": "npm --prefix apps/web run test",
-    "test:coverage": "npm --prefix apps/web run test:coverage",
+    "dev": "turbo run dev --filter=@sitesurveyor/web",
+    "dev:web": "turbo run dev --filter=@sitesurveyor/web",
+    "dev:desktop": "turbo run dev --filter=@sitesurveyor/desktop",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=@sitesurveyor/web",
+    "build:desktop": "turbo run build --filter=@sitesurveyor/desktop",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
     "supabase": "npx supabase",
     "db:push": "npx supabase db push",
     "db:reset": "npx supabase db reset",
@@ -25,7 +37,8 @@
     "@noble/hashes": "^2.4.0",
     "@scure/base": "^2.4.0",
     "@scure/bip39": "^2.4.0",
-    "supabase": "^2.98.0"
+    "supabase": "^2.98.0",
+    "turbo": "^2.11.11"
   },
   "allowScripts": {
     "supabase@2.98.0": true

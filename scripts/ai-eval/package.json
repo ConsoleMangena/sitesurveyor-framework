@@ -1,3 +1,13 @@
 {
-  "type": "module"
+  "name": "@sitesurveyor/ai-eval",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "node run.ts",
+    "skills-check": "node skills-check.ts",
+    "memory-check": "node memory-check.ts",
+    "models-check": "node models-check.ts",
+    "rounds-check": "node rounds-check.ts"
+  }
 }

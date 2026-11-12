@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -8,6 +9,21 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const requireFromConfig = createRequire(import.meta.url)
+
+/**
+ * Absolute path to a file inside the installed `@solana/web3.js` package.
+ *
+ * The package is hoisted to the workspace root by `npm install`, but a nested
+ * copy under `apps/web/node_modules` is used when one exists. Resolving through
+ * Node picks whichever copy is actually installed instead of assuming one.
+ */
+function solanaWeb3File(relative: string): string {
+  return path.join(
+    path.dirname(requireFromConfig.resolve('@solana/web3.js/package.json')),
+    relative,
+  )
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -23,6 +39,11 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // The auth bridge pages (public/auth/desktop-*.html) are reached with a
+        // `?code=` query string, which a precached URL does not match, so the
+        // SPA navigation fallback would otherwise serve index.html and swallow
+        // the callback. Let those navigations go to the network.
+        navigateFallbackDenylist: [/^\/auth\/desktop-/],
         globPatterns: [
           '**/*.{js,css,html,ico,png,svg,json,woff2,webmanifest}',
         ],
@@ -115,10 +136,7 @@ export default defineConfig({
       // never open websocket subscriptions).
       ...(process.env.VITEST
         ? {
-            '@solana/web3.js': path.resolve(
-              __dirname,
-              './node_modules/@solana/web3.js/lib/index.browser.esm.js',
-            ),
+            '@solana/web3.js': solanaWeb3File('lib/index.browser.esm.js'),
             'rpc-websockets': path.resolve(
               __dirname,
               './src/test-shims/rpc-websockets.ts',
@@ -140,6 +158,7 @@ export default defineConfig({
     // would otherwise fail before running. Values are inert placeholders —
     // no test should reach the network.
     env: {
+      VITE_PUBLIC_APP_URL: process.env.VITE_PUBLIC_APP_URL ?? 'https://sitesurveyor.tech',
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? 'https://test.supabase.co',
       VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY ?? 'test-anon-key',
       VITE_SOLANA_CLUSTER: process.env.VITE_SOLANA_CLUSTER ?? 'devnet',

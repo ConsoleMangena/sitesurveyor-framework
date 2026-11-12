@@ -1,11 +1,12 @@
 {
-  "name": "sitesurveyor-ai-host",
+  "name": "@sitesurveyor/ai-gateway",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "description": "Serves the built SiteSurveyor frontend and exposes /api/chat — the offline fallback for the ai-chat Edge Function, backed by NVIDIA NIM (Nemotron).",
   "scripts": {
-    "start": "node ai-gateway-server.ts"
+    "start": "node ai-gateway-server.ts",
+    "build": "node -e \"console.log('AI gateway ready')\""
   },
   "dependencies": {
     "http-proxy": "^1.18.1"

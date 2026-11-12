@@ -54,7 +54,8 @@ The underlying data is real: `project_cad_drawings` and `project_cad_metrics` ex
    creates `project_cad_drawings` or any other `cad_*` relation. A deployer following
    `npm run db:push` against an empty project never gets the table.
 2. **No CAD UI.** `apps/web` has no drawing canvas, no layer manager, and no command-block executor. `src/features/ai/assistantBlocks.ts` parses only `[ASK]` blocks. The single "execute CAD commands" string in the web app is prose copy in `src/pages/shared/AssistantPage.tsx:152`; nothing consumes it.
-3. **`apps/live`, `apps/desktop`, `apps/mobile`** are `.gitkeep` only, so the CAD workspace is not hiding in another client.
+3. **`apps/live` and `apps/mobile` are `.gitkeep` only, and `apps/desktop` is a Tauri shell that
+   packages the same web frontend**, so the CAD workspace is not hiding in another client.
 4. **The AI tools exist but will fail at runtime.** `supabase/functions/_shared/ai-agent.ts:451-535` defines `get_cad_drawing`, `list_cad_layers`, `count_cad_entities`, `inspect_cad_entity`; the allowlist at `ai-agent.ts:170` includes `project_cad_drawings`, and `ai-agent.ts:1239-1248` and `ai-gateway/sitesurveyor-mcp/src/cad.ts:52`, `constants.ts:29`, `tools.ts:82` all read it. Against a freshly migrated database each call returns 404/empty, so the model is likely to report a missing drawing rather than a missing table.
 5. **Trace of the table's real home.** `src/lib/supabase/types.ts:2872` and `:5464` (generated Supabase types) contain `project_cad_drawings` and `project_cad_metrics` with workspace/project foreign keys. That means the relation exists in whatever project the types were generated from, and its migration was never committed here.
 

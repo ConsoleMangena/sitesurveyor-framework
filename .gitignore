@@ -1,35 +1,74 @@
+# Logs
 logs
 *.log
 npm-debug.log*
-/build.txt
-/eslint-out.txt
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-node_modules
-dist
-dist-ssr
+/build.txt
+/eslint-out.txt
+.eslintcache
+
+# Dependencies
+node_modules/
+
+# Monorepo and Build outputs
+.turbo/
+dist/
+dist-ssr/
+build/
+.vite/
+*.tsbuildinfo
+
+# Rust / Tauri build artifacts
+target/
+**/target/
+gen/schemas/
+
+# Environment files
 *.local
 .env
 .env.*
 !.env.example
+ai-gateway/.env
+
+# Supabase
 /supabase/.temp/
 /supabase/.branches/
 supabase/bundle_apply_in_dashboard.sql
-.vscode/*
-!.vscode/extensions.json
-.idea
+
+# Python engine (apps/engine)
+__pycache__/
+*.py[cod]
+.venv/
+.venv*/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+apps/engine/worker.lock
+
+# Test coverage output
+coverage/
+apps/web/coverage/
+
+# OS files
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.agents/
-/
-skills-lock.json
 
+# IDE and Editor configs
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# AI and Agent tooling state
+.agents/
+skills-lock.json
 AGENTS.md
 opencode.json
 opencode.*.json
@@ -53,35 +92,16 @@ CLAUDE.md
 .augment*
 .codex/
 codex.md
-/docs/
-/templates/
-ai-gateway/.env
-
-# Visual companion session state
 .superpowers/
 .cloud-attachments/
-
-# Impeccable design-tool state: review captures, surface briefs, mocks
 .impeccable/
 
-# Reference templates
+# Reference templates & local working docs
+/docs/
+/templates/
 shadcn-admin/
-
-# Python engine (apps/engine)
-__pycache__/
-*.py[cod]
-.venv/
-apps/engine/worker.lock
-
-# Test coverage output
-apps/web/coverage/
-
- 
 /blobs/
- 
 /manifests/
 /manifests-v2/
 /metadata/
-
-# Working documents kept local
 /PROMO_VIDEO.md

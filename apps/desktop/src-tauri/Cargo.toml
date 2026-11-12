@@ -1,0 +1,37 @@
+[package]
+name = "sitesurveyor-desktop"
+version = "0.1.0"
+description = "SiteSurveyor desktop shell (Tauri)"
+authors = ["SiteSurveyor"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "sitesurveyor_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# Opens external links (docs, explorers, the public site) in the system browser
+# so the shell never navigates away from the app.
+tauri-plugin-opener = "2"
+# Registers the sitesurveyor:// protocol so the OAuth callback can come back
+# into the app from the system browser.
+tauri-plugin-deep-link = "2"
+# Windows hands a protocol URL to a new process; this forwards it to the
+# window that is already running.
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+# The frontend is already minified by Vite; Rust-side LTO keeps the shell
+# small without a measurable start-up cost.
+lto = true
+codegen-units = 1
+opt-level = "s"
+panic = "abort"
+strip = true
