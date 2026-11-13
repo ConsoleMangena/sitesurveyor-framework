@@ -19,6 +19,8 @@ import AccountSecurityPage from "./pages/auth/AccountSecurityPage";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 const PublicTransportPage = lazy(() => import("./pages/public/PublicTransportPage"));
+const DownloadsPage = lazy(() => import("./pages/public/DownloadsPage"));
+const AboutPage = lazy(() => import("./pages/public/AboutPage"));
 import {
   getCurrentAppUserWithDiagnostics,
   type AppUserLoadDiagnostics,
@@ -273,6 +275,22 @@ export default function App() {
             element={
               <Suspense fallback={<div className="min-h-screen bg-background" />}>
                 <PublicTransportPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                <AboutPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/downloads"
+            element={
+              <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                <DownloadsPage />
               </Suspense>
             }
           />

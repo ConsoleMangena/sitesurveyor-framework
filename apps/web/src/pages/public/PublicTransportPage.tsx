@@ -5,7 +5,6 @@ import {
   IconAdjustmentsHorizontal,
   IconArrowsExchange,
   IconArrowUpRight,
-  IconBuildingStore,
   IconChevronDown,
   IconCurrentLocation,
   IconHistory,
@@ -35,6 +34,7 @@ import {
   SheetTitle,
 } from "../../components/ui/sheet.tsx";
 import { AccountMenu, AccountMenuAvatar, AccountMenuItem } from "../../components/account-menu.tsx";
+import { PublicNavLinks } from "../../components/shared/PublicNavLinks.tsx";
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { cn } from "../../lib/utils.ts";
@@ -383,25 +383,18 @@ export default function PublicTransportPage() {
           </span>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <Link
-              to="/market"
-              className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
-              title="Instruments, people, jobs and training from the market"
-            >
-              <IconBuildingStore className="size-4 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline">Marketplace</span>
-            </Link>
+            <PublicNavLinks />
 
             <button
               type="button"
               onClick={() => user ? setHistoryOpen(true) : navigate("/login", { state: { from: "/transport" } })}
-              className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
+              className="web3-btn shrink-0 gap-1 px-2 sm:px-2.5"
               aria-label={`Open your trips, ${recentBookings.length} recorded`}
             >
-              <IconHistory className="size-4 shrink-0" aria-hidden="true" />
+              <IconHistory className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">Trips</span>
               {recentBookings.length > 0 ? (
-                <span className="flex size-5 items-center justify-center rounded-full bg-primary font-mono text-[11px] font-semibold tabular-nums text-primary-foreground">
+                <span className="flex size-4 items-center justify-center rounded-full bg-primary font-mono text-[10px] font-semibold tabular-nums text-primary-foreground">
                   {recentBookings.length}
                 </span>
               ) : null}
@@ -415,26 +408,27 @@ export default function PublicTransportPage() {
                 trigger={
                   <Button
                     variant="outline"
-                    className="group h-10 gap-2 rounded-full py-1.5 pl-1.5 pr-3"
+                    className="group h-8 gap-1.5 rounded-full py-1 pl-1 pr-2.5"
                     aria-label={`Open account menu (${user.name})`}
                   >
-                    <AccountMenuAvatar user={user} />
-                    <span className="max-w-[132px] truncate text-sm font-semibold max-sm:hidden">
+                    <AccountMenuAvatar user={user} className="size-6" />
+                    <span className="max-w-[132px] truncate text-xs font-semibold max-sm:hidden">
                       {user.name}
                     </span>
                     <IconChevronDown
-                      className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+                      className="size-3 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
                       aria-hidden="true"
                     />
                   </Button>
                 }
               >
+                <AccountMenuItem icon={IconLayoutGrid} label="Open your workspace" to="/" />
                 <AccountMenuItem icon={IconSettings} label="Settings" to="/settings" />
               </AccountMenu>
             ) : (
               <Link
                 to="/login"
-                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap px-3 text-xs sm:px-4 sm:text-sm"
+                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap px-3 text-xs"
               >
                 Sign in
               </Link>

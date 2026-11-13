@@ -17,7 +17,6 @@ import {
   Search,
   ShoppingCart,
   SlidersHorizontal,
-  Truck,
   X,
 } from "lucide-react";
 import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
@@ -81,6 +80,7 @@ import {
 } from "../../components/market/marketItems.ts";
 import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
 import { NearbyPrompt } from "../../components/shared/NearbyPrompt.tsx";
+import { PublicNavLinks } from "../../components/shared/PublicNavLinks.tsx";
 import { useDeviceLocation } from "../../lib/geo/useDeviceLocation.ts";
 import { groupByDistance, formatDistanceKm, haversineKm, type DistanceGroup } from "../../lib/geo/distance.ts";
 
@@ -958,25 +958,17 @@ export default function PublicMarketPage() {
             <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor's Market</span>
           </span>
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <Link
-              to="/transport"
-              aria-label="Transport: runs and routes for what you hire or buy"
-              className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
-              title="Runs and routes that can carry what you hire or buy"
-            >
-              <Truck className="size-4 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline">Transport</span>
-            </Link>
+            <PublicNavLinks />
             <button
               type="button"
               onClick={() => user ? setCartOpen(true) : navigate("/login", { state: { from: "/market" } })}
-              className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
+              className="web3-btn shrink-0 gap-1 px-2 sm:px-2.5"
               aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
             >
-              <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
+              <ShoppingCart className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 ? (
-                <span className="flex size-5 items-center justify-center rounded-full bg-[var(--web3-brand,#d92d20)] font-mono text-[11px] font-semibold tabular-nums text-white">
+                <span className="flex size-4 items-center justify-center rounded-full bg-[var(--web3-brand,#d92d20)] font-mono text-[10px] font-semibold tabular-nums text-white">
                   {cartCount}
                 </span>
               ) : null}
@@ -989,15 +981,15 @@ export default function PublicMarketPage() {
                 trigger={
                   <Button
                     variant="outline"
-                    className="group h-10 gap-2 rounded-full py-1.5 pl-1.5 pr-3"
+                    className="group h-8 gap-1.5 rounded-full py-1 pl-1 pr-2.5"
                     aria-label={`Open account menu (${user.name})`}
                   >
-                    <AccountMenuAvatar user={user} />
-                    <span className="max-w-[132px] truncate text-sm font-semibold max-sm:hidden">
+                    <AccountMenuAvatar user={user} className="size-6" />
+                    <span className="max-w-[132px] truncate text-xs font-semibold max-sm:hidden">
                       {user.name}
                     </span>
                     <ChevronDown
-                      className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+                      className="size-3 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
                       aria-hidden="true"
                     />
                   </Button>
@@ -1017,7 +1009,7 @@ export default function PublicMarketPage() {
             ) : (
               <Link
                 to="/login"
-                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4"
+                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap px-3 text-xs"
               >
                 Sign in
               </Link>
@@ -1035,20 +1027,20 @@ export default function PublicMarketPage() {
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Buy or hire instruments, connect with surveyors and firms, find work, or discover training.</p>
               </div>
               {user ? (
-                <Button asChild variant="outline" className="h-11 gap-2"><Link to="/?view=marketplace"><Plus className="size-4" />Manage marketplace listings</Link></Button>
+                <Button asChild variant="outline" className="h-9 gap-1.5 px-3 text-xs"><Link to="/?view=marketplace"><Plus className="size-3.5" />Manage marketplace listings</Link></Button>
               ) : (
-                <Button asChild variant="outline" className="h-11 gap-2"><Link to="/login" state={{ from: "/?view=marketplace" }}><Plus className="size-4" />List equipment or services</Link></Button>
+                <Button asChild variant="outline" className="h-9 gap-1.5 px-3 text-xs"><Link to="/login" state={{ from: "/?view=marketplace" }}><Plus className="size-3.5" />List equipment or services</Link></Button>
               )}
             </div>
 
-            <div className="mt-6 flex max-w-4xl gap-2">
+            <div className="mt-5 flex max-w-4xl gap-2">
               <div className="relative min-w-0 flex-1">
                 <label htmlFor="market-search-hero" className="sr-only">Search the marketplace</label>
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                <Input id="market-search-hero" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setFlatLimit(FLAT_PAGE_SIZE); }} placeholder="Search equipment, surveyors, firms, jobs, or training" className="h-13 rounded-xl border-border bg-background pl-12 pr-11 text-base shadow-none" />
-                {search ? <button type="button" onClick={() => setSearch("")} className="absolute right-1.5 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear search"><X className="size-4" /></button> : null}
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input id="market-search-hero" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setFlatLimit(FLAT_PAGE_SIZE); }} placeholder="Search equipment, surveyors, firms, jobs, or training" className="h-10 rounded-lg border-border bg-background pl-9 pr-9 text-sm shadow-none" />
+                {search ? <button type="button" onClick={() => setSearch("")} className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear search"><X className="size-3.5" /></button> : null}
               </div>
-              <Button type="button" className="h-13 gap-2 rounded-xl px-5" onClick={scrollToRegistry}>Search<ArrowRight className="size-4" /></Button>
+              <Button type="button" className="h-10 gap-1.5 rounded-lg px-3.5 text-sm" onClick={scrollToRegistry}>Search<ArrowRight className="size-3.5" /></Button>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -1093,7 +1085,7 @@ export default function PublicMarketPage() {
                   Compare available supply and opportunities. Use the map when location matters.
                 </p>
               </div>
-              <div role="group" aria-label="Results view" className="inline-flex rounded-xl border border-border bg-card p-1">
+              <div role="group" aria-label="Results view" className="inline-flex rounded-lg border border-border bg-card p-1">
                 {([
                   { value: "list", label: "List", icon: List },
                   { value: "split", label: "Split", icon: LayoutGrid },
@@ -1105,7 +1097,7 @@ export default function PublicMarketPage() {
                     aria-pressed={marketView === value}
                     onClick={() => setMarketView(value)}
                     className={cn(
-                      "inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors",
+                      "inline-flex min-h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
                       marketView === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
@@ -1123,7 +1115,7 @@ export default function PublicMarketPage() {
                     <label htmlFor="market-search" className="sr-only">
                       Search the market
                     </label>
-                    <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                     <Input
                       id="market-search"
                       placeholder="Search instruments, people, places…"
@@ -1132,7 +1124,7 @@ export default function PublicMarketPage() {
                         setSearch(event.target.value);
                         setFlatLimit(FLAT_PAGE_SIZE);
                       }}
-                      className="h-11 rounded-xl border-border/80 bg-background pl-11 pr-11 text-sm shadow-none"
+                      className="h-9 rounded-lg border-border/80 bg-background pl-9 pr-9 text-sm shadow-none"
                     />
                     {search ? (
                       <button
@@ -1142,9 +1134,9 @@ export default function PublicMarketPage() {
                           setFlatLimit(FLAT_PAGE_SIZE);
                         }}
                         aria-label="Clear search"
-                        className="absolute right-1.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       >
-                        <X className="size-4" aria-hidden="true" />
+                        <X className="size-3.5" aria-hidden="true" />
                       </button>
                     ) : null}
                   </div>
@@ -1155,7 +1147,7 @@ export default function PublicMarketPage() {
                       setFlatLimit(FLAT_PAGE_SIZE);
                     }}
                   >
-                    <SelectTrigger aria-label="Sort results" className="hidden h-11 w-[190px] shrink-0 rounded-xl bg-background text-sm sm:flex">
+                    <SelectTrigger aria-label="Sort results" className="hidden h-9 w-[180px] shrink-0 rounded-lg bg-background text-sm sm:flex">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent align="end">
@@ -1170,7 +1162,7 @@ export default function PublicMarketPage() {
                     type="button"
                     variant={savedSearch ? "default" : "outline"}
                     size="icon"
-                    className="size-11 shrink-0 rounded-xl"
+                    className="size-9 shrink-0 rounded-lg"
                     onClick={toggleSavedSearch}
                     aria-label={savedSearch ? "Remove saved search" : "Save this search"}
                     title={savedSearch ? "Saved search" : "Save this search"}
@@ -1181,7 +1173,7 @@ export default function PublicMarketPage() {
                     type="button"
                     variant={activeFilters.length > 0 ? "default" : "outline"}
                     size="icon"
-                    className="size-11 shrink-0 rounded-xl sm:hidden"
+                    className="size-9 shrink-0 rounded-lg sm:hidden"
                     onClick={() => setMobileFiltersOpen(true)}
                     aria-expanded={mobileFiltersOpen}
                     aria-label={
@@ -1254,7 +1246,7 @@ export default function PublicMarketPage() {
                         >
                           <SelectTrigger
                             aria-label="Filter by country"
-                            className="h-11 w-[190px] rounded-xl border-border/80 bg-background text-xs"
+                            className="h-9 w-[180px] rounded-lg border-border/80 bg-background text-xs"
                           >
                             <SelectValue placeholder="All countries" />
                           </SelectTrigger>
@@ -1272,11 +1264,11 @@ export default function PublicMarketPage() {
                     {showPanel("listing") ? (
                       <>
                         <Select value={listingType} onValueChange={(value) => { setListingType(value as ListingType); setFlatLimit(FLAT_PAGE_SIZE); }}>
-                          <SelectTrigger aria-label="Filter by offer type" className="h-11 w-[145px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label="Filter by offer type" className="h-9 w-[135px] rounded-lg bg-background text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>{LISTING_TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
                         </Select>
                         <Select value={priceRange} onValueChange={(value) => { setPriceRange(value as PriceRange); setFlatLimit(FLAT_PAGE_SIZE); }}>
-                          <SelectTrigger aria-label="Filter by price" className="h-11 w-[135px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label="Filter by price" className="h-9 w-[125px] rounded-lg bg-background text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>{PRICE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
                         </Select>
                       </>
@@ -1284,24 +1276,24 @@ export default function PublicMarketPage() {
                     {scope === "professional" ? (
                       <>
                         <Select value={availability || "all"} onValueChange={(value) => { setAvailability(value === "all" ? "" : value); setFlatLimit(FLAT_PAGE_SIZE); }}>
-                          <SelectTrigger aria-label="Filter by availability" className="h-11 w-[165px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label="Filter by availability" className="h-9 w-[155px] rounded-lg bg-background text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent><SelectItem value="all">Any availability</SelectItem>{availabilityOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                         </Select>
                         <Select value={experience} onValueChange={(value) => { setExperience(value as ExperienceRange); setFlatLimit(FLAT_PAGE_SIZE); }}>
-                          <SelectTrigger aria-label="Filter by experience" className="h-11 w-[155px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label="Filter by experience" className="h-9 w-[145px] rounded-lg bg-background text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>{EXPERIENCE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
                         </Select>
                       </>
                     ) : null}
                     {scope === "job" && employmentOptions.length > 0 ? (
                       <Select value={employmentType || "all"} onValueChange={(value) => { setEmploymentType(value === "all" ? "" : value); setFlatLimit(FLAT_PAGE_SIZE); }}>
-                        <SelectTrigger aria-label="Filter by job type" className="h-11 w-[165px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label="Filter by job type" className="h-9 w-[155px] rounded-lg bg-background text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="all">Any job type</SelectItem>{employmentOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                       </Select>
                     ) : null}
                     {scope === "event" ? (
                       <Select value={trainingFormat} onValueChange={(value) => { setTrainingFormat(value as "all" | "online" | "in-person"); setFlatLimit(FLAT_PAGE_SIZE); }}>
-                        <SelectTrigger aria-label="Filter by training format" className="h-11 w-[155px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label="Filter by training format" className="h-9 w-[145px] rounded-lg bg-background text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="all">Any format</SelectItem><SelectItem value="online">Online</SelectItem><SelectItem value="in-person">In person</SelectItem></SelectContent>
                       </Select>
                     ) : null}
@@ -1372,7 +1364,7 @@ export default function PublicMarketPage() {
                     <PackageSearch className="size-8 text-muted-foreground/60" aria-hidden="true" />
                     <h3 className="mt-4 text-base font-semibold text-foreground">No matches found</h3>
                     <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">Try another category, a broader search, or reset your filters.</p>
-                    <Button type="button" variant="outline" className="mt-5 min-h-11" onClick={resetFilters}>Clear search and filters</Button>
+                    <Button type="button" variant="outline" className="mt-5 h-9 px-4 text-sm" onClick={resetFilters}>Clear search and filters</Button>
                   </div>
                 ) : scope === "all" ? (
                   <div className="space-y-12">
@@ -1417,7 +1409,7 @@ export default function PublicMarketPage() {
                     )}
                     {visibleFlatItems.length < flatItems.length ? (
                       <div className="flex justify-center">
-                        <Button type="button" variant="outline" className="min-h-11 px-5 text-sm" onClick={() => setFlatLimit((value) => value + FLAT_PAGE_SIZE)}>Load more ({flatItems.length - visibleFlatItems.length} remaining)</Button>
+                        <Button type="button" variant="outline" className="h-9 px-4 text-sm" onClick={() => setFlatLimit((value) => value + FLAT_PAGE_SIZE)}>Load more ({flatItems.length - visibleFlatItems.length} remaining)</Button>
                       </div>
                     ) : null}
                   </div>
@@ -1490,7 +1482,10 @@ export default function PublicMarketPage() {
           <p className="text-xs text-muted-foreground">
             Published by SiteSurveyor workspaces · refreshes live
           </p>
-          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <nav aria-label="Site links" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <Link to="/transport" className="hover:text-foreground">Transport</Link>
+            <Link to="/downloads" className="hover:text-foreground">Desktop</Link>
+            <Link to="/about" className="hover:text-foreground">About</Link>
             {(
               [
                 ["listing", "Listings"],
@@ -1509,7 +1504,7 @@ export default function PublicMarketPage() {
                 {label}
               </span>
             ))}
-          </p>
+          </nav>
         </div>
       </footer>
 
