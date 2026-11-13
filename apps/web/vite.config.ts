@@ -10,6 +10,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const requireFromConfig = createRequire(import.meta.url)
+const reactDir = path.dirname(requireFromConfig.resolve('react/package.json'))
+const reactDomDir = path.dirname(requireFromConfig.resolve('react-dom/package.json'))
 
 /**
  * Absolute path to a file inside the installed `@solana/web3.js` package.
@@ -94,40 +96,15 @@ export default defineConfig({
 
   build: {
     target: 'es2022',
-    // Split heavy, rarely-changing vendor libraries into their own chunk so the
-    // app code and the vendor code can be cached independently. This also keeps
-    // any single chunk under the 500 kB warning threshold.
-    rolldownOptions: {
-      output: {
-        // Rolldown (Vite 8) expects manualChunks as a function rather than the
-        // object map Rollup used. Group heavy vendor libraries by id.
-        manualChunks(id: string) {
-          // Shared shadcn/ui wrappers: group them so every page does not embed
-          // its own copy of Table, Dialog, Tabs, etc.
-          if (/[\\/]src[\\/]components[\\/]ui[\\/]/.test(id)) {
-            return 'ui-components'
-          }
-
-          if (!id.includes('node_modules')) return
-
-          // Core React framework: always a single shared chunk.
-          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
-            return 'vendor-react'
-          }
-
-          // Heavy third-party SDKs / UI primitives: keep them in dedicated
-          // vendor chunks so they are not duplicated across every page chunk.
-          if (id.includes('@supabase')) return 'vendor-supabase'
-          if (/@radix-ui|radix-ui/.test(id)) return 'vendor-radix'
-          if (id.includes('lucide-react')) return 'vendor-lucide'
-          if (id.includes('@solana')) return 'vendor-solana'
-        },
-      },
-    },
   },
   optimizeDeps: { rolldownOptions: { transform: { target: 'es2022' } } },
   resolve: {
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
     alias: {
+      react: reactDir,
+      'react-dom': reactDomDir,
+      'react/jsx-runtime': path.join(reactDir, 'jsx-runtime.js'),
+      'react/jsx-dev-runtime': path.join(reactDir, 'jsx-dev-runtime.js'),
       '@': path.resolve(__dirname, './src'),
       // Tests only: use @solana/web3.js' browser ESM build; the node CJS
       // build native-requires rpc-websockets, which ships a nested ESM-in-CJS
