@@ -68,6 +68,26 @@ def _candidate_lists(dossier: dict, limit: int = 6) -> dict[str, list]:
     return out
 
 
+_CATEGORY_REQUIRED_RASTERS: dict[str, list[str]] = {
+    "water": ["dem.tif", "landcover.tif", "alos.tif", "rain_mean.tif", "optical.tif"],
+    "minerals": ["dem.tif", "landcover.tif", "alos.tif", "optical.tif"],
+    "soil": ["dem.tif", "landcover.tif", "rain_mean.tif", "optical.tif", "crop_mask.tif", "fc_ls_2023.tif"],
+    "hazard": ["dem.tif", "landcover.tif", "rain_mean.tif", "optical.tif", "wofs.tif", "fc_ls_2023.tif"],
+}
+
+
+def _required_rasters_for_categories(categories: list[str]) -> list[str]:
+    cats = [c.lower().strip() for c in categories]
+    if "all" in cats:
+        return ["dem.tif", "landcover.tif", "alos.tif", "optical.tif", "wofs.tif", "rain_mean.tif", "crop_mask.tif", "fc_ls_2023.tif"]
+    seen: list[str] = []
+    for c in cats:
+        for raster in _CATEGORY_REQUIRED_RASTERS.get(c, []):
+            if raster not in seen:
+                seen.append(raster)
+    return seen or ["dem.tif", "landcover.tif", "alos.tif", "optical.tif", "wofs.tif", "rain_mean.tif"]
+
+
 def _ensure_data_present(required: list[str] | None = None):
     """Verify that required satellite layers exist; fetch from DE Africa if missing."""
     if required is None:
@@ -200,11 +220,10 @@ def survey_site(
         executive HTML dossier.
     """
     cfg.set_target_site(latitude, longitude, half_deg=half_deg, client=client_name, address=address or None)
-    _report_progress("Acquiring satellite layers", 6)
-    _ensure_data_present()
-
     cats = [c.lower().strip() for c in categories]
     run_all = "all" in cats
+    _report_progress("Acquiring satellite layers", 6)
+    _ensure_data_present(_required_rasters_for_categories(cats))
     _report_progress("Running survey categories", 15)
 
     results = {}
@@ -332,7 +351,7 @@ def get_boreholes(latitude: float, longitude: float, top_k: int = 5) -> dict:
     cfg.set_target_site(latitude, longitude)
     data = _cached_summary(cfg.OUT / "summary.json", latitude, longitude)
     if data is None:
-        _ensure_data_present()
+        _ensure_data_present(_CATEGORY_REQUIRED_RASTERS["water"])
         from src.engines.water import run_water_survey
         data = run_water_survey(latitude, longitude)
 
@@ -458,7 +477,7 @@ def get_soil_capability(latitude: float, longitude: float, top_k: int = 5) -> di
     cfg.set_target_site(latitude, longitude)
     data = _cached_summary(cfg.OUT / "soil_summary.json", latitude, longitude)
     if data is None:
-        _ensure_data_present()
+        _ensure_data_present(_CATEGORY_REQUIRED_RASTERS["soil"])
         from src.engines.soil import run_soil_survey
         data = run_soil_survey(latitude, longitude)
 
@@ -495,7 +514,7 @@ def get_hazard_safety(latitude: float, longitude: float, top_k: int = 5) -> dict
     cfg.set_target_site(latitude, longitude)
     data = _cached_summary(cfg.OUT / "hazard_summary.json", latitude, longitude)
     if data is None:
-        _ensure_data_present()
+        _ensure_data_present(_CATEGORY_REQUIRED_RASTERS["hazard"])
         from src.engines.hazard import run_hazard_survey
         data = run_hazard_survey(latitude, longitude)
 

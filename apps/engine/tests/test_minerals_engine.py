@@ -267,3 +267,64 @@ def test_every_candidate_names_a_commodity_it_actually_scored(mineral_run) -> No
         assert candidate["primary_commodity_score"] == max(
             v for v in scores.values() if v is not None
         )
+
+
+def test_distant_aoi_withholds_gweru_endowment_instead_of_imposing_directional_ramp(tmp_path) -> None:
+    """An AOI outside the Gweru greenstone belt must not get a 0-1 ramp toward Golden Quarry."""
+    from scipy.ndimage import gaussian_filter
+    from src.engines.minerals import run_minerals_survey
+
+    saved = {name: getattr(cfg, name) for name in
+             ("OUT", "RAW", "RAW_BASE", "AOI_SLUG", "TARGET_LAT", "TARGET_LON", "HALF_DEG",
+              "WIDTH", "HEIGHT", "TRANSFORM", "LOCAL_CRS", "EPSG", "UTM_ZONE",
+              "BBOX_WGS84", "TARGET_ROW", "TARGET_COL", "CLIENT", "CLIENT_ADDRESS",
+              "XMIN", "XMAX", "YMIN", "YMAX", "TO_LOCAL", "TO_WGS", "TO_6933",
+              "TARGET_X", "TARGET_Y")}
+    try:
+        cfg.OUT = tmp_path / "outputs"
+        cfg.OUT.mkdir(parents=True, exist_ok=True)
+        cfg.RAW_BASE = tmp_path / "raw"
+        # Northern Kenya (approx 2,300 km from Golden Quarry Mine in Gweru)
+        cfg.set_target_site(1.2921, 36.8219, half_deg=0.03, client="Distant", address="Nairobi")
+
+        rng = np.random.default_rng(19)
+        height, width = cfg.HEIGHT, cfg.WIDTH
+
+        def field(smooth):
+            return gaussian_filter(rng.normal(size=(height, width)), smooth)
+
+        def write(name, arrays, dtype, descriptions=None, nodata=None):
+            with rasterio.open(
+                cfg.RAW / name, "w", driver="GTiff", height=height, width=width,
+                count=len(arrays), dtype=dtype, crs=cfg.LOCAL_CRS, transform=cfg.TRANSFORM,
+                nodata=nodata,
+            ) as dst:
+                for i, arr in enumerate(arrays, start=1):
+                    dst.write(arr.astype(dtype), i)
+                    if descriptions:
+                        dst.set_band_description(i, descriptions[i - 1])
+
+        write("dem.tif", [1500 + 80 * field(10)], "float32")
+        write("landcover.tif", [np.full((height, width), 30, dtype="uint8")], "uint8")
+        alos = np.abs(field(5)) * 100
+        write("alos.tif", [alos, alos * 0.7 + np.abs(field(3)) * 30], "float32")
+        blue = np.clip(0.08 + 0.02 * field(5), 0, 1)
+        red = np.clip(blue + 0.18 + 0.06 * np.abs(field(4)), 0, 1)
+        nir = np.clip(red + 0.25 * np.clip(0.2 + 0.25 * field(8), 0, 1) + 0.1, 0, 1)
+        swir1 = np.clip(0.25 + 0.08 * field(6), 0, 1)
+        swir2 = np.clip(0.18 + 0.06 * field(7), 0, 1)
+        write("optical.tif",
+              [b * 10000 for b in (blue, red, nir, swir1, swir2)], "uint16",
+              descriptions=["blue", "red", "nir", "swir_1", "swir_2"], nodata=0)
+
+        with patch("src.fetch_data.ensure_raw"):
+            summary = run_minerals_survey()
+
+        assert summary["target_assessment"]["endowment_context_pct"] is None
+        assert summary["target_assessment"]["coordinate_cell_score"] is not None
+        for comm in summary["mineral_commodities"]:
+            driven = {item["evidence"] for item in comm["top_evidence"]}
+            assert "endowment" not in driven
+    finally:
+        for name, value in saved.items():
+            setattr(cfg, name, value)

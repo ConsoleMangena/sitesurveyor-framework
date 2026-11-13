@@ -48,7 +48,9 @@ from src.utils.classification import (
     find_candidate_sites,
     jenks_breaks,
     paint_zones,
+    parcel_mean,
     safe_round,
+    weighted_overlay,
     zone_class,
 )
 from src.utils import depth
@@ -165,14 +167,20 @@ def run_water_survey(
     norm_ndvi = robust_norm(ndvi_layer)
 
     w = cfg.WATER_WEIGHTS
-    index_raw = (
-        w["lineament_density"] * norm_lin +
-        w["slope"] * norm_slope +
-        w["twi"] * norm_twi +
-        w["landcover_infiltration"] * norm_infil +
-        w["drainage_density"] * norm_drain +
-        w["rainfall"] * norm_rain +
-        w["ndvi"] * norm_ndvi
+    index_raw = weighted_overlay(
+        {
+            "lineament_density": norm_lin,
+            "slope": norm_slope,
+            "twi": norm_twi,
+            "landcover_infiltration": norm_infil,
+            "drainage_density": norm_drain,
+            "rainfall": norm_rain,
+            "ndvi": norm_ndvi,
+        },
+        w,
+        scale=1.0,
+        min_coverage=0.6,
+        require_finite=slope,
     )
 
     # Rescale to 0-100 continuous index
@@ -197,9 +205,7 @@ def run_water_survey(
     class_names = CLASS_NAMES
 
     # Local 5x5 window (150m buffer) around target to avoid single-pixel noise
-    r0, r1 = max(0, tr - 2), min(cfg.HEIGHT, tr + 3)
-    c0, c1 = max(0, tc - 2), min(cfg.WIDTH, tc + 3)
-    local_mean = finite_mean(gwpz_index[r0:r1, c0:c1])
+    local_mean = parcel_mean(gwpz_index, tr, tc, half_px=2, excluded_mask=water_mask | builtup_mask)
     local_class = zone_class(local_mean, breaks)
 
     print(f"      Target Coordinate Cell: {t_score:.1f}/100 ({class_names.get(t_class)})")
@@ -385,7 +391,13 @@ def _render_main_map(index: np.ndarray, classes: np.ndarray, hs: np.ndarray, can
         ax.annotate(f"#{cand['rank']}", (cx_km + 0.3, cy_km + 0.3), fontsize=9, fontweight="bold", color="black",
                     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="black", alpha=0.85), zorder=11)
 
-    ax.set_title(f"Groundwater Potential Zones (GWPZ) — {cfg.CLIENT}\nTarget: {cfg.TARGET_LAT:.4f}°S, {cfg.TARGET_LON:.4f}°E ({cfg.CLIENT_ADDRESS})", fontsize=11, color=cfg.BRAND_COLOR, pad=12)
+    lat_hem = "S" if cfg.TARGET_LAT < 0 else "N"
+    lon_hem = "W" if cfg.TARGET_LON < 0 else "E"
+    ax.set_title(
+        f"Groundwater Potential Zones (GWPZ) — {cfg.CLIENT}\n"
+        f"Target: {abs(cfg.TARGET_LAT):.4f}°{lat_hem}, {abs(cfg.TARGET_LON):.4f}°{lon_hem} ({cfg.CLIENT_ADDRESS})",
+        fontsize=11, color=cfg.BRAND_COLOR, pad=12,
+    )
     ax.set_xlabel("Easting (km)", fontsize=10)
     ax.set_ylabel("Northing (km)", fontsize=10)
 

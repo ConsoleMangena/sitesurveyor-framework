@@ -23,9 +23,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import src.config as cfg
 
 
-def check_data_present() -> bool:
+CATEGORY_REQUIRED_FILES: dict[str, list[str]] = {
+    "water": ["dem.tif", "landcover.tif", "alos.tif", "optical.tif", "rain_mean.tif"],
+    "minerals": ["dem.tif", "landcover.tif", "alos.tif", "optical.tif"],
+    "soil": ["dem.tif", "landcover.tif", "optical.tif", "rain_mean.tif", "crop_mask.tif", "fc_ls_2023.tif"],
+    "hazard": ["dem.tif", "landcover.tif", "optical.tif", "wofs.tif", "rain_mean.tif", "fc_ls_2023.tif"],
+    "all": ["dem.tif", "landcover.tif", "alos.tif", "optical.tif", "wofs.tif", "rain_mean.tif", "crop_mask.tif", "fc_ls_2023.tif"],
+    "none": [],
+}
+
+
+def check_data_present(category: str = "all") -> bool:
     """Check if minimum required satellite layers exist in active AOI raw data dir."""
-    required = ["dem.tif", "landcover.tif", "alos.tif", "optical.tif", "wofs.tif", "rain_mean.tif"]
+    required = CATEGORY_REQUIRED_FILES.get(category, CATEGORY_REQUIRED_FILES["all"])
     missing = [f for f in required if not (cfg.RAW / f).exists()]
     return len(missing) == 0
 
@@ -114,12 +124,16 @@ def main():
     print(f"   AOI Dir:  {cfg.RAW}")
     print("=" * 70)
 
-    # 1. Fetch data if requested or if missing
-    if args.fetch or args.force_fetch or not check_data_present():
+    # 1. Fetch data if requested or if missing for the selected category
+    if args.fetch or args.force_fetch:
         print("\n[STEP 1] Data Acquisition from Digital Earth Africa WCS...")
         from src.fetch_data import fetch_all
         fetch_all(force=args.force_fetch)
-    else:
+    elif args.category != "none" and not check_data_present(args.category):
+        print(f"\n[STEP 1] Acquiring required satellite layers for category '{args.category}'...")
+        from src.fetch_data import ensure_raw
+        ensure_raw(CATEGORY_REQUIRED_FILES.get(args.category, CATEGORY_REQUIRED_FILES["all"]))
+    elif args.category != "none":
         print(f"\n[INFO] Satellite data already cached in {cfg.RAW}. Proceeding to analysis.")
 
     # 2. Run Category 1: WATER

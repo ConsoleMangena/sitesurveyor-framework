@@ -224,36 +224,57 @@ def readout(category: str, row: dict) -> str | None:
         depth = _metric(row.get("depth_to_water_wet_m"), row.get("depth_to_water_dry_m"), " m")
         if depth:
             parts.append(f"water {depth}")
-    elif category in ("minerals", "soil_land"):
+    elif category == "minerals":
         method = row.get("sampling_method")
         if method:
             parts.append(str(method))
         cover = _metric(row.get("overburden_min_m"), row.get("overburden_max_m"), " m")
         if cover:
             parts.append(f"overburden {cover}")
-        if category == "minerals":
-            gravity = []
-            res = row.get("residual_gravity_mgal")
-            if res is not None:
-                sign = "+" if res > 0 else ""
-                gravity.append(f"residual {sign}{res:g} mGal")
-            elif (bouguer := row.get("bouguer_anomaly_mgal")) is not None:
-                gravity.append(f"Bouguer {bouguer} mGal")
-            grad = row.get("gravity_gradient_mgal_km")
-            if grad is not None:
-                gravity.append(f"grad {grad} mGal/km")
-            zone = row.get("gravity_zone_name")
-            if zone:
-                gravity.append(str(zone).split("(")[0].strip())
-            if gravity:
-                kind = row.get("gravity_source_kind")
-                if kind and kind != "measured":
-                    gravity.append(f"{kind} field")
-                parts.extend(gravity)
+        gravity = []
+        res = row.get("residual_gravity_mgal")
+        if res is not None:
+            sign = "+" if res > 0 else ""
+            gravity.append(f"residual {sign}{res:g} mGal")
+        elif (bouguer := row.get("bouguer_anomaly_mgal")) is not None:
+            gravity.append(f"Bouguer {bouguer} mGal")
+        grad = row.get("gravity_gradient_mgal_km")
+        if grad is not None:
+            gravity.append(f"grad {grad} mGal/km")
+        zone = row.get("gravity_zone_name")
+        if zone:
+            gravity.append(str(zone).split("(")[0].strip())
+        if gravity:
+            kind = row.get("gravity_source_kind")
+            if kind and kind != "measured":
+                gravity.append(f"{kind} field")
+            parts.extend(gravity)
+    elif category == "soil_land":
+        method = row.get("sampling_method")
+        if method:
+            parts.append(str(method))
+        cover = _metric(row.get("overburden_min_m"), row.get("overburden_max_m"), " m")
+        if cover:
+            parts.append(f"overburden {cover}")
+        klass = row.get("class_name")
+        if klass:
+            parts.append(f"{klass} capability")
+        lc = row.get("landcover")
+        if lc:
+            parts.append(str(lc))
+        slope = _number(row.get("slope_degrees"))
+        if slope is not None:
+            parts.append(f"slope {slope:g}°")
+        moisture = _number(row.get("moisture_pct"))
+        if moisture is not None:
+            parts.append(f"moisture {moisture:g}%")
     elif category == "hazard_safety":
         klass = row.get("class_name")
         if klass:
-            parts.append(f"hazard {klass}")
+            parts.append(f"{klass} safety")
+        slope = _number(row.get("slope_degrees"))
+        if slope is not None:
+            parts.append(f"slope {slope:g}°")
 
     return " / ".join(parts) or None
 

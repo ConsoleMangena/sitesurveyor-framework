@@ -102,7 +102,10 @@ def _staged_reproject(
         dst_nodata=_STAGING_NODATA,
         init_dest_nodata=True,
         resampling=Resampling.nearest,
-        num_threads=2,
+        # Keep GDAL warp single-threaded here: multi-threaded warp across
+        # hundreds of per-tile windows triggers intermittent Windows heap
+        # corruption (0xc0000374) inside GDAL's worker pool.
+        num_threads=1,
     )
     condense: np.ndarray = staged.astype("uint8")
     # Belt and braces: 65535 truncates to 255 anyway, but state the intent.

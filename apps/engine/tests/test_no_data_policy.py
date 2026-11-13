@@ -22,7 +22,9 @@ from src.utils.classification import (
     finite_mean,
     jenks_breaks,
     paint_zones,
+    parcel_mean,
     safe_round,
+    weighted_overlay,
     zone_class,
 )
 from src.utils.raster import robust_norm
@@ -177,3 +179,54 @@ def test_paint_zones_shades_unobserved_terrain_neutrally():
 
     assert rgb[0, 0, 0] > rgb[0, 1, 0], "NaN hillshade should not brighten the tile"
     assert np.isfinite(rgb).all()
+
+
+def test_weighted_overlay_renormalizes_partial_coverage_and_refuses_thin_coverage():
+    a = np.array([[0.8, 0.8], [0.8, np.nan]], dtype="float32")
+    b = np.array([[0.4, np.nan], [np.nan, np.nan]], dtype="float32")
+    c = np.array([[0.2, 0.2], [np.nan, np.nan]], dtype="float32")
+    weights = {"a": 0.5, "b": 0.3, "c": 0.2}
+
+    out = weighted_overlay({"a": a, "b": b, "c": c}, weights, scale=100.0, min_coverage=0.6)
+
+    # (0, 0) has all layers: (0.5*0.8 + 0.3*0.4 + 0.2*0.2) * 100 = 56.0
+    assert out[0, 0] == pytest.approx(56.0)
+    # (0, 1) has a (0.5) + c (0.2) = 0.7 >= 0.6 coverage: (0.5*0.8 + 0.2*0.2) / 0.7 * 100 = 62.857
+    assert out[0, 1] == pytest.approx((0.44 / 0.7) * 100.0, rel=1e-5)
+    # (1, 0) has only a (0.5) < 0.6 coverage: refused as NaN
+    assert np.isnan(out[1, 0])
+    assert np.isnan(out[1, 1])
+
+
+def test_parcel_mean_excludes_water_and_builtup_bias():
+    index = np.full((7, 7), 80.0, dtype="float32")
+    excluded = np.zeros((7, 7), dtype=bool)
+    # Contaminate half of the 5x5 window around (3, 3) with water/built-up 0s
+    index[1:3, 1:6] = 0.0
+    excluded[1:3, 1:6] = True
+
+    mean_clean = parcel_mean(index, 3, 3, half_px=2, excluded_mask=excluded)
+    assert mean_clean == pytest.approx(80.0)
+
+
+def test_candidate_picking_prefers_sustained_zone_over_isolated_spike(small_grid):
+    index = np.full((small_grid, small_grid), 50.0, dtype="float32")
+    breaks = np.array([20.0, 40.0, 60.0, 80.0], dtype="float32")
+
+    # Isolated 1-pixel spike at (20, 30) with score 92 surrounded by 50s
+    index[20, 30] = 92.0
+    # Sustained 3x3 high-potential zone at (40, 30) (equidistant from target 30, 30) with center 90 and neighbors 88
+    index[39:42, 29:32] = 88.0
+    index[40, 30] = 90.0
+
+    zones = classify_zones(index, breaks)
+    candidates = find_candidate_sites(
+        index, zones, min_class=4, min_distance_m=150.0, top_k=2,
+        target_row=30, target_col=30, border_margin_px=5,
+    )
+
+    assert len(candidates) == 2
+    assert (candidates[0]["row"], candidates[0]["col"]) == (40, 30)
+    assert candidates[0]["potential_score"] == pytest.approx(90.0)
+    assert (candidates[1]["row"], candidates[1]["col"]) == (20, 30)
+    assert candidates[1]["potential_score"] == pytest.approx(92.0)

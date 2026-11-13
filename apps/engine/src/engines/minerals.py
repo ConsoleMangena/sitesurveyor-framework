@@ -138,12 +138,19 @@ def run_minerals_survey(
     # whether the cell sits on a rise or in a hollow.
     np.abs(relief, out=relief)
 
-    # Known deposit locations (e.g. Golden Quarry Mine: -19.6127 S, 29.9842 E)
+    # Known deposit locations (Golden Quarry Mine: -19.6127 S, 29.9842 E).
+    # Only apply local deposit decay when the AOI is within 50 km of Golden Quarry;
+    # outside the Gweru greenstone belt, leave endowment as NaN so commodity_index
+    # renormalizes over the remaining structural and alteration evidence without
+    # inducing a spurious directional gradient toward Zimbabwe.
     from src.utils.raster import lonlat_to_pixel
     gq_row, gq_col = lonlat_to_pixel(29.9842, -19.6127)
     yy, xx = np.indices((cfg.HEIGHT, cfg.WIDTH))
     dist_gq_km = np.hypot(yy - gq_row, xx - gq_col) * cfg.CELL / 1000.0
-    endowment = np.exp(-dist_gq_km / 15.0).astype("float32")  # 15 km decay radius
+    if float(np.min(dist_gq_km)) <= 50.0:
+        endowment = np.exp(-dist_gq_km / 15.0).astype("float32")  # 15 km decay radius
+    else:
+        endowment = np.full((cfg.HEIGHT, cfg.WIDTH), np.nan, dtype="float32")
     del yy, xx, dist_gq_km
 
     # 5. Multi-criteria Weighted Overlay
@@ -199,9 +206,8 @@ def run_minerals_survey(
     t_class = int(classes[tr, tc])
     class_names = CLASS_NAMES
 
-    r0, r1 = max(0, tr - 2), min(cfg.HEIGHT, tr + 3)
-    c0, c1 = max(0, tc - 2), min(cfg.WIDTH, tc + 3)
-    local_mean = finite_mean(gold_index[r0:r1, c0:c1])
+    from src.utils.classification import parcel_mean
+    local_mean = parcel_mean(gold_index, tr, tc, half_px=2, excluded_mask=water_mask | builtup_mask)
     local_class = zone_class(local_mean, breaks)
 
     print(f"      Target Coordinate Cell: {t_score:.1f}/100 ({class_names.get(t_class)})")
@@ -752,7 +758,7 @@ def _render_minerals_evidence(lin, inter, iron, hyd, fer, relief, endow):
     ]
 
     for ax, (title, arr, cm) in zip(axes.flat[:7], panels):
-        im = ax.imshow(arr, cmap=cm)
+        im = ax.imshow(arr, cmap=cm, vmin=0.0, vmax=1.0)
         ax.set_title(title, fontsize=10, fontweight="bold")
         ax.axis("off")
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)

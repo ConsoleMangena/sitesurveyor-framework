@@ -53,7 +53,9 @@ from src.utils.classification import (
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
+    parcel_mean,
     safe_round,
+    weighted_overlay,
     zone_class,
 )
 from src.utils.export import export_candidates_kml, export_kmz
@@ -217,24 +219,30 @@ def run_soil_survey(
     water_mask  = (lc == 80)
     builtup_mask = (lc == 50)
 
-    # Zero out water & built-up pixels in evidence layers
+    # Zero out observed water & built-up pixels in evidence layers (leave NaNs untouched)
     for layer in (erosion_cap, moisture_norm, veg_norm, lc_suit, wetness_cap, rain_norm):
-        layer[water_mask | builtup_mask] = 0.0
+        layer[np.isfinite(layer) & (water_mask | builtup_mask)] = 0.0
 
     # ------------------------------------------------------------------
     # 5. Weighted index (AHP)
     # ------------------------------------------------------------------
     print("[5/6] Computing Soil Capability Index (AHP weighted sum)...")
-    sci = (
-        cfg.SOIL_WEIGHTS["erosion_risk"]  * erosion_cap  * 100 +
-        cfg.SOIL_WEIGHTS["soil_moisture"] * moisture_norm * 100 +
-        cfg.SOIL_WEIGHTS["vegetation"]    * veg_norm      * 100 +
-        cfg.SOIL_WEIGHTS["landcover"]     * lc_suit       * 100 +
-        cfg.SOIL_WEIGHTS["wetness"]       * wetness_cap   * 100 +
-        cfg.SOIL_WEIGHTS["rainfall"]      * rain_norm     * 100
-    ).astype("float32")
+    sci = weighted_overlay(
+        {
+            "erosion_risk": erosion_cap,
+            "soil_moisture": moisture_norm,
+            "vegetation": veg_norm,
+            "landcover": lc_suit,
+            "wetness": wetness_cap,
+            "rainfall": rain_norm,
+        },
+        cfg.SOIL_WEIGHTS,
+        scale=100.0,
+        min_coverage=0.6,
+        require_finite=slope,
+    )
 
-    sci[water_mask | builtup_mask] = 0.0
+    sci[np.isfinite(sci) & (water_mask | builtup_mask)] = 0.0
 
     # Natural-break classification
     breaks = jenks_breaks(sci[~(water_mask | builtup_mask) & np.isfinite(sci)], k=5)
@@ -245,11 +253,9 @@ def run_soil_survey(
     # ------------------------------------------------------------------
     t_score = float(sci[cfg.TARGET_ROW, cfg.TARGET_COL])
     t_class = int(zones[cfg.TARGET_ROW, cfg.TARGET_COL])
-    local_win = sci[
-        max(0, cfg.TARGET_ROW - 5): cfg.TARGET_ROW + 6,
-        max(0, cfg.TARGET_COL - 5): cfg.TARGET_COL + 6
-    ]
-    local_mean = finite_mean(local_win)
+    local_mean = parcel_mean(
+        sci, cfg.TARGET_ROW, cfg.TARGET_COL, half_px=2, excluded_mask=water_mask | builtup_mask
+    )
     local_class = zone_class(local_mean, breaks)
 
     class_names = CLASS_NAMES
@@ -268,6 +274,15 @@ def run_soil_survey(
         border_margin_px=25,
         proximity_weight=0.06,
     )
+    for cand in candidates:
+        r, c = cand["row"], cand["col"]
+        lc_code = int(lc[r, c]) if np.isfinite(lc[r, c]) else None
+        cand["elevation_m"] = safe_round(dem[r, c], 1)
+        cand["slope_degrees"] = safe_round(slope[r, c], 1)
+        cand["erosion_resistance_pct"] = safe_round(erosion_cap[r, c] * 100.0, 1)
+        cand["moisture_pct"] = safe_round(moisture_norm[r, c] * 100.0, 1)
+        cand["vegetation_pct"] = safe_round(veg_norm[r, c] * 100.0, 1)
+        cand["landcover"] = cfg.LANDCOVER_NAMES.get(lc_code)
     print(f"  Candidate areas found   : {len(candidates)}")
     if candidates:
         print(f"  Closest to target       : {candidates[0]['distance_from_target_km']:.2f} km")
@@ -421,9 +436,11 @@ def _plot_soil_map(sci, zones, candidates):
     ax.legend(handles=patches, loc="lower right", fontsize=8,
               framealpha=0.85, title="Land Capability")
 
+    lat_hem = "S" if cfg.TARGET_LAT < 0 else "N"
+    lon_hem = "W" if cfg.TARGET_LON < 0 else "E"
     ax.set_title(
         f"Soil & Land Capability Zoning — {cfg.CLIENT}\n"
-        f"{cfg.TARGET_LAT:.4f}°S, {cfg.TARGET_LON:.4f}°E  |  Eineva Labs",
+        f"{abs(cfg.TARGET_LAT):.4f}°{lat_hem}, {abs(cfg.TARGET_LON):.4f}°{lon_hem}  |  Eineva Labs",
         fontsize=11, color=cfg.BRAND_COLOR, pad=12
     )
     ax.set_xlabel("Column (← W    E →)")

@@ -52,7 +52,9 @@ from src.utils.classification import (
     finite_mean,
     find_candidate_sites,
     jenks_breaks,
+    parcel_mean,
     safe_round,
+    weighted_overlay,
     zone_class,
 )
 from src.utils.export import export_candidates_kml, export_kmz
@@ -171,8 +173,8 @@ def run_hazard_survey(
         fuel_load = np.clip(ndvi_layer, 0.0, 1.0)
         fire_hazard = robust_norm(fuel_load * moisture_deficit)
 
-    # Zero out fire risk on water or bare rock/settlement
-    fire_hazard[(lc == 50) | (lc == 80)] = 0.1
+    # Zero out fire risk on observed water or bare rock/settlement (preserve NaNs)
+    fire_hazard[np.isfinite(fire_hazard) & ((lc == 50) | (lc == 80))] = 0.1
 
     # Layer 5: Drought Vulnerability
     # Lower rainfall relative to region + high bare soil ratio
@@ -184,18 +186,24 @@ def run_hazard_survey(
     # 5. Composite Hazard Index (0 to 100)
     # ------------------------------------------------------------------
     print("[5/6] Computing Composite Site Hazard Index (AHP weighted sum)...")
-    hazard_index = (
-        cfg.HAZARD_WEIGHTS["flood_inundation"] * flood_hazard * 100.0 +
-        cfg.HAZARD_WEIGHTS["slope_failure"]    * slope_hazard * 100.0 +
-        cfg.HAZARD_WEIGHTS["erosion_washout"]  * erosion_hazard * 100.0 +
-        cfg.HAZARD_WEIGHTS["wildfire_fuel"]    * fire_hazard * 100.0 +
-        cfg.HAZARD_WEIGHTS["drought_stress"]   * drought_hazard * 100.0
-    ).astype("float32")
+    hazard_index = weighted_overlay(
+        {
+            "flood_inundation": flood_hazard,
+            "slope_failure": slope_hazard,
+            "erosion_washout": erosion_hazard,
+            "wildfire_fuel": fire_hazard,
+            "drought_stress": drought_hazard,
+        },
+        cfg.HAZARD_WEIGHTS,
+        scale=100.0,
+        min_coverage=0.6,
+        require_finite=slope,
+    )
 
     water_mask = (lc == 80)
     builtup_mask = (lc == 50)
-    # Permanent water has maximal flood hazard
-    hazard_index[water_mask] = 100.0
+    # Permanent water has maximal flood hazard where observed
+    hazard_index[np.isfinite(hazard_index) & water_mask] = 100.0
 
     # Natural-break classification for Hazard Zones
     # 1: Very Low Hazard, 2: Low, 3: Moderate, 4: High, 5: Very High
@@ -208,18 +216,16 @@ def run_hazard_survey(
 
     # Site Safety Index (100 = Safest, 0 = Most hazardous)
     safety_index = (100.0 - hazard_index).astype("float32")
-    safety_index[water_mask] = 0.0
+    safety_index[np.isfinite(safety_index) & water_mask] = 0.0
 
     # Target site assessment
     t_hazard = float(hazard_index[cfg.TARGET_ROW, cfg.TARGET_COL])
     t_safety = float(safety_index[cfg.TARGET_ROW, cfg.TARGET_COL])
     t_class = int(hazard_zones[cfg.TARGET_ROW, cfg.TARGET_COL])
 
-    local_win = hazard_index[
-        max(0, cfg.TARGET_ROW - 5): cfg.TARGET_ROW + 6,
-        max(0, cfg.TARGET_COL - 5): cfg.TARGET_COL + 6
-    ]
-    local_mean_hazard = finite_mean(local_win)
+    local_mean_hazard = parcel_mean(
+        hazard_index, cfg.TARGET_ROW, cfg.TARGET_COL, half_px=2, excluded_mask=excluded
+    )
     local_hazard_class = zone_class(local_mean_hazard, breaks)
 
     hazard_class_names = {
@@ -255,6 +261,14 @@ def run_hazard_survey(
         border_margin_px=25,
         proximity_weight=0.06,
     )
+    for site in safest_sites:
+        r, c = site["row"], site["col"]
+        lc_code = int(lc[r, c]) if np.isfinite(lc[r, c]) else None
+        site["hazard_score"] = safe_round(hazard_index[r, c], 1)
+        site["elevation_m"] = safe_round(dem[r, c], 1)
+        site["slope_degrees"] = safe_round(slope[r, c], 1)
+        site["flood_risk_pct"] = safe_round(flood_hazard[r, c] * 100.0, 1)
+        site["landcover"] = cfg.LANDCOVER_NAMES.get(lc_code)
     print(f"  Safest buildable sites  : {len(safest_sites)}")
     if safest_sites:
         print(f"  Closest safe build site : {safest_sites[0]['distance_from_target_km']:.2f} km (Safety: {safest_sites[0]['potential_score']:.1f}/100)")
@@ -400,9 +414,11 @@ def _plot_hazard_map(hazard_index, hazard_zones, safest_sites):
     ax.legend(handles=patches, loc="lower right", fontsize=8,
               framealpha=0.9, title="Environmental Risk Level")
 
+    lat_hem = "S" if cfg.TARGET_LAT < 0 else "N"
+    lon_hem = "W" if cfg.TARGET_LON < 0 else "E"
     ax.set_title(
         f"Multi-Hazard & Environmental Risk Zoning -- {cfg.CLIENT}\n"
-        f"{cfg.TARGET_LAT:.4f}S, {cfg.TARGET_LON:.4f}E | Eineva Labs",
+        f"{abs(cfg.TARGET_LAT):.4f}°{lat_hem}, {abs(cfg.TARGET_LON):.4f}°{lon_hem} | Eineva Labs",
         fontsize=11, color=cfg.BRAND_COLOR, pad=12
     )
     ax.set_xlabel("Column (West -> East)")
@@ -519,8 +535,8 @@ def _plot_hazard_zoom(hazard_index, hazard_zones, safest_sites):
         f"{cfg.CLIENT} | {cfg.CLIENT_ADDRESS}",
         fontsize=10, color=cfg.BRAND_COLOR, pad=10
     )
-    ax.set_xlabel("West -> East (km)")
-    ax.set_ylabel("North -> South (km)")
+    ax.set_xlabel("Column (West -> East, px)")
+    ax.set_ylabel("Row (North -> South, px)")
     ax.tick_params(labelsize=7)
 
     fig.text(0.5, 0.01,

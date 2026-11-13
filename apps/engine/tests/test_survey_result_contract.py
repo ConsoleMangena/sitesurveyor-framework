@@ -268,3 +268,36 @@ def test_only_the_files_this_run_wrote_are_published(_isolated_out: Path) -> Non
 
     kinds = [kind for kind, _, _ in worker.survey_files()]
     assert kinds == ["minerals_map"]
+
+
+def test_worker_readout_words_safety_and_soil_targets_accurately() -> None:
+    import worker
+
+    hazard_read = worker.readout(
+        "hazard_safety",
+        {"class_name": "Very high", "slope_degrees": 2.4},
+    )
+    assert hazard_read == "Very high safety / slope 2.4°"
+    assert "hazard Very high" not in hazard_read
+
+    soil_read = worker.readout(
+        "soil_land",
+        {
+            "class_name": "High",
+            "landcover": "Cropland",
+            "slope_degrees": 1.8,
+            "moisture_pct": 64.5,
+        },
+    )
+    assert soil_read == "High capability / Cropland / slope 1.8° / moisture 64.5%"
+
+
+def test_category_specific_runs_request_only_their_required_rasters() -> None:
+    from src.mcp.server import _required_rasters_for_categories
+
+    assert set(_required_rasters_for_categories(["minerals"])) == {
+        "dem.tif", "landcover.tif", "alos.tif", "optical.tif",
+    }
+    assert "wofs.tif" not in _required_rasters_for_categories(["water"])
+    assert "alos.tif" not in _required_rasters_for_categories(["soil"])
+    assert "alos.tif" not in _required_rasters_for_categories(["hazard"])

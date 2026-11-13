@@ -54,7 +54,9 @@ def warp(path: Path, band: int | str = 1, resampling: Resampling = Resampling.bi
             dst_crs=cfg.LOCAL_CRS,
             dst_nodata=np.nan,
             resampling=resampling,
-            num_threads=2,
+            # Keep GDAL warp single-threaded: multi-threaded warp triggers
+            # intermittent Windows heap corruption (0xc0000374) inside GDAL.
+            num_threads=1,
         )
     return dst
 

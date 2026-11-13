@@ -223,6 +223,65 @@ def finite_mean(values: np.ndarray) -> float:
     return float(v.mean()) if v.size else float("nan")
 
 
+def parcel_mean(
+    index_0_100: np.ndarray,
+    row: int,
+    col: int,
+    half_px: int = 2,
+    excluded_mask: np.ndarray | None = None,
+) -> float:
+    """Mean score across the 5x5 (150m at 30m pitch) parcel window around (row, col).
+
+    Excludes water and built-up cells when computing the parcel average so an
+    adjacent pond or building does not drag a land parcel's score to 0 or 100,
+    falling back to the raw finite window only if the entire window is excluded.
+    """
+    h, w = index_0_100.shape
+    r0, r1 = max(0, row - half_px), min(h, row + half_px + 1)
+    c0, c1 = max(0, col - half_px), min(w, col + half_px + 1)
+    win = index_0_100[r0:r1, c0:c1]
+    if excluded_mask is not None:
+        excl = np.asarray(excluded_mask, dtype=bool)[r0:r1, c0:c1]
+        mean_val = finite_mean(np.where(excl, np.nan, win))
+        if np.isfinite(mean_val):
+            return mean_val
+    return finite_mean(win)
+
+
+def weighted_overlay(
+    layers: dict[str, np.ndarray],
+    weights: dict[str, float],
+    scale: float = 100.0,
+    min_coverage: float = 0.6,
+    require_finite: np.ndarray | None = None,
+) -> np.ndarray:
+    """Coverage-aware weighted overlay of normalized (0-1) evidence layers.
+
+    Renormalizes weights at each pixel over finite evidence layers when at least
+    `min_coverage` of total model weight is observed, preventing a single missing
+    auxiliary pixel from voiding the entire composite score. If `require_finite`
+    is provided (e.g. terrain slope), pixels where it is non-finite remain NaN.
+    """
+    shape = next(iter(layers.values())).shape
+    total = np.zeros(shape, dtype="float64")
+    mass = np.zeros(shape, dtype="float64")
+    for key, weight in weights.items():
+        layer = layers.get(key)
+        if layer is None or weight == 0:
+            continue
+        arr = np.asarray(layer, dtype="float64")
+        finite = np.isfinite(arr)
+        total += np.where(finite, arr * weight, 0.0)
+        mass += np.where(finite, weight, 0.0)
+
+    valid = mass >= (min_coverage - 1e-9)
+    if require_finite is not None:
+        valid = valid & np.isfinite(require_finite)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        out = np.where(valid, (total / mass) * scale, np.nan)
+    return out.astype("float32")
+
+
 def paint_zones(
     classes: np.ndarray,
     cmap,
@@ -313,8 +372,25 @@ def find_candidate_sites(
     scores = index_0_100[rows, cols]
     dists_km = np.hypot(rows - target_row, cols - target_col) * cfg.CELL / 1000.0
 
-    # Rank metric: balances high potential score with client proximity
-    rank_metrics = scores / (1.0 + proximity_weight * dists_km)
+    # Compute 3x3 valid-land neighborhood mean around each peak so sustained
+    # multi-pixel zones outrank isolated single-pixel noise spikes.
+    h, w = index_0_100.shape
+    valid_land = (
+        (classes >= MIN_SCORED_CLASS)
+        & (classes <= MAX_SCORED_CLASS)
+        & np.isfinite(index_0_100)
+    )
+    neigh_scores = np.empty_like(scores, dtype="float64")
+    for i, (r, c) in enumerate(zip(rows, cols)):
+        r0, r1 = max(0, int(r) - 1), min(h, int(r) + 2)
+        c0, c1 = max(0, int(c) - 1), min(w, int(c) + 2)
+        patch = np.where(valid_land[r0:r1, c0:c1], index_0_100[r0:r1, c0:c1], np.nan)
+        n_mean = finite_mean(patch)
+        neigh_scores[i] = n_mean if np.isfinite(n_mean) else float(scores[i])
+
+    # Rank metric: balances cell + neighborhood score with client proximity
+    effective_scores = 0.7 * scores + 0.3 * neigh_scores
+    rank_metrics = effective_scores / (1.0 + proximity_weight * dists_km)
     sort_order = np.argsort(-rank_metrics)
 
     class_names = CLASS_NAMES
