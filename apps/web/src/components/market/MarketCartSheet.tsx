@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, Loader2, ShoppingCart, TriangleAlert, X } from "lucide-react";
 
 import { cn } from "../../lib/utils.ts";
+import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import {
   cartTotals,
   clearCart,
@@ -104,7 +105,7 @@ function CartSheetBody({ buyer, onClose }: { buyer: CartBuyer | null; onClose: (
   const totals = cartTotals(items);
 
   const handleCheckout = async () => {
-    if (!buyer || items.length === 0) return;
+    if (!buyer || !useAuthStore.getState().user || items.length === 0) return;
     setSending(true);
     setError(null);
     try {
@@ -295,7 +296,7 @@ function CartSheetBody({ buyer, onClose }: { buyer: CartBuyer | null; onClose: (
               </div>
             ) : (
               <Button asChild className="w-full">
-                <Link to="/login">
+                <Link to="/login" state={{ from: "/market" }}>
                   Sign In <span className="hidden sm:inline">to send requests</span>
                 </Link>
               </Button>

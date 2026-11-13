@@ -39,6 +39,7 @@ interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   disableAnimation?: boolean;
   showCloseButton?: boolean;
+  overlayClassName?: string;
   size?: DialogSize;
   variant?: DialogVariant;
 }
@@ -53,14 +54,15 @@ const DialogContent = React.forwardRef<
       children,
       disableAnimation,
       showCloseButton = true,
+      overlayClassName,
       size = "md",
-      variant = "card",
+      variant = "sheet",
       ...props
     },
     ref,
   ) => (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
         data-slot="dialog-content"
@@ -110,7 +112,7 @@ const DialogHeader = ({
   <div
     data-slot="dialog-header"
     className={cn(
-      "flex flex-col gap-2 text-center sm:text-start",
+      "dlg-header",
       className,
     )}
     {...props}
@@ -125,7 +127,7 @@ const DialogFooter = ({
   <div
     data-slot="dialog-footer"
     className={cn(
-      "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+      "dlg-footer",
       className,
     )}
     {...props}
@@ -141,7 +143,7 @@ const DialogTitle = React.forwardRef<
     ref={ref}
     data-slot="dialog-title"
     className={cn(
-      "text-lg leading-none font-semibold",
+      "text-lg leading-snug font-semibold tracking-[-0.015em]",
       className,
     )}
     {...props}
@@ -156,7 +158,7 @@ const DialogDescription = React.forwardRef<
   <DialogPrimitive.Description
     ref={ref}
     data-slot="dialog-description"
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm leading-6 text-muted-foreground", className)}
     {...props}
   />
 ))

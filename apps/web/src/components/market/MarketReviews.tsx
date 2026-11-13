@@ -56,17 +56,26 @@ export function MarketReviews({
     setReviews(await listMarketReviews(kind, itemId));
   }, [kind, itemId]);
 
+  // Both effects settle their state inside a promise, never synchronously in
+  // the effect body — that keeps the render cascade out and satisfies the
+  // set-state-in-effect rule. A signed-out visitor resolves to "no review".
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+    void listMarketReviews(kind, itemId).then((rows) => {
+      if (!cancelled) setReviews(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, itemId]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!user) {
-      setMine(null);
-      return;
-    }
-    void getMyMarketReview(kind, itemId).then((row) => {
+    const load = async () => {
+      if (!user) return null;
+      return getMyMarketReview(kind, itemId);
+    };
+    void load().then((row) => {
       if (cancelled) return;
       setMine(row);
       if (row) {

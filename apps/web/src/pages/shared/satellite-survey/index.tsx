@@ -108,6 +108,9 @@ interface SatelliteSurveyPageProps {
   workspaceId: string;
   onNavigate?: (view: string, context?: Record<string, string>) => void;
   onExitFullscreen?: () => void;
+  /** Take the app chrome away so the workbench can fill the window, the way a
+   *  desktop GIS does. Called once a survey is open on the canvas. */
+  onEnterFullscreen?: () => void;
   isFullscreen?: boolean;
 }
 
@@ -130,6 +133,7 @@ function SurveyWorkbench({
   workspaceId,
   onNavigate,
   onExitFullscreen,
+  onEnterFullscreen,
   isFullscreen = false,
 }: SatelliteSurveyPageProps) {
   const [resizeToken, setResizeToken] = useState(0);
@@ -168,9 +172,13 @@ function SurveyWorkbench({
   const [attachError, setAttachError] = useState<string | null>(null);
   const scopedJobs = jobs.filter((job) => !job.archived_at && (!jobProjectContext || job.project_id === jobProjectContext));
 
-  function switchJob() {
+  function returnToProject() {
     onExitFullscreen?.();
-    setParams({ view: "satellite", ...(jobProjectContext ? { projectId: jobProjectContext } : {}) });
+    if (onNavigate && jobProjectContext) {
+      onNavigate("projects", { projectId: jobProjectContext, tab: "earthObservation" });
+    } else {
+      setParams({ view: "projects", ...(jobProjectContext ? { projectId: jobProjectContext } : {}) });
+    }
   }
 
   /** Attach-first for legacy unassigned jobs: file the job under a project,
@@ -322,6 +330,17 @@ function SurveyWorkbench({
     // doing it inside the effect body would cascade a render mid-commit.
     void Promise.resolve().then(fetchJobs);
   }, [fetchJobs]);
+
+  // The console wants the whole window once a survey is on the canvas; the
+  // setup form and the attach prompt stay inside the app's normal frame.
+  const consoleOpen = Boolean(openedJob) && !needsAttachment;
+  const consoleWasOpen = useRef(consoleOpen);
+  useEffect(() => {
+    if (consoleWasOpen.current === consoleOpen) return;
+    consoleWasOpen.current = consoleOpen;
+    if (consoleOpen) onEnterFullscreen?.();
+    else onExitFullscreen?.();
+  }, [consoleOpen, onEnterFullscreen, onExitFullscreen]);
 
   useEffect(() => {
     if (!selectedId || jobsLoading || jobsError) return;
@@ -891,7 +910,7 @@ function SurveyWorkbench({
   const contextError = jobsError || projectsError ||
     (!projectsLoading && jobProjectContext && !project ? "This project is unavailable in this workspace." : null) ||
     (!jobsLoading && routeJobId && !jobs.some((job) => job.id === routeJobId && !job.archived_at &&
-      (!jobProjectContext || job.project_id === jobProjectContext)) ? "This job is unavailable in the selected project or workspace." : null) ||
+      (!jobProjectContext || job.project_id === jobProjectContext)) ? "This survey is unavailable in the selected project or workspace." : null) ||
     (selectedId ? runLinkError : null);
 
   if (contextError) {
@@ -901,7 +920,7 @@ function SurveyWorkbench({
         <ErrorNotice title="Unable to open Earth Observation" tone="danger" action={
           <Button variant="outline" onClick={() => { void fetchJobs(); void refreshProjects(); }}>Retry</Button>
         }>{contextError}</ErrorNotice>
-        <Button variant="outline" onClick={switchJob}>Choose another job</Button>
+        <Button variant="outline" onClick={returnToProject}>Back to project surveys</Button>
         <Button variant="ghost" onClick={() => {
           if (onNavigate) onNavigate("projects");
           else setParams({ view: "projects" });
@@ -919,9 +938,9 @@ function SurveyWorkbench({
     return (
       <DashboardShell className="w-full max-w-2xl">
         <DashboardHeader title="Earth Observation" />
-        <ErrorNotice title="Attach this job to a project" tone="warning">
-          "{needsAttachment.title}" is not attached to a project. Earth Observation jobs live
-          inside projects — choose one and the job and its survey runs move there.
+        <ErrorNotice title="Attach this survey to a project" tone="warning">
+          "{needsAttachment.title}" is not attached to a project. Earth Observation surveys live
+          inside projects — choose one and the survey and its runs move there.
         </ErrorNotice>
         {projects.length > 0 ? (
           <div className="space-y-1.5">
@@ -955,7 +974,7 @@ function SurveyWorkbench({
           setAttachError(null);
           setParams({ view: "satellite" });
         }}>
-          Back to the project picker
+          Back to Projects
         </Button>
       </DashboardShell>
     );
@@ -968,18 +987,8 @@ function SurveyWorkbench({
           workspaceId={workspaceId}
           values={values}
           onChange={patch}
-          jobs={scopedJobs}
-          projects={projects}
-          onProjectChange={(projectId) => setParams({ view: "satellite", ...(projectId ? { projectId } : {}) })}
-          jobsLoading={jobsLoading}
-          openedJob={openedJob}
-          onSelectJob={(job) => {
-            applyAndOpenJob(job);
-          }}
-          onProceedToWorkbench={(job) => {
-            applyAndOpenJob(job);
-          }}
-          onRefreshJobs={fetchJobs}
+          projectName={project?.name}
+          onCreateSurvey={applyAndOpenJob}
           projectContextId={jobProjectContext}
           busy={running !== null}
           queueing={queueing}
@@ -996,12 +1005,13 @@ function SurveyWorkbench({
   return (
     <DashboardShell
       className={cn(
-        "w-full transition-all duration-200",
+        "w-full",
         isFullscreen
-          ? "max-w-none h-full min-h-0 gap-1.5 sm:gap-2 overflow-hidden p-2 sm:p-3"
-          : "max-w-[1780px] gap-4 sm:gap-5"
+          ? "max-w-none h-full min-h-0 gap-0 overflow-hidden p-0"
+          : "max-w-[1780px] gap-0"
       )}
     >
+      <div className={cn("sw-console", !isFullscreen && "sw-console--inset")}>
       <WorkbenchBar
         tab={ribbonTab}
         onTab={setRibbonTab}
@@ -1027,67 +1037,71 @@ function SurveyWorkbench({
         onExportPdf={() => setExportModalOpen(true)}
         downloads={downloads}
         onDownload={(kind) => void handleDownload(kind)}
+        projectName={project?.name}
+        surveyName={openedJob.title}
+        onBack={returnToProject}
       />
 
-      {listError ? (
-        <ErrorNotice tone="warning" title="The survey queue could not be read">
-          {listError}
-        </ErrorNotice>
-      ) : null}
+      {listError || refused || charged ? (
+        <div className="flex flex-col gap-1.5 border-b border-border bg-background px-3 py-2">
+          {listError ? (
+            <ErrorNotice tone="warning" title="The survey queue could not be read">
+              {listError}
+            </ErrorNotice>
+          ) : null}
 
-      {refused ? (
-        <ErrorNotice
-          tone={outOfCredits ? "warning" : "danger"}
-          title={outOfCredits ? "This workspace is out of credits" : "The survey was refused"}
-          action={
-            outOfCredits ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onNavigate?.("billing")}
-              >
-                Open Billing
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setRefused(null)}
-              >
-                Dismiss
-              </Button>
-            )
-          }
-        >
-          {refused}
-        </ErrorNotice>
-      ) : null}
+          {refused ? (
+            <ErrorNotice
+              tone={outOfCredits ? "warning" : "danger"}
+              title={outOfCredits ? "This workspace is out of credits" : "The survey was refused"}
+              action={
+                outOfCredits ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onNavigate?.("billing")}
+                  >
+                    Open Billing
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRefused(null)}
+                  >
+                    Dismiss
+                  </Button>
+                )
+              }
+            >
+              {refused}
+            </ErrorNotice>
+          ) : null}
 
-      {charged ? (
-        <div
-          role="status"
-          className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/35 bg-primary/8 px-3 py-2 text-xs"
-        >
-          <Coins className="size-3.5 text-primary" aria-hidden="true" />
-          <span className="text-foreground">
-            {charged.credits.toLocaleString()} credit{charged.credits === 1 ? "" : "s"} charged
-            for this survey
-          </span>
-          {charged.remaining !== null ? (
-            <span className="text-muted-foreground">
-              · {charged.remaining.toLocaleString()} remaining
-            </span>
+          {charged ? (
+            <div
+              role="status"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/35 bg-primary/8 px-3 py-2 text-xs"
+            >
+              <Coins className="size-3.5 text-primary" aria-hidden="true" />
+              <span className="text-foreground">
+                {charged.credits.toLocaleString()} credit{charged.credits === 1 ? "" : "s"} charged
+                for this survey
+              </span>
+              {charged.remaining !== null ? (
+                <span className="text-muted-foreground">
+                  · {charged.remaining.toLocaleString()} remaining
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
 
       <div
-        className={cn(
-          "sw-workspace gap-3",
-          isFullscreen && "sw-workspace--fullscreen flex-1 min-h-0"
-        )}
+        className="sw-workspace"
         data-left={leftOpen ? undefined : "collapsed"}
         data-right={rightOpen ? undefined : "collapsed"}
         data-table={tableOpen ? "open" : undefined}
@@ -1114,7 +1128,7 @@ function SurveyWorkbench({
           jobs={scopedJobs}
           currentJob={openedJob}
           onSelectJob={(job) => applyAndOpenJob(job)}
-          onOpenJobSetup={switchJob}
+          onOpenJobSetup={returnToProject}
           onDeleteJob={handleDeleteJob}
           onRenameJob={handleRenameJob}
           activeDossierCategory={jobDossierCategory}
@@ -1209,7 +1223,7 @@ function SurveyWorkbench({
               currentJob={openedJob}
               values={values}
               onChange={patch}
-              onOpenSetup={switchJob}
+              onOpenSetup={returnToProject}
               queueing={queueing}
               busy={running !== null}
               stage={running?.stage ?? null}
@@ -1258,6 +1272,7 @@ function SurveyWorkbench({
         basis={snapshot.basis}
         measure={measureText}
       />
+      </div>
 
       <MapExportModal
         open={exportModalOpen}

@@ -15,9 +15,6 @@ export const READ_TABLES = new Set([
   "assets",
   "asset_calibrations",
   "asset_maintenance_events",
-  "jobs",
-  "job_events",
-  "job_assignments",
   "time_entries",
   "expense_entries",
   "notifications",
@@ -33,10 +30,8 @@ export const WRITE_TABLES = new Set([
   "quotes",
   "projects",
   "contacts",
-  "jobs",
   "invoices",
   "assets",
-  "job_events",
 ]);
 
 export const FILTER_OPS = new Set([
@@ -78,7 +73,6 @@ export const TOOL_NAMES = [
   "delete_site_record",
   "close_overdue_invoices",
   "create_quote_from_line_items",
-  "schedule_job",
   "get_cad_drawing",
   "list_cad_layers",
   "count_cad_entities",

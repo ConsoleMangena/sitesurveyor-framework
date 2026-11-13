@@ -4,6 +4,7 @@ export const businessNavGroups: WorkspaceNavGroup[] = [
   {
     items: [
       { view: "dashboard", label: "Dashboard", icon: "dashboard" },
+      { view: "portfolio", label: "Professional Portfolio", icon: "person" },
       { view: "assistant", label: "SiteSurveyor AI", icon: "bot" },
       { view: "notifications", label: "Notifications", icon: "notifications" },
     ],
@@ -34,7 +35,6 @@ export const businessNavGroups: WorkspaceNavGroup[] = [
   {
     label: "NETWORK",
     items: [
-      { view: "jobs", label: "Job Board", icon: "briefcase" },
       { view: "professionals", label: "Hire Pros", icon: "person" },
       { view: "marketplace", label: "Marketplace", icon: "marketplace" },
     ],

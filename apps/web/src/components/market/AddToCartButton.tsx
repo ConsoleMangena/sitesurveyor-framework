@@ -1,6 +1,8 @@
-import { Check, ShoppingCart } from "lucide-react";
+import { Check, LogIn, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { addToCart, removeFromCart, useIsInCart } from "../../features/market/cart.ts";
+import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { cn } from "../../lib/utils.ts";
 import { Button } from "../ui/button.tsx";
 
@@ -30,6 +32,8 @@ export function AddToCartButton({
   size?: "sm" | "default" | "icon";
 }) {
   const inCart = useIsInCart(listing.id);
+  const signedIn = useAuthStore((state) => state.user !== null);
+  const navigate = useNavigate();
 
   return (
     <Button
@@ -38,12 +42,18 @@ export function AddToCartButton({
       size={size}
       className={cn("gap-1.5", className)}
       aria-label={
-        inCart
-          ? `Remove ${listing.name} from cart`
-          : `Add ${listing.name} to cart`
+        signedIn
+          ? inCart
+            ? `Remove ${listing.name} from cart`
+            : `Add ${listing.name} to cart`
+          : `Sign in to buy ${listing.name}`
       }
       onClick={(event) => {
         event.stopPropagation();
+        if (!signedIn) {
+          navigate("/login", { state: { from: "/market" } });
+          return;
+        }
         if (inCart) {
           removeFromCart(listing.id);
           return;
@@ -60,12 +70,14 @@ export function AddToCartButton({
         });
       }}
     >
-      {inCart ? (
+      {!signedIn ? (
+        <LogIn className="size-4" aria-hidden="true" />
+      ) : inCart ? (
         <Check className="size-4" aria-hidden="true" />
       ) : (
         <ShoppingCart className="size-4" aria-hidden="true" />
       )}
-      {inCart ? "In cart" : "Add to cart"}
+      {!signedIn ? "Sign in to buy" : inCart ? "In cart" : "Add to cart"}
     </Button>
   );
 }

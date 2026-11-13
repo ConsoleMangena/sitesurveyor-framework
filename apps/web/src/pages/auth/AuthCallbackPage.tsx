@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, ShieldAlert } from "lucide-react";
 import AuthShell, { AuthMark } from "../../components/auth/AuthShell";
 import { Button } from "../../components/ui/button";
@@ -11,6 +11,7 @@ import {
 } from "../../lib/auth/provisioning.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
 import { githubEmailIsUsable } from "../../lib/auth/oauth.ts";
+import { getAuthUrlError } from "../../lib/auth/auth-url.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 
 type Phase = "working" | "needs-details" | "needs-email" | "failed";
@@ -27,8 +28,8 @@ type Phase = "working" | "needs-details" | "needs-email" | "failed";
  */
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const setAuthLoading = useAuthStore((s) => s.setAuthLoading);
-  const [params] = useSearchParams();
   const [phase, setPhase] = useState<Phase>("working");
   const [message, setMessage] = useState<string | null>(null);
   const [emailWasPrivate, setEmailWasPrivate] = useState(false);
@@ -40,15 +41,14 @@ export default function AuthCallbackPage() {
 
     void (async () => {
       // OAuth can return an error in the URL instead of a session.
-      const urlError =
-        params.get("error_description") ||
-        params.get("error") ||
-        params.get("error_code");
+      const urlError = getAuthUrlError(
+        `${window.location.origin}${location.pathname}${location.search}${location.hash}`,
+      );
       if (urlError) {
         setPhase("failed");
         setMessage(
           formatAuthUserFacingError(
-            decodeURIComponent(urlError).replace(/\+/g, " "),
+            urlError,
             "Sign-in could not be completed. Please try signing in again.",
           ),
         );
@@ -98,7 +98,7 @@ export default function AuthCallbackPage() {
         "We could not complete the sign-in. The link may have expired — request a new one and try again.",
       );
     })();
-  }, [navigate, params, setAuthLoading]);
+  }, [location.hash, location.pathname, location.search, navigate, setAuthLoading]);
 
   return (
     <AuthShell

@@ -1,12 +1,11 @@
 import BusinessDashboardPage from "../../pages/business/BusinessDashboardPage";
 import DispatchPage from "../../pages/business/DispatchPage";
 import ProfessionalsPage from "../../pages/business/ProfessionalsPage";
+import ProfessionalPortfolioPage from "../../pages/personal/ProfessionalPortfolioPage";
 import TeamPage from "../../pages/business/TeamPage";
 import SchedulePage from "../../pages/personal/SchedulePage";
 import ContactsPage from "../../pages/shared/ContactsPage";
 import InvoicesPage from "../../pages/shared/InvoicesPage";
-import JobsPage from "../../pages/shared/JobsPage";
-import VacanciesPage from "../../pages/shared/VacanciesPage";
 import NotificationsPage from "../../pages/shared/NotificationsPage";
 import ProfileSettingsPage from "../../pages/shared/ProfileSettingsPage";
 import QuotesPage from "../../pages/shared/QuotesPage";
@@ -74,6 +73,9 @@ export function renderBusinessView(
         </Suspense>
       );
 
+    case "portfolio":
+      return <ProfessionalPortfolioPage workspaceId={user.workspaceId} userName={user.name} />;
+
     case "files":
       return (
         <Suspense fallback={<PageLoader />}>
@@ -93,8 +95,6 @@ export function renderBusinessView(
           <ProjectHubPage
             userName={user.name}
             workspaceId={user.workspaceId}
-            onEnterFullscreenProject={onEnterFullscreenProject}
-            onExitFullscreenProject={onExitFullscreenProject}
             onNavigate={onNavigate}
           />
         </Suspense>
@@ -138,26 +138,6 @@ export function renderBusinessView(
     case "team":
       return <TeamPage workspaceId={user.workspaceId} />;
 
-    case "jobs":
-    case "vacancies":
-      return (
-        <VacanciesPage
-          workspaceId={user.workspaceId}
-          isPlatformAdmin={user.isPlatformAdmin}
-          user={user}
-          onNavigate={onNavigate}
-        />
-      );
-
-    case "fieldJobs":
-      return (
-        <JobsPage
-          workspaceId={user.workspaceId}
-          isPlatformAdmin={user.isPlatformAdmin}
-          onNavigate={onNavigate}
-        />
-      );
-
     case "schedule":
       return <SchedulePage workspaceId={user.workspaceId} />;
 
@@ -184,6 +164,7 @@ export function renderBusinessView(
           <SatelliteSurveyPage
             workspaceId={user.workspaceId}
             onNavigate={onNavigate}
+            onEnterFullscreen={onEnterFullscreenProject}
             onExitFullscreen={onExitFullscreenProject}
             isFullscreen={options.isProjectFullscreen}
           />

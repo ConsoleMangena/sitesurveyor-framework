@@ -76,14 +76,22 @@ beforeEach(() => {
   mocks.updateJob.mockResolvedValue({});
 });
 
-describe("EO project/job routing", () => {
-  it("keeps the project picker visible when another workspace job is running", async () => {
-    open();
-    expect(await screen.findByLabelText("Project")).toBeInTheDocument();
+describe("EO project/survey routing", () => {
+  it("opens a project-only survey form without a job picker", async () => {
+    open("?view=satellite&projectId=project-a");
+    expect(await screen.findByRole("heading", { name: "New Earth Observation survey" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/survey name/i)).toBeInTheDocument();
     expect(screen.queryByTestId("map")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /create new job/i })).not.toBeInTheDocument();
-    expect(screen.queryByText("Unassigned")).not.toBeInTheDocument();
-    expect(screen.getByText(/Choose a project to continue/)).toBeInTheDocument();
+    expect(screen.queryByText(/project jobs/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /select job/i })).not.toBeInTheDocument();
+  });
+
+  it("asks visitors without project context to enter through a project", async () => {
+    open();
+    expect(await screen.findByText("Open Earth Observation from a project")).toBeInTheDocument();
+    expect(screen.queryByTestId("map")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Project")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/survey name/i)).not.toBeInTheDocument();
   });
 
   it("restores a job from its URL and only exposes its runs and project jobs", async () => {
@@ -120,7 +128,7 @@ describe("EO project/job routing", () => {
 
   it("refuses jobs from another project", async () => {
     open("?view=satellite&projectId=project-b&jobId=job-a");
-    expect(await screen.findByText(/This job is unavailable/)).toBeInTheDocument();
+    expect(await screen.findByText(/This survey is unavailable/)).toBeInTheDocument();
     expect(screen.queryByTestId("map")).not.toBeInTheDocument();
   });
 
@@ -146,7 +154,7 @@ describe("EO project/job routing", () => {
 
   it("refuses an unassigned job and offers to attach it instead", async () => {
     open("?view=satellite&jobId=unassigned");
-    expect(await screen.findByText(/Attach this job to a project/)).toBeInTheDocument();
+    expect(await screen.findByText(/Attach this survey to a project/)).toBeInTheDocument();
     expect(screen.queryByTestId("map")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Project")).toBeInTheDocument();
   });
@@ -160,7 +168,7 @@ describe("EO project/job routing", () => {
       return {};
     });
     open("?view=satellite&jobId=unassigned");
-    await screen.findByText(/Attach this job to a project/);
+    await screen.findByText(/Attach this survey to a project/);
     fireEvent.change(screen.getByLabelText("Project"), { target: { value: "project-a" } });
     fireEvent.click(screen.getByRole("button", { name: /attach & open/i }));
     expect(mocks.updateJob).toHaveBeenCalledWith("unassigned", { project_id: "project-a" });

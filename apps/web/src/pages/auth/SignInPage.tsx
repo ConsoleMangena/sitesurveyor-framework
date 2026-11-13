@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -41,6 +41,7 @@ type SignInValues = z.infer<typeof signInSchema>;
 
 export default function SignInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const setAuthLoading = useAuthStore((s) => s.setAuthLoading);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +67,11 @@ export default function SignInPage() {
       } finally {
         setAuthLoading(false);
       }
-      navigate("/", { replace: true });
+      const requestedPath = (location.state as { from?: unknown } | null)?.from;
+      const returnTo = typeof requestedPath === "string" && requestedPath.startsWith("/") && !requestedPath.startsWith("//")
+        ? requestedPath
+        : "/";
+      navigate(returnTo, { replace: true });
     } catch (err) {
       setAuthLoading(false);
       setError(formatAuthUserFacingError(err, "Sign-in failed. Check your email and password and try again."));

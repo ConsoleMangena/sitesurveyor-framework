@@ -293,13 +293,17 @@ describe("executeTool — reads are pinned to one workspace", () => {
     expect(result.error).toMatch(/No drawing found/);
   });
 
-  it("rejects reading a non-allowlisted table", async () => {
-    const { executeTool } = await import("../src/tools.js");
-    const result = JSON.parse(
-      await executeTool("query_site_data", { table: "secrets" }, CTX),
-    ) as { error: string };
-    expect(result.error).toMatch(/not readable/);
-  });
+  it.each(["secrets", "jobs", "job_events", "job_assignments"])(
+    "rejects reading the removed or non-allowlisted table %s",
+    async (table) => {
+      const { executeTool } = await import("../src/tools.js");
+      const result = JSON.parse(
+        await executeTool("query_site_data", { table }, CTX),
+      ) as { error: string };
+      expect(result.error).toMatch(/not readable/);
+      expect(seen).toEqual([]);
+    },
+  );
 });
 
 describe("executeTool — writes are owned by one workspace", () => {
@@ -397,5 +401,26 @@ describe("executeTool — writes are owned by one workspace", () => {
       await executeTool("insert_site_record", { table: "projects", record: { name: "x" } }, NO_WS),
     ) as { error: string };
     expect(result.error).toMatch(/no workspace/);
+  });
+
+  it.each(["jobs", "job_events"])("rejects writing the removed table %s", async (table) => {
+    const { executeTool } = await import("../src/tools.js");
+    const result = JSON.parse(
+      await executeTool("insert_site_record", { table, record: {} }, CTX),
+    ) as { error: string };
+    expect(result.error).toMatch(/not writable/);
+    expect(seen).toEqual([]);
+  });
+
+  it("does not expose job scheduling to legacy MCP clients", async () => {
+    const { executeTool } = await import("../src/tools.js");
+    const { TOOL_NAMES } = await import("../src/constants.js");
+    const { TOOL_DEFS } = await import("../src/toolDefs.js");
+    expect(TOOL_NAMES).not.toContain("schedule_job");
+    expect(TOOL_DEFS.map((tool) => tool.name)).not.toContain("schedule_job");
+
+    const result = JSON.parse(await executeTool("schedule_job", {}, CTX)) as { error: string };
+    expect(result.error).toMatch(/not writable/);
+    expect(seen).toEqual([]);
   });
 });

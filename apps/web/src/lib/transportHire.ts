@@ -67,6 +67,13 @@ export interface FareBreakdown {
   totalFare: number;
 }
 
+export type HireBookingStatus =
+  | "dispatched"
+  | "arrived"
+  | "in_trip"
+  | "completed"
+  | "cancelled";
+
 export interface HireBooking {
   bookingRef: string;
   vehicle: HireVehicle;
@@ -75,12 +82,28 @@ export interface HireBooking {
   dropoff: LocationCoordinate;
   fareBreakdown: FareBreakdown;
   durationMinutes: number;
-  status: "dispatched" | "arrived" | "completed";
+  status: HireBookingStatus;
   paymentMethod: "ecocash" | "card" | "cash_on_site" | "corporate_invoice";
   contactName: string;
   contactPhone: string;
   specialNotes?: string;
   createdAt: string;
+}
+
+/**
+ * Life-of-trip progression shown on the trips sheet. Statuses advance in
+ * order; "cancelled" sits outside the timeline.
+ */
+export const TRIP_PROGRESS_STAGES: { status: HireBookingStatus; label: string }[] = [
+  { status: "dispatched", label: "Driver assigned" },
+  { status: "arrived", label: "Arriving" },
+  { status: "in_trip", label: "In trip" },
+  { status: "completed", label: "Completed" },
+];
+
+/** Whether a booking still counts as an upcoming (live) trip. */
+export function isUpcomingTrip(status: HireBookingStatus): boolean {
+  return status === "dispatched" || status === "arrived" || status === "in_trip";
 }
 
 /**
@@ -550,6 +573,42 @@ export function saveBookingToStorage(booking: HireBooking): void {
   } catch {
     // Non-fatal if localStorage is restricted
   }
+}
+
+/**
+ * Persists a status change for a stored booking (e.g. cancelling an upcoming
+ * trip or marking it completed). Returns the updated booking list so callers
+ * can refresh their state in one step.
+ */
+export function updateBookingStatus(
+  bookingRef: string,
+  status: HireBookingStatus,
+): HireBooking[] {
+  const updated = loadSavedBookings().map((booking) =>
+    booking.bookingRef === bookingRef ? { ...booking, status } : booking,
+  );
+  try {
+    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+  } catch {
+    // Non-fatal if localStorage is restricted
+  }
+  return updated;
+}
+
+/**
+ * Removes a trip (typically completed or cancelled) from the saved list.
+ * Returns the updated booking list.
+ */
+export function removeBookingFromStorage(bookingRef: string): HireBooking[] {
+  const updated = loadSavedBookings().filter(
+    (booking) => booking.bookingRef !== bookingRef,
+  );
+  try {
+    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+  } catch {
+    // Non-fatal if localStorage is restricted
+  }
+  return updated;
 }
 
 export function generateBookingReference(): string {

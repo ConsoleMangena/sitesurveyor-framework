@@ -14,6 +14,8 @@ interface PublicMarketGlobeProps {
   matchKeys?: Set<string> | null;
   /** Refit the map whenever this token changes (e.g. scope tabs). */
   fitKey?: string;
+  /** The visitor's own GPS fix; drawn as a "you are here" puck when present. */
+  userLocation?: { lat: number; lng: number } | null;
   /** Rendered inside the map container (heading overlay etc.). */
   children?: ReactNode;
   /** Overrides the default hero height (e.g. embedded cards). */
@@ -31,6 +33,7 @@ const PublicMarketGlobe = forwardRef<MarketGlobeHandle, PublicMarketGlobeProps>(
       onSelect,
       matchKeys,
       fitKey,
+      userLocation,
       onRetry,
       children,
       heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]",
@@ -46,6 +49,7 @@ const PublicMarketGlobe = forwardRef<MarketGlobeHandle, PublicMarketGlobeProps>(
         onSelect={onSelect}
         matchKeys={matchKeys}
         fitKey={fitKey}
+        userLocation={userLocation}
         onRetry={onRetry}
         heightClassName={heightClassName}
       >

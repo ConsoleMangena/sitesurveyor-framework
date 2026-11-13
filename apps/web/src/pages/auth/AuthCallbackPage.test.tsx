@@ -68,6 +68,20 @@ describe("AuthCallbackPage", () => {
     expect(mockEnsureAccountProvisioned).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects provider errors returned in the URL fragment", async () => {
+    renderCallback("#error=access_denied&error_description=User+cancelled+sign-in");
+
+    expect(await screen.findByText("User cancelled sign-in")).toBeInTheDocument();
+    expect(mockGetCurrentSession).not.toHaveBeenCalled();
+    expect(mockEnsureAccountProvisioned).not.toHaveBeenCalled();
+  });
+
+  it("does not decode an already-decoded error a second time", async () => {
+    renderCallback("?error_description=Progress+100%25+complete");
+
+    expect(await screen.findByText("Progress 100% complete")).toBeInTheDocument();
+  });
+
   it("turns GoTrue's provider error into an actionable explanation", async () => {
     renderCallback(
       "?error=server_error&error_description=Error+getting+user+profile+from+external+provider",

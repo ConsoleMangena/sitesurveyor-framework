@@ -127,10 +127,10 @@ export default function TargetForm({
             size="sm"
             className="h-6 px-2 text-[10.5px] text-muted-foreground hover:text-destructive gap-1"
             onClick={onOpenSetup}
-            title="Choose another job"
+            title="Back to this project's Earth Observation"
           >
             <LogOut className="size-3 shrink-0" />
-            <span>Switch job</span>
+            <span>Back to project</span>
           </Button>
         ) : null}
       </div>
@@ -141,7 +141,7 @@ export default function TargetForm({
           <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
             1
           </span>
-          <span className={labelClass}>Current Job</span>
+          <span className={labelClass}>Open survey</span>
         </div>
 
         <div className="mt-2 flex items-center justify-between rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-[11.5px]">
@@ -168,7 +168,7 @@ export default function TargetForm({
           <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
             2
           </span>
-          <legend className={labelClass}>Survey Type (Select One)</legend>
+          <legend className={labelClass}>Survey Type</legend>
         </div>
 
         <div
@@ -193,7 +193,7 @@ export default function TargetForm({
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                    {meta.name} (locked to job)
+                    {meta.name}
                   </p>
                 </div>
               </div>

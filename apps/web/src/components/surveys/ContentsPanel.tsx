@@ -31,7 +31,7 @@ export interface SurveySnapshot {
 const PANE_TABS: { id: ContentsTab; label: string }[] = [
   { id: "layers", label: "Layers" },
   { id: "data", label: "Data" },
-  { id: "jobs", label: "Jobs" },
+  { id: "surveys", label: "Surveys" },
 ];
 
 interface ContentsPanelProps {
@@ -304,11 +304,11 @@ export default function ContentsPanel({
 
         {tab === "data" ? <DataBrowser provenance={provenance} /> : null}
 
-        {tab === "jobs" ? (
+        {tab === "surveys" ? (
         <section className="sw-block px-3.5 py-3">
           <div className="flex items-center justify-between">
             <BlockTitle count={jobs ? jobs.length : runs.length}>
-              {jobs ? "Recent Jobs" : "Surveys here"}
+              {jobs ? "Surveys in this project" : "Surveys here"}
             </BlockTitle>
             {onOpenJobSetup ? (
               <Button
@@ -317,10 +317,10 @@ export default function ContentsPanel({
                 size="sm"
                 className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive gap-1"
                 onClick={onOpenJobSetup}
-                title="Exit project or switch to another job"
+                title="Back to this project's Earth Observation"
               >
                 <LogOut className="size-3 shrink-0" />
-                <span>Exit Project</span>
+                <span>Back to project</span>
               </Button>
             ) : null}
           </div>
@@ -328,7 +328,7 @@ export default function ContentsPanel({
           {jobs ? (
             jobs.length === 0 ? (
               <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-                No recent jobs found in this workspace.
+                No survey has run in this project yet.
               </p>
             ) : (
               <ul className="mt-1.5 space-y-1">
@@ -347,7 +347,7 @@ export default function ContentsPanel({
                             if (e.key === "Enter") commitRename();
                             if (e.key === "Escape") setEditingJobId(null);
                           }}
-                          aria-label="Job name"
+                          aria-label="Survey name"
                           className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-[12px] font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                         />
                       ) : (
@@ -381,7 +381,7 @@ export default function ContentsPanel({
                               variant="ghost"
                               size="icon"
                               className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
-                              title="Rename job"
+                              title="Rename survey"
                               onClick={() => {
                                 setEditingJobId(job.id);
                                 setDraftTitle(job.title);
@@ -396,10 +396,10 @@ export default function ContentsPanel({
                               variant="ghost"
                               size="icon"
                               className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
-                              title="Delete job"
+                              title="Delete survey"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (window.confirm(`Delete job "${job.title}"?`)) {
+                                if (window.confirm(`Delete survey "${job.title}"?`)) {
                                   void onDeleteJob(job.id);
                                 }
                               }}

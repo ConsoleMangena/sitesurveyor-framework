@@ -111,7 +111,6 @@ const TOOL_LABELS: Record<string, string> = {
   delete_site_record: "Deleting a record",
   close_overdue_invoices: "Closing overdue invoices",
   create_quote_from_line_items: "Building a quote",
-  schedule_job: "Scheduling a job",
   get_cad_drawing: "Reading the drawing",
   list_cad_layers: "Listing drawing layers",
   count_cad_entities: "Counting CAD entities",

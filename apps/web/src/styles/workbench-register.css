@@ -1,0 +1,391 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Workbench register: dense operations tables with filter and inspector rails.
+   The shared grammar Jobs and ProjectHub inherit from the survey workbench.
+   One screen of records, narrowed from the left, acted on from the right.
+   Colour always comes from a token so both themes read the same.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.wr-workspace {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  transition: grid-template-columns 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wr-workspace[data-inspector="open"] {
+  grid-template-columns: 240px minmax(0, 1fr) 360px;
+}
+
+.wr-workspace[data-rail="collapsed"] {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.wr-workspace[data-rail="collapsed"][data-inspector="open"] {
+  grid-template-columns: 0 minmax(0, 1fr) 360px;
+}
+
+.wr-workspace[data-rail="collapsed"] > .wr-rail {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.wr-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.wr-panel__header {
+  flex: 0 0 auto;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wr-panel__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.wr-panel__body {
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  flex: 1;
+}
+
+/* ── Filter rail ── */
+
+.wr-filter-group + .wr-filter-group {
+  border-top: 1px solid var(--border);
+}
+
+.wr-filter-group {
+  padding: 10px 12px;
+}
+
+.wr-filter-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+}
+
+.wr-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.wr-filter-row:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.wr-filter-row:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.wr-filter-row[data-active="true"] {
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.wr-filter-row__count {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-radius: 9999px;
+  padding: 1px 7px;
+  line-height: 1.5;
+}
+
+.wr-filter-row[data-active="true"] .wr-filter-row__count {
+  background: color-mix(in oklab, var(--primary) 16%, transparent);
+  color: var(--primary);
+}
+
+/* ── Register table ── */
+
+.wr-register-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  flex: 1;
+  min-height: 0;
+}
+
+.wr-register {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+  font-feature-settings: "tnum" 1;
+}
+
+.wr-register th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.wr-register th[aria-sort] {
+  cursor: pointer;
+}
+
+.wr-register th[aria-sort]:hover {
+  color: var(--foreground);
+}
+
+.wr-register td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.wr-register tbody tr {
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.wr-register tbody tr:hover {
+  background: color-mix(in oklab, var(--primary) 5%, transparent);
+}
+
+.wr-register tbody tr:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.wr-register tbody tr[data-selected="true"] {
+  background: color-mix(in oklab, var(--primary) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+.wr-register .wr-num {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wr-cell-title {
+  font-weight: 600;
+  color: var(--foreground);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-cell-sub {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+/* Row type glyph: a small square chip keyed to the record's category. */
+.wr-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+/* ── Inspector ── */
+
+.wr-inspector__hero {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wr-inspector__section {
+  padding: 12px 14px;
+}
+
+.wr-inspector__section + .wr-inspector__section {
+  border-top: 1px solid var(--border);
+}
+
+.wr-kv {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  gap: 6px 14px;
+  font-size: 12px;
+}
+
+.wr-kv dt {
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.wr-kv dd {
+  color: var(--foreground);
+  font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.wr-kv dd.wr-num {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Status strip ── */
+
+.wr-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--card);
+  padding: 6px 12px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.wr-status strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.wr-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #10b981;
+  flex-shrink: 0;
+}
+
+/* ── Edge tab to reopen a collapsed rail ── */
+
+.wr-edge-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+/* ── Responsive: below the width where three regions stop being a workbench,
+   the register leads and the rails stack under it. ── */
+
+@media (max-width: 1100px) {
+  .wr-workspace[data-inspector="open"] {
+    grid-template-columns: 220px minmax(0, 1fr) 320px;
+  }
+}
+
+@media (max-width: 900px) {
+  .wr-workspace,
+  .wr-workspace[data-inspector="open"],
+  .wr-workspace[data-rail="collapsed"],
+  .wr-workspace[data-rail="collapsed"][data-inspector="open"] {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .wr-workspace > .wr-rail {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .wr-workspace[data-rail="collapsed"] > .wr-rail {
+    display: none;
+  }
+
+  .wr-workspace .wr-register-region {
+    order: 1;
+  }
+
+  .wr-workspace .wr-inspector {
+    order: 2;
+  }
+
+  .wr-workspace .wr-rail {
+    order: 3;
+  }
+
+  /* The rail reads as a horizontal filter band when stacked. */
+  .wr-rail .wr-panel__body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 16px;
+  }
+
+  .wr-rail .wr-filter-group {
+    border-top: none;
+    flex: 1 1 160px;
+  }
+}
+
+@media (max-width: 640px) {
+  .wr-register td,
+  .wr-register th {
+    padding: 8px 10px;
+  }
+
+  .wr-cell-title,
+  .wr-cell-sub {
+    max-width: 180px;
+  }
+}

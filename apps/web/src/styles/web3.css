@@ -847,7 +847,7 @@
     border-radius: 9999px;
     border: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
     pointer-events: none;
-    animation: transport-pulse 1.8s infinite cubic-bezier(0.2, 0.8, 0.4, 1);
+    animation: none;
   }
 
   @keyframes transport-pulse {

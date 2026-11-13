@@ -16,13 +16,12 @@ import {
   CloudOff,
   Loader2,
   RefreshCw,
-  ClipboardList,
+  PanelRightOpen,
   Search,
-  Info,
   X,
-  List,
-  Grid,
   MapPin,
+  Satellite,
+  ClipboardList,
 } from 'lucide-react'
 
 import ErrorNotice from '@/components/errors/ErrorNotice.tsx'
@@ -42,14 +41,16 @@ import {
 } from '@/components/ui/card'
 import { ComboboxField } from '@/components/templates/ComboboxField.tsx'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { ResponsiveTable } from '@/components/ui/responsive-table'
+  RegisterWorkspace,
+  RegisterPanel,
+  FilterGroup,
+  FilterRow,
+  InspectorPanel,
+  InspectorSection,
+  KeyValues,
+  RegisterStatus,
+  RailCollapseButton,
+} from '@/components/workbench/RegisterWorkspace.tsx'
 import {
   Empty,
   EmptyContent,
@@ -60,7 +61,6 @@ import {
 } from '@/components/ui/empty'
 import { generateLocalId } from '@/lib/localDb/utils'
 import { DashboardShell, DashboardHeader } from '@/components/dashboard/DashboardShell.tsx'
-import { DashboardCard } from '@/components/dashboard/DashboardCard.tsx'
 import { KpiCard, KpiGrid } from '@/components/dashboard/KpiCard.tsx'
 import { DialogTemplate } from '@/components/templates/DialogTemplate.tsx'
 import { PageForm } from '@/components/templates/PageForm.tsx'
@@ -95,7 +95,7 @@ import { getMyWorkspaceMembership } from '../../lib/repositories/workspaces.ts'
 import { canManageProjects, canManageTeam } from '../../lib/permissions.ts'
 import { ProjectDashboard } from '../../features/projects/components/ProjectDashboard.tsx'
 import { ProjectSettings } from '../../features/projects/components/ProjectSettings.tsx'
-import { ProjectJobsPanel } from '../../features/projects/components/ProjectJobsPanel.tsx'
+import { ProjectEarthObservationPanel } from '../../features/projects/components/ProjectEarthObservationPanel.tsx'
 import { useAsyncAction } from '../../hooks/useAsyncAction.ts'
 import { useOfflineSyncStatus } from '../../lib/hooks/useOfflineSyncStatus.ts'
 import {
@@ -117,13 +117,11 @@ interface ProjectHubPageProps {
   userName: string
   workspaceId: string
   onNavigate?: (view: string, context?: Record<string, string>) => void
-  onEnterFullscreenProject?: () => void
-  onExitFullscreenProject?: () => void
 }
 
-type ProjectTab = 'overview' | 'jobs' | 'settings'
+type ProjectTab = 'overview' | 'earthObservation' | 'settings'
 
-const VALID_TABS: ProjectTab[] = ['overview', 'jobs', 'settings']
+const VALID_TABS: ProjectTab[] = ['overview', 'earthObservation', 'settings']
 
 function isValidProjectTab(value: string | null): value is ProjectTab {
   return VALID_TABS.includes(value as ProjectTab)
@@ -139,13 +137,13 @@ const statusBadgeVariant: Record<string, BadgeProps['variant']> = {
 
 const tabIcons: Record<ProjectTab, React.ReactNode> = {
   overview: <LayoutGrid className="h-4 w-4" />,
-  jobs: <ClipboardList className="h-4 w-4" />,
+  earthObservation: <Satellite className="h-4 w-4" />,
   settings: <Settings className="h-4 w-4" />,
 }
 
 const tabLabels: Record<ProjectTab, string> = {
   overview: 'Overview',
-  jobs: 'Jobs',
+  earthObservation: 'Earth Observation',
   settings: 'Settings',
 }
 
@@ -167,7 +165,7 @@ const kpiTones: Record<ProjectFilter, 'primary' | 'success' | 'purple' | 'neutra
   Archived: 'neutral',
 }
 
-export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEnterFullscreenProject, onExitFullscreenProject }: ProjectHubPageProps) {
+export default function ProjectHubPage({ userName, workspaceId, onNavigate }: ProjectHubPageProps) {
   const { projects: projectRows, loading: projectsLoading, error: projectsError, refresh: refreshProjectRows } = useProjects(workspaceId)
   const [projectSnapshot, setProjectSnapshot] = useState<{
     workspaceId: string
@@ -184,7 +182,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ type: 'success' | 'info'; message: string } | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
-  const [selectedProject, setSelectedProject] = useState<HubProject | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -236,7 +234,8 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<ProjectFilter>('All')
-  const [listView, setListView] = useState<'table' | 'cards'>('table')
+  const [railCollapsed, setRailCollapsed] = useState(false)
+  const selectedProject = projects.find(project => project.dbId === selectedProjectId) ?? null
 
   const [newName, setNewName] = useState('')
   const [newOrgId, setNewOrgId] = useState('')
@@ -619,7 +618,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   const handleArchiveProject = async (dbId: string) => {
     try {
       await archiveProject(dbId)
-      setSelectedProject(null)
+      setSelectedProjectId(null)
       setShowDeleteConfirm(false)
       setDeleteConfirmText('')
       if (activeProjectId === dbId) {
@@ -634,7 +633,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   const handleUnarchiveProject = async (dbId: string) => {
     try {
       await unarchiveProject(dbId)
-      setSelectedProject(null)
+      setSelectedProjectId(null)
       await fetchProjects()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to unarchive project.')
@@ -644,7 +643,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
   const handlePermanentDeleteProject = async (dbId: string) => {
     try {
       await deleteProject(dbId)
-      setSelectedProject(null)
+      setSelectedProjectId(null)
       setShowPermanentDeleteConfirm(false)
       setDeleteConfirmText('')
       if (activeProjectId === dbId) {
@@ -658,14 +657,13 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
 
   const openProject = (p: HubProject) => {
     setProjectRoute(p.dbId)
-    setSelectedProject(null)
+    setSelectedProjectId(null)
     setShowDeleteConfirm(false)
     setDeleteConfirmText('')
   }
 
   const exitProject = () => {
     setProjectRoute(null)
-    onExitFullscreenProject?.()
   }
 
   const kpiData = activeProject ? [
@@ -747,14 +745,9 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
     }
   }
 
-  const fullscreenEnterRef = useRef(onEnterFullscreenProject)
-  const fullscreenExitRef = useRef(onExitFullscreenProject)
-  useEffect(() => { fullscreenEnterRef.current = onEnterFullscreenProject }, [onEnterFullscreenProject])
-  useEffect(() => { fullscreenExitRef.current = onExitFullscreenProject }, [onExitFullscreenProject])
-  useEffect(() => {
-    if (resolvedProjectId) fullscreenEnterRef.current?.()
-    else fullscreenExitRef.current?.()
-  }, [resolvedProjectId])
+  // Opening a project never takes the app chrome away: the workspace sidebar,
+  // header and page frame stay exactly as the rest of the workspace renders
+  // them. Only the satellite survey workbench goes fullscreen.
 
   if (loading || (activeProjectId && !activeProject && resolvingProjects)) {
     return (
@@ -1094,12 +1087,12 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedProject(activeProject)}>Details</Button>
+                  <Button size="sm" variant="outline" onClick={() => setSelectedProjectId(activeProject.dbId)}>Details</Button>
                 </div>
               </header>
 
-              {effectiveProjectTab === 'jobs' ? (
-                <ProjectJobsPanel
+              {effectiveProjectTab === 'earthObservation' ? (
+                <ProjectEarthObservationPanel
                   workspaceId={workspaceId}
                   projectId={activeProject.dbId}
                   onNavigate={onNavigate}
@@ -1159,7 +1152,7 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
                   canEditProjects={canEditProjects}
                   canInviteProjectMembers={canInviteProjectMembers}
                   handleUnarchiveProject={handleUnarchiveProject}
-                  setSelectedProject={setSelectedProject}
+                  setSelectedProject={(project) => setSelectedProjectId(project.dbId)}
                   setShowPermanentDeleteConfirm={setShowPermanentDeleteConfirm}
                   setShowDeleteConfirm={setShowDeleteConfirm}
                   setShowAssignModal={setShowAssignModal}
@@ -1190,8 +1183,8 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
             }
           />
 
-          {/* The counts are the filter control: one row instead of a KPI band
-              plus a chip row that repeated the same five numbers. */}
+          {/* The counts stay as the KPI band; the same numbers drive the filter
+              rail below, so a reader can narrow the register from either place. */}
           <KpiGrid>
             {(Object.keys(counts) as (keyof typeof counts)[]).map((tab) => {
               const selected = activeFilter === tab
@@ -1214,57 +1207,13 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
             })}
           </KpiGrid>
 
-          <DashboardCard
-            title="Projects"
-            icon={<LayoutGrid className="h-4 w-4" />}
-            titleAction={
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="project-search"
-                    name="project-search"
-                    placeholder="Search projects…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 pr-7"
-                  />
-                  {searchQuery && (
-                    <button type="button" onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search">
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant={listView === 'table' ? 'secondary' : 'outline'}
-                    size="icon"
-                    className="size-8"
-                    onClick={() => setListView('table')}
-                    aria-label="Table view"
-                    title="Table view"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={listView === 'cards' ? 'secondary' : 'outline'}
-                    size="icon"
-                    className="size-8"
-                    onClick={() => setListView('cards')}
-                    aria-label="Card view"
-                    title="Card view"
-                  >
-                    <Grid className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            }
-          >
-            <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <RailCollapseButton collapsed={railCollapsed} onClick={() => setRailCollapsed((v) => !v)} />
               <span className="text-xs text-muted-foreground">
-                {activeFilter === 'All' ? 'Showing all active projects' : `Filtered by ${activeFilter}`}
+                {activeFilter === 'All' ? 'All active projects' : activeFilter}
                 {' · '}
-                {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
+                {filteredProjects.length} of {projects.length}
               </span>
               {activeFilter !== 'All' && (
                 <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setActiveFilter('All')}>
@@ -1272,150 +1221,197 @@ export default function ProjectHubPage({ userName, workspaceId, onNavigate, onEn
                 </Button>
               )}
             </div>
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="project-search"
+                name="project-search"
+                placeholder="Search projects…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-7"
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
 
-            {listView === 'table' ? (
-              <div className="hidden md:block">
-                <ResponsiveTable>
-                  <Table className="min-w-[900px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="min-w-[220px]">Project</TableHead>
-                        <TableHead className="hidden sm:table-cell min-w-[160px]">Client</TableHead>
-                        <TableHead className="hidden md:table-cell w-[120px]">Phase</TableHead>
-                        <TableHead className="hidden lg:table-cell min-w-[140px]">Surveyor</TableHead>
-                        <TableHead className="hidden xl:table-cell min-w-[160px]">Datum</TableHead>
-                        <TableHead className="text-right hidden sm:table-cell w-[90px]">Points</TableHead>
-                        <TableHead className="hidden md:table-cell w-48">Progress</TableHead>
-                        <TableHead className="text-right w-[100px]">Status</TableHead>
-                        <TableHead className="w-[52px]"><span className="sr-only">Details</span></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+          <RegisterWorkspace railCollapsed={railCollapsed} inspectorOpen={!!selectedProject}>
+            <RegisterPanel title="Filters" className="wr-rail">
+              <FilterGroup label="Scope">
+                {(Object.keys(counts) as (keyof typeof counts)[]).map((tab) => (
+                  <FilterRow
+                    key={tab}
+                    label={tab === 'All' ? 'All projects' : tab}
+                    count={counts[tab]}
+                    active={activeFilter === tab}
+                    onClick={() => setActiveFilter(tab)}
+                  />
+                ))}
+              </FilterGroup>
+              <FilterGroup label="Phase">
+                {Array.from(new Set(projects.map((p) => p.phase).filter(Boolean))).map((phase) => (
+                  <FilterRow
+                    key={phase}
+                    label={phase}
+                    count={projects.filter((p) => p.phase === phase).length}
+                    active={searchQuery === phase}
+                    onClick={() => setSearchQuery(searchQuery === phase ? '' : phase)}
+                  />
+                ))}
+              </FilterGroup>
+            </RegisterPanel>
+
+            <div className="wr-register-region wr-panel">
+              {filteredProjects.length === 0 ? (
+                <Empty className="border-none py-12">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon"><FolderOpen /></EmptyMedia>
+                    <EmptyTitle className="text-base">No projects match your filters</EmptyTitle>
+                    <EmptyDescription>
+                      Try adjusting your search or filter, or create a new project.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button onClick={() => setShowNewModal(true)} disabled={!canEditProjects} className="gap-2">
+                      <Plus className="h-4 w-4" /> New Project
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              ) : (
+                <div className="wr-register-scroll">
+                  <table className="wr-register">
+                    <thead>
+                      <tr>
+                        <th scope="col">Project</th>
+                        <th scope="col" className="hidden md:table-cell">Client</th>
+                        <th scope="col" className="hidden lg:table-cell">Phase</th>
+                        <th scope="col" className="hidden sm:table-cell text-right">Points</th>
+                        <th scope="col" className="hidden md:table-cell w-40">Progress</th>
+                        <th scope="col" className="text-right">Status</th>
+                        <th scope="col" className="w-11"><span className="sr-only">Inspect</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {filteredProjects.map((p) => {
-                        const surveyor = p.members[0]?.name || 'Unassigned'
                         return (
-                          <TableRow
+                          <tr
                             key={p.dbId}
-                            className="cursor-pointer"
+                            data-selected={selectedProject?.dbId === p.dbId || undefined}
                             onClick={() => openProject(p)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p); } }}
+                            onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openProject(p); } }}
                             tabIndex={0}
                             role="button"
                             aria-label={`Open project ${p.name}`}
                           >
-                            <TableCell className="align-middle">
-                              <div className="flex flex-col">
-                                <span className="font-semibold truncate max-w-[260px]" title={p.name}>{p.name}</span>
-                                <code className="w-fit rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium mt-1">{p.id}</code>
+                            <td>
+                              <div className="min-w-0">
+                                <div className="wr-cell-title" title={p.name}>{p.name}</div>
+                                <div className="wr-cell-sub font-mono">{p.id}</div>
                               </div>
-                            </TableCell>
-                            <TableCell className="align-middle hidden sm:table-cell font-medium">
-                              <span className="block truncate max-w-[160px]" title={p.client}>{p.client}</span>
-                            </TableCell>
-                            <TableCell className="align-middle hidden md:table-cell text-muted-foreground">
-                              <span className="block truncate max-w-[120px]" title={p.phase}>{p.phase}</span>
-                            </TableCell>
-                            <TableCell className="align-middle hidden lg:table-cell">
-                              <span className="block truncate max-w-[160px]" title={surveyor}>{surveyor}</span>
-                            </TableCell>
-                            <TableCell className="align-middle hidden xl:table-cell text-muted-foreground text-xs">
-                              <span className="block truncate max-w-[180px]" title={p.datum}>{p.datum}</span>
-                            </TableCell>
-                            <TableCell className="align-middle text-right hidden sm:table-cell font-mono font-semibold">{p.points.toLocaleString()}</TableCell>
-                            <TableCell className="align-middle hidden md:table-cell">
+                            </td>
+                            <td className="hidden md:table-cell">
+                              <span className="wr-cell-sub" title={p.client}>{p.client}</span>
+                            </td>
+                            <td className="hidden lg:table-cell">
+                              <span className="wr-cell-sub" title={p.phase}>{p.phase}</span>
+                            </td>
+                            <td className="hidden sm:table-cell text-right">
+                              <span className="wr-num">{p.points.toLocaleString()}</span>
+                            </td>
+                            <td className="hidden md:table-cell">
                               <div className="flex items-center gap-2">
-                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                                   <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
                                 </div>
-                                <span className="text-xs font-semibold w-8 text-right">{p.progress}%</span>
+                                <span className="wr-num w-9 text-right">{p.progress}%</span>
                               </div>
-                            </TableCell>
-                            <TableCell className="align-middle text-right">
+                            </td>
+                            <td className="text-right">
                               <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'}>{p.status}</Badge>
-                            </TableCell>
-                            <TableCell className="align-middle w-[52px]">
+                            </td>
+                            <td className="w-11 px-1 text-right">
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="size-8 text-muted-foreground hover:text-foreground"
-                                aria-label={`Project details for ${p.name}`}
-                                title="Project details"
-                                onClick={(e) => { e.stopPropagation(); setSelectedProject(p) }}
-                                onKeyDown={(e) => e.stopPropagation()}
+                                className="size-7"
+                                aria-label={`Inspect project ${p.name}`}
+                                title="Inspect project"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedProjectId(selectedProjectId === p.dbId ? null : p.dbId)
+                                }}
                               >
-                                <Info className="h-4 w-4" />
+                                <PanelRightOpen className="size-3.5" aria-hidden="true" />
                               </Button>
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         )
                       })}
-                    </TableBody>
-                  </Table>
-                </ResponsiveTable>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredProjects.map((p) => {
-                  const surveyor = p.members[0]?.name || 'Unassigned'
-                  return (
-                    <Card
-                      key={p.dbId}
-                      className="cursor-pointer transition-shadow hover:shadow-md"
-                      onClick={() => openProject(p)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProject(p); } }}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`Open project ${p.name}`}
-                    >
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3 className="font-semibold truncate">{p.name}</h3>
-                            <code className="w-fit rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium mt-1">{p.id}</code>
-                          </div>
-                          <Badge variant={statusBadgeVariant[p.status] ?? 'secondary'}>{p.status}</Badge>
-                        </div>
-                        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                          {p.client && <span className="truncate max-w-[200px]" title={p.client}>{p.client}</span>}
-                          <span>·</span>
-                          {p.phase && <span>{p.phase}</span>}
-                          <span>·</span>
-                          <span className="truncate max-w-[160px]" title={surveyor}>{surveyor}</span>
-                        </div>
-                        <div className="mt-3 flex items-center gap-2 text-xs">
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${p.progress}%` }} />
-                          </div>
-                          <span className="text-xs font-semibold w-8 text-right text-muted-foreground">{p.progress}%</span>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="font-mono">{p.points.toLocaleString()} pts</span>
-                          <span>{p.datum}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
-            {filteredProjects.length === 0 && (
-              <Empty className="border-none py-12">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon"><FolderOpen /></EmptyMedia>
-                  <EmptyTitle className="text-base">No projects match your filters</EmptyTitle>
-                  <EmptyDescription>
-                    Try adjusting your search or filter, or create a new project.
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  <Button onClick={() => setShowNewModal(true)} disabled={!canEditProjects} className="gap-2">
-                    <Plus className="h-4 w-4" /> New Project
+            {selectedProject ? (
+              <InspectorPanel title="Project record" onClose={() => setSelectedProjectId(null)}>
+                <div className="wr-inspector__hero">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold leading-snug text-foreground">{selectedProject.name}</h3>
+                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">{selectedProject.id}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <Badge variant={statusBadgeVariant[selectedProject.status] ?? 'secondary'}>{selectedProject.status}</Badge>
+                      {selectedProject.phase ? <Badge variant="outline">{selectedProject.phase}</Badge> : null}
+                    </div>
+                  </div>
+                </div>
+
+                <InspectorSection title="Record">
+                  <KeyValues
+                    rows={[
+                      { label: 'Client', value: selectedProject.client || '—' },
+                      { label: 'Surveyor', value: selectedProject.members[0]?.name || 'Unassigned' },
+                      { label: 'Datum', value: selectedProject.datum || '—' },
+                      { label: 'Points', value: selectedProject.points.toLocaleString(), mono: true },
+                    ]}
+                  />
+                </InspectorSection>
+
+                <InspectorSection title="Progress">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${selectedProject.progress}%` }} />
+                    </div>
+                    <span className="wr-num">{selectedProject.progress}%</span>
+                  </div>
+                </InspectorSection>
+
+                <InspectorSection title="Actions">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => openProject(selectedProject)}
+                  >
+                    <FolderOpen className="size-4" />
+                    Open project workspace
                   </Button>
-                </EmptyContent>
-              </Empty>
-            )}
-          </DashboardCard>
+                </InspectorSection>
+              </InspectorPanel>
+            ) : null}
+          </RegisterWorkspace>
+
+          <RegisterStatus
+            total={projects.length}
+            shown={filteredProjects.length}
+            noun="projects"
+            detail={selectedProject ? `Inspecting ${selectedProject.name}` : 'Select a row to inspect'}
+          />
         </div>
       )}
     </DashboardShell>

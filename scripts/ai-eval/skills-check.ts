@@ -41,8 +41,8 @@ check(
   selectSkills("Build a quote with line items", skills).some((s) => s.key === "create-quote"),
 );
 check(
-  "router->schedule",
-  selectSkills("Schedule job x for tomorrow", skills).some((s) => s.key === "schedule-job"),
+  "router->CAD",
+  selectSkills("Draw a CAD layer for the boundary", skills).some((s) => s.key === "default-cad-layers"),
 );
 check(
   "router->delete",
@@ -50,7 +50,7 @@ check(
 );
 check(
   "router->max3",
-  selectSkills("schedule the job and close overdue invoices and delete x", skills).length <= 3,
+  selectSkills("draw CAD, close overdue invoices and delete x", skills).length <= 3,
 );
 check("router->nomatch", selectSkills("what is the weather", skills).length === 0);
 

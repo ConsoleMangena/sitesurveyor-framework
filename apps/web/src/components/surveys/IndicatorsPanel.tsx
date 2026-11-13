@@ -66,12 +66,12 @@ function Indicator({
   const band = bandFor(score);
   const color = CATEGORY_COLORS[category];
   return (
-    <article
-      className="sw-accent-left rounded-lg border border-input bg-card px-2.5 py-2"
-      style={{ borderLeftColor: color }}
-    >
+    <article className="rounded-lg border border-input bg-card px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11.5px] font-semibold text-muted-foreground">{label}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="sw-accent-swatch" style={{ background: color }} aria-hidden="true" />
+          <span className="truncate text-[11.5px] font-semibold text-muted-foreground">{label}</span>
+        </span>
         <span className={`sw-band sw-band--${band ?? "none"}`}>
           {klass ?? (band ? BAND_LABELS[band] : "Not run")}
         </span>

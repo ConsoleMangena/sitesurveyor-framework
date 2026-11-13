@@ -15,7 +15,8 @@ describe("dialog primitive", () => {
       </Dialog>,
     );
     const panel = screen.getByRole("dialog");
-    expect(panel.className).toContain("rounded-lg");
+    expect(panel.className).toContain("dlg-sheet");
+    expect(panel.getAttribute("data-variant")).toBe("sheet");
     expect(panel.querySelector("button")).not.toBeNull();
   });
 

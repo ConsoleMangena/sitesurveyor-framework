@@ -71,8 +71,8 @@ interface MarketConciergeProps {
 /**
  * The public market's read-only AI concierge: an anonymous Nemotron agent
  * that searches live listings, professionals, jobs, firms and training.
- * Sits beside the market map in the hero; the page owns its height so the
- * two panels share one baseline.
+ * Available on demand beneath the compact marketplace search header, keeping
+ * the primary browsing workflow focused on inventory.
  */
 export function MarketConcierge({ className }: MarketConciergeProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -235,7 +235,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
         {messages.length === 0 ? (
           <div
             className={cn(
-              "h-full flex-col items-center justify-center gap-4 px-1 text-center",
+              "min-h-full flex-col items-center justify-center gap-4 px-1 py-2 text-center",
               expanded ? "flex" : "hidden lg:flex",
             )}
           >

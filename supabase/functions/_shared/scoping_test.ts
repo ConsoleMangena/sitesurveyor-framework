@@ -26,7 +26,6 @@ import {
 import {
   closeOverdueInvoices,
   createQuoteFromLineItems,
-  scheduleJob,
   type CallOpts,
   type Db,
 } from "./workflows.ts";
@@ -219,6 +218,36 @@ Deno.test("scopeWrite: only the run's own workspace may own a row", () => {
 });
 
 // ── 2. The requests the tools emit ─────────────────────────────────────────
+
+Deno.test("general job tables are no longer exposed to AI tools", async () => {
+  const store = freshStore();
+  const fake = useSupabase(store);
+  try {
+    for (const table of ["jobs", "job_events", "job_assignments"]) {
+      const read = JSON.parse(
+        await executeTool("query_site_data", JSON.stringify({ table }), ctx("ws-1")),
+      ) as { error: string };
+      assertStringIncludes(read.error, "not readable");
+
+      const write = JSON.parse(
+        await executeTool(
+          "insert_site_record",
+          JSON.stringify({ table, record: {}, confirmed: true }),
+          ctx("ws-1"),
+        ),
+      ) as { error: string };
+      assertStringIncludes(write.error, "not writable");
+    }
+
+    const scheduled = JSON.parse(
+      await executeTool("schedule_job", JSON.stringify({}), ctx("ws-1")),
+    ) as { error: string };
+    assertStringIncludes(scheduled.error, "not writable");
+    assertEquals(fake.urls, []);
+  } finally {
+    fake.restore();
+  }
+});
 
 Deno.test("query_site_data returns only the run's rows", async () => {
   const store = freshStore();
@@ -465,31 +494,6 @@ Deno.test("close_overdue_invoices settles one workspace, not the platform", asyn
   const pathCount = paths.length;
   await closeOverdueInvoices(db, { ...OPTS, workspaceId: undefined }, {});
   assertEquals(paths.length, pathCount, "a workspace-less close must emit nothing");
-});
-
-Deno.test("schedule_job cannot see or move another workspace's job", async () => {
-  const store: Store = {
-    jobs: [
-      { id: OWN_PROJECT, status: "confirmed", title: "GPS", workspace_id: "ws-1" },
-      { id: RIVAL_PROJECT, status: "confirmed", title: "Rival pegging", workspace_id: "ws-2" },
-    ],
-    job_assignments: [],
-  };
-  const { db } = workflowDb(store);
-
-  const rival = JSON.parse(
-    await scheduleJob(db, OPTS, { job_id: RIVAL_PROJECT }),
-  ) as { error: string };
-  assertStringIncludes(rival.error, "No jobs record found");
-  assertEquals(store.jobs.find((r) => r.id === RIVAL_PROJECT)?.status, "confirmed");
-  assertEquals(store.job_assignments.length, 0);
-
-  const own = JSON.parse(
-    await scheduleJob(db, OPTS, { job_id: OWN_PROJECT, assignment_date: "2026-09-10" }),
-  ) as { status: string };
-  assertEquals(own.status, "scheduled");
-  assertEquals(store.jobs.find((r) => r.id === OWN_PROJECT)?.status, "scheduled");
-  assertEquals(store.job_assignments[0]?.workspace_id, "ws-1");
 });
 
 Deno.test("create_quote_from_line_items owns its rows by the run's workspace", async () => {

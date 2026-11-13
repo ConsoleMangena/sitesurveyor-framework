@@ -192,6 +192,9 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
     const didFitRef = useRef(false);
+    // The map is created once; freeze its starting centre so the init effect
+    // does not need to depend on the pickup coordinate.
+    const initialCenterRef = useRef<L.LatLngTuple>([pickup.lat, pickup.lng]);
     const [zoomLevel, setZoomLevel] = useState(DEFAULT_ZOOM);
     const layersRef = useRef<{
       baseLayer?: L.TileLayer;
@@ -289,7 +292,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       if (!container || mapRef.current) return;
 
       const map = L.map(container, {
-        center: [pickup.lat, pickup.lng],
+        center: initialCenterRef.current,
         zoom: 7,
         zoomControl: false,
         attributionControl: false,
@@ -350,7 +353,8 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
       if (!map) return;
 
       const handleMapClick = (e: L.LeafletMouseEvent) => {
-        const targetType = activePinMode || "dropoff";
+        if (!activePinMode) return;
+        const targetType = activePinMode;
         const newCoords: LocationCoordinate = {
           lat: Math.round(e.latlng.lat * 100000) / 100000,
           lng: Math.round(e.latlng.lng * 100000) / 100000,
@@ -582,14 +586,14 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
               <span class="font-semibold text-foreground">${escapeHtml(vehicle.model)}</span>
               <span class="ml-auto font-mono text-[11px] font-bold text-primary">${vehicle.etaMinutes}m ETA</span>
             </div>
-            <div class="mt-1 flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+            <div class="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
               <span>${escapeHtml(vehicle.licensePlate)}</span>
               <span>·</span>
               <span>${escapeHtml(vehicle.driverName)}</span>
               <span>·</span>
               <span class="text-amber-500 font-semibold">${vehicle.driverRating.toFixed(1)}★</span>
             </div>
-            <div class="mt-1 text-[10px] font-semibold" style="color:${theme.dot}">
+            <div class="mt-1 text-xs font-semibold" style="color:${theme.dot}">
               ${escapeHtml(VEHICLE_TIERS[vehicle.tierId].name)}
             </div>
           </div>
@@ -639,14 +643,14 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
               <div className="space-y-2 px-3.5 py-2.5">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success/12 text-[9px] font-bold text-success ring-1 ring-success/25">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success/12 text-xs font-bold text-success ring-1 ring-success/25">
                     A
                   </span>
                   <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
                     {pickup.lat.toFixed(3)}, {pickup.lng.toFixed(3)}
                   </span>
                   <IconArrowRight className="size-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[9px] font-bold text-primary ring-1 ring-primary/25">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary ring-1 ring-primary/25">
                     B
                   </span>
                   <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
@@ -660,7 +664,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                       <IconRoad className="size-3.5" aria-hidden="true" />
                     </span>
                     <span className="flex min-w-0 flex-col">
-                      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Road
                       </span>
                       <span className="truncate font-mono text-xs font-bold tabular-nums text-foreground">
@@ -673,7 +677,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                       <IconClock className="size-3.5" aria-hidden="true" />
                     </span>
                     <span className="flex min-w-0 flex-col">
-                      <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Drive
                       </span>
                       <span className="truncate font-mono text-xs font-bold tabular-nums text-foreground">
@@ -692,6 +696,9 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
             </div>
           </div>
 
+          <div className="sr-only" role="status" aria-live="polite">
+            {activePinMode ? `Pin mode active. Click the map to set the ${activePinMode}.` : "Pin placement is off."}
+          </div>
           <div className="pointer-events-auto absolute right-3 top-3 flex flex-col items-end gap-1.5 sm:right-5 sm:top-5">
             <div className="flex flex-col overflow-hidden rounded-xl border border-border/80 bg-background/92 shadow-sm backdrop-blur-md">
               <button
@@ -699,7 +706,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 onClick={handleZoomIn}
                 title="Zoom in"
                 aria-label="Zoom in"
-                className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                className="flex size-11 items-center justify-center text-foreground transition-colors hover:bg-muted"
               >
                 <IconPlus className="size-4" aria-hidden="true" />
               </button>
@@ -709,7 +716,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 onClick={handleZoomOut}
                 title="Zoom out"
                 aria-label="Zoom out"
-                className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                className="flex size-11 items-center justify-center text-foreground transition-colors hover:bg-muted"
               >
                 <IconMinus className="size-4" aria-hidden="true" />
               </button>
@@ -728,7 +735,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 onClick={centerOnPickup}
                 title="Center on the pickup"
                 aria-label="Center on the pickup"
-                className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                className="flex size-11 items-center justify-center text-foreground transition-colors hover:bg-muted"
               >
                 <IconCurrentLocation className="size-3.5" aria-hidden="true" />
               </button>
@@ -749,7 +756,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 onClick={resetView}
                 title="Reset the map to the national view"
                 aria-label="Reset the map to the national view"
-                className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                className="flex size-11 items-center justify-center text-foreground transition-colors hover:bg-muted"
               >
                 <IconRotate className="size-3.5" aria-hidden="true" />
               </button>
@@ -757,14 +764,14 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
 
             {tierCounts.length > 0 ? (
               <div className="hidden rounded-xl border border-border/80 bg-background/92 px-2.5 py-2 shadow-sm backdrop-blur-md md:block">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   Fleet nearby
                 </p>
                 <div className="mt-1.5 flex flex-col gap-1">
                   {tierCounts.map(([tierId, count]) => (
                     <span
                       key={tierId}
-                      className="flex items-center gap-1.5 text-[10px] font-medium text-foreground"
+                      className="flex items-center gap-1.5 text-xs font-medium text-foreground"
                     >
                       <span
                         className="size-1.5 shrink-0 rounded-full"
@@ -797,7 +804,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
             <div className="absolute bottom-8 left-3">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/88 px-2.5 py-1 text-micro font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
                 <IconArrowsMove className="size-3" aria-hidden="true" />
-                Drag a marker or click the map
+                Drag a marker · choose Drop pin to place
               </span>
             </div>
           )}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type {
   FareBreakdown,
   HireBooking,
@@ -73,7 +73,6 @@ export function BookingSlip({
 }: BookingSlipProps) {
   const tier: VehicleTier = VEHICLE_TIERS[vehicle.tierId];
   const theme = VEHICLE_TIER_THEME[vehicle.tierId];
-  const TierIcon = theme.icon;
   const contentRef = useRef<HTMLDivElement>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("ecocash");
@@ -84,14 +83,25 @@ export function BookingSlip({
   const [confirmedBooking, setConfirmedBooking] = useState<HireBooking | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setConfirmedBooking(null);
-    setFormError(null);
-    setIsSubmitting(false);
-  }, [isOpen, vehicle.id]);
+  // Reset transient form state whenever the dialog opens for a (new) vehicle.
+  // Done as a render-time adjustment rather than an effect so opening the
+  // dialog never flashes stale state from a previous booking.
+  const [resetKey, setResetKey] = useState(`${isOpen ? "open" : "closed"}:${vehicle.id}`);
+  const currentResetKey = `${isOpen ? "open" : "closed"}:${vehicle.id}`;
+  if (resetKey !== currentResetKey) {
+    setResetKey(currentResetKey);
+    if (isOpen) {
+      setConfirmedBooking(null);
+      setFormError(null);
+      setIsSubmitting(false);
+    }
+  }
 
   const handleConfirm = () => {
+    if (!useAuthStore.getState().user) {
+      setFormError("Your session has ended. Sign in again before creating a booking.");
+      return;
+    }
     if (!contactName.trim()) {
       setFormError("Enter the contact or field surveyor name.");
       return;
@@ -105,6 +115,13 @@ export function BookingSlip({
     setIsSubmitting(true);
 
     window.setTimeout(() => {
+      const currentUser = useAuthStore.getState().user;
+      if (!currentUser) {
+        setFormError("Your session has ended. Sign in again before creating a booking.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const booking: HireBooking = {
         bookingRef: generateBookingReference(),
         vehicle,
@@ -126,8 +143,7 @@ export function BookingSlip({
       setIsSubmitting(false);
       onBookingConfirmed(booking);
 
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser?.workspaceId) {
+      if (currentUser.workspaceId) {
         void notifyVehicleHireDispatched({
           workspaceId: currentUser.workspaceId,
           userId: currentUser.id,
@@ -148,7 +164,8 @@ export function BookingSlip({
           event.preventDefault();
           contentRef.current?.focus({ preventScroll: true });
         }}
-        className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-[14px] border border-border/80 bg-background p-0 shadow-lg sm:max-w-lg sm:gap-0 sm:p-0"
+        size="lg"
+        className="web3-theme p-0"
       >
         <div
           className={cn(
@@ -171,14 +188,14 @@ export function BookingSlip({
                 }}
               />
             </div>
-            <DialogHeader className="min-w-0 gap-1 text-left">
+            <DialogHeader className="min-w-0 gap-1 border-0 bg-transparent p-0 text-left">
               <DialogTitle className="market-dialog-title text-balance text-foreground">
-                {confirmedBooking ? "Preview booking created" : "Confirm this hire"}
+                {confirmedBooking ? "Trip booked" : "Review your booking"}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
                 {confirmedBooking
-                  ? "No operator was contacted and nothing was charged. This preview keeps the booking in this tab only."
-                  : `${tier.name} · priced for ${fareBreakdown.distanceKm} km of road`}
+                  ? "No operator was contacted and nothing was charged. This trip is saved on this device and listed under Your trips."
+                  : `${tier.name} · priced for ${fareBreakdown.distanceKm} km of road · sample preview, no operator is contacted`}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -255,7 +272,7 @@ export function BookingSlip({
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-muted/60 px-5 py-4 sm:px-6">
+            <div className="dlg-footer dlg-footer-row">
               <Button
                 type="button"
                 className="h-11 rounded-xl px-5 text-sm font-semibold"
@@ -458,7 +475,7 @@ export function BookingSlip({
               ) : null}
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border/80 bg-muted/60 px-5 py-4 sm:px-6">
+            <div className="dlg-footer dlg-footer-row">
               <Button
                 type="button"
                 variant="outline"
@@ -475,8 +492,8 @@ export function BookingSlip({
                 disabled={isSubmitting}
               >
                 {isSubmitting
-                  ? "Dispatching…"
-                  : `Confirm hire · $${fareBreakdown.totalFare.toFixed(2)}`}
+                  ? "Booking your trip…"
+                  : `Confirm booking · $${fareBreakdown.totalFare.toFixed(2)}`}
               </Button>
             </div>
           </>

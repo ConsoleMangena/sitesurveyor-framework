@@ -8,13 +8,12 @@ import PersonalDashboardPage from "../../pages/personal/PersonalDashboardPage";
 import SchedulePage from "../../pages/personal/SchedulePage";
 import ContactsPage from "../../pages/shared/ContactsPage";
 import InvoicesPage from "../../pages/shared/InvoicesPage";
-import JobsPage from "../../pages/shared/JobsPage";
-import VacanciesPage from "../../pages/shared/VacanciesPage";
 import NotificationsPage from "../../pages/shared/NotificationsPage";
 import ProfileSettingsPage from "../../pages/shared/ProfileSettingsPage";
 import QuotesPage from "../../pages/shared/QuotesPage";
 import WorkspaceSettingsPage from "../../pages/shared/WorkspaceSettingsPage";
 import ProfessionalsPage from "../../pages/business/ProfessionalsPage";
+import ProfessionalPortfolioPage from "../../pages/personal/ProfessionalPortfolioPage";
 import TeamPage from "../../pages/business/TeamPage";
 
 // Lazy-load heavy / infrequently-used pages so they do not bloat the shared
@@ -73,6 +72,8 @@ export function renderPersonalView(
         </Suspense>
       );
 
+    case "portfolio":
+      return <ProfessionalPortfolioPage workspaceId={user.workspaceId} userName={user.name} />;
     case "schedule":
       return <SchedulePage workspaceId={user.workspaceId} />;
 
@@ -82,8 +83,6 @@ export function renderPersonalView(
           <ProjectHubPage
             userName={user.name}
             workspaceId={user.workspaceId}
-            onEnterFullscreenProject={onEnterFullscreenProject}
-            onExitFullscreenProject={onExitFullscreenProject}
             onNavigate={onNavigate}
           />
         </Suspense>
@@ -138,30 +137,11 @@ export function renderPersonalView(
           <SatelliteSurveyPage
             workspaceId={user.workspaceId}
             onNavigate={onNavigate}
+            onEnterFullscreen={onEnterFullscreenProject}
             onExitFullscreen={onExitFullscreenProject}
             isFullscreen={options.isProjectFullscreen}
           />
         </Suspense>
-      );
-
-    case "jobs":
-    case "vacancies":
-      return (
-        <VacanciesPage
-          workspaceId={user.workspaceId}
-          isPlatformAdmin={user.isPlatformAdmin}
-          user={user}
-          onNavigate={onNavigate}
-        />
-      );
-
-    case "fieldJobs":
-      return (
-        <JobsPage
-          workspaceId={user.workspaceId}
-          isPlatformAdmin={user.isPlatformAdmin}
-          onNavigate={onNavigate}
-        />
       );
 
     case "marketplace":

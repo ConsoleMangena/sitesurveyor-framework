@@ -16,7 +16,6 @@
 import {
   closeOverdueInvoices,
   createQuoteFromLineItems,
-  scheduleJob,
 } from "./workflows.ts";
 import {
   quoteSatelliteSurvey,
@@ -159,9 +158,6 @@ const READ_TABLES = new Set([
   "assets",
   "asset_calibrations",
   "asset_maintenance_events",
-  "jobs",
-  "job_events",
-  "job_assignments",
   "time_entries",
   "expense_entries",
   "notifications",
@@ -186,10 +182,8 @@ const WRITE_TABLES = new Set([
   "quotes",
   "projects",
   "contacts",
-  "jobs",
   "invoices",
   "assets",
-  "job_events",
 ]);
 
 const FILTER_OPS = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike"]);
@@ -429,28 +423,6 @@ const TOOLS: ToolSchema[] = [
   {
     type: "function",
     function: {
-      name: "schedule_job",
-      description:
-        "Composite workflow: schedule a job on a date — verifies the job exists and is schedulable, creates a job_assignment, and sets the job status to 'scheduled'. Returns the assignment id.",
-      parameters: {
-        type: "object",
-        properties: {
-          job_id: { type: "string", description: "UUID of the job." },
-          assignment_date: { type: "string", description: "ISO date (YYYY-MM-DD). Defaults to today." },
-          notes: { type: "string" },
-          status: {
-            type: "string",
-            enum: ["draft", "confirmed", "in_progress", "completed", "cancelled"],
-          },
-        },
-        required: ["job_id"],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "get_cad_drawing",
       description:
         "Fetch the full CAD drawing model for a project. Returns the JSONB model containing layers, points, linework, texts, circles, arcs, ellipses, hatches, dimensions, and surfaces arrays. Use this to understand what is currently drawn.",
@@ -640,7 +612,7 @@ const TOOLS: ToolSchema[] = [
           project_id: {
             type: "string",
             description:
-              "UUID of the project this survey job belongs to. Pass it when the user named or chose a project; Earth Observation jobs are always filed under a project.",
+              "UUID of the project this survey belongs to. Pass it when the user named or chose a project; Earth Observation surveys are always filed under a project.",
           },
           project_name: {
             type: "string",
@@ -709,12 +681,11 @@ function systemPrompt(supabaseUrl: string): string {
     "",
     "You interact with system functionality through your tools:",
     "- Reporting & analysis across projects, quotes, invoices, payments,",
-    "  contacts, assets, calibrations, maintenance, jobs/dispatch, schedule",
-    "  events (job_events), assignments, time & expense entries, notifications,",
-    "  and the public market (listings, professionals, firms, training).",
+    "  contacts, assets, calibrations, maintenance, time & expense entries,",
+    "  notifications, and the public market (listings, professionals, firms,",
+    "  training).",
     "- Creating/updating records: quotes (+ quote_items lines), projects,",
-    "  contacts, jobs, invoices, assets (e.g. status changes), and scheduling",
-    "  via job_events entries.",
+    "  contacts, invoices and assets (e.g. status changes).",
     "Data lives in Supabase",
     `(REST base: ${supabaseUrl}).`,
     "",
@@ -904,7 +875,7 @@ function systemPrompt(supabaseUrl: string): string {
     "",
     "6. ATOMIC LAUNCH & WORKBENCH HANDOVER:",
     "   When user confirms, invoke launch_satellite_survey with confirmed=true and pass notes.",
-    "   Earth Observation jobs always live inside a project: pass project_id (or",
+    "   Earth Observation surveys always live inside a project: pass project_id (or",
     "   project_name) when the user or conversation names one. The launch tool files a",
     "   single-project workspace automatically; when it refuses with PROJECT_REQUIRED,",
     "   ask the user which project to file the survey under, then relaunch.",
@@ -952,6 +923,7 @@ function marketSystemPrompt(supabaseUrl: string): string {
     "- public_market_listings — gear for sale or hire (name, type, condition,",
     "  price/currency, seller, location, category instrument|accessory,",
     "  listing_type hire|sale, specs, is_remote, city/country, saves).",
+    "  Photo columns are withheld from results — answer from the fields above.",
     "- public_market_professionals — people for hire (name, title, discipline,",
     "  rate/rate_per/currency, availability, rating/reviews, skills, location,",
     "  is_remote, saves).",
@@ -1156,8 +1128,27 @@ function buildQueryPath(
   return `${table}?${params.toString()}`;
 }
 
+/** Columns that carry image URLs (or arrays of them). When a tool result
+ *  contains many of these, the vision model counts each URL as an attached
+ *  image and rejects the request once it exceeds the provider's per-request
+ *  image cap. Strip them before the result is sent back to the model. */
+const IMAGE_URL_COLUMNS = new Set(["photos", "photo_url", "image_url", "avatar_url", "banner_url", "logo_url"]);
+
+function stripImageColumns(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripImageColumns);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+      if (IMAGE_URL_COLUMNS.has(key.toLowerCase())) continue;
+      out[key] = stripImageColumns(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 function truncateRows(rows: unknown): string {
-  const text = JSON.stringify(rows);
+  const text = JSON.stringify(stripImageColumns(rows));
   return text.length > 12_000 ? text.slice(0, 12_000) + "...[truncated]" : text;
 }
 
@@ -1434,19 +1425,6 @@ export async function executeTool(
       }),
     );
   }
-  if (name === "schedule_job") {
-    return scheduleJob(
-      { supabaseFetch },
-      { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey, workspaceId: ctx.workspaceId },
-      (args as {
-        job_id: string;
-        assignment_date?: string;
-        notes?: string;
-        status?: "draft" | "confirmed" | "in_progress" | "completed" | "cancelled";
-      }),
-    );
-  }
-
   if (name === "remember" || name === "forget") {
     if (!ctx.conversationId)
       return JSON.stringify({
@@ -1697,7 +1675,6 @@ function skillKeyForTrace(trace: { name: string; args: unknown }[]): string | un
   const names = trace.map((t) => t.name);
   if (names.includes("close_overdue_invoices")) return "close-overdue-invoices";
   if (names.includes("create_quote_from_line_items")) return "create-quote";
-  if (names.includes("schedule_job")) return "schedule-job";
   if (
     names.some((n) => n === "insert_site_record" || n === "update_site_record") &&
     trace.some((t) => {

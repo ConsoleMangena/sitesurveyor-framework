@@ -47,7 +47,7 @@ function Harness({ workspaceId = WORKSPACE }: { workspaceId?: string }) {
     <button onClick={() => navigate(1)}>Browser Forward</button>
     {params.get("view") === "satellite" ? <>
       <div>EO workbench</div>
-      <button onClick={() => onNavigate("projects", { projectId: params.get("projectId")!, tab: "jobs" })}>Return from EO</button>
+      <button onClick={() => onNavigate("projects", { projectId: params.get("projectId")!, tab: "earthObservation" })}>Return from EO</button>
     </> : <ProjectHubPage userName="Surveyor" workspaceId={workspaceId} onNavigate={onNavigate} />}
   </>;
 }
@@ -72,43 +72,42 @@ describe("ProjectHubPage URL navigation", () => {
     fireEvent.click((await screen.findAllByRole("button", { name: "Open project Farm boundary" }))[0]);
     expect(await screen.findByText("Project overview content")).toBeInTheDocument();
     expect(Object.fromEntries(route())).toEqual({ view: "projects", projectId: PROJECT, tab: "overview" });
-    fireEvent.click(screen.getByRole("button", { name: "Jobs" }));
-    expect(route().get("tab")).toBe("jobs");
-    expect(await screen.findByText("No jobs in this project yet")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Earth Observation" }));
+    expect(route().get("tab")).toBe("earthObservation");
+    expect(await screen.findByText("No Earth Observation surveys yet")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Browser Back"));
     expect(await screen.findByText("Project overview content")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Browser Forward"));
-    expect(await screen.findByText("No jobs in this project yet")).toBeInTheDocument();
+    expect(await screen.findByText("No Earth Observation surveys yet")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Back to Projects" }));
     expect(Object.fromEntries(route())).toEqual({ view: "projects" });
     expect(localStorage.getItem("sitesurveyorActiveProjectId")).toBe("stale-project");
     expect(localStorage.getItem("sitesurveyorActiveProjectTab")).toBe("settings");
   });
 
-  it("restores the project's Jobs tab after an EO handoff, browser Back, and workbench return", async () => {
+  it("restores the project's Earth Observation tab after a handoff and workbench return", async () => {
     mocks.jobs.mockResolvedValue([{
       id: "job-1", project_id: PROJECT, title: "Water survey", status: "planned",
       created_at: "2026-11-01T09:00:00Z",
       description: JSON.stringify({ category: "water", latitude: -19.5, longitude: 30.5, halfDeg: 0.12 }),
     }]);
-    renderHub(`/?view=projects&projectId=${PROJECT}&tab=jobs`);
-    fireEvent.click(await screen.findByText("Water survey"));
-    fireEvent.click(screen.getByRole("button", { name: "Open in Earth Observation" }));
+    renderHub(`/?view=projects&projectId=${PROJECT}&tab=earthObservation`);
+    fireEvent.click(await screen.findByRole("button", { name: "Open survey" }));
     expect(screen.getByText("EO workbench")).toBeInTheDocument();
     expect(Object.fromEntries(route())).toEqual({ view: "satellite", projectId: PROJECT, jobId: "job-1" });
     fireEvent.click(screen.getByText("Browser Back"));
     expect(await screen.findByText("Water survey")).toBeInTheDocument();
-    expect(route().get("tab")).toBe("jobs");
+    expect(route().get("tab")).toBe("earthObservation");
     fireEvent.click(screen.getByText("Browser Forward"));
     fireEvent.click(screen.getByText("Return from EO"));
     expect(await screen.findByText("Water survey")).toBeInTheDocument();
-    expect(Object.fromEntries(route())).toEqual({ view: "projects", projectId: PROJECT, tab: "jobs" });
-    fireEvent.click(screen.getByRole("button", { name: "New Earth Observation" }));
+    expect(Object.fromEntries(route())).toEqual({ view: "projects", projectId: PROJECT, tab: "earthObservation" });
+    fireEvent.click(screen.getByRole("button", { name: "New survey" }));
     expect(Object.fromEntries(route())).toEqual({ view: "satellite", projectId: PROJECT });
   });
 
   it.each(["missing-project", "FARM"])("shows an unavailable route instead of silently falling back for %s", async (id) => {
-    renderHub(`/?view=projects&projectId=${id}&tab=jobs`);
+    renderHub(`/?view=projects&projectId=${id}&tab=earthObservation`);
     expect(await screen.findByText("Project unavailable")).toBeInTheDocument();
     expect(screen.queryByText("No projects yet")).not.toBeInTheDocument();
     expect(mocks.activities).not.toHaveBeenCalled();
@@ -119,17 +118,17 @@ describe("ProjectHubPage URL navigation", () => {
   });
 
   it("does not resolve a route using another workspace's project rows", async () => {
-    const view = render(<MemoryRouter initialEntries={[`/?view=projects&projectId=${PROJECT}&tab=jobs`]}>
+    const view = render(<MemoryRouter initialEntries={[`/?view=projects&projectId=${PROJECT}&tab=earthObservation`]}>
       <Harness />
     </MemoryRouter>);
-    expect(await screen.findByText("No jobs in this project yet")).toBeInTheDocument();
+    expect(await screen.findByText("No Earth Observation surveys yet")).toBeInTheDocument();
     mocks.activities.mockClear();
     mocks.jobs.mockClear();
-    view.rerender(<MemoryRouter initialEntries={[`/?view=projects&projectId=${PROJECT}&tab=jobs`]}>
+    view.rerender(<MemoryRouter initialEntries={[`/?view=projects&projectId=${PROJECT}&tab=earthObservation`]}>
       <Harness workspaceId="workspace-2" />
     </MemoryRouter>);
     await waitFor(() => expect(screen.getByText("Project unavailable")).toBeInTheDocument());
-    expect(screen.queryByText("No jobs in this project yet")).not.toBeInTheDocument();
+    expect(screen.queryByText("No Earth Observation surveys yet")).not.toBeInTheDocument();
     expect(mocks.activities).not.toHaveBeenCalled();
     expect(mocks.jobs).not.toHaveBeenCalled();
   });

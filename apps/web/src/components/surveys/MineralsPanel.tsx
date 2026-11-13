@@ -64,10 +64,9 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
   const band = bandFor(item.areaTopDecile);
   return (
     <article
-      className={`sw-accent-left rounded-lg border border-input bg-card px-2.5 py-2 ${
+      className={`rounded-lg border border-input bg-card px-2.5 py-2 ${
         item.indicated ? "" : "opacity-75"
       }`}
-      style={{ borderLeftColor: item.indicated ? "#f59e0b" : "#94a3b8" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -82,9 +81,16 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
             {item.name}
             {item.symbol ? <span className="text-muted-foreground"> ({item.symbol})</span> : null}
           </p>
-          <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
-            {item.group ? `${item.group} · ` : ""}
-            {item.confidence}
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-[10.5px] text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className="sw-accent-swatch shrink-0"
+              style={{ background: item.indicated ? "#f59e0b" : "#94a3b8" }}
+            />
+            <span className="truncate">
+              {item.group ? `${item.group} · ` : ""}
+              {item.confidence}
+            </span>
           </p>
         </div>
         <span className={`sw-band sw-band--${band ?? "none"} shrink-0`}>

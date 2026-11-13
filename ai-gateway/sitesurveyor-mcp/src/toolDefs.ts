@@ -194,34 +194,6 @@ export const TOOL_DEFS: ToolDef[] = [
     },
   },
   {
-    name: "schedule_job",
-    description:
-      "Schedule a survey job: computes a human summary, inserts the job, and assigns a crew of professionals. Returns the job with any scheduling warnings.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        project_id: STRING,
-        title: STRING,
-        description: STRING,
-        scheduled_date: STRING,
-        status: STRING,
-        crew_size: NUMBER,
-        crew_skill: STRING,
-        photos_gps_rows: NUMBER,
-        boundary_stakeouts: NUMBER,
-      },
-      required: [
-        "project_id",
-        "title",
-        "scheduled_date",
-        "status",
-        "crew_size",
-        "crew_skill",
-      ],
-      additionalProperties: false,
-    },
-  },
-  {
     name: "get_cad_drawing",
     description:
       "Read a project's CAD model for a drawing. Returns the first `limit` entities as rows; cadjson is capped to avoid huge payloads.",

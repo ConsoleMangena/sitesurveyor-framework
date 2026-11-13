@@ -7,15 +7,57 @@
    token, so the workbench follows the app theme instead of carrying its own.
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* The console frame: title bar, ribbon, workspace and status bar stack into one
+   full-bleed column, the way a desktop GIS fills its window. The frame is flush to
+   the viewport edges — seams are 1px borders between regions, never gaps between
+   floating cards. */
+.sw-console {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: var(--background);
+}
+
+.sw-console__titlebar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.sw-console__crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.sw-console__crumbs b {
+  color: var(--foreground);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sw-workspace {
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 410px;
+  grid-template-columns: 264px minmax(0, 1fr) 372px;
   grid-template-rows: minmax(0, 1fr);
   /* The workbench is one screen: the map holds its own height and each panel scrolls its
      own column, which is what keeps the analysis blocks beside the canvas instead of
-     under it. */
-  height: calc(100vh - 300px);
-  min-height: 600px;
+     under it. In the console the workspace is the flexible middle row — it takes
+     whatever height the title bar, ribbon and status bar leave. */
+  flex: 1 1 auto;
+  min-height: 0;
   transition: grid-template-columns 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -25,11 +67,32 @@
   grid-template-rows: minmax(0, 1fr) 240px;
 }
 
+/* Pin desktop regions explicitly. The dock is optional, so auto-placement would
+   otherwise pull the map into the contents column when the table is closed. */
+@media (min-width: 981px) {
+  .sw-workspace > .sw-panel--left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .sw-workspace > .sw-map {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .sw-workspace > .sw-panel--right {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
 .sw-dock {
   grid-column: 1 / -1;
   grid-row: 2;
   min-height: 0;
   overflow: hidden;
+  border-right: 0;
+  border-top: 1px solid var(--border);
 }
 
 .sw-dock .sw-block {
@@ -47,17 +110,23 @@
   max-height: none;
 }
 
-.sw-workspace.sw-workspace--fullscreen {
-  height: calc(100dvh - 125px);
-  min-height: calc(100dvh - 125px);
+/* A console dropped into the app's normal scroll column (deep links outside the
+   project) still has to read as one instrument: it sizes its own frame instead of
+   stretching a grid to the viewport. */
+.sw-console--inset {
+  height: calc(100dvh - 160px);
+  min-height: 560px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .sw-workspace[data-left="collapsed"] {
-  grid-template-columns: 0px minmax(0, 1fr) 410px;
+  grid-template-columns: 0px minmax(0, 1fr) 372px;
 }
 
 .sw-workspace[data-right="collapsed"] {
-  grid-template-columns: 290px minmax(0, 1fr) 0px;
+  grid-template-columns: 264px minmax(0, 1fr) 0px;
 }
 
 .sw-workspace[data-left="collapsed"][data-right="collapsed"] {
@@ -79,18 +148,29 @@
   transition: opacity 0.18s ease, visibility 0.18s ease;
 }
 
-/* Below the width where three regions stop being a workbench, the map leads and the
-   panels stack under it — the same order the page reads in on a tablet. */
+/* Below the width where three regions stop being a workbench, the columns narrow
+   before they fold; the console keeps its single-screen frame. */
 @media (max-width: 1180px) {
   .sw-workspace,
   .sw-workspace[data-left="collapsed"],
   .sw-workspace[data-right="collapsed"],
   .sw-workspace[data-left="collapsed"][data-right="collapsed"] {
-    grid-template-columns: 260px minmax(0, 1fr) 370px;
+    grid-template-columns: 232px minmax(0, 1fr) 332px;
   }
 }
 
 @media (max-width: 980px) {
+  /* Stacked, the console is taller than the window. The app shell clips a
+     fullscreen view, so the console carries its own scroll instead of losing
+     the panels below the fold. */
+  .sw-console,
+  .sw-console--inset {
+    height: auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .sw-workspace,
   .sw-workspace[data-left="collapsed"],
   .sw-workspace[data-right="collapsed"],
@@ -112,6 +192,7 @@
 
   .sw-workspace .sw-map {
     order: 1;
+    width: 100%;
     height: 55vh;
     min-height: 320px;
   }
@@ -135,6 +216,7 @@
   }
 
   .sw-workspace .sw-panel {
+    width: 100%;
     overflow: visible;
     max-height: none;
   }
@@ -182,12 +264,17 @@
 }
 
 .sw-panel {
+  min-width: 0;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.sw-panel--right {
+  border-right: 0;
+  border-left: 1px solid var(--border);
 }
 
 .sw-panel__body {
@@ -232,9 +319,8 @@
 
 .sw-map-shell {
   position: relative;
+  min-height: 0;
   min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   overflow: hidden;
   background: var(--muted);
 }
@@ -578,9 +664,13 @@
   border: 1px solid;
 }
 
-/* The 3px edge is what ties an indicator card to its markers on the map. */
-.sw-accent-left {
-  border-left-width: 3px;
+/* A card's colour tie to its map markers is a swatch in its header row, never a
+   thick side border: the swatch is the workbench's one way to carry a colour. */
+.sw-accent-swatch {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
 }
 
 .sw-meter {
@@ -594,7 +684,6 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  transition: width 0.3s ease;
 }
 
 .sw-progress {
@@ -609,7 +698,6 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--primary), #f59e0b);
-  transition: width 0.4s ease;
 }
 
 .sw-kv dd {
@@ -625,16 +713,30 @@
   color: var(--muted-foreground);
 }
 
+/* The status bar is the console's bottom seam: flush, one line, tabular. */
+.sw-console__status {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+  min-height: 26px;
+  padding: 0 10px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
 /* ── Panel chrome ── */
 
 .sw-panel__header {
   flex: 0 0 auto;
-  height: 42px;
+  height: 40px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px 0 14px;
+  padding: 0 8px 0 12px;
   border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 28%, transparent);
 }
 
 .sw-panel__title {
@@ -721,28 +823,46 @@
    RustGIS-inspired Workstation Styling & Ribbon Theme
    ───────────────────────────────────────────────────────────────────────────── */
 
+/* The ribbon is the console's command bar: flush to the frame, one seam between
+   its tab strip and its tool row. Tool clusters are separated by 1px rules, the
+   way a ribbon groups commands by the work they do. */
 .sw-ribbon {
-  background: color-mix(in oklab, var(--card) 92%, transparent);
-  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
-  border-radius: calc(var(--radius) + 2px);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.dark .sw-ribbon {
-  background: rgb(24 24 27 / 0.88);
-  border-color: rgb(39 39 42 / 0.9);
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
-}
-
-.sw-ribbon__tabs {
+  flex: 0 0 auto;
+  background: var(--card);
   border-bottom: 1px solid var(--border);
 }
 
-.dark .sw-ribbon__tabs {
-  border-bottom-color: rgb(39 39 42 / 0.8);
-  background: rgb(18 18 20 / 0.6);
+.sw-ribbon__tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px;
+  background: color-mix(in oklab, var(--muted) 42%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+
+.sw-ribbon__group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 3px;
+  border-right: 1px solid var(--border);
+}
+
+.sw-ribbon__group:last-child {
+  border-right: 0;
 }
 
 .sw-ribbon__actions {
-  min-height: 38px;
+  min-height: 42px;
+  padding: 4px 8px;
+}
+
+/* Panel controls stay compact at every width; the stacked tablet layout shows
+   all panels because the desktop collapse affordances cannot undo themselves. */
+@media (max-width: 980px) {
+  .sw-ribbon__actions [aria-expanded] {
+    display: none;
+  }
 }

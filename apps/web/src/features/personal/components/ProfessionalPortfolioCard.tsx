@@ -2,10 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Award,
   Camera,
-  ChevronDown,
-  ChevronUp,
   DollarSign,
-  FolderKanban,
   Globe,
   ImagePlus,
   Images,
@@ -110,7 +107,6 @@ export function ProfessionalPortfolioCard({
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
 
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
@@ -383,36 +379,19 @@ export function ProfessionalPortfolioCard({
   };
 
   return (
-    <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.04] via-background to-violet-500/[0.04] shadow-sm">
-      <CardHeader className="border-b border-border/60 bg-background/70 pb-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm ring-1 ring-primary/10">
-              <FolderKanban className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-lg sm:text-xl">Professional Portfolio</CardTitle>
-                {profile?.is_global && <Badge variant="outline" className="gap-1"><Globe size={11} /> Global</Badge>}
-              </div>
-              <CardDescription className="mt-1 max-w-xl">Build a profile that shows your field experience, visual work, and availability at a glance.</CardDescription>
-            </div>
-          </div>
-          <Button type="button" variant="outline" size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setIsOpen((v) => !v)} aria-label={isOpen ? "Collapse portfolio" : "Expand portfolio"}>
-            {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            {isOpen ? "Hide editor" : "Edit portfolio"}
-          </Button>
+    <div className="space-y-6">
+      {profile?.is_global && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="outline" className="gap-1"><Globe size={11} /> Global</Badge>
+          <span>Your profile is published and visible in the professional registry.</span>
         </div>
-      </CardHeader>
-
-      {isOpen && (
-        <CardContent className="space-y-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-              <Loader2 size={16} className="mr-2 animate-spin" /> Loading profile...
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
+      )}
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+          <Loader2 size={16} className="mr-2 animate-spin" /> Loading profile...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
               {/* ── Form columns ─────────────────────────────────── */}
               <div className="min-w-0 space-y-6">
                 {/* Availability */}
@@ -1060,10 +1039,8 @@ export function ProfessionalPortfolioCard({
                   </Button>
                 </div>
               </aside>
-            </div>
-          )}
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import {
   Activity,
+  ChevronLeft,
   Crosshair,
   Database,
   Eraser,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
+import { ThemeToggle } from "@/components/theme/ThemeToggle.tsx";
 import { CATEGORY_LABELS, SURVEY_CATEGORY_OPTIONS, type DossierCategory } from "@/lib/surveys/labels.ts";
 import type { MapViewInfo } from "./SurveyMap.tsx";
 
@@ -36,7 +38,7 @@ export type RibbonTab = "home" | "data" | "analyze" | "view" | "publish";
 /** What a click on the canvas means. Pan is the default and the only one that drags. */
 export type MapTool = "pan" | "measure" | "target";
 
-export type ContentsTab = "layers" | "data" | "jobs";
+export type ContentsTab = "layers" | "data" | "surveys";
 
 /** One published file the reader can take away. Absent means the run did not write it. */
 export interface PublishItem {
@@ -74,6 +76,11 @@ interface WorkbenchBarProps {
   onExportPdf: () => void;
   downloads: PublishItem[];
   onDownload: (kind: string) => void;
+  /** Console title bar context; the bar stays a plain ribbon without it. */
+  projectName?: string;
+  surveyName?: string;
+  /** Back to the project's Earth Observation tab. */
+  onBack?: () => void;
 }
 
 const TABS: { id: RibbonTab; label: string; icon: typeof FolderGit2 }[] = [
@@ -91,9 +98,10 @@ const MAP_TOOLS: { id: MapTool; label: string; icon: typeof Hand; hint: string }
 ];
 
 /**
- * The workbench ribbon.
+ * The workbench console head: a title bar carrying the project and survey, over the
+ * command ribbon.
  *
- * Selecting a tab reveals that tab's tools; it never performs an action on its own.
+ * Selecting a ribbon tab reveals that tab's tools; it never performs an action on its own.
  * Opening a pane is navigation and happens on selection, but exporting a sheet is not,
  * so Publish waits for the reader to press the button.
  */
@@ -122,6 +130,9 @@ export function WorkbenchBar({
   onExportPdf,
   downloads,
   onDownload,
+  projectName,
+  surveyName,
+  onBack,
 }: WorkbenchBarProps) {
   function selectTab(next: RibbonTab) {
     onTab(next);
@@ -130,155 +141,212 @@ export function WorkbenchBar({
   }
 
   return (
-    <div className="sw-ribbon mb-2 rounded-lg border border-border/80 bg-card/90 shadow-sm backdrop-blur-md">
-      <div className="sw-ribbon__tabs flex items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-2 py-1">
-        <div className="flex items-center gap-1 overflow-x-auto" role="tablist" aria-label="Workbench ribbon">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <RibbonTabButton
-              key={id}
-              active={tab === id}
-              onClick={() => selectTab(id)}
-              icon={<Icon className="size-3.5" />}
-              label={label}
-            />
-          ))}
+    <>
+      {onBack || projectName ? (
+        <div className="sw-console__titlebar">
+          {onBack ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 shrink-0 gap-1 px-2 text-[11.5px] text-muted-foreground hover:text-foreground"
+              onClick={onBack}
+              title="Back to this project's Earth Observation"
+            >
+              <ChevronLeft className="size-3.5" aria-hidden="true" />
+              <span>Earth Observation</span>
+            </Button>
+          ) : null}
+          <div className="sw-console__crumbs" aria-label="Open survey">
+            {projectName ? (
+              <>
+                <span aria-hidden="true" className="hidden sm:inline">/</span>
+                <span className="hidden truncate sm:inline">{projectName}</span>
+              </>
+            ) : null}
+            {surveyName ? (
+              <>
+                <span aria-hidden="true" className="hidden sm:inline">/</span>
+                <b className="truncate">{surveyName}</b>
+              </>
+            ) : null}
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="sw-pill" data-state={pill.state}>
+              <i aria-hidden="true" />
+              <span className="font-mono text-[11px]">{pill.text}</span>
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
+      ) : null}
 
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="sw-pill" data-state={pill.state}>
-            <i aria-hidden="true" />
-            <span className="font-mono text-[11px]">{pill.text}</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="sw-ribbon__actions flex flex-wrap items-center justify-between gap-2 px-3 py-1.5">
-        <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label={`${tab} tools`}>
-          {tab === "home" ? (
-            <>
-              <RibbonButton onClick={onRun} disabled={running} icon={Play} label="Run survey" primary />
-              {onAskAi ? (
-                <RibbonButton onClick={onAskAi} icon={Sparkles} label="Ask AI" title="Discuss this survey with SiteSurveyor AI" />
-              ) : null}
-              <Divider />
-              <RibbonButton onClick={onResetView} icon={RotateCcw} label="Fit AOI" title="Frame the study area again" />
-              <RibbonButton onClick={onReload} icon={RefreshCw} label="Reload" title="Ask the platform for the queue again" />
-              <RibbonButton onClick={onClear} icon={Eraser} label="Clear board" title="Take this survey off the canvas without deleting it" />
-            </>
-          ) : null}
-
-          {tab === "data" ? (
-            <>
-              <RibbonButton
-                onClick={() => onOpenContents("data")}
-                icon={Database}
-                label="EO coverages"
-                title="The coverages this run actually read, as it recorded them"
-              />
-              <RibbonButton onClick={() => onOpenContents("layers")} icon={Layers} label="Layers" />
-              <RibbonButton onClick={() => onOpenContents("jobs")} icon={FolderGit2} label="Jobs & runs" />
-            </>
-          ) : null}
-
-          {tab === "analyze" ? (
-            <>
-              <div className="flex items-center gap-1" role="group" aria-label="EO process">
-                {SURVEY_CATEGORY_OPTIONS.map(({ id, dossier }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={process === dossier}
-                    onClick={() => onProcess(dossier)}
-                    title={`${CATEGORY_LABELS[dossier].name} — produces ${CATEGORY_LABELS[dossier].noun}`}
-                    className={`h-7 rounded-md border px-2 text-[11.5px] font-medium transition-colors ${
-                      process === dossier
-                        ? "border-primary/50 bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {CATEGORY_LABELS[dossier].short}
-                  </button>
-                ))}
-              </div>
-              <Divider />
-              <RibbonButton
-                onClick={onRun}
-                disabled={running}
-                icon={Play}
-                label={`Run ${CATEGORY_LABELS[process].short}`}
-                primary
-              />
-              <RibbonButton
-                onClick={onToggleRight}
-                icon={Activity}
-                label={rightOpen ? "Hide results" : "Show results"}
-              />
-            </>
-          ) : null}
-
-          {tab === "view" ? (
-            <>
-              <div className="flex items-center gap-1" role="group" aria-label="Canvas tool">
-                {MAP_TOOLS.map(({ id, label, icon: Icon, hint }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={mapTool === id}
-                    onClick={() => onMapTool(id)}
-                    title={hint}
-                    className={`flex h-7 items-center gap-1.5 rounded-md border px-2 text-[11.5px] font-medium transition-colors ${
-                      mapTool === id
-                        ? "border-primary/50 bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-              <Divider />
-              <RibbonButton
-                onClick={onToggleTable}
-                icon={Table2}
-                label="Attribute table"
-                pressed={tableOpen}
-              />
-              <RibbonButton onClick={onResetView} icon={Crosshair} label="Fit AOI" />
-            </>
-          ) : null}
-
-          {tab === "publish" ? (
-            <>
-              <RibbonButton
-                onClick={onExportPdf}
-                disabled={!published}
-                icon={FileText}
-                label="PDF map sheet"
-                primary
-                title={published ? "Export the cartographic sheet" : "Run or select a completed survey first"}
-              />
-              <Divider />
-              {downloads.map((item) => (
-                <RibbonButton
-                  key={item.kind}
-                  onClick={() => onDownload(item.kind)}
-                  disabled={!item.available}
-                  icon={FileDown}
-                  label={item.label}
-                  title={item.available ? `Download ${item.label}` : "This run did not publish that file"}
+      <div className="sw-ribbon">
+        {onBack || projectName ? null : (
+          <div className="sw-ribbon__tabs">
+            <div className="flex items-center gap-1 overflow-x-auto" role="tablist" aria-label="Workbench ribbon">
+              {TABS.map(({ id, label, icon: Icon }) => (
+                <RibbonTabButton
+                  key={id}
+                  active={tab === id}
+                  onClick={() => selectTab(id)}
+                  icon={<Icon className="size-3.5" />}
+                  label={label}
                 />
               ))}
-            </>
-          ) : null}
-        </div>
+            </div>
 
-        <div className="flex items-center gap-1.5">
-          <PanelToggle side="left" open={leftOpen} onClick={onToggleLeft} label="Contents" />
-          <PanelToggle side="right" open={rightOpen} onClick={onToggleRight} label="Analysis" />
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="sw-pill" data-state={pill.state}>
+                <i aria-hidden="true" />
+                <span className="font-mono text-[11px]">{pill.text}</span>
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="sw-ribbon__actions flex flex-wrap items-center justify-between gap-y-1">
+          <div className="flex flex-wrap items-center gap-y-1" role="toolbar" aria-label={`${tab} tools`}>
+            {onBack || projectName ? (
+              <div className="sw-ribbon__group" role="tablist" aria-label="Workbench ribbon">
+                {TABS.map(({ id, label, icon: Icon }) => (
+                  <RibbonTabButton
+                    key={id}
+                    active={tab === id}
+                    onClick={() => selectTab(id)}
+                    icon={<Icon className="size-3.5" />}
+                    label={label}
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {tab === "home" ? (
+              <div className="sw-ribbon__group">
+                <RibbonButton onClick={onRun} disabled={running} icon={Play} label="Run survey" primary />
+                {onAskAi ? (
+                  <RibbonButton onClick={onAskAi} icon={Sparkles} label="Ask AI" title="Discuss this survey with SiteSurveyor AI" />
+                ) : null}
+                <RibbonButton onClick={onResetView} icon={RotateCcw} label="Fit AOI" title="Frame the study area again" />
+                <RibbonButton onClick={onReload} icon={RefreshCw} label="Reload" title="Ask the platform for the queue again" />
+                <RibbonButton onClick={onClear} icon={Eraser} label="Clear board" title="Take this survey off the canvas without deleting it" />
+              </div>
+            ) : null}
+
+            {tab === "data" ? (
+              <div className="sw-ribbon__group">
+                <RibbonButton
+                  onClick={() => onOpenContents("data")}
+                  icon={Database}
+                  label="EO coverages"
+                  title="The coverages this run actually read, as it recorded them"
+                />
+                <RibbonButton onClick={() => onOpenContents("layers")} icon={Layers} label="Layers" />
+                <RibbonButton onClick={() => onOpenContents("surveys")} icon={FolderGit2} label="Surveys" />
+              </div>
+            ) : null}
+
+            {tab === "analyze" ? (
+              <>
+                <div className="sw-ribbon__group" role="group" aria-label="EO process">
+                  {SURVEY_CATEGORY_OPTIONS.map(({ id, dossier }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={process === dossier}
+                      onClick={() => onProcess(dossier)}
+                      title={`${CATEGORY_LABELS[dossier].name} — produces ${CATEGORY_LABELS[dossier].noun}`}
+                      className={`h-7 rounded-md border px-2 text-[11.5px] font-medium transition-colors ${
+                        process === dossier
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {CATEGORY_LABELS[dossier].short}
+                    </button>
+                  ))}
+                </div>
+                <div className="sw-ribbon__group">
+                  <RibbonButton
+                    onClick={onRun}
+                    disabled={running}
+                    icon={Play}
+                    label={`Run ${CATEGORY_LABELS[process].short}`}
+                    primary
+                  />
+                  <RibbonButton
+                    onClick={onToggleRight}
+                    icon={Activity}
+                    label={rightOpen ? "Hide results" : "Show results"}
+                  />
+                </div>
+              </>
+            ) : null}
+
+            {tab === "view" ? (
+              <>
+                <div className="sw-ribbon__group" role="group" aria-label="Canvas tool">
+                  {MAP_TOOLS.map(({ id, label, icon: Icon, hint }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={mapTool === id}
+                      onClick={() => onMapTool(id)}
+                      title={hint}
+                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2 text-[11.5px] font-medium transition-colors ${
+                        mapTool === id
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="sw-ribbon__group">
+                  <RibbonButton
+                    onClick={onToggleTable}
+                    icon={Table2}
+                    label="Attribute table"
+                    pressed={tableOpen}
+                  />
+                  <RibbonButton onClick={onResetView} icon={Crosshair} label="Fit AOI" />
+                </div>
+              </>
+            ) : null}
+
+            {tab === "publish" ? (
+              <div className="sw-ribbon__group">
+                <RibbonButton
+                  onClick={onExportPdf}
+                  disabled={!published}
+                  icon={FileText}
+                  label="PDF map sheet"
+                  primary
+                  title={published ? "Export the cartographic sheet" : "Run or select a completed survey first"}
+                />
+                {downloads.map((item) => (
+                  <RibbonButton
+                    key={item.kind}
+                    onClick={() => onDownload(item.kind)}
+                    disabled={!item.available}
+                    icon={FileDown}
+                    label={item.label}
+                    title={item.available ? `Download ${item.label}` : "This run did not publish that file"}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="sw-ribbon__group">
+            <PanelToggle side="left" open={leftOpen} onClick={onToggleLeft} label="Contents" />
+            <PanelToggle side="right" open={rightOpen} onClick={onToggleRight} label="Analysis" />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -318,10 +386,6 @@ function RibbonButton({
   );
 }
 
-function Divider() {
-  return <div className="mx-1 h-4 w-px bg-border/80" aria-hidden="true" />;
-}
-
 function RibbonTabButton({
   active,
   onClick,
@@ -339,7 +403,7 @@ function RibbonTabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`relative flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+      className={`relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
         active
           ? "bg-background font-semibold text-foreground shadow-xs"
           : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
@@ -393,10 +457,10 @@ interface StatusStripProps {
   measure?: string | null;
 }
 
-/** The thin line that tells you where the camera is and what the queue is doing. */
+/** The console status bar: where the camera is, what the queue is doing, on one line. */
 export function StatusStrip({ view, crs, job, basis, measure }: StatusStripProps) {
   return (
-    <footer className="sw-status mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-[11px] text-muted-foreground shadow-2xs backdrop-blur-xs">
+    <footer className="sw-status sw-console__status">
       <div className="flex items-center gap-1.5 font-mono">
         <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
         <span className="font-semibold text-foreground">{view?.coords ?? "—"}</span>

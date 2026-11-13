@@ -71,9 +71,9 @@ export function VehicleDetailDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
-      <DialogContent className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[14px] border border-border/80 bg-background p-0 shadow-lg sm:max-w-3xl">
+      <DialogContent size="xl" className="w-full p-0">
         {/* Banner with Vehicle Photo and Tier Theme */}
-        <div className="relative flex min-h-[160px] w-full shrink-0 items-end overflow-hidden border-b border-border/70 sm:min-h-[190px]">
+        <div className="relative flex min-h-44 w-full shrink-0 items-end overflow-hidden border-b border-border/70 sm:min-h-52">
           <img
             src={vehicle.photoUrl || getVehiclePlaceholder(vehicle.tierId, vehicle.model)}
             alt={vehicle.model}
@@ -106,7 +106,7 @@ export function VehicleDetailDialog({
                   />
                   {tier.shortName}
                 </span>
-                <DialogHeader className="p-0 text-left">
+                <DialogHeader className="border-0 bg-transparent p-0 text-left">
                   <DialogTitle className="mt-1 text-lg font-bold text-foreground sm:text-2xl">
                     {vehicle.model}
                   </DialogTitle>
@@ -304,12 +304,12 @@ export function VehicleDetailDialog({
         </div>
 
         {/* Action Footer */}
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 bg-muted/60 px-5 py-3.5 sm:px-6">
+        <div className="dlg-footer dlg-footer-row justify-between max-sm:[&>button]:flex-1">
           <Button
             type="button"
             variant="outline"
             onClick={() => onShowOnMap(vehicle)}
-            className="h-10 gap-1.5 rounded-xl px-4 text-xs font-semibold"
+            className="h-11 gap-1.5 rounded-xl px-4 text-sm font-semibold"
           >
             <IconMapPin className="size-4" aria-hidden="true" />
             <span>Show on map</span>
@@ -318,7 +318,7 @@ export function VehicleDetailDialog({
           <Button
             type="button"
             onClick={() => onBookNow(vehicle)}
-            className="h-10 gap-1.5 rounded-xl px-5 text-xs font-semibold shadow-sm"
+            className="h-11 gap-1.5 rounded-xl px-5 text-sm font-semibold shadow-sm"
           >
             <span>
               {fareBreakdown

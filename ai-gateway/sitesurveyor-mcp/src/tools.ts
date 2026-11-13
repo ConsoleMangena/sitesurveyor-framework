@@ -21,7 +21,6 @@ import {
 import {
   closeOverdueInvoices,
   createQuoteFromLineItems,
-  scheduleJob,
 } from "./workflows.js";
 import { remember as memRemember, forget as memForget } from "./memory.js";
 
@@ -40,8 +39,27 @@ function json(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** Columns that carry image URLs (or arrays of them). When a tool result
+ *  contains many of these, the vision model counts each URL as an attached
+ *  image and rejects the request once it exceeds the provider's per-request
+ *  image cap. Strip them before the result is sent back to the model. */
+const IMAGE_URL_COLUMNS = new Set(["photos", "photo_url", "image_url", "avatar_url", "banner_url", "logo_url"]);
+
+function stripImageColumns(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripImageColumns);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+      if (IMAGE_URL_COLUMNS.has(key.toLowerCase())) continue;
+      out[key] = stripImageColumns(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 function truncateRows(rows: unknown): string {
-  const text = JSON.stringify(rows);
+  const text = JSON.stringify(stripImageColumns(rows));
   return text.length > 12_000 ? text.slice(0, 12_000) + "...[truncated]" : text;
 }
 
@@ -464,13 +482,6 @@ export async function executeTool(
       },
     );
   }
-  if (name === "schedule_job") {
-    return scheduleJob(
-      { supabaseUrl: ctx.supabaseUrl, serviceKey: ctx.serviceKey, workspaceId: ctx.workspaceId },
-      args as { job_id: string; assignment_date?: string; notes?: string; status?: "draft" | "confirmed" | "in_progress" | "completed" | "cancelled" },
-    );
-  }
-
   if (name === "remember" || name === "forget") {
     const key = str(args.key);
     if (!key) return json({ error: "A non-empty key is required." });

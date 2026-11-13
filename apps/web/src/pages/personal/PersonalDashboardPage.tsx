@@ -25,7 +25,6 @@ import { RecentSales, type RecentSaleItem } from "@/components/dashboard/RecentS
 import { ProjectStatusChart } from "@/components/dashboard/ProjectStatusChart";
 import { ProjectTimelineChart } from "@/components/dashboard/ProjectTimelineChart";
 import { RecentProjectsTable } from "@/components/dashboard/RecentProjectsTable";
-import { ProfessionalPortfolioCard } from "../../features/personal/components/ProfessionalPortfolioCard";
 import MarketGlobeCard from "../../components/market/MarketGlobeCard";
 import { DatabaseStorageCard } from "@/components/dashboard/DatabaseStorageCard";
 import { cn } from "@/lib/utils";
@@ -212,7 +211,7 @@ export default function PersonalDashboardPage({
     <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         title={`${getGreeting()}, ${getFirstName(userName)}`}
-        description="Solo surveying operations & pipeline."
+        description="Your day, active work and business at a glance."
         subtitle={currentDate}
         actions={
           <Button
@@ -271,41 +270,12 @@ export default function PersonalDashboardPage({
               />
             </KpiGrid>
 
-            {/* 7-column billings + recent invoices */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <DashboardCard
-                title="Monthly billings"
-                titleAction={<PanelMeta>{new Date().getFullYear()}</PanelMeta>}
-                className="col-span-1 lg:col-span-4"
-              >
-                <Overview data={overviewData} />
-              </DashboardCard>
-
-              <DashboardCard
-                title="Recent invoices"
-                titleAction={<PanelMeta>{invoices.length} issued</PanelMeta>}
-                className="col-span-1 lg:col-span-3"
-              >
-                <RecentSales items={recentInvoices} />
-              </DashboardCard>
-            </div>
-
-            {/* Pipeline Row */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <div className="col-span-1 lg:col-span-4">
-                <ProjectTimelineChart projects={projects} />
-              </div>
-              <div className="col-span-1 lg:col-span-3">
-                <ProjectStatusChart projects={projects} />
-              </div>
-            </div>
-
-            {/* Operations */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <div className="col-span-1 lg:col-span-3">
+            {/* Start with the work that needs attention today. */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-7">
+              <div className="col-span-1 xl:col-span-4">
                 <TodaysSchedule
                   events={jobEvents}
-                  maxItems={4}
+                  maxItems={5}
                   footer={
                     <Button
                       type="button"
@@ -323,7 +293,8 @@ export default function PersonalDashboardPage({
               <DashboardCard
                 title="Equipment snapshot"
                 icon={<Gauge />}
-                className="col-span-1 lg:col-span-4"
+                titleAction={<PanelMeta>{assetSnapshot.length} tracked</PanelMeta>}
+                className="col-span-1 xl:col-span-3"
               >
                 {assetSnapshot.length > 0 ? (
                   <div className="flex flex-col divide-y divide-border">
@@ -355,21 +326,49 @@ export default function PersonalDashboardPage({
               </DashboardCard>
             </div>
 
-            <MarketGlobeCard onNavigate={onNavigate} />
-            <ProfessionalPortfolioCard workspaceId={workspaceId} userName={userName} />
-
-            {/* Records & Storage */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <div className="col-span-1 lg:col-span-4">
+            {/* Active records and storage belong beside daily operations. */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-7">
+              <div className="col-span-1 xl:col-span-5">
                 <RecentProjectsTable projects={projects} />
               </div>
-              <div className="col-span-1 lg:col-span-3">
+              <div className="col-span-1 xl:col-span-2">
                 <DatabaseStorageCard
                   workspaceId={workspaceId}
                   onNavigate={onNavigate}
                 />
               </div>
             </div>
+
+            {/* Financial overview */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-7">
+              <DashboardCard
+                title="Monthly billings"
+                titleAction={<PanelMeta>{new Date().getFullYear()}</PanelMeta>}
+                className="col-span-1 xl:col-span-4"
+              >
+                <Overview data={overviewData} />
+              </DashboardCard>
+
+              <DashboardCard
+                title="Recent invoices"
+                titleAction={<PanelMeta>{invoices.length} issued</PanelMeta>}
+                className="col-span-1 xl:col-span-3"
+              >
+                <RecentSales items={recentInvoices} />
+              </DashboardCard>
+            </div>
+
+            {/* Lower-priority trends stay out of the way of current work. */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-7">
+              <div className="col-span-1 xl:col-span-4">
+                <ProjectTimelineChart projects={projects} />
+              </div>
+              <div className="col-span-1 xl:col-span-3">
+                <ProjectStatusChart projects={projects} />
+              </div>
+            </div>
+
+            <MarketGlobeCard onNavigate={onNavigate} />
         </div>
       )}
     </DashboardShell>

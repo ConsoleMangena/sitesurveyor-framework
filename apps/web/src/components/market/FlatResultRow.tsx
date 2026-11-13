@@ -1,17 +1,20 @@
 import { ArrowUpRight, MapPin } from "lucide-react";
+import { DistanceChip } from "../shared/NearbyPrompt.tsx";
 import { cn } from "../../lib/utils.ts";
 import { MARKET_DOT_COLORS } from "./marketDots";
 import { isNew, type RailItem } from "./marketItems";
 import { getKindPlaceholder } from "./marketPlaceholders";
-import { KindIcon, NewBadge, SampleBadge } from "./MarketRail.tsx";
+import { NewBadge, SampleBadge } from "./MarketRail.tsx";
 
 export default function FlatResultRow({
   item,
   highlighted,
+  distanceKm,
   onOpen,
 }: {
   item: RailItem;
   highlighted: boolean;
+  distanceKm?: number | null;
   onOpen: () => void;
 }) {
   const accent = MARKET_DOT_COLORS[item.kind];
@@ -57,6 +60,7 @@ export default function FlatResultRow({
           <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{item.location}</span>
+            {distanceKm != null ? <DistanceChip km={distanceKm} /> : null}
           </span>
         </span>
 

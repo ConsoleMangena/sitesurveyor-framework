@@ -16,9 +16,9 @@
     position: fixed;
     inset: 0;
     z-index: 3000;
-    background: rgba(11, 14, 12, 0.46);
-    backdrop-filter: blur(1.5px);
-    -webkit-backdrop-filter: blur(1.5px);
+    background: rgba(11, 14, 12, 0.54);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
   }
 
   .dlg-overlay[data-state='open'] {
@@ -126,7 +126,10 @@
       border-bottom: 1px solid var(--border);
       border-radius: 14px;
       box-shadow: 0 26px 70px -28px rgba(15, 23, 20, 0.42);
-      transform: translate(-50%, -50%);
+      /* Centre with the `translate` property, never `transform`. Tailwind v4's
+         `-translate-x-1/2` utilities also set `translate`, so a `transform`-based
+         centre would STACK with them and throw the sheet half off screen. */
+      translate: -50% -50%;
     }
   }
 
@@ -170,7 +173,7 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 14px 46px 13px 16px;
+    padding: 18px 52px 16px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
@@ -252,8 +255,8 @@
     right: 12px;
     z-index: 2;
     display: inline-flex;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--border);
@@ -281,7 +284,7 @@
     }
 
     .dlg-header {
-      padding: 16px 48px 14px 18px;
+      padding: 20px 56px 18px 24px;
     }
 
     .dlg-body {
@@ -341,24 +344,26 @@
   }
 }
 
+/* Centre offset lives on the `translate` property (see .dlg-sheet), so the
+   card animation only scales — never re-translates. */
 @keyframes dlg-card-in {
   from {
-    transform: translate(-50%, -50%) scale(0.975);
+    transform: scale(0.975);
     opacity: 0;
   }
   to {
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
     opacity: 1;
   }
 }
 
 @keyframes dlg-card-out {
   from {
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
     opacity: 1;
   }
   to {
-    transform: translate(-50%, -50%) scale(0.975);
+    transform: scale(0.975);
     opacity: 0;
   }
 }

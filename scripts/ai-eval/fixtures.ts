@@ -125,21 +125,6 @@ export const seed: TableSeed = {
       active_layer: "FENCE",
     }),
   ],
-  jobs: [
-    {
-      id: "cccccccc-0000-0000-0000-000000000001",
-      title: "Site topo survey",
-      status: "planned",
-      project_id: "bbbbbbbb-0000-0000-0000-000000000001",
-      workspace_id: "ws-test",
-    },
-    rival({
-      id: "cccccccc-0000-0000-0000-000000000099",
-      title: "Rival boundary resurvey",
-      status: "planned",
-      project_id: "bbbbbbbb-0000-0000-0000-000000000099",
-    }),
-  ],
   quotes: [
     {
       id: "dddddddd-0000-0000-0000-000000000001",
@@ -160,15 +145,6 @@ export const seed: TableSeed = {
       qty: 1,
       rate: 3200,
       line_number: 1,
-      workspace_id: "ws-test",
-    },
-  ],
-  job_assignments: [
-    {
-      id: "cccccccc-2222-0000-0000-000000000001",
-      job_id: "cccccccc-0000-0000-0000-000000000001",
-      assignment_date: "2026-01-01",
-      status: "draft",
       workspace_id: "ws-test",
     },
   ],
@@ -203,11 +179,11 @@ export const seed: TableSeed = {
       updated_at: "2026-09-02T00:00:00Z",
     },
     {
-      id: "ffffffff-0000-0000-0000-000000000003",
-      key: "schedule-job",
-      title: "Scheduling a job",
-      description: "schedule job assign crew date assignment",
-      body: "Use the schedule_job workflow to schedule a job.",
+      id: "ffffffff-0000-0000-0000-000000000009",
+      key: "default-cad-layers",
+      title: "Default CAD layer conventions",
+      description: "cad draw layer setout boundary drawing",
+      body: "Use the drawing's active layer for new CAD geometry.",
       examples: [],
       active: true,
       updated_at: "2026-09-02T00:00:00Z",

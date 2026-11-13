@@ -68,7 +68,9 @@ export default function WorkspaceShell({
   onLogout,
   children,
 }: WorkspaceShellProps) {
-  const shouldHideGlobalChrome = (activeView === "projects" || activeView === "satellite") && isProjectFullscreen;
+  // Only the satellite survey workbench goes fullscreen; a project always keeps
+  // the workspace sidebar, header and frame.
+  const shouldHideGlobalChrome = activeView === "satellite" && isProjectFullscreen;
 
   // Read once on mount: the sidebar primitive owns the cookie afterwards.
   const defaultSidebarOpen = useMemo(

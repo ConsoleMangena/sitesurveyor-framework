@@ -1,18 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   IconAdjustmentsHorizontal,
   IconArrowsExchange,
+  IconArrowUpRight,
   IconBuildingStore,
   IconChevronDown,
-  IconClock,
-  IconCrosshair,
   IconCurrentLocation,
   IconHistory,
   IconLayoutGrid,
-  IconMapPin,
-  IconMapPins,
-  IconRoad,
   IconRoute,
   IconSearch,
   IconSettings,
@@ -42,18 +39,27 @@ import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { cn } from "../../lib/utils.ts";
 import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
+import { LocationSearchField } from "../../components/transport/LocationSearchField.tsx";
+import { rememberLocation } from "../../components/transport/recentLocations.ts";
 import { VehicleHireCard } from "../../components/transport/VehicleHireCard.tsx";
 import { VehicleDetailDialog } from "../../components/transport/VehicleDetailDialog.tsx";
 import { BookingSlip } from "../../components/transport/BookingSlip.tsx";
 import { VEHICLE_TIER_THEME } from "../../components/transport/vehicleTierTheme.ts";
+import { MarketConciergeDialog } from "../../components/market/MarketConciergeDialog.tsx";
+import { NearbyPrompt } from "../../components/shared/NearbyPrompt.tsx";
+import { useDeviceLocation } from "../../lib/geo/useDeviceLocation.ts";
+import { groupByDistance, formatDistanceKm, type DistanceGroup } from "../../lib/geo/distance.ts";
 import {
   calculateHireFare,
   calculateRoadDistanceKm,
   estimateDriveDurationMinutes,
   formatDriveDuration,
   generateFleetForCoordinates,
+  isUpcomingTrip,
   loadSavedBookings,
-  SURVEY_GPS_PRESETS,
+  removeBookingFromStorage,
+  TRIP_PROGRESS_STAGES,
+  updateBookingStatus,
   VEHICLE_TIERS,
   type HireBooking,
   type HireVehicle,
@@ -94,6 +100,7 @@ function payloadLabel(kg: number): string {
 
 export default function PublicTransportPage() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const mapRef = useRef<TransportMapHandle>(null);
   const fleetRef = useRef<HTMLDivElement>(null);
 
@@ -119,13 +126,28 @@ export default function PublicTransportPage() {
   const [sort, setSort] = useState<SortKey>("eta");
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
-  const [geoNotice, setGeoNotice] = useState<string | null>(null);
+
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [detailVehicle, setDetailVehicle] = useState<HireVehicle | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [recentBookings, setRecentBookings] = useState<HireBooking[]>(() => loadSavedBookings());
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [conciergeOpen, setConciergeOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"vehicles" | "map">("vehicles");
+
+  // Device GPS: pickup comes from the phone, not typed coordinates. A cached
+  // fix from a previous visit is applied silently; a manual edit overrides it
+  // and stops the automatic re-centring (appliedRef).
+  const geo = useDeviceLocation();
+  const appliedRef = useRef(false);
+  const [manualPickup, setManualPickup] = useState(false);
+  useEffect(() => {
+    if (!geo.location || appliedRef.current || manualPickup) return;
+    appliedRef.current = true;
+    const { lat, lng } = geo.location;
+    setPickup({ lat, lng, label: `My GPS location (${lat.toFixed(3)}, ${lng.toFixed(3)})`, isCustom: true });
+    mapRef.current?.centerCoordinate(lat, lng);
+  }, [geo.location, manualPickup]);
 
   const distanceKm = useMemo(
     () => calculateRoadDistanceKm(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng),
@@ -141,8 +163,7 @@ export default function PublicTransportPage() {
     for (const tierId of TIER_IDS) {
       counts[tierId] = baseFleet.filter((vehicle) => vehicle.tierId === tierId).length;
     }
-    return counts;
-  }, [baseFleet]);
+    return counts;  }, [baseFleet]);
 
   const filteredFleet = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -172,13 +193,37 @@ export default function PublicTransportPage() {
       });
   }, [baseFleet, selectedTier, minSeats, minPayload, search, sort, distanceKm]);
 
+  // Group the fleet by how far each driver is from the pickup point — the
+  // reference is the pickup (device GPS by default), so "nearby" means "close
+  // to where the crew is standing".
+  const fleetById = useMemo(
+    () => new Map(filteredFleet.map((vehicle) => [vehicle.id, vehicle])),
+    [filteredFleet],
+  );
+  const fleetGroups: DistanceGroup<HireVehicle>[] = useMemo(
+    () =>
+      groupByDistance(
+        filteredFleet.map((vehicle) => ({
+          ...vehicle,
+          lat: vehicle.currentLat,
+          lng: vehicle.currentLng,
+        })),
+        { lat: pickup.lat, lng: pickup.lng },
+      ).map((group) => ({
+        ...group,
+        items: group.items.map((row) => ({ ...row, item: fleetById.get(row.item.id) ?? row.item })),
+      })),
+    [filteredFleet, fleetById, pickup],
+  );
+
   const activeVehicle = useMemo(() => {
-    if (selectedVehicleId) {
-      const found = filteredFleet.find((vehicle) => vehicle.id === selectedVehicleId);
-      if (found) return found;
-    }
+    if (selectedVehicleId) return baseFleet.find((vehicle) => vehicle.id === selectedVehicleId) ?? null;
     return filteredFleet[0] ?? null;
-  }, [filteredFleet, selectedVehicleId]);
+  }, [baseFleet, filteredFleet, selectedVehicleId]);
+
+  const selectedExcluded = Boolean(
+    selectedVehicleId && activeVehicle && !filteredFleet.some((vehicle) => vehicle.id === selectedVehicleId),
+  );
 
   const resetFilters = useCallback(() => {
     setSearch("");
@@ -220,38 +265,18 @@ export default function PublicTransportPage() {
   }, [pickup, dropoff]);
 
   const handleUseCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGeoNotice("This browser cannot share a GPS fix. Type the coordinates or drop a pin instead.");
-      return;
-    }
-
-    setIsLocating(true);
-    setGeoNotice(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setIsLocating(false);
-        const lat = Math.round(position.coords.latitude * 100000) / 100000;
-        const lng = Math.round(position.coords.longitude * 100000) / 100000;
-        setPickup({
-          lat,
-          lng,
-          label: `My GPS location (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
-          isCustom: true,
-        });
-        mapRef.current?.centerCoordinate(lat, lng);
-      },
-      (error) => {
-        setIsLocating(false);
-        setGeoNotice(`Could not read your GPS: ${error.message}. Drop a pin on the map instead.`);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }, []);
+    setManualPickup(false);
+    appliedRef.current = false;
+    void geo.locate();
+  }, [geo]);
 
   const handleCoordinatesChange = useCallback(
     (type: "pickup" | "dropoff", coordinates: LocationCoordinate) => {
+      rememberLocation(coordinates);
       if (type === "pickup") {
         setPickup(coordinates);
+        // A typed or pinned pickup wins over the device fix from here on.
+        setManualPickup(true);
       } else {
         setDropoff(coordinates);
       }
@@ -262,7 +287,7 @@ export default function PublicTransportPage() {
 
   const handleSelectVehicle = useCallback((vehicle: HireVehicle) => {
     setSelectedVehicleId(vehicle.id);
-    mapRef.current?.focusVehicle(vehicle);
+    document.querySelector(`[data-vehicle-id="${vehicle.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
   const handleOpenVehicleDetail = useCallback((vehicle: HireVehicle) => {
@@ -282,25 +307,67 @@ export default function PublicTransportPage() {
   const handleBookFromDetail = useCallback((vehicle: HireVehicle) => {
     setSelectedVehicleId(vehicle.id);
     setIsDetailOpen(false);
+    if (!user) {
+      navigate("/login", { state: { from: "/transport" } });
+      return;
+    }
     setIsBookingOpen(true);
-  }, []);
+  }, [navigate, user]);
 
   const handleBookVehicleNow = useCallback((vehicle: HireVehicle) => {
     setSelectedVehicleId(vehicle.id);
+    if (!user) {
+      navigate("/login", { state: { from: "/transport" } });
+      return;
+    }
     setIsBookingOpen(true);
-  }, []);
+  }, [navigate, user]);
+
+  const handleReviewBooking = useCallback(() => {
+    if (!user) {
+      navigate("/login", { state: { from: "/transport" } });
+      return;
+    }
+    setIsBookingOpen(true);
+  }, [navigate, user]);
 
   const handleBookingConfirmed = useCallback((booking: HireBooking) => {
     setRecentBookings((previous) => [booking, ...previous.slice(0, 19)]);
+    toast.success(`Trip booked — ${booking.bookingRef}`, {
+      description: `${booking.vehicle.model} · ${booking.vehicle.driverName} · $${booking.fareBreakdown.totalFare.toFixed(2)}`,
+    });
+  }, []);
+
+  const handleCancelTrip = useCallback((bookingRef: string) => {
+    // updateBookingStatus reads + writes localStorage and returns the full
+    // next list, so the toast and the state swap both work off one result.
+    const updated = updateBookingStatus(bookingRef, "cancelled");
+    const target = updated.find((item) => item.bookingRef === bookingRef);
+    setRecentBookings(updated);
+    toast.success("Trip cancelled", {
+      description: target ? `${bookingRef} · ${target.vehicle.model}` : bookingRef,
+    });
+  }, []);
+
+  const handleAdvanceTrip = useCallback((booking: HireBooking) => {
+    const stageIndex = TRIP_PROGRESS_STAGES.findIndex((stage) => stage.status === booking.status);
+    const next = TRIP_PROGRESS_STAGES[stageIndex + 1];
+    if (!next) return;
+    setRecentBookings(updateBookingStatus(booking.bookingRef, next.status));
+    if (next.status === "completed") {
+      toast.success(`Trip completed — ${booking.bookingRef}`, {
+        description: `${booking.vehicle.model} · $${booking.fareBreakdown.totalFare.toFixed(2)}`,
+      });
+    }
+  }, []);
+
+  const handleRemoveTrip = useCallback((bookingRef: string) => {
+    setRecentBookings(removeBookingFromStorage(bookingRef));
+    toast.success("Trip removed");
   }, []);
 
   const scrollToFleet = () => {
     fleetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const applyPreset = (preset: LocationCoordinate) => {
-    setDropoff(preset);
-    mapRef.current?.centerCoordinate(preset.lat, preset.lng);
   };
 
   return (
@@ -327,7 +394,7 @@ export default function PublicTransportPage() {
 
             <button
               type="button"
-              onClick={() => setHistoryOpen(true)}
+              onClick={() => user ? setHistoryOpen(true) : navigate("/login", { state: { from: "/transport" } })}
               className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
               aria-label={`Open your trips, ${recentBookings.length} recorded`}
             >
@@ -387,7 +454,8 @@ export default function PublicTransportPage() {
               <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
                 Hire a vehicle for a survey run
               </h1>
-              <div className="mt-5 flex flex-wrap items-center gap-2">
+              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base">Set the site, match the equipment, review the sample fare.</p>
+              <div className="mt-4 hidden flex-wrap items-center gap-2 sm:flex">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background px-2.5 py-1 text-micro font-semibold text-muted-foreground">
                   <IconCurrentLocation className="size-3.5 text-success" aria-hidden="true" />
                   GPS pickup
@@ -402,255 +470,33 @@ export default function PublicTransportPage() {
                 </span>
               </div>
 
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button type="button" onClick={scrollToFleet} className="web3-btn gap-1.5">
-                  Browse the sample fleet
-                  <IconChevronDown className="size-4" aria-hidden="true" />
-                </button>
-                <span className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
-                  {baseFleet.length} sample vehicles nearby
-                </span>
-              </div>
-              <p className="mt-3 text-micro font-medium text-muted-foreground">
-                Illustrative only — not live availability.
-              </p>
+              <p className="mt-4 text-sm font-medium text-muted-foreground"><span className="mr-2 inline-block size-1.5 rounded-full bg-success" />{baseFleet.length} sample vehicles nearby  — illustrative availability and fares</p>
+
             </div>
 
-            <section
-              aria-label="Route planner"
-              className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card lg:flex-1"
-            >
-              <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <IconSteeringWheel className="size-4" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="market-map-title text-foreground">Plan the route</h2>
-                    <p className="text-micro text-muted-foreground">
-                      Exact GPS coordinates, priced by road distance
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSwapCoordinates}
-                  title="Swap pickup and destination"
-                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-                >
-                  <IconArrowsExchange className="size-3.5" aria-hidden="true" />
-                  Swap
-                </button>
+            <section aria-label="Route planner" className="overflow-hidden rounded-2xl border border-border/80 bg-card">
+              <div className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
+                <div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">01 · Route</p><h2 className="mt-1 text-lg font-semibold">Where is the crew going?</h2></div>
+                <Button type="button" variant="ghost" size="sm" onClick={handleSwapCoordinates} className="h-10 gap-1.5"><IconArrowsExchange className="size-4" />Swap</Button>
               </div>
-
-              <div className="flex-1 space-y-4 px-4 py-4 sm:px-5">
-                <div className="flex items-start gap-3">
-                  <div className="mt-1.5 flex shrink-0 flex-col items-center">
-                    <span className="flex size-6 items-center justify-center rounded-full bg-success/12 text-[10px] font-bold text-success ring-1 ring-success/25" aria-hidden="true">
-                      A
-                    </span>
-                    <span className="my-1.5 h-14 w-px border-l border-dashed border-border" aria-hidden="true" />
-                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/12 text-[10px] font-bold text-primary ring-1 ring-primary/25" aria-hidden="true">
-                      B
-                    </span>
-                  </div>
-
-                  <div className="min-w-0 flex-1 space-y-4">
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap items-center justify-between gap-1.5">
-                        <span className="text-xs font-semibold text-foreground">Pickup</span>
-                        <span className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={handleUseCurrentLocation}
-                            disabled={isLocating}
-                            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border/80 bg-background px-2.5 text-micro font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
-                          >
-                            <IconCurrentLocation className="size-3" aria-hidden="true" />
-                            {isLocating ? "Locating…" : "My GPS"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActivePinMode(activePinMode === "pickup" ? null : "pickup")
-                            }
-                            aria-pressed={activePinMode === "pickup"}
-                            className={cn(
-                              "inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-micro font-semibold transition-colors",
-                              activePinMode === "pickup"
-                                ? "border-success bg-success text-success-foreground"
-                                : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                            )}
-                          >
-                            <IconMapPin className="size-3" aria-hidden="true" />
-                            {activePinMode === "pickup" ? "Click the map…" : "Drop pin"}
-                          </button>
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Lat
-                          </span>
-                          <Input
-                            type="number"
-                            step="0.0001"
-                            aria-label="Pickup latitude"
-                            value={pickup.lat}
-                            onChange={(event) => {
-                              const value = Number.parseFloat(event.target.value);
-                              if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lat: value }));
-                            }}
-                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
-                          />
-                        </div>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Lng
-                          </span>
-                          <Input
-                            type="number"
-                            step="0.0001"
-                            aria-label="Pickup longitude"
-                            value={pickup.lng}
-                            onChange={(event) => {
-                              const value = Number.parseFloat(event.target.value);
-                              if (!Number.isNaN(value)) setPickup((previous) => ({ ...previous, lng: value }));
-                            }}
-                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
-                          />
-                        </div>
-                      </div>
-                      <p className="truncate text-micro text-muted-foreground">{pickup.label}</p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex flex-wrap items-center justify-between gap-1.5">
-                        <span className="text-xs font-semibold text-foreground">Destination</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActivePinMode(activePinMode === "dropoff" ? null : "dropoff")
-                          }
-                          aria-pressed={activePinMode === "dropoff"}
-                          className={cn(
-                            "inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-micro font-semibold transition-colors",
-                            activePinMode === "dropoff"
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                          )}
-                        >
-                          <IconCrosshair className="size-3" aria-hidden="true" />
-                          {activePinMode === "dropoff" ? "Click the map…" : "Drop pin"}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Lat
-                          </span>
-                          <Input
-                            type="number"
-                            step="0.0001"
-                            aria-label="Destination latitude"
-                            value={dropoff.lat}
-                            onChange={(event) => {
-                              const value = Number.parseFloat(event.target.value);
-                              if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lat: value }));
-                            }}
-                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
-                          />
-                        </div>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Lng
-                          </span>
-                          <Input
-                            type="number"
-                            step="0.0001"
-                            aria-label="Destination longitude"
-                            value={dropoff.lng}
-                            onChange={(event) => {
-                              const value = Number.parseFloat(event.target.value);
-                              if (!Number.isNaN(value)) setDropoff((previous) => ({ ...previous, lng: value }));
-                            }}
-                            className="h-10 rounded-xl border-border/80 bg-background pl-10 font-mono text-sm tabular-nums shadow-none"
-                          />
-                        </div>
-                      </div>
-                      <p className="truncate text-micro text-muted-foreground">{dropoff.label}</p>
-                    </div>
-                  </div>
+              <div className="space-y-4 p-4 sm:p-5">
+                <LocationSearchField kind="pickup" location={pickup} pinActive={activePinMode === "pickup"} isLocating={geo.status === "locating"} onChange={(place) => handleCoordinatesChange("pickup", place)} onTogglePin={() => setActivePinMode(activePinMode === "pickup" ? null : "pickup")} onUseLocation={handleUseCurrentLocation} />
+                <NearbyPrompt geo={geo} count={baseFleet.length} noun="vehicles" />
+                <LocationSearchField kind="dropoff" location={dropoff} pinActive={activePinMode === "dropoff"} onChange={(place) => handleCoordinatesChange("dropoff", place)} onTogglePin={() => setActivePinMode(activePinMode === "dropoff" ? null : "dropoff")} />
+                <div className="grid grid-cols-3 gap-2 border-t pt-4" aria-label="Route estimate">
+                  <div><p className="text-xs text-muted-foreground">Distance</p><p className="mt-1 font-semibold tabular-nums">{distanceKm.toLocaleString()} km</p></div>
+                  <div><p className="text-xs text-muted-foreground">Est. drive</p><p className="mt-1 font-semibold">{formatDriveDuration(durationMinutes)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Available</p><p className="mt-1 font-semibold">{filteredFleet.length} vehicles</p></div>
                 </div>
-
-                {geoNotice ? (
-                  <p
-                    role="status"
-                    className="rounded-xl border border-warning/25 bg-warning/10 px-3 py-2 text-xs leading-5 text-warning"
-                  >
-                    {geoNotice}
-                  </p>
-                ) : null}
-
-                <div className="space-y-2 border-t border-border/70 pt-3">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <IconMapPins className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    Survey baselines
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SURVEY_GPS_PRESETS.slice(0, 6).map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => applyPreset(preset)}
-                        aria-pressed={dropoff.id === preset.id}
-                        className={cn(
-                          "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                          dropoff.id === preset.id
-                            ? "border-primary/40 bg-primary/10 text-primary"
-                            : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        {preset.label.replace(/ (Depot|Station|Yard|Hub|Base|Post|Terminal|Outpost|Belt)$/, "")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="web3-ticker shrink-0 border-t border-border/80">
-                <div className="web3-ticker-cell">
-                  <span className="web3-ticker-label">
-                    <IconRoad className="size-3.5" aria-hidden="true" />
-                    Road distance
-                  </span>
-                  <span className="web3-ticker-value">{distanceKm.toLocaleString()} km</span>
-                </div>
-                <div className="web3-ticker-cell">
-                  <span className="web3-ticker-label">
-                    <IconClock className="size-3.5" aria-hidden="true" />
-                    Drive time
-                  </span>
-                  <span className="web3-ticker-value">{formatDriveDuration(durationMinutes)}</span>
-                </div>
-                <div className="web3-ticker-cell">
-                  <span className="web3-ticker-label">
-                    <IconSparkles className="size-3.5" aria-hidden="true" />
-                    Dispatch
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-success">
-                    <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
-                    Fleet ready
-                  </span>
-                </div>
+                <p className="text-xs leading-5 text-muted-foreground">Estimates use a straight-line distance adjusted for roads, not turn-by-turn routing. Sample fleet and fares; no live dispatch.</p>
+                <Button type="button" onClick={() => { setMobileView("vehicles"); scrollToFleet(); }} className="h-11 w-full">Choose a vehicle <IconTruck className="size-4" /></Button>
               </div>
             </section>
           </div>
 
           <div
             aria-label="Interactive dispatch map"
-            className="market-map-frame flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card"
+            className={cn("market-map-frame min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card max-lg:hidden", mobileView === "map" && "max-lg:flex")}
           >
             <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2.5">
@@ -705,14 +551,17 @@ export default function PublicTransportPage() {
           </div>
         </section>
 
-        <section ref={fleetRef} className="market-registry mt-10 scroll-mt-16 sm:mt-12">
+        <div className="mx-auto flex max-w-7xl px-4 pt-4 lg:hidden" role="group" aria-label="Choose results view">
+          <div className="grid w-full grid-cols-2 rounded-xl bg-muted p-1">
+            <button type="button" aria-pressed={mobileView === "vehicles"} onClick={() => setMobileView("vehicles")} className={cn("min-h-11 rounded-lg text-sm font-semibold", mobileView === "vehicles" ? "bg-background shadow-sm" : "text-muted-foreground")}>Vehicles ({filteredFleet.length})</button>
+            <button type="button" aria-pressed={mobileView === "map"} onClick={() => { setMobileView("map"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={cn("min-h-11 rounded-lg text-sm font-semibold", mobileView === "map" ? "bg-background shadow-sm" : "text-muted-foreground")}>Map</button>
+          </div>
+        </div>
+        <section ref={fleetRef} className={cn("market-registry mt-10 scroll-mt-16 sm:mt-12", mobileView === "map" && "max-lg:hidden")}>
           <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-11 sm:px-6 sm:py-14">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 text-micro font-semibold uppercase tracking-[0.14em] text-primary">
-                  <IconTruck className="size-3.5" aria-hidden="true" />
-                  Fleet registry
-                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-primary"><IconTruck className="size-4" />02 · Vehicle</span>
                 <h2 className="market-section-title mt-2 text-balance text-foreground">
                   Browse the fleet
                 </h2>
@@ -923,17 +772,29 @@ export default function PublicTransportPage() {
                   ? "No vehicles match your filters."
                   : `Showing ${filteredFleet.length} of ${baseFleet.length} vehicles for ${distanceKm.toLocaleString()} km`}
               </p>
-              {activeFilters.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={resetFilters}
-                  className="min-h-11 px-4 text-sm"
+                  onClick={() => setConciergeOpen(true)}
+                  className="min-h-11 gap-1.5 px-4 text-sm"
                 >
-                  Reset filters
+                  <IconSparkles className="size-4" aria-hidden="true" />
+                  Ask AI
                 </Button>
-              ) : null}
+                {activeFilters.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={resetFilters}
+                    className="min-h-11 px-4 text-sm"
+                  >
+                    Reset filters
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             {filteredFleet.length === 0 ? (
@@ -948,22 +809,53 @@ export default function PublicTransportPage() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {filteredFleet.map((vehicle) => (
-                  <VehicleHireCard
-                    key={vehicle.id}
-                    vehicle={vehicle}
-                    fareBreakdown={calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm)}
-                    isSelected={activeVehicle?.id === vehicle.id}
-                    onSelect={handleOpenVehicleDetail}
-                    onBookNow={handleBookVehicleNow}
-                  />
-                ))}
+              <div className="space-y-8">
+                {fleetGroups.map((group) => {
+                  const nearest = group.items[0]?.distanceKm;
+                  return (
+                    <section key={group.key} aria-label={`${group.label} vehicles`}>
+                      <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                        <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+                        <span className="text-xs text-muted-foreground">
+                          {group.items.length} {group.items.length === 1 ? "vehicle" : "vehicles"}
+                          {nearest != null ? ` · nearest ${formatDistanceKm(nearest)} away` : ""}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                        {group.items.map(({ item: vehicle, distanceKm: vehicleDistance }) => (
+                          <div key={vehicle.id} onMouseEnter={() => setSelectedVehicleId(vehicle.id)} onFocus={() => setSelectedVehicleId(vehicle.id)} className="flex flex-col gap-1.5">
+                            <VehicleHireCard
+                              vehicle={vehicle}
+                              fareBreakdown={calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm)}
+                              isSelected={activeVehicle?.id === vehicle.id}
+                              onSelect={handleOpenVehicleDetail}
+                              onBookNow={handleBookVehicleNow}
+                            />
+                            <p className="px-1 text-xs text-muted-foreground">
+                              {vehicleDistance != null ? formatDistanceKm(vehicleDistance) : "Distance n/a"} · {vehicle.etaMinutes} min away
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             )}
           </div>
         </section>
       </main>
+
+      {activeVehicle ? (
+        <aside aria-label="03 Review booking" className="sticky bottom-3 z-40 mx-auto mt-6 w-[min(calc(100%-2rem),72rem)] rounded-2xl border bg-background/95 p-3 shadow-[0_12px_36px_rgba(15,23,20,0.18)] backdrop-blur-md sm:p-4">
+          {selectedExcluded ? <p role="status" className="mb-2 text-xs font-medium text-warning">Your selected vehicle is hidden by the current filters. Clear filters or choose another vehicle.</p> : null}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-5">
+            <div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-wide text-primary">03 · Review</p><p className="truncate text-sm font-semibold sm:text-base">{activeVehicle.model}</p><p className="text-xs text-muted-foreground">{distanceKm} km · {formatDriveDuration(durationMinutes)} · {activeVehicle.etaMinutes} min ETA</p></div>
+            <div className="text-right"><p className="text-xs text-muted-foreground">Sample fare</p><p className="text-xl font-semibold tabular-nums">${calculateHireFare(VEHICLE_TIERS[activeVehicle.tierId], distanceKm).totalFare.toFixed(2)}</p></div>
+            <Button type="button" className="h-11 w-full sm:w-auto" onClick={handleReviewBooking}>{user ? "Review sample booking" : "Sign in to book"} <IconArrowUpRight className="size-4" /></Button>
+          </div>
+        </aside>
+      ) : null}
 
       <footer className="border-t border-border/60 py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -1018,49 +910,146 @@ export default function PublicTransportPage() {
           <SheetHeader className="shrink-0 border-b border-border/80 px-5 py-5 text-left">
             <SheetTitle className="market-sheet-title text-foreground">Your trips</SheetTitle>
             <SheetDescription className="text-sm text-muted-foreground">
-              Hires you confirm keep their reference and fare on this device, for this session only.
+              Hires you confirm are kept on this device, with their reference, route and fare.
             </SheetDescription>
           </SheetHeader>
 
-          <div className="market-detail-scroll flex-1 space-y-3 overflow-y-auto px-5 py-5">
+          <div className="market-detail-scroll flex-1 space-y-5 overflow-y-auto px-5 py-5">
             {recentBookings.length === 0 ? (
               <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-14 text-center">
                 <IconHistory className="size-7 text-muted-foreground" aria-hidden="true" />
                 <p className="text-sm font-semibold text-foreground">No trips yet</p>
                 <p className="max-w-xs text-xs leading-5 text-muted-foreground">
-                  Hire a vehicle and its reference, route and fare will be listed here for this session.
+                  Hire a vehicle and its reference, route and fare will be listed here.
                 </p>
               </div>
             ) : (
-              recentBookings.map((booking) => (
-                <article
-                  key={booking.bookingRef}
-                  className="space-y-2 rounded-2xl border border-border/80 bg-card p-4"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
-                      {booking.bookingRef}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-success/10 px-2.5 py-1 text-micro font-semibold capitalize text-success">
-                      {booking.status.replace("_", " ")}
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">{booking.vehicle.model}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {booking.vehicle.licensePlate} · Driver {booking.vehicle.driverName}
-                  </p>
-                  <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-2 font-mono text-micro tabular-nums text-muted-foreground">
-                    <span className="truncate">
-                      {booking.pickup.lat.toFixed(2)}, {booking.pickup.lng.toFixed(2)} →{" "}
-                      {booking.dropoff.lat.toFixed(2)}, {booking.dropoff.lng.toFixed(2)} ·{" "}
-                      {booking.fareBreakdown.distanceKm} km
-                    </span>
-                    <span className="shrink-0 font-semibold text-foreground">
-                      ${booking.fareBreakdown.totalFare.toFixed(2)}
-                    </span>
-                  </div>
-                </article>
-              ))
+              <>
+                {(() => {
+                  const upcoming = recentBookings.filter((booking) => isUpcomingTrip(booking.status));
+                  const past = recentBookings.filter((booking) => !isUpcomingTrip(booking.status));
+                  return [
+                    { key: "upcoming", title: "Upcoming", items: upcoming },
+                    { key: "past", title: "Earlier", items: past },
+                  ]
+                    .filter((group) => group.items.length > 0)
+                    .map((group) => (
+                      <section key={group.key} className="space-y-2.5">
+                        <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          {group.title}
+                        </h3>
+                        {group.items.map((booking) => {
+                          const upcoming = isUpcomingTrip(booking.status);
+                          const stageIndex = TRIP_PROGRESS_STAGES.findIndex(
+                            (stage) => stage.status === booking.status,
+                          );
+                          return (
+                            <article
+                              key={booking.bookingRef}
+                              className="space-y-2.5 rounded-2xl border border-border/80 bg-card p-4"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+                                  {booking.bookingRef}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center rounded-full px-2.5 py-1 text-micro font-semibold capitalize",
+                                    booking.status === "completed" && "bg-success/10 text-success",
+                                    booking.status === "cancelled" && "bg-muted text-muted-foreground",
+                                    upcoming && "bg-info/10 text-info",
+                                  )}
+                                >
+                                  {booking.status.replace("_", " ")}
+                                </span>
+                              </div>
+
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">{booking.vehicle.model}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {booking.vehicle.licensePlate} · Driver {booking.vehicle.driverName}
+                                </p>
+                              </div>
+
+                              {upcoming ? (
+                                <ol className="flex items-center gap-1" aria-label="Trip progress">
+                                  {TRIP_PROGRESS_STAGES.map((stage, index) => (
+                                    <li key={stage.status} className="flex min-w-0 flex-1 flex-col gap-1">
+                                      <span
+                                        className={cn(
+                                          "h-1 rounded-full",
+                                          index <= stageIndex ? "bg-primary" : "bg-muted",
+                                        )}
+                                        aria-hidden="true"
+                                      />
+                                      <span
+                                        className={cn(
+                                          "truncate text-[10px] leading-tight",
+                                          index <= stageIndex
+                                            ? "font-medium text-foreground"
+                                            : "text-muted-foreground",
+                                        )}
+                                      >
+                                        {stage.label}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ol>
+                              ) : null}
+
+                              <div className="flex items-center justify-between gap-2 border-t border-border/70 pt-2 font-mono text-micro tabular-nums text-muted-foreground">
+                                <span className="truncate">
+                                  {booking.pickup.label} → {booking.dropoff.label} · {booking.fareBreakdown.distanceKm} km
+                                </span>
+                                <span className="shrink-0 font-semibold text-foreground">
+                                  ${booking.fareBreakdown.totalFare.toFixed(2)}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {upcoming ? (
+                                  <>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-9 flex-1 rounded-xl text-xs"
+                                      onClick={() => handleAdvanceTrip(booking)}
+                                      disabled={stageIndex >= TRIP_PROGRESS_STAGES.length - 1}
+                                    >
+                                      {stageIndex >= TRIP_PROGRESS_STAGES.length - 2
+                                        ? "Complete trip"
+                                        : "Advance status"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-9 rounded-xl text-xs text-muted-foreground hover:text-destructive"
+                                      onClick={() => handleCancelTrip(booking.bookingRef)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-full rounded-xl text-xs text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleRemoveTrip(booking.bookingRef)}
+                                  >
+                                    Remove trip
+                                  </Button>
+                                )}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </section>
+                    ));
+                })()}
+              </>
             )}
           </div>
         </SheetContent>
@@ -1190,6 +1179,8 @@ export default function PublicTransportPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <MarketConciergeDialog open={conciergeOpen} onOpenChange={setConciergeOpen} />
     </div>
   );
 }

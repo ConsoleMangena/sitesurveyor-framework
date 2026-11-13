@@ -24,21 +24,30 @@ export function VehicleHireCard({
   fareBreakdown,
   isSelected,
   onSelect,
+  onBookNow,
 }: VehicleHireCardProps) {
   const tier: VehicleTier = VEHICLE_TIERS[vehicle.tierId];
   const theme = VEHICLE_TIER_THEME[vehicle.tierId];
   const photo = vehicle.photoUrl || getVehiclePlaceholder(vehicle.tierId, vehicle.model);
+  const fareLabel = `$${fareBreakdown.totalFare.toFixed(2)}`;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       data-vehicle-id={vehicle.id}
       data-testid={`vehicle-tile-${vehicle.id}`}
       data-selected={isSelected ? "true" : undefined}
-      aria-label={`View ${vehicle.model} details, fare $${fareBreakdown.totalFare.toFixed(2)}`}
+      aria-label={`View ${vehicle.model} details, fare ${fareLabel}`}
       onClick={() => onSelect(vehicle)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(vehicle);
+        }
+      }}
       className={cn(
-        "group flex w-full flex-col overflow-hidden rounded-2xl border border-border/80 bg-card text-left transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-border hover:shadow-[0_16px_36px_rgba(17,24,39,0.09)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        "group flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/80 bg-card text-left transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-border hover:shadow-[0_16px_36px_rgba(17,24,39,0.09)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         isSelected && "border-primary ring-2 ring-primary/40",
       )}
     >
@@ -127,24 +136,38 @@ export function VehicleHireCard({
           </span>
         </span>
 
-        {/* Footer: Price & Circular Action Arrow */}
+        {/* Footer: Price & Book Action */}
         <span className="mt-auto flex items-center justify-between gap-3 border-t border-border/70 pt-3">
           <span className="min-w-0">
             <span className="block font-mono text-base font-bold tabular-nums text-foreground">
-              ${fareBreakdown.totalFare.toFixed(2)}
+              {fareLabel}
             </span>
             <span className="block font-mono text-micro text-muted-foreground">
               ${tier.ratePerKm.toFixed(2)}/km
             </span>
           </span>
-          <span
-            aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-bg text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
-          >
-            <IconArrowUpRight className="size-4" />
-          </span>
+          {onBookNow ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onBookNow(vehicle);
+              }}
+              className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              Book
+              <IconArrowUpRight className="size-3.5" aria-hidden="true" />
+            </button>
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-bg text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+            >
+              <IconArrowUpRight className="size-4" />
+            </span>
+          )}
         </span>
       </div>
-    </button>
+    </div>
   );
 }

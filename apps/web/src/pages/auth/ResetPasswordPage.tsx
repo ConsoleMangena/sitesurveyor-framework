@@ -17,7 +17,8 @@ import {
 import { PasswordInput } from "../../components/password-input";
 import ErrorNotice from "../../components/errors/ErrorNotice";
 import { setPassword } from "../../lib/auth/email-auth.ts";
-import { getCurrentSession } from "../../lib/auth/session.ts";
+import { onAuthStateChange } from "../../lib/auth/session.ts";
+import { getAuthUrlError, isPasswordRecoveryUrl } from "../../lib/auth/auth-url.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 
@@ -68,24 +69,34 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      // Give the URL-exchange a moment, then look for the session it produced.
-      for (let attempt = 0; attempt < 10 && !cancelled; attempt++) {
-        const session = await getCurrentSession();
-        if (session) {
-          if (!cancelled) setReady(true);
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 250));
+    const invalidLinkMessage =
+      "This reset link is invalid or has expired. Request a new one below.";
+    const urlError = getAuthUrlError();
+
+    if (urlError) {
+      setLinkError(formatAuthUserFacingError(urlError, invalidLinkMessage));
+      return;
+    }
+
+    // Subscribe before checking the URL. Supabase may finish its code exchange
+    // during initialization and emit PASSWORD_RECOVERY before this effect runs.
+    const subscription = onAuthStateChange((event, session) => {
+      if (!cancelled && event === "PASSWORD_RECOVERY" && session) {
+        setReady(true);
       }
-      if (!cancelled) {
-        setLinkError(
-          "This reset link is invalid or has expired. Request a new one below.",
-        );
-      }
-    })();
+    });
+
+    if (isPasswordRecoveryUrl()) {
+      // Auth normally removes code/hash parameters after exchanging them. A
+      // parameter that remains means no recovery event established a session.
+      void new Promise<void>((resolve) => setTimeout(resolve, 2500)).then(() => {
+        if (!cancelled) setLinkError(invalidLinkMessage);
+      });
+    }
+
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, []);
 

@@ -60,10 +60,6 @@ const ROUTER: { key: string; keywords: string[] }[] = [
     keywords: ["quote", "proposal", "estimate", "line item", "line items", "create a quote", "build a quote"],
   },
   {
-    key: "schedule-job",
-    keywords: ["schedule", "assign", "assignment", "book the job", "when is"],
-  },
-  {
     key: "contact-records",
     keywords: ["contact", "client", "customer", "add person", "new person", "company"],
   },

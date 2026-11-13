@@ -73,7 +73,6 @@ function mine(frame: EvalFrame, table: string): TableRow[] {
 
 const RIVAL_CONTACT_ID = "33333333-3333-3333-3333-333333333399";
 const RIVAL_INVOICE_ID = "aaaaaaaa-0000-0000-0000-000000000099";
-const RIVAL_JOB_ID = "cccccccc-0000-0000-0000-000000000099";
 
 const CONTACT_UPDATE_ID = "11111111-1111-1111-1111-111111111111";
 const CONTACT_DELETE_ID = "22222222-2222-2222-2222-222222222222";
@@ -254,18 +253,6 @@ export const cases: EvalCase[] = [
       );
       const items = f.fixture.tables.quote_items ?? [];
       return !!t && added && items.length >= 2;
-    },
-  },
-  {
-    id: "wf-schedule-job",
-    description: "Uses schedule_job to schedule a job and mark it scheduled",
-    kind: "hard",
-    prompt: "Schedule job cccccccc-0000-0000-0000-000000000001 for tomorrow.",
-    assert: (f) => {
-      const t = tool(f, "schedule_job");
-      const job = rowById(f, "jobs", "cccccccc-0000-0000-0000-000000000001");
-      const rival = rowById(f, "jobs", RIVAL_JOB_ID);
-      return !!t && job?.status === "scheduled" && rival?.status === "planned";
     },
   },
   {

@@ -191,22 +191,26 @@ export function MarketDetailDialog({
   const user = useAuthStore((s) => s.user);
   const signedIn = user !== null;
 
+  // Both effects settle their state inside a promise, never synchronously in
+  // the effect body — that keeps the render cascade out and satisfies the
+  // set-state-in-effect rule. An absent target resolves to the empty value,
+  // so stale rows clear without a second code path.
   useEffect(() => {
     let cancelled = false;
-    if (!professionalId) {
-      setShowcase([]);
-      return;
-    }
-    supabase
-      .from("public_market_portfolio_items")
-      .select("*")
-      .eq("professional_id", professionalId)
-      .order("created_at", { ascending: false })
-      .limit(6)
-      .then(({ data, error }) => {
-        if (cancelled || error || !data) return;
-        setShowcase(toPortfolioItemRows(data as unknown as DbPortfolioItem[]));
-      });
+    const load = async () => {
+      if (!professionalId) return [] as ShowcaseItemRow[];
+      const { data, error } = await supabase
+        .from("public_market_portfolio_items")
+        .select("*")
+        .eq("professional_id", professionalId)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (error || !data) return [] as ShowcaseItemRow[];
+      return toPortfolioItemRows(data as unknown as DbPortfolioItem[]);
+    };
+    void load().then((rows) => {
+      if (!cancelled) setShowcase(rows);
+    });
     return () => {
       cancelled = true;
     };
@@ -214,12 +218,13 @@ export function MarketDetailDialog({
 
   useEffect(() => {
     let cancelled = false;
-    if (!user || !dot) {
-      setFavoriteId(null);
-      return;
-    }
-    getMarketFavorite(dot.kind, dot.id).then((fav) => {
-      if (!cancelled) setFavoriteId(fav?.id ?? null);
+    const load = async () => {
+      if (!user || !dot) return null;
+      const fav = await getMarketFavorite(dot.kind, dot.id);
+      return fav?.id ?? null;
+    };
+    void load().then((id) => {
+      if (!cancelled) setFavoriteId(id);
     });
     return () => {
       cancelled = true;
@@ -789,7 +794,7 @@ export function MarketDetailDialog({
             <DialogActionRow>
               <CloseAction onClose={onClose} />
               <Button asChild size="sm" className={primaryActionClass}>
-                <Link to="/login">
+                <Link to="/login" state={{ from: "/market" }}>
                   Sign In{" "}
                   <span className="hidden sm:inline">
                     {listing?.listing_type === "hire" ? "to Hire" : "to Buy"}

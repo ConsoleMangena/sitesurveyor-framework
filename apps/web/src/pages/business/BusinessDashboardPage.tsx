@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import {
-  AlertTriangle,
   Briefcase,
   CalendarDays,
   DollarSign,
@@ -174,7 +173,7 @@ export default function BusinessDashboardPage({
     <DashboardShell className="w-full max-w-full">
       <DashboardHeader
         title={`${getGreeting()}, ${getFirstName(userName)}`}
-        description="Company operations, field dispatches & equipment."
+        description="Today’s operations, active projects and company performance."
         subtitle={currentDate}
         actions={
           <>
@@ -201,7 +200,7 @@ export default function BusinessDashboardPage({
       />
 
       {loading ? (
-        <DashboardSkeleton kpis={6} />
+        <DashboardSkeleton kpis={5} />
       ) : (
         <div className="flex flex-col gap-4 sm:gap-5">
             <KpiGrid>
@@ -236,58 +235,21 @@ export default function BusinessDashboardPage({
                 onClick={() => onNavigate?.("team")}
               />
               <KpiCard
-                title="Ready assets"
-                value={assetsAvailableCount}
-                subtext={`of ${assetsTotalCount} assets`}
+                title="Equipment readiness"
+                value={`${assetsAvailableCount}/${assetsTotalCount}`}
+                subtext={calibrationsDueCount > 0 ? `${calibrationsDueCount} calibrations due` : "No calibrations due"}
                 icon={<Gauge />}
                 tone="success"
                 onClick={() => onNavigate?.("assets")}
               />
-              <KpiCard
-                title="Calibrations due"
-                value={calibrationsDueCount}
-                subtext="next 7 days"
-                icon={<AlertTriangle />}
-                tone={calibrationsDueCount > 0 ? "warning" : "neutral"}
-                onClick={() => onNavigate?.("assets")}
-              />
             </KpiGrid>
 
-            {/* Billing: the monthly trend and the invoices behind it */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <DashboardCard
-                title="Monthly billings"
-                titleAction={<PanelMeta>{new Date().getFullYear()}</PanelMeta>}
-                className="col-span-1 lg:col-span-4"
-              >
-                <Overview data={overviewData} height={250} />
-              </DashboardCard>
-
-              <DashboardCard
-                title="Recent invoices"
-                titleAction={<PanelMeta>{invoices.length} issued</PanelMeta>}
-                className="col-span-1 lg:col-span-3"
-              >
-                <RecentSales items={recentInvoices} />
-              </DashboardCard>
-            </div>
-
-            {/* Pipeline */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <div className="col-span-1 lg:col-span-4">
-                <ProjectTimelineChart projects={projects} />
-              </div>
-              <div className="col-span-1 lg:col-span-3">
-                <ProjectStatusChart projects={projects} />
-              </div>
-            </div>
-
-            {/* Day of operations */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-              <div className="col-span-1 lg:col-span-4">
+            {/* Keep today's field work ahead of reporting. */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-7">
+              <div className="col-span-1 xl:col-span-4">
                 <TodaysSchedule
                   events={jobEvents}
-                  maxItems={4}
+                  maxItems={5}
                   footer={
                     <Button
                       type="button"
@@ -301,7 +263,7 @@ export default function BusinessDashboardPage({
                   }
                 />
               </div>
-              <div className="col-span-1 lg:col-span-3">
+              <div className="col-span-1 xl:col-span-3">
                 <DatabaseStorageCard
                   workspaceId={workspaceId}
                   onNavigate={onNavigate}
@@ -310,6 +272,35 @@ export default function BusinessDashboardPage({
             </div>
 
             <RecentProjectsTable projects={projects} />
+
+            {/* Financial overview */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-7">
+              <DashboardCard
+                title="Monthly billings"
+                titleAction={<PanelMeta>{new Date().getFullYear()}</PanelMeta>}
+                className="col-span-1 xl:col-span-4"
+              >
+                <Overview data={overviewData} height={250} />
+              </DashboardCard>
+
+              <DashboardCard
+                title="Recent invoices"
+                titleAction={<PanelMeta>{invoices.length} issued</PanelMeta>}
+                className="col-span-1 xl:col-span-3"
+              >
+                <RecentSales items={recentInvoices} />
+              </DashboardCard>
+            </div>
+
+            {/* Project trends follow current operations and financials. */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-7">
+              <div className="col-span-1 xl:col-span-4">
+                <ProjectTimelineChart projects={projects} />
+              </div>
+              <div className="col-span-1 xl:col-span-3">
+                <ProjectStatusChart projects={projects} />
+              </div>
+            </div>
 
             <MarketGlobeCard onNavigate={onNavigate} />
         </div>

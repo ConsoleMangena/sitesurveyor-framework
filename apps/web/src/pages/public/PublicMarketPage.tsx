@@ -1,12 +1,18 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  ArrowRight,
   Bookmark,
   ChevronDown,
   Globe2,
   Info,
   LayoutGrid,
+  List,
+  LocateFixed,
+  Map as MapIcon,
+  MapPinned,
   PackageSearch,
+  Plus,
   RefreshCw,
   Search,
   ShoppingCart,
@@ -33,7 +39,7 @@ import {
   type MarketDot,
   type MarketDotKind,
 } from "../../components/market/marketDots";
-import { MarketConcierge } from "../../components/market/MarketConcierge.tsx";
+import { MarketConciergeDialog } from "../../components/market/MarketConciergeDialog.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import {
@@ -67,29 +73,32 @@ import { MarketDetailDialog } from "../../components/market/MarketDetailDialog.t
 import { MarketCartSheet } from "../../components/market/MarketCartSheet.tsx";
 import { useCartCount } from "../../features/market/cart.ts";
 import type { MarketGlobeHandle } from "../../components/market/LeafletGlobe.tsx";
-import MarketRail from "../../components/market/MarketRail.tsx";
-import FlatResultRow from "../../components/market/FlatResultRow.tsx";
+import MarketResultGrid, { MarketResultsSkeleton } from "../../components/market/MarketResultGrid.tsx";
 import {
-  buildRails,
-  isFlatMode,
   isNew,
   toItem,
-  type MarketRailData,
   type RailItem,
 } from "../../components/market/marketItems.ts";
 import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
+import { NearbyPrompt } from "../../components/shared/NearbyPrompt.tsx";
+import { useDeviceLocation } from "../../lib/geo/useDeviceLocation.ts";
+import { groupByDistance, formatDistanceKm, haversineKm, type DistanceGroup } from "../../lib/geo/distance.ts";
 
 
 type Scope = "all" | "listing" | "professional" | "job" | "firm" | "event";
-type SortKey = "newest" | "popular" | "price-asc" | "price-desc";
+type SortKey = "newest" | "popular" | "price-asc" | "price-desc" | "nearby";
 type ListingCategory = "all" | "instrument" | "accessory";
+type ListingType = "all" | "sale" | "hire";
+type MarketView = "list" | "split" | "map";
+type PriceRange = "all" | "under-100" | "100-500" | "over-500";
+type ExperienceRange = "all" | "0-2" | "3-5" | "6-plus";
 
 /** Flat results batch size — "Load more" appends this many rows at a time. */
 const FLAT_PAGE_SIZE = 12;
 
 const SCOPE_TABS = [
-  { value: "all", label: "Everything" },
-  { value: "listing", label: "Listings" },
+  { value: "all", label: "All" },
+  { value: "listing", label: "Equipment" },
   { value: "professional", label: "Professionals" },
   { value: "job", label: "Jobs" },
   { value: "firm", label: "Firms" },
@@ -102,9 +111,30 @@ const GEAR_OPTIONS = [
   { value: "accessory", label: "Accessories" },
 ] as const;
 
+const LISTING_TYPE_OPTIONS = [
+  { value: "all", label: "Sale & hire" },
+  { value: "sale", label: "For sale" },
+  { value: "hire", label: "For hire" },
+] as const;
+
+const PRICE_OPTIONS = [
+  { value: "all", label: "Any price" },
+  { value: "under-100", label: "Under 100" },
+  { value: "100-500", label: "100–500" },
+  { value: "over-500", label: "Over 500" },
+] as const;
+
+const EXPERIENCE_OPTIONS = [
+  { value: "all", label: "Any experience" },
+  { value: "0-2", label: "Up to 2 years" },
+  { value: "3-5", label: "3–5 years" },
+  { value: "6-plus", label: "6+ years" },
+] as const;
+
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest first" },
   { value: "popular", label: "Most saved" },
+  { value: "nearby", label: "Nearest first" },
   { value: "price-asc", label: "Price: low to high" },
   { value: "price-desc", label: "Price: high to low" },
 ] as const;
@@ -125,6 +155,12 @@ function countryOf(location: string): string {
 }
 
 const MARKET_KINDS = ["listing", "professional", "job", "firm", "event"] as const;
+
+function experienceYears(value: string | null): number | null {
+  if (!value) return null;
+  const match = value.match(/\d+(\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
 
 function isMarketKind(value: string): value is MarketDotKind {
   return (MARKET_KINDS as readonly string[]).includes(value);
@@ -185,10 +221,26 @@ export default function PublicMarketPage() {
   const [scope, setScope] = useState<Scope>("all");
   const [sort, setSort] = useState<SortKey>("newest");
   const [listingCategory, setListingCategory] = useState<ListingCategory>("all");
+  const [listingType, setListingType] = useState<ListingType>("all");
+  const [priceRange, setPriceRange] = useState<PriceRange>("all");
+  const [availability, setAvailability] = useState("");
+  const [experience, setExperience] = useState<ExperienceRange>("all");
+  const [employmentType, setEmploymentType] = useState("");
+  const [trainingFormat, setTrainingFormat] = useState<"all" | "online" | "in-person">("all");
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [country, setCountry] = useState("");
-  const [seeAll, setSeeAll] = useState<MarketRailData | null>(null);
+  const [marketView, setMarketView] = useState<MarketView>("split");
+  const [conciergeOpen, setConciergeOpen] = useState(false);
   const [flatLimit, setFlatLimit] = useState(FLAT_PAGE_SIZE);
+
+  // Device GPS: when the visitor shares their location the registry ranges
+  // every row by distance and can group the results into nearby bands.
+  const geo = useDeviceLocation();
+  const geoLocation = geo.location;
+  const origin = useMemo(
+    () => (geoLocation ? { lat: geoLocation.lat, lng: geoLocation.lng } : null),
+    [geoLocation],
+  );
   const [highlighted, setHighlighted] = useState<{ kind: MarketDotKind; id: string } | null>(
     readItemParam,
   );
@@ -275,6 +327,11 @@ export default function PublicMarketPage() {
     () =>
       (data?.listings ?? [])
         .filter((row) => listingCategory === "all" || row.category === listingCategory)
+        .filter((row) => listingType === "all" || (row.listing_type ?? "sale") === listingType)
+        .filter((row) => priceRange === "all" ||
+          (priceRange === "under-100" && row.price < 100) ||
+          (priceRange === "100-500" && row.price >= 100 && row.price <= 500) ||
+          (priceRange === "over-500" && row.price > 500))
         .filter(matchesPlace)
         .filter((row) =>
           matches(search, [
@@ -285,13 +342,21 @@ export default function PublicMarketPage() {
             row.description,
           ]),
         ),
-    [data, search, listingCategory, matchesPlace],
+    [data, search, listingCategory, listingType, priceRange, matchesPlace],
   );
 
   const filteredProfessionals = useMemo(
     () =>
       (data?.professionals ?? [])
         .filter(matchesPlace)
+        .filter((row) => !availability || row.availability === availability)
+        .filter((row) => {
+          if (experience === "all") return true;
+          const years = experienceYears(row.experience);
+          if (years === null) return false;
+          if (experience === "0-2") return years <= 2;
+          return experience === "3-5" ? years >= 3 && years <= 5 : years >= 6;
+        })
         .filter((row) =>
           matches(search, [
             row.name,
@@ -301,13 +366,14 @@ export default function PublicMarketPage() {
             row.bio,
           ]),
         ),
-    [data, search, matchesPlace],
+    [data, search, matchesPlace, availability, experience],
   );
 
   const filteredJobs = useMemo(
     () =>
       (data?.jobs ?? [])
         .filter(matchesPlace)
+        .filter((row) => !employmentType || row.employment_type === employmentType)
         .filter((row) =>
           matches(search, [
             row.title,
@@ -317,7 +383,7 @@ export default function PublicMarketPage() {
             row.company,
           ]),
         ),
-    [data, search, matchesPlace],
+    [data, search, matchesPlace, employmentType],
   );
 
   const filteredFirms = useMemo(
@@ -332,6 +398,8 @@ export default function PublicMarketPage() {
     () =>
       (data?.events ?? [])
         .filter(matchesPlace)
+        .filter((row) => trainingFormat === "all" ||
+          (trainingFormat === "online" ? Boolean(row.is_remote) : !row.is_remote))
         .filter((row) =>
           matches(search, [
             row.title,
@@ -341,7 +409,7 @@ export default function PublicMarketPage() {
             row.description,
           ]),
         ),
-    [data, search, matchesPlace],
+    [data, search, matchesPlace, trainingFormat],
   );
 
   const countries = useMemo(() => {
@@ -460,52 +528,22 @@ export default function PublicMarketPage() {
     return rows;
   }, [filteredEvents, sort, priceDir]);
 
-  // ── Derived: rails + flat mode ──
-
-  const flatMode = isFlatMode(search, sort, seeAll);
-
-  // Rails are built from the filtered rows, not the raw feed, so the location
-  // and gear controls narrow discovery as well as the map.
-  const railSource = useMemo<MarketData | null>(() => {
-    if (!data) return null;
-    return {
-      ...data,
-      listings: filteredListings,
-      professionals: filteredProfessionals,
-      jobs: filteredJobs,
-      firms: filteredFirms,
-      events: filteredEvents,
-    };
-  }, [
-    data,
-    filteredListings,
-    filteredProfessionals,
-    filteredJobs,
-    filteredFirms,
-    filteredEvents,
-  ]);
-
-  const rails = useMemo(
-    () =>
-      railSource
-        ? buildRails(railSource, listingCategory, scope).map((rail) => ({
-            ...rail,
-            items: markSample(rail.items),
-          }))
-        : [],
-    [railSource, listingCategory, scope, markSample],
-  );
-  const visibleRails = rails.filter(
-    (rail) => scope === "all" || rail.kinds.includes(scope as MarketDotKind),
-  );
+  // Every category uses the same comparison grid. "All" is grouped by kind;
+  // scoped results use their category's sort and paginate in place.
+  const groupedItems = useMemo(() => {
+    if (scope !== "all") return [];
+    return [
+      { scope: "listing" as const, title: "Equipment", description: "Instruments and accessories for sale or hire.", items: markSample(sortedListings.map((row) => toItem("listing", row))).slice(0, 6) },
+      { scope: "professional" as const, title: "Professionals", description: "Independent expertise for field and office work.", items: markSample(sortedProfessionals.map((row) => toItem("professional", row))).slice(0, 6) },
+      { scope: "firm" as const, title: "Survey firms", description: "Companies and the services they provide.", items: markSample(sortedFirms.map((row) => toItem("firm", row))).slice(0, 6) },
+      { scope: "job" as const, title: "Open jobs", description: "Roles and contracts from surveying teams.", items: markSample(sortedJobs.map((row) => toItem("job", row))).slice(0, 6) },
+      { scope: "event" as const, title: "Training & events", description: "Courses and professional development, soonest first.", items: markSample(sortedEvents.map((row) => toItem("event", row))).slice(0, 6) },
+    ].filter((group) => group.items.length > 0);
+  }, [scope, sortedListings, sortedProfessionals, sortedFirms, sortedJobs, sortedEvents, markSample]);
 
   const flatItems: RailItem[] = useMemo(() => {
     if (!data) return [];
-    const allowed = seeAll
-      ? new Set<string>(seeAll.kinds)
-      : scope === "all"
-        ? null
-        : new Set<string>([scope]);
+    const allowed = scope === "all" ? null : new Set<string>([scope]);
     const collect = (
       kind: MarketDotKind,
       rows: Array<ListingRow | ProfessionalRow | JobRow | FirmRow | EventRow>,
@@ -522,17 +560,53 @@ export default function PublicMarketPage() {
     return sort === "newest"
       ? markSample(merged.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)))
       : markSample(merged);
-  }, [data, seeAll, scope, sort, sortedListings, sortedProfessionals, sortedJobs, sortedFirms, sortedEvents, markSample]);
+  }, [data, scope, sort, sortedListings, sortedProfessionals, sortedJobs, sortedFirms, sortedEvents, markSample]);
 
-  const visibleFlatItems = flatItems.slice(0, flatLimit);
+  const sampleInView = scope === "all"
+    ? groupedItems.flatMap((group) => group.items).filter((item) => item.isSample).length
+    : flatItems.filter((item) => item.isSample).length;
 
-  // How many of the items on screen are demo rows, for the notice above them.
-  const sampleInView = useMemo(() => {
-    const items = flatMode
-      ? flatItems
-      : visibleRails.flatMap((rail) => rail.items);
-    return items.filter((item) => item.isSample).length;
-  }, [flatMode, flatItems, visibleRails]);
+  // Distance range: a `kind:id` lookup for chips and a band grouping for the
+  // "grouped by how near it is" flat view. Both are empty without a GPS fix.
+  const itemDistances = useMemo(() => {
+    const lookup = new Map<string, number>();
+    if (!origin) return lookup;
+    for (const item of flatItems) {
+      if (item.lat !== null && item.lng !== null) {
+        lookup.set(`${item.kind}:${item.id}`, haversineKm(origin.lat, origin.lng, item.lat, item.lng));
+      }
+    }
+    return lookup;
+  }, [flatItems, origin]);
+
+  // "Nearest first" orders by the measured distance; rows without coordinates
+  // keep their other sort order and land last.
+  const sortedByNearby = useMemo(() => {
+    if (sort !== "nearby" || !origin) return flatItems;
+    return [...flatItems].sort((a, b) => {
+      const da = itemDistances.get(`${a.kind}:${a.id}`);
+      const db = itemDistances.get(`${b.kind}:${b.id}`);
+      return (da ?? Number.POSITIVE_INFINITY) - (db ?? Number.POSITIVE_INFINITY);
+    });
+  }, [flatItems, sort, origin, itemDistances]);
+
+  const orderedFlatItems = sort === "nearby" ? sortedByNearby : flatItems;
+  const visibleFlatItems = orderedFlatItems.slice(0, flatLimit);
+
+  // With a GPS fix the flat results are grouped into distance bands (nearest
+  // first). Without one they stay a single chronological list.
+  const visibleGroups: DistanceGroup<RailItem>[] = useMemo(() => {
+    if (!origin) return [];
+    return groupByDistance(visibleFlatItems, origin);
+  }, [visibleFlatItems, origin]);
+
+  const availabilityOptions = useMemo(() => [...new Set(
+    (data?.professionals ?? []).map((row) => row.availability).filter((value): value is string => Boolean(value)),
+  )].sort(), [data]);
+
+  const employmentOptions = useMemo(() => [...new Set(
+    (data?.jobs ?? []).map((row) => row.employment_type).filter((value): value is string => Boolean(value)),
+  )].sort(), [data]);
 
   // ── Derived: globe dots (scope + location; search stays a registry tool) ──
 
@@ -551,11 +625,11 @@ export default function PublicMarketPage() {
 
   const scopeGroups = useMemo(() => {
     const all = {
-      listings: data?.listings ?? [],
-      professionals: data?.professionals ?? [],
-      jobs: data?.jobs ?? [],
-      firms: data?.firms ?? [],
-      events: data?.events ?? [],
+      listings: filteredListings,
+      professionals: filteredProfessionals,
+      jobs: filteredJobs,
+      firms: filteredFirms,
+      events: filteredEvents,
     };
     const scoped = scope === "all"
       ? all
@@ -573,7 +647,7 @@ export default function PublicMarketPage() {
       { rows: scoped.firms.map(toSource), kind: "firm" as const },
       { rows: scoped.events.map(toSource), kind: "event" as const },
     ];
-  }, [data, scope]);
+  }, [scope, filteredListings, filteredProfessionals, filteredJobs, filteredFirms, filteredEvents]);
 
   const dots = useMemo(
     () => (loading ? null : buildMarketDots(scopeGroups)),
@@ -647,22 +721,14 @@ export default function PublicMarketPage() {
     registryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleSeeAll = (rail: MarketRailData) => {
-    setSeeAll(rail);
-    setSearch("");
+  const handleScopeChange = (nextScope: Scope) => {
+    setScope(nextScope);
     setFlatLimit(FLAT_PAGE_SIZE);
-    // Multi-kind rails (e.g. Fresh) show everything in flat mode, so the scope
-    // tab must reset to "Everything" too — otherwise the tab and map stay stale
-    // while the list shows all kinds.
-    setScope(rail.kinds.length === 1 ? rail.kinds[0] : "all");
-    requestAnimationFrame(() => registryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
-  const clearFlatMode = () => {
-    setSeeAll(null);
-    setSearch("");
-    setSort("newest");
-    setFlatLimit(FLAT_PAGE_SIZE);
+  const handleSeeAll = (nextScope: Scope) => {
+    handleScopeChange(nextScope);
+    requestAnimationFrame(() => registryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   const handlePinSelect = useCallback((dot: MarketDot) => {
@@ -702,6 +768,13 @@ export default function PublicMarketPage() {
     setSelectedId({ kind: item.kind, id: item.id });
     syncItemParam(item.kind, item.id);
   };
+
+  // "Find my location": take a GPS fix and fly the map to it. The fix also
+  // switches the registry into distance-grouped mode via the shared hook.
+  const handleFindMyLocation = useCallback(async () => {
+    const fix = await geo.locate();
+    if (fix) globeRef.current?.showMe(fix.lat, fix.lng);
+  }, [geo]);
 
   const selectedDot: MarketDot | null = useMemo(() => {
     if (!selectedId || !data) return null;
@@ -785,13 +858,23 @@ export default function PublicMarketPage() {
       },
     });
   }
-  if (seeAll) {
-    activeFilters.push({
-      key: "rail",
-      label: "Section",
-      value: seeAll.title,
-      clear: clearFlatMode,
-    });
+  if (listingType !== "all" && showPanel("listing")) {
+    activeFilters.push({ key: "listing-type", label: "Offer", value: LISTING_TYPE_OPTIONS.find((option) => option.value === listingType)?.label ?? "", clear: () => setListingType("all") });
+  }
+  if (priceRange !== "all" && showPanel("listing")) {
+    activeFilters.push({ key: "price", label: "Price", value: PRICE_OPTIONS.find((option) => option.value === priceRange)?.label ?? "", clear: () => setPriceRange("all") });
+  }
+  if (availability && scope === "professional") {
+    activeFilters.push({ key: "availability", label: "Availability", value: availability, clear: () => setAvailability("") });
+  }
+  if (experience !== "all" && scope === "professional") {
+    activeFilters.push({ key: "experience", label: "Experience", value: EXPERIENCE_OPTIONS.find((option) => option.value === experience)?.label ?? "", clear: () => setExperience("all") });
+  }
+  if (employmentType && scope === "job") {
+    activeFilters.push({ key: "employment", label: "Job type", value: employmentType, clear: () => setEmploymentType("") });
+  }
+  if (trainingFormat !== "all" && scope === "event") {
+    activeFilters.push({ key: "training", label: "Format", value: trainingFormat === "online" ? "Online" : "In person", clear: () => setTrainingFormat("all") });
   }
   if (listingCategory !== "all" && showPanel("listing")) {
     activeFilters.push({
@@ -839,9 +922,16 @@ export default function PublicMarketPage() {
   }
 
   const resetFilters = () => {
-    clearFlatMode();
+    setSearch("");
+    setSort("newest");
     setScope("all");
     setListingCategory("all");
+    setListingType("all");
+    setPriceRange("all");
+    setAvailability("");
+    setExperience("all");
+    setEmploymentType("");
+    setTrainingFormat("all");
     setRemoteOnly(false);
     setCountry("");
     setFlatLimit(FLAT_PAGE_SIZE);
@@ -879,7 +969,7 @@ export default function PublicMarketPage() {
             </Link>
             <button
               type="button"
-              onClick={() => setCartOpen(true)}
+              onClick={() => user ? setCartOpen(true) : navigate("/login", { state: { from: "/market" } })}
               className="web3-btn shrink-0 gap-1.5 px-2.5 sm:px-4"
               aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
             >
@@ -937,122 +1027,93 @@ export default function PublicMarketPage() {
       </header>
 
       <main>
-        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
-          <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
-            <div className="max-w-xl">
-              {/* The first screen has to hold a way into the inventory: on a
-                  phone the registry itself is a scroll away, so the same search
-                  state is editable here and reports its match count. */}
-              <div className="mt-6 lg:hidden">
-                <label htmlFor="market-search-hero" className="sr-only">
-                  Search the market
-                </label>
-                <div className="relative">
-                  <Search
-                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    id="market-search-hero"
-                    type="search"
-                    value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setFlatLimit(FLAT_PAGE_SIZE);
-                    }}
-                    placeholder="Search instruments, people, places…"
-                    className="h-12 rounded-xl border-border/80 bg-background pl-11 pr-4 text-sm shadow-none"
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-3 text-xs">
-                  <span className="text-muted-foreground" aria-live="polite">
-                    {liveTotals
-                      ? `${liveTotals.items} live ${liveTotals.items === 1 ? "item" : "items"} · ${liveTotals.countries} ${liveTotals.countries === 1 ? "country" : "countries"}`
-                      : "Loading activity"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={scrollToRegistry}
-                    className="inline-flex items-center gap-1 font-semibold text-primary"
-                  >
-                    See results
-                    <ChevronDown className="size-3.5" aria-hidden="true" />
-                  </button>
-                </div>
+        <section aria-labelledby="market-heading" className="border-b border-border/70 bg-card">
+          <div className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 sm:py-9">
+            <div className="flex flex-wrap items-end justify-between gap-5">
+              <div className="max-w-3xl">
+                <h1 id="market-heading" className="market-hero-title text-balance text-foreground">Find survey equipment, expertise and opportunities</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Buy or hire instruments, connect with surveyors and firms, find work, or discover training.</p>
               </div>
-
-              <div className="mt-5 hidden flex-wrap items-center gap-3 lg:flex">
-                <button
-                  type="button"
-                  onClick={scrollToRegistry}
-                  className="web3-btn gap-1.5"
-                >
-                  Browse the registry
-                  <ChevronDown className="size-4" aria-hidden="true" />
-                </button>
-                <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
-                  <span className="web3-live-dot" aria-hidden="true" />
-                  Live marketplace
-                </span>
-              </div>
-              {addedThisWeek > 0 ? (
-                <p className="mt-4 text-sm font-medium text-success">
-                  {addedThisWeek} new {addedThisWeek === 1 ? "item" : "items"} added this week
-                </p>
-              ) : null}
+              {user ? (
+                <Button asChild variant="outline" className="h-11 gap-2"><Link to="/?view=marketplace"><Plus className="size-4" />Manage marketplace listings</Link></Button>
+              ) : (
+                <Button asChild variant="outline" className="h-11 gap-2"><Link to="/login" state={{ from: "/?view=marketplace" }}><Plus className="size-4" />List equipment or services</Link></Button>
+              )}
             </div>
 
-            <MarketConcierge className="lg:flex-1" />
-          </div>
-
-          <div aria-label="Interactive market map" className="market-map-frame flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card">
-            <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-accent-bg text-[var(--web3-brand)]">
-                  <Globe2 className="size-4" aria-hidden="true" />
-                </span>
-                <div>
-                  <h2 className="market-map-title text-foreground">Explore the live map</h2>
-                  <p className="text-micro text-muted-foreground">Select a pin to preview the opportunity</p>
-                </div>
+            <div className="mt-6 flex max-w-4xl gap-2">
+              <div className="relative min-w-0 flex-1">
+                <label htmlFor="market-search-hero" className="sr-only">Search the marketplace</label>
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input id="market-search-hero" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setFlatLimit(FLAT_PAGE_SIZE); }} placeholder="Search equipment, surveyors, firms, jobs, or training" className="h-13 rounded-xl border-border bg-background pl-12 pr-11 text-base shadow-none" />
+                {search ? <button type="button" onClick={() => setSearch("")} className="absolute right-1.5 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear search"><X className="size-4" /></button> : null}
               </div>
-              <span className="font-mono text-xs font-semibold tabular-nums text-muted-foreground">
-                {liveTotals ? `${liveTotals.items} live items` : "Loading activity"}
-              </span>
+              <Button type="button" className="h-13 gap-2 rounded-xl px-5" onClick={scrollToRegistry}>Search<ArrowRight className="size-4" /></Button>
             </div>
-            <div className="flex min-h-0 flex-1">
-              <Suspense fallback={<div className="h-[360px] w-full animate-pulse bg-muted/30 sm:h-[440px] lg:h-full lg:min-h-[500px]" />}>
-                <PublicMarketGlobe
-                  ref={globeRef}
-                  dots={dots}
-                  totalPoints={totalPoints}
-                  matchKeys={matchKeys}
-                  fitKey={scope}
-                  failed={failed}
-                  onSelect={handlePinSelect}
-                  onRetry={retry}
-                  heightClassName="h-[360px] sm:h-[440px] lg:h-full lg:min-h-[500px]"
-                />
-              </Suspense>
-            </div>
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground sm:px-5">
-              <span>Two-way map and registry discovery</span>
-              <span className="shrink-0 font-mono tabular-nums">{totalPoints} mapped</span>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground" aria-live="polite">
+                <span>{liveTotals ? `${liveTotals.items} published items` : "Loading marketplace"}</span>
+                {liveTotals ? <span>{liveTotals.countries} {liveTotals.countries === 1 ? "country" : "countries"}</span> : null}
+                {addedThisWeek > 0 ? <span className="font-medium text-success">{addedThisWeek} added this week</span> : null}
+              </div>
             </div>
           </div>
         </section>
 
-        <section ref={registryRef} className="market-registry mt-10 scroll-mt-16 sm:mt-12">
-          <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-11 sm:px-6 sm:py-14">
-            <div className="max-w-2xl">
-              <h2 className="market-section-title text-balance text-foreground">
-                Browse the market
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-                Pick a section, or search to see every match in one list. Search
-                filters exact records; the concierge is for when you do not know
-                what the listing is called.
-              </p>
+        <section aria-label="Marketplace search and results" ref={registryRef} className="market-registry scroll-mt-16">
+
+          <div role="group" aria-label="Marketplace categories" className="sticky top-14 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+            <div className="scrollbar-none mx-auto flex w-full max-w-7xl items-center gap-1 overflow-x-auto px-3 sm:px-5">
+              {SCOPE_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  aria-pressed={scope === tab.value}
+                  onClick={() => handleScopeChange(tab.value)}
+                  className={cn(
+                    "min-h-12 shrink-0 whitespace-nowrap border-b-2 px-3.5 text-sm font-medium transition-colors sm:px-4",
+                    scope === tab.value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {tab.label}
+                  {!loading ? <span className="ml-1.5 font-mono text-micro tabular-nums text-muted-foreground">{kindCounts[tab.value]}</span> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-7 sm:px-6 sm:py-9">
+            <div className="flex flex-wrap items-end justify-between gap-5">
+              <div className="max-w-2xl">
+                <h2 className="market-section-title text-balance text-foreground">
+                  Browse the market
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
+                  Compare available supply and opportunities. Use the map when location matters.
+                </p>
+              </div>
+              <div role="group" aria-label="Results view" className="inline-flex rounded-xl border border-border bg-card p-1">
+                {([
+                  { value: "list", label: "List", icon: List },
+                  { value: "split", label: "Split", icon: LayoutGrid },
+                  { value: "map", label: "Map", icon: MapIcon },
+                ] as const).map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={marketView === value}
+                    onClick={() => setMarketView(value)}
+                    className={cn(
+                      "inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors",
+                      marketView === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-background shadow-[0_1px_2px_rgba(15,23,20,0.05)]">
@@ -1208,6 +1269,42 @@ export default function PublicMarketPage() {
                         </Select>
                       ) : null}
                     </div>
+                    {showPanel("listing") ? (
+                      <>
+                        <Select value={listingType} onValueChange={(value) => { setListingType(value as ListingType); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                          <SelectTrigger aria-label="Filter by offer type" className="h-11 w-[145px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{LISTING_TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Select value={priceRange} onValueChange={(value) => { setPriceRange(value as PriceRange); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                          <SelectTrigger aria-label="Filter by price" className="h-11 w-[135px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{PRICE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </>
+                    ) : null}
+                    {scope === "professional" ? (
+                      <>
+                        <Select value={availability || "all"} onValueChange={(value) => { setAvailability(value === "all" ? "" : value); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                          <SelectTrigger aria-label="Filter by availability" className="h-11 w-[165px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="all">Any availability</SelectItem>{availabilityOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Select value={experience} onValueChange={(value) => { setExperience(value as ExperienceRange); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                          <SelectTrigger aria-label="Filter by experience" className="h-11 w-[155px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{EXPERIENCE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </>
+                    ) : null}
+                    {scope === "job" && employmentOptions.length > 0 ? (
+                      <Select value={employmentType || "all"} onValueChange={(value) => { setEmploymentType(value === "all" ? "" : value); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                        <SelectTrigger aria-label="Filter by job type" className="h-11 w-[165px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">Any job type</SelectItem>{employmentOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                      </Select>
+                    ) : null}
+                    {scope === "event" ? (
+                      <Select value={trainingFormat} onValueChange={(value) => { setTrainingFormat(value as "all" | "online" | "in-person"); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                        <SelectTrigger aria-label="Filter by training format" className="h-11 w-[155px] rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">Any format</SelectItem><SelectItem value="online">Online</SelectItem><SelectItem value="in-person">In person</SelectItem></SelectContent>
+                      </Select>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -1240,139 +1337,140 @@ export default function PublicMarketPage() {
                 ) : null}
               </div>
 
-              <div role="group" aria-label="Filter by kind" className="scrollbar-none flex items-center gap-0.5 overflow-x-auto border-t border-border/80 px-1.5 sm:px-2.5">
-                {SCOPE_TABS.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    aria-pressed={scope === tab.value}
-                    onClick={() => {
-                      setSeeAll(null);
-                      setScope(tab.value);
-                      setFlatLimit(FLAT_PAGE_SIZE);
-                    }}
-                    className={cn(
-                      "shrink-0 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm font-medium transition-colors sm:px-4",
-                      scope === tab.value
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {tab.label}
-                    {!loading ? (
-                      <span className="ml-1.5 font-mono text-micro tabular-nums text-muted-foreground">
-                        {kindCounts[tab.value]}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
             </div>
 
-            {showPanel("listing") && !loading && benchmarks.length > 0 ? (
-              <RateBenchmarks benchmarks={benchmarks} />
-            ) : null}
-
-            {sampleInView > 0 ? (
-              <div
-                role="note"
-                className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-2.5 text-xs leading-5 text-warning"
-              >
-                <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                <span>
-                  {sampleInView === 1
-                    ? "1 item here is sample content"
-                    : `${sampleInView} items here are sample content`}{" "}
-                  published by a demo workspace to show how the market works. It
-                  cannot accept requests or orders.
-                </span>
-              </div>
-            ) : null}
-
-            {failed ? (
-              <LoadErrorPanel failure={failure} onRetry={retry} />
-            ) : loading ? (
-              <RailsSkeleton />
-            ) : flatMode ? (
-              <div className="space-y-4">
+            <div className={cn("items-start gap-6", marketView === "split" ? "xl:grid xl:grid-cols-[minmax(0,1fr)_340px]" : "block")}>
+              <div className="min-w-0 space-y-7">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-muted-foreground" aria-live="polite">
-                    {flatItems.length === 0
-                      ? "No results match your filters."
-                      : `Showing ${visibleFlatItems.length} of ${flatItems.length} results${seeAll ? ` in ${seeAll.title}` : ""}`}
+                    {loading ? "Loading results…" : failed ? "Marketplace unavailable" : `${kindCounts[scope]} ${kindCounts[scope] === 1 ? "result" : "results"}${search.trim() ? ` for “${search.trim()}”` : ""}`}
                   </p>
-                  <Button type="button" variant="outline" size="sm" onClick={clearFlatMode} className="min-h-11 px-4 text-sm">
-                    Back to discovery
-                  </Button>
+                  {!loading && !failed && scope === "all" && groupedItems.length > 0 ? <span className="text-xs text-muted-foreground">Browse by category</span> : null}
                 </div>
-                {flatItems.length === 0 ? (
+
+                {!loading && !failed ? (
+                  <NearbyPrompt
+                    geo={geo}
+                    count={origin ? flatItems.filter((item) => itemDistances.has(`${item.kind}:${item.id}`)).length : undefined}
+                    noun="results"
+                  />
+                ) : null}
+
+                {sampleInView > 0 ? (
+                  <div role="note" className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-2.5 text-xs leading-5 text-warning">
+                    <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                    <span>{sampleInView === 1 ? "1 item here is sample content" : `${sampleInView} items here are sample content`} published by a demo workspace to show how the market works. It cannot accept requests or orders.</span>
+                  </div>
+                ) : null}
+
+                {failed ? (
+                  <LoadErrorPanel failure={failure} onRetry={retry} />
+                ) : loading ? (
+                  <MarketResultsSkeleton />
+                ) : kindCounts[scope] === 0 ? (
                   <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-14 text-center">
-                    <Search className="size-8 text-muted-foreground/60" aria-hidden="true" />
+                    <PackageSearch className="size-8 text-muted-foreground/60" aria-hidden="true" />
                     <h3 className="mt-4 text-base font-semibold text-foreground">No matches found</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Try a different search or clear your filters.</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="mt-5 min-h-11"
-                      onClick={resetFilters}
-                    >
-                      Clear search and filters
-                    </Button>
+                    <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">Try another category, a broader search, or reset your filters.</p>
+                    <Button type="button" variant="outline" className="mt-5 min-h-11" onClick={resetFilters}>Clear search and filters</Button>
+                  </div>
+                ) : scope === "all" ? (
+                  <div className="space-y-12">
+                    {groupedItems.map((group) => (
+                      <section key={group.scope} aria-labelledby={`market-group-${group.scope}`}>
+                        <div className="mb-5 flex items-end justify-between gap-4">
+                          <div>
+                            <h3 id={`market-group-${group.scope}`} className="text-xl font-semibold tracking-tight text-foreground">{group.title}</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">{group.description}</p>
+                          </div>
+                          <Button type="button" variant="ghost" className="shrink-0 gap-1.5" onClick={() => handleSeeAll(group.scope)}>View all {kindCounts[group.scope]}<ArrowRight className="size-4" /></Button>
+                        </div>
+                        <MarketResultGrid items={group.items} highlighted={highlighted} distances={itemDistances} onSelect={handleItemSelect} />
+                      </section>
+                    ))}
                   </div>
                 ) : (
-                  <>
-                    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card shadow-[0_1px_2px_rgba(15,23,20,0.03)]">
-                      {visibleFlatItems.map((item) => (
-                        <FlatResultRow
-                          key={`${item.kind}:${item.id}`}
-                          item={item}
-                          highlighted={highlighted?.kind === item.kind && highlighted.id === item.id}
-                          onOpen={() => handleItemSelect(item)}
-                        />
-                      ))}
-                    </ul>
+                  <div className="space-y-8">
+                    {origin && visibleGroups.length > 0 ? (
+                      visibleGroups.map((group) => {
+                        const nearest = group.items[0]?.distanceKm;
+                        return (
+                          <section key={group.key} aria-label={`${group.label} results`}>
+                            <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                              <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+                              <span className="text-xs text-muted-foreground">
+                                {group.items.length} {group.items.length === 1 ? "result" : "results"}
+                                {nearest != null ? ` · nearest ${formatDistanceKm(nearest)} away` : ""}
+                              </span>
+                            </div>
+                            <MarketResultGrid
+                              items={group.items.map((row) => row.item)}
+                              highlighted={highlighted}
+                              distances={itemDistances}
+                              onSelect={handleItemSelect}
+                            />
+                          </section>
+                        );
+                      })
+                    ) : (
+                      <MarketResultGrid items={visibleFlatItems} highlighted={highlighted} distances={itemDistances} onSelect={handleItemSelect} />
+                    )}
                     {visibleFlatItems.length < flatItems.length ? (
                       <div className="flex justify-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11 px-5 text-sm"
-                          onClick={() => setFlatLimit((value) => value + FLAT_PAGE_SIZE)}
-                        >
-                          Load more ({flatItems.length - visibleFlatItems.length} remaining)
-                        </Button>
+                        <Button type="button" variant="outline" className="min-h-11 px-5 text-sm" onClick={() => setFlatLimit((value) => value + FLAT_PAGE_SIZE)}>Load more ({flatItems.length - visibleFlatItems.length} remaining)</Button>
                       </div>
                     ) : null}
-                  </>
+                  </div>
                 )}
               </div>
-            ) : visibleRails.some((rail) => rail.items.length > 0) ? (
-              <div className="space-y-10 sm:space-y-12">
-                {visibleRails.map((rail) => (
-                  <MarketRail
-                    key={rail.id}
-                    rail={rail}
-                    highlightedId={highlighted?.id ?? null}
-                    onSelect={handleItemSelect}
-                    onSeeAll={handleSeeAll}
-                  />
-                ))}
+
+              {marketView !== "list" ? (
+                <aside aria-label="Synchronized marketplace map" className={cn("overflow-hidden rounded-2xl border border-border bg-card", marketView === "split" ? "mt-8 xl:sticky xl:top-32 xl:mt-0" : "w-full")}>
+                  <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <MapPinned className="size-4 text-primary" aria-hidden="true" />
+                      <h3 className="text-sm font-semibold text-foreground">Results map</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleFindMyLocation()}
+                        disabled={geo.status === "locating"}
+                        aria-label="Find my location"
+                        className="h-8 gap-1.5 rounded-lg px-2.5 text-xs"
+                      >
+                        <LocateFixed className="size-3.5" aria-hidden="true" />
+                        {geo.status === "locating" ? "Locating…" : "Find my location"}
+                      </Button>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">{totalPoints} mapped</span>
+                    </div>
+                  </div>
+                  <Suspense fallback={<div className={cn("animate-pulse bg-muted/40", marketView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[440px]")} />}>
+                    <PublicMarketGlobe
+                      ref={globeRef}
+                      dots={dots}
+                      totalPoints={totalPoints}
+                      matchKeys={matchKeys}
+                      fitKey={`${scope}:${marketView}`}
+                      userLocation={geo.location}
+                      failed={failed}
+                      onSelect={handlePinSelect}
+                      onRetry={retry}
+                      heightClassName={marketView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[440px]"}
+                    />
+                  </Suspense>
+                  <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">Select a pin to view its listing. Selecting a card centers its location.</div>
+                </aside>
+              ) : null}
+            </div>
+
+            {!loading && !failed ? (
+              <div className="space-y-4 border-t border-border/70 pt-7">
+                {showPanel("listing") && benchmarks.length > 0 ? <RateBenchmarks benchmarks={benchmarks} /> : null}
               </div>
-            ) : (
-              <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-14 text-center">
-                <PackageSearch className="size-8 text-muted-foreground/60" aria-hidden="true" />
-                <h3 className="mt-4 text-base font-semibold text-foreground">Nothing in this section yet</h3>
-                <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">Try another category or reset the filters to explore the full market.</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-5 min-h-11"
-                  onClick={resetFilters}
-                >
-                  Reset filters
-                </Button>
-              </div>
-            )}
+            ) : null}
           </div>
         </section>
 
@@ -1419,7 +1517,7 @@ export default function PublicMarketPage() {
         <SheetContent side="bottom" className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-3xl p-0">
           <SheetHeader className="shrink-0 border-b border-border/80 px-5 py-5 pr-14 text-left">
             <SheetTitle className="market-sheet-title">Filter the market</SheetTitle>
-            <SheetDescription>Narrow discovery by gear, location and order.</SheetDescription>
+            <SheetDescription>Narrow results by category, location and order.</SheetDescription>
           </SheetHeader>
           <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
             {(scope === "all" || scope === "listing") ? (
@@ -1439,6 +1537,64 @@ export default function PublicMarketPage() {
                   ))}
                 </div>
               </fieldset>
+            ) : null}
+
+            {scope === "all" || scope === "listing" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-foreground">Offer type</label>
+                  <Select value={listingType} onValueChange={(value) => { setListingType(value as ListingType); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                    <SelectTrigger aria-label="Mobile offer type" className="h-11 w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{LISTING_TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-foreground">Price</label>
+                  <Select value={priceRange} onValueChange={(value) => { setPriceRange(value as PriceRange); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                    <SelectTrigger aria-label="Mobile price" className="h-11 w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{PRICE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : null}
+
+            {scope === "professional" ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-foreground">Availability</label>
+                  <Select value={availability || "all"} onValueChange={(value) => { setAvailability(value === "all" ? "" : value); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                    <SelectTrigger aria-label="Mobile availability" className="h-11 w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="all">Any availability</SelectItem>{availabilityOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-foreground">Experience</label>
+                  <Select value={experience} onValueChange={(value) => { setExperience(value as ExperienceRange); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                    <SelectTrigger aria-label="Mobile experience" className="h-11 w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>{EXPERIENCE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : null}
+
+            {scope === "job" && employmentOptions.length > 0 ? (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-foreground">Job type</label>
+                <Select value={employmentType || "all"} onValueChange={(value) => { setEmploymentType(value === "all" ? "" : value); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                  <SelectTrigger aria-label="Mobile job type" className="h-11 w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">Any job type</SelectItem>{employmentOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            {scope === "event" ? (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-foreground">Training format</label>
+                <Select value={trainingFormat} onValueChange={(value) => { setTrainingFormat(value as "all" | "online" | "in-person"); setFlatLimit(FLAT_PAGE_SIZE); }}>
+                  <SelectTrigger aria-label="Mobile training format" className="h-11 w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">Any format</SelectItem><SelectItem value="online">Online</SelectItem><SelectItem value="in-person">In person</SelectItem></SelectContent>
+                </Select>
+              </div>
             ) : null}
 
             <fieldset>
@@ -1496,6 +1652,8 @@ export default function PublicMarketPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <MarketConciergeDialog open={conciergeOpen} onOpenChange={setConciergeOpen} />
 
       <MarketCartSheet
         open={cartOpen}
@@ -1590,23 +1748,3 @@ function LoadErrorPanel({
   );
 }
 
-function RailsSkeleton() {
-  return (
-    <div className="space-y-10" aria-hidden="true">
-      {[0, 1, 2].map((i) => (
-        <div key={i}>
-          <div className="mb-4 h-5 w-48 animate-pulse rounded-md bg-border/70" />
-          <div className="flex gap-4 overflow-hidden">
-            {[0, 1, 2, 3].map((j) => (
-              <div
-                key={j}
-                className="h-44 w-[240px] shrink-0 animate-pulse rounded-2xl border border-border/80 bg-background"
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-      <span className="sr-only">Loading market registry…</span>
-    </div>
-  );
-}

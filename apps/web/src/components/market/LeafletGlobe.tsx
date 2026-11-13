@@ -40,6 +40,8 @@ interface LeafletGlobeProps {
   matchKeys?: Set<string> | null;
   /** Refit the map to the pins whenever this token changes (e.g. scope tabs). */
   fitKey?: string;
+  /** The visitor's own GPS fix; drawn as a "you are here" puck when present. */
+  userLocation?: { lat: number; lng: number } | null;
   children?: React.ReactNode;
   heightClassName?: string;
 }
@@ -49,6 +51,8 @@ export interface MarketGlobeHandle {
   panTo: (lat: number, lng: number, zoom?: number) => void;
   /** Brief highlight ring at a coordinate; auto-removes after 1.5s. */
   flashAt: (lat: number, lng: number, color: string) => void;
+  /** Recenter on a coordinate at street scale (the "Find my location" button). */
+  showMe: (lat: number, lng: number) => void;
 }
 
 interface DotCluster {
@@ -114,6 +118,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
       onRetry,
       matchKeys = null,
       fitKey,
+      userLocation = null,
       children,
       heightClassName = "h-[500px] sm:h-[600px] lg:h-[660px]",
     },
@@ -123,6 +128,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
     const mapRef = useRef<L.Map | null>(null);
     const markerLayerRef = useRef<L.LayerGroup | null>(null);
     const flashLayerRef = useRef<L.LayerGroup | null>(null);
+    const userLayerRef = useRef<L.LayerGroup | null>(null);
     const lastFitTokenRef = useRef<string | null>(null);
     const onSelectRef = useRef(onSelect);
     onSelectRef.current = onSelect;
@@ -305,6 +311,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
       }).addTo(map);
 
       markerLayerRef.current = L.layerGroup().addTo(map);
+      userLayerRef.current = L.layerGroup().addTo(map);
       map.on("zoomend", drawMarkers);
       map.on("movestart", () => setOpenCluster(null));
 
@@ -328,6 +335,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
         mapRef.current = null;
         markerLayerRef.current = null;
         flashLayerRef.current = null;
+        userLayerRef.current = null;
       };
     }, [drawMarkers]);
 
@@ -337,6 +345,34 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
       drawMarkers();
       setOpenCluster(null);
     }, [dots, matchKeys, hiddenKinds, drawMarkers]);
+
+    // "You are here" puck: a soft blue halo with a solid core so the visitor
+    // can always spot themselves among the kind-coded market pins.
+    useEffect(() => {
+      const layer = userLayerRef.current;
+      if (!layer) return;
+      layer.clearLayers();
+      if (!userLocation) return;
+      const point: L.LatLngTuple = [userLocation.lat, userLocation.lng];
+      L.circleMarker(point, {
+        radius: 18,
+        color: "#3b82f6",
+        weight: 2,
+        opacity: 0.9,
+        fillColor: "#3b82f6",
+        fillOpacity: 0.18,
+      }).addTo(layer);
+      L.circleMarker(point, {
+        radius: 7,
+        color: "#ffffff",
+        weight: 2,
+        opacity: 1,
+        fillColor: "#2563eb",
+        fillOpacity: 1,
+      })
+        .bindTooltip("You are here", { direction: "top", offset: [0, -10] })
+        .addTo(layer);
+    }, [userLocation]);
 
     // Frame the pins on first load and whenever the scope token changes.
     useEffect(() => {
@@ -358,6 +394,9 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
       () => ({
         panTo(lat: number, lng: number, zoom = 10) {
           mapRef.current?.setView([lat, lng], zoom, { animate: true });
+        },
+        showMe(lat: number, lng: number) {
+          mapRef.current?.setView([lat, lng], 13, { animate: true });
         },
         flashAt(lat: number, lng: number, color: string) {
           const map = mapRef.current;

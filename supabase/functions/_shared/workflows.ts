@@ -36,11 +36,6 @@ interface Row {
   [k: string]: unknown;
 }
 
-const ROW_NOT_FOUND = (table: string, id?: string) =>
-  JSON.stringify({
-    error: `No ${table} record found${id ? ` for id ${id}` : ""}.`,
-  });
-
 const HTTP_ERR = (table: string, out: { status: number; json: unknown }) =>
   JSON.stringify({ error: `HTTP ${out.status}`, table, details: out.json });
 
@@ -48,25 +43,6 @@ const HTTP_ERR = (table: string, out: { status: number; json: unknown }) =>
  *  carries a real id; an empty one matches no rows and fails closed. */
 function scoped(base: string, workspaceId: string | undefined): string {
   return `${base}&${workspaceParam(workspaceId ?? "")}`;
-}
-
-/** Fetch all rows matching a simple eq filter (no meta tools needed). */
-async function readWhere(
-  db: Db,
-  opts: CallOpts,
-  table: string,
-  filter: [column: string, value: string],
-): Promise<{ ok: boolean; rows?: Row[]; status: number; json: unknown }> {
-  const [column, value] = filter;
-  const out = await db.supabaseFetch({
-    ...opts,
-    method: "GET",
-    path: scoped(
-      `${table}?select=*&${column}=eq.${encodeURIComponent(value)}&limit=100`,
-      opts.workspaceId,
-    ),
-  });
-  return { ok: out.ok, rows: Array.isArray(out.json) ? (out.json as Row[]) : undefined, status: out.status, json: out.json };
 }
 
 /** Fetch all rows matching several eq filters (AND). */
@@ -247,71 +223,5 @@ export async function createQuoteFromLineItems(
     tax_total: taxTotal,
     total,
     status: "draft",
-  });
-}
-
-/**
- * Schedule a job: verify it exists in this workspace and is schedulable, then
- * create a job_assignment and set the job status to "scheduled".
- */
-export async function scheduleJob(
-  db: Db,
-  opts: CallOpts,
-  args: {
-    job_id: string;
-    assignment_date?: string;
-    notes?: string;
-    status?: "draft" | "confirmed" | "in_progress" | "completed" | "cancelled";
-  },
-): Promise<string> {
-  const owner = scopeWrite(opts.workspaceId);
-  if (!owner.ok) return JSON.stringify({ error: owner.error });
-  const run: CallOpts = { ...opts, workspaceId: owner.workspaceId };
-
-  const id = String(args.job_id ?? "");
-  if (!/^[0-9a-f-]{36}$/i.test(id)) {
-    return JSON.stringify({ error: "A valid job_id UUID is required." });
-  }
-  // Scoped lookup: a job id from another workspace simply is not found.
-  const jobRes = await readWhere(db, run, "jobs", ["id", id]);
-  if (!jobRes.ok) return HTTP_ERR("jobs", jobRes);
-  const job = (jobRes.rows ?? [])[0];
-  if (!job) return ROW_NOT_FOUND("jobs", id);
-  if (job.status === "completed" || job.status === "cancelled") {
-    return JSON.stringify({
-      error: `Job ${id} is ${job.status} and cannot be scheduled.`,
-    });
-  }
-
-  const date = args.assignment_date
-    ? String(args.assignment_date)
-    : new Date().toISOString().slice(0, 10);
-  const assign: Row = {
-    job_id: id,
-    project_id: job.project_id ?? null,
-    assignment_date: date,
-    notes: args.notes ?? null,
-    status: args.status ?? "draft",
-    workspace_id: owner.workspaceId,
-  };
-  const ins = await insertRow(db, run, "job_assignments", assign);
-  if (!ins.ok) return HTTP_ERR("job_assignments", ins);
-  const assignmentRow = Array.isArray(ins.json) ? (ins.json as Row[])[0] : null;
-
-  const updJob = await patchRow(db, run, "jobs", id, { status: "scheduled", scheduled_start: date });
-  if (!updJob.ok) {
-    return JSON.stringify({
-      error: `Assignment created but could not update job status: HTTP ${updJob.status}`,
-      assignment_id: assignmentRow?.id ?? null,
-    });
-  }
-
-  return JSON.stringify({
-    workflow: "schedule_job",
-    job_id: id,
-    title: job.title ?? null,
-    assignment_id: assignmentRow?.id ?? null,
-    assignment_date: date,
-    status: "scheduled",
   });
 }

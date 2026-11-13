@@ -15,6 +15,8 @@ describe("workspace account access helpers", () => {
     expect(getAllowedViews("personal").has("timeTracking")).toBe(true);
     expect(getAllowedViews("business").has("dispatch")).toBe(true);
     expect(getAllowedViews("business").has("team")).toBe(true);
+    expect(getAllowedViews("personal").has("portfolio")).toBe(true);
+    expect(getAllowedViews("business").has("portfolio")).toBe(true);
   });
 
   it("scopes views by account type only", () => {
