@@ -262,26 +262,72 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Hosted SMTP is managed in the Supabase dashboard (Titan / info@sitesurveyor.tech).
+# Deliberately leave [auth.email.smtp] undeclared here: config push preserves
+# undeclared hosted settings and cannot accidentally overwrite its password.
+# Local email continues to use the email testing server configured above.
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Branded authentication emails. Paths resolve from the CLI project root.
+[auth.email.template.confirmation]
+subject = "Confirm your email to get started with SiteSurveyor"
+content_path = "./supabase/templates/confirmation.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./templates/password_changed_notification.html"
+[auth.email.template.recovery]
+subject = "Reset your SiteSurveyor password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new SiteSurveyor email address"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.invite]
+subject = "You’re invited to SiteSurveyor"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "Your secure SiteSurveyor sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.reauthentication]
+subject = "{{ .Token }} is your SiteSurveyor verification code"
+content_path = "./supabase/templates/reauthentication.html"
+
+# Account-change alerts use the same visual identity and link back to security
+# settings when action is needed. No new notification events are enabled here.
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your SiteSurveyor password was changed"
+content_path = "./supabase/templates/password_changed_notification.html"
+
+[auth.email.notification.email_changed]
+enabled = true
+subject = "Your SiteSurveyor account email was changed"
+content_path = "./supabase/templates/email_changed_notification.html"
+
+[auth.email.notification.phone_changed]
+enabled = true
+subject = "Your SiteSurveyor phone number was changed"
+content_path = "./supabase/templates/phone_changed_notification.html"
+
+[auth.email.notification.identity_linked]
+enabled = true
+subject = "A sign-in method was linked to your SiteSurveyor account"
+content_path = "./supabase/templates/identity_linked_notification.html"
+
+[auth.email.notification.identity_unlinked]
+enabled = true
+subject = "A sign-in method was removed from your SiteSurveyor account"
+content_path = "./supabase/templates/identity_unlinked_notification.html"
+
+[auth.email.notification.mfa_factor_enrolled]
+enabled = true
+subject = "A verification method was added to your SiteSurveyor account"
+content_path = "./supabase/templates/mfa_factor_enrolled_notification.html"
+
+[auth.email.notification.mfa_factor_unenrolled]
+enabled = true
+subject = "A verification method was removed from your SiteSurveyor account"
+content_path = "./supabase/templates/mfa_factor_unenrolled_notification.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

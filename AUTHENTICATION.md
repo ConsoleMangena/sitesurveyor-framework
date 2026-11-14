@@ -153,6 +153,38 @@ mail never arrive. Set the site URL and redirect URLs (`/auth/callback`, `/reset
 `/verify-email`, `/*`). The desktop shell needs no entry of its own: it comes back through the bridge
 page on this origin, which is covered by `/*`.
 
+### Branded auth email
+
+The 13 HTML templates in `supabase/templates/` cover all six authentication emails and all seven
+security notifications. Their inline, table-based styles work in common desktop and mobile email
+clients; auth links always use Supabase's `{{ "{{ .ConfirmationURL }}" }}` or `{{ "{{ .Token }}" }}`
+variables, so PKCE and desktop-bridge behavior stays unchanged. The logo loads from
+`https://sitesurveyor.tech/email-logo.png`, the optimized 12 KB asset in
+`apps/web/public/email-logo.png`, which must remain publicly available. Deploy that asset whenever the
+email URL or artwork changes.
+
+`supabase/config.toml` declares their subjects and content paths. Apply local edits with
+`supabase stop && supabase start`, then inspect the rendered messages in the local email testing
+server. For a linked hosted project, preview and deploy with the Supabase CLI:
+
+```sh
+supabase config diff
+supabase config push
+supabase config diff
+```
+
+The hosted sender is Titan SMTP (`info@sitesurveyor.tech`) and is intentionally undeclared in the
+committed config, so CLI pushes preserve it without requiring its password in the repository.
+**Before any full hosted `config push`, reconcile unrelated config differences and export every
+referenced provider secret.** In particular, do not overwrite hosted Twilio or pooler settings, and
+do not blank `GITHUB_CLIENT_SECRET`. For an email-only deployment, generate a temporary CLI workdir
+containing `supabase/config.toml` with only the `[auth.email.template.*]` and
+`[auth.email.notification.*]` blocks plus `supabase/templates/`, then run
+`supabase config push --workdir <temporary-workdir> --project-ref csjjmuexzuewqnopzbik`.
+This is safer than using a full-project push when unrelated hosted settings have drifted. Security
+notifications are already enabled in production; the committed blocks retain those existing events
+without adding new ones.
+
 Edge function secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` are injected
 automatically (the code also accepts `SUPABASE_SECRET_KEY` / `SUPABASE_PUBLISHABLE_KEY`). Set
 `AUTH_ALLOWED_ORIGINS` (comma-separated exact origins) and optionally
