@@ -22,6 +22,21 @@ const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 const PublicTransportPage = lazy(() => import("./pages/public/PublicTransportPage"));
 const DownloadsPage = lazy(() => import("./pages/public/DownloadsPage"));
 const AboutPage = lazy(() => import("./pages/public/AboutPage"));
+const LandingPage = lazy(() => import("./pages/public/LandingPage"));
+const JournalPage = lazy(() => import("./pages/public/JournalPage"));
+const JournalPostPage = lazy(() => import("./pages/public/JournalPostPage"));
+const HelpPage = lazy(() => import("./pages/public/HelpPage"));
+const ContactPage = lazy(() => import("./pages/public/ContactPage"));
+const PrivacyPage = lazy(() => import("./pages/public/PrivacyPage"));
+const TermsPage = lazy(() => import("./pages/public/TermsPage"));
+
+function lazyPublic(element: React.ReactNode) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      {element}
+    </Suspense>
+  );
+}
 import {
   getCurrentAppUserWithDiagnostics,
   type AppUserLoadDiagnostics,
@@ -268,45 +283,33 @@ export default function App() {
           </Route>
           <Route
             path="/market"
-            element={
-              <Suspense fallback={<div className="min-h-screen bg-background" />}>
-                <PublicMarketPage />
-              </Suspense>
-            }
+            element={lazyPublic(<PublicMarketPage />)}
           />
           <Route
             path="/transport"
-            element={
-              <Suspense fallback={<div className="min-h-screen bg-background" />}>
-                <PublicTransportPage />
-              </Suspense>
-            }
+            element={lazyPublic(<PublicTransportPage />)}
           />
           <Route
             path="/about"
-            element={
-              <Suspense fallback={<div className="min-h-screen bg-background" />}>
-                <AboutPage />
-              </Suspense>
-            }
+            element={lazyPublic(<AboutPage />)}
           />
           <Route
             path="/downloads"
-            element={
-              <Suspense fallback={<div className="min-h-screen bg-background" />}>
-                <DownloadsPage />
-              </Suspense>
-            }
+            element={lazyPublic(<DownloadsPage />)}
           />
+          <Route path="/journal" element={lazyPublic(<JournalPage />)} />
+          <Route path="/journal/:slug" element={lazyPublic(<JournalPostPage />)} />
+          <Route path="/help" element={lazyPublic(<HelpPage />)} />
+          <Route path="/contact" element={lazyPublic(<ContactPage />)} />
+          <Route path="/privacy" element={lazyPublic(<PrivacyPage />)} />
+          <Route path="/terms" element={lazyPublic(<TermsPage />)} />
           <Route
             path="/"
             element={
               user ? (
                 <WorkspaceRouter />
               ) : (
-                <Suspense fallback={<div className="min-h-screen bg-background" />}>
-                  <PublicMarketPage />
-                </Suspense>
+                lazyPublic(<LandingPage />)
               )
             }
           />

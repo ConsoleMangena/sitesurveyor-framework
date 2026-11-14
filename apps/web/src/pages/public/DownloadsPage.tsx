@@ -168,6 +168,21 @@ npm --prefix apps/desktop install && npm --prefix apps/desktop run build`}</code
             <Link to="/downloads" className="hover:text-foreground" aria-current="page">
               Desktop
             </Link>
+            <Link to="/journal" className="hover:text-foreground">
+              Journal
+            </Link>
+            <Link to="/help" className="hover:text-foreground">
+              Help
+            </Link>
+            <Link to="/contact" className="hover:text-foreground">
+              Contact
+            </Link>
+            <Link to="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
             <Link to="/about" className="hover:text-foreground">
               About
             </Link>

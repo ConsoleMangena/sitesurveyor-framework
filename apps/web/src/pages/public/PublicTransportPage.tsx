@@ -423,7 +423,7 @@ export default function PublicTransportPage() {
                 }
               >
                 <AccountMenuItem icon={IconLayoutGrid} label="Open your workspace" to="/" />
-                <AccountMenuItem icon={IconSettings} label="Settings" to="/settings" />
+                <AccountMenuItem icon={IconSettings} label="Settings" to="/?view=settings" />
               </AccountMenu>
             ) : (
               <Link
