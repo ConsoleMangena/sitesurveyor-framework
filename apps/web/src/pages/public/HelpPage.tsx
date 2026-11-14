@@ -1,147 +1,200 @@
-import { Link } from "react-router-dom";
-import { PublicPage } from "../../components/shared/PublicPage.tsx";
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
+import { Link } from "react-router-dom"
+import { PublicPage } from "../../components/shared/PublicPage.tsx"
+import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { ArrowRight, ExternalLink } from "lucide-react"
 
 const TOPICS: Array<{
-  id: string;
-  question: string;
-  answer: string[];
+  id: string
+  title: string
+  summary: string
+  details: { question: string; answer: string }[]
 }> = [
   {
     id: "accounts",
-    question: "How do I sign in, and what does the wallet signature mean?",
-    answer: [
-      "Sign in with a Solana wallet (Sign In With Solana), or with email, Google or GitHub. A wallet signature proves control of the wallet — it is not a payment, and sign-in never asks for a seed phrase. Desktop is built around Phantom; mobile supports Solflare hand-off.",
-      "If your account is partially configured, finish the setup form you are shown rather than creating a second identity. Connect extra sign-in methods later from Account → Security.",
+    title: "Accounts & sign-in",
+    summary: "Email, Google, GitHub, or connect a Solana wallet.",
+    details: [
+      {
+        question: "What does the wallet signature mean?",
+        answer:
+          "A signature proves you control the wallet — it is not a payment. Sign-in never asks for a seed phrase.",
+      },
+      {
+        question: "Duplicate email?",
+        answer:
+          "Use the original sign-in method, then connect extra methods from Account → Security.",
+      },
     ],
   },
   {
     id: "workspaces",
-    question: "Personal or business workspace — which one?",
-    answer: [
-      "Personal is an independent surveyor: your own work, finances, files and contacts. Business is a firm: quotes, projects, dispatch, staff, assets and billing. Platform operators sit above both with administration views, and are not needed for surveying work.",
+    title: "Workspaces",
+    summary: "Personal for independents, Business for firms.",
+    details: [
+      {
+        question: "Which workspace do I need?",
+        answer:
+          "Personal covers one surveyor's work and finances. Business adds quotes, projects, dispatch, staff, assets and billing.",
+      },
     ],
   },
   {
     id: "workflow",
-    question: "What does a job look like end to end?",
-    answer: [
-      "Plan and price: create a contact, prepare a quote with line items, and group the record in a project. Prepare and execute: Dispatch and Schedule organise jobs and assignments; Time & Expenses record effort; Assets track instruments.",
-      "Keep evidence: upload files to the File Manager, version them, and run Verify integrity to confirm the bytes still match the recorded SHA-256. Invoice and settle: Billing & Payments offers Solana USDC or the Card & mobile money prepaid rail — a pending payment or sandbox reference is never proof of settlement.",
+    title: "Job workflow",
+    summary: "Quote → Project → Job → Evidence → Invoice → Payment.",
+    details: [
+      {
+        question: "How do I track a survey job?",
+        answer:
+          "Create a project, plan the quote, dispatch the crew, upload files, anchor evidence, generate the invoice.",
+      },
+      {
+        question: "What is Verify integrity?",
+        answer:
+          "Re-hashes the file and confirms the bytes still match the recorded SHA-256 digest.",
+      },
     ],
   },
   {
     id: "ai",
-    question: "What can SiteSurveyor AI actually do?",
-    answer: [
-      "The assistant streams answers and calls allowlisted tools against real workspace data: summarise open quotes and overdue invoices, flag missing job assignments, create a contact and read back the saved record, prepare a quote and confirm the total, inspect CAD layers and entities.",
-      "Creates and updates may execute immediately — be explicit about the target record. Permanent deletes need confirmation, so prefer archiving. There is no CAD drafting: the assistant reads drawings, but no screen executes commands against one. Always verify coordinates, datums, units, totals and dates — AI output is not a substitute for a licensed surveyor.",
+    title: "AI assistant",
+    summary: "Calls real tools against your workspace — not just text.",
+    details: [
+      {
+        question: "What can it do?",
+        answer:
+          "Summarise quotes and invoices, flag missing assignments, create contacts and quotes, inspect CAD layers. It reads records it wrote back to confirm.",
+      },
+      {
+        question: "Can it draft CAD?",
+        answer:
+          "No — the assistant reads drawings but no screen executes CAD commands.",
+      },
     ],
   },
   {
     id: "anchoring",
-    question: "What goes on chain when I anchor a file?",
-    answer: [
-      "One wallet-signed Solana Memo: the attachment ID and the file's SHA-256 digest (hash-only, the default). Optional full-file anchoring also commits a manifest digest and chunk count for encrypted copies. In both modes the original file stays off-chain in private workspace storage.",
-      "An anchor proves the wallet signed that digest and the cluster confirmed it. It does not prove authorship, land ownership, coordinate accuracy or legal validity. Never put client names, coordinates or secrets in a custom memo.",
+    title: "File anchoring",
+    summary: "SHA-256 digests on Solana. Originals stay off-chain.",
+    details: [
+      {
+        question: "What goes on chain?",
+        answer:
+          "One wallet-signed Memo: attachment ID + file digest. Full-file mode adds manifest digest and chunk count for encrypted copies.",
+      },
+      {
+        question: "What does an anchor prove?",
+        answer:
+          "The wallet signed that digest and the cluster confirmed it. It does not prove authorship, ownership, accuracy or legal validity.",
+      },
     ],
   },
   {
     id: "money",
-    question: "How do payments work?",
-    answer: [
-      "Two settlement paths, kept separate. Solana USDC settles on the selected cluster — verify cluster, recipient, amount and mint before approving, and keep the signature as the reconciliation reference. Card & mobile money funds a prepaid USD balance; in development deployments it runs on sandbox keys and processes no live payment.",
-      "Marketplace orders are saved as pending before your wallet signs; the signature moves them to submitted, SiteSurveyor verifies the transfer on chain, and only then do they complete and pay the seller.",
+    title: "Payments",
+    summary: "Solana USDC or prepaid card & mobile money.",
+    details: [
+      {
+        question: "How do payments work?",
+        answer:
+          "USDC settles on the selected cluster. Card & mobile money funds a prepaid balance — sandbox keys in development.",
+      },
+      {
+        question: "Marketplace orders?",
+        answer:
+          "Saved as pending → wallet signs → submitted → verified on chain → completed and seller paid.",
+      },
     ],
   },
   {
     id: "networks",
-    question: "Why does everything say devnet and sandbox?",
-    answer: [
-      "Development deployments target Solana devnet and the fiat sandbox: devnet SOL and USDC have no monetary value, and devnet anchors are not production evidence. Check the network in the app and in your wallet before approving anything, and never switch to mainnet just to clear a devnet warning.",
+    title: "Devnet & sandbox",
+    summary: "Development deployments use devnet SOL and sandbox fiat.",
+    details: [
+      {
+        question: "Why devnet everywhere?",
+        answer:
+          "Devnet tokens have no value and devnet anchors are not production evidence. Check the network before approving anything.",
+      },
     ],
   },
   {
     id: "offline",
-    question: "Does the app work offline?",
-    answer: [
-      "The app is a PWA with caching, offline status and cached-session handling. An offline-cached screen is presentation only — live queries, AI calls, uploads, payment confirmation and anchoring all need the network. Reconnect and verify before treating anything as done.",
+    title: "Offline",
+    summary: "PWA with caching — live queries, uploads and payments need network.",
+    details: [
+      {
+        question: "What works offline?",
+        answer:
+          "Cached screens are presentation only. Live queries, AI calls, uploads, payment confirmation and anchoring all require connectivity.",
+      },
     ],
   },
-];
+]
 
-/**
- * The public help page: the questions a visitor asks before signing up,
- * answered from the same facts as the in-app user guide. Two-column on
- * desktop (contents beside the body), single measure on phones.
- */
 export default function HelpPage() {
-  useDocumentTitle(`Help — SiteSurveyor`);
+  useDocumentTitle("Help — SiteSurveyor")
 
   return (
     <PublicPage section="Help">
-      <section aria-labelledby="help-heading" className="border-b border-border/70 bg-card">
-        <div className="mx-auto w-full max-w-5xl px-4 pb-12 pt-14 sm:px-6 sm:pb-16 sm:pt-20">
-          <h1 id="help-heading" className="market-hero-title max-w-3xl text-balance text-foreground">
+      <section aria-labelledby="help-heading" className="border-b bg-card">
+        <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-20">
+          <h1 id="help-heading" className="text-3xl font-extrabold tracking-tight sm:text-4xl">
             How SiteSurveyor works
           </h1>
-          <p className="mt-5 max-w-[65ch] text-base leading-relaxed text-muted-foreground sm:text-lg">
-            The questions people ask before signing up — accounts, workflow, evidence, money and
-            networks — answered the way the product actually behaves.
+          <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
+            Accounts, workflow, evidence, money and networks — the way the product actually behaves.
           </p>
         </div>
       </section>
 
-      <section aria-label="Help topics" className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-12">
-          <nav aria-label="On this page" className="hidden lg:block">
-            <ul className="sticky top-20 space-y-2.5 border-l border-border/60 pl-4 text-sm">
-              {TOPICS.map(({ id, question }) => (
-                <li key={id}>
-                  <a
-                    href={`#${id}`}
-                    className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    {question.split("—")[0].trim()}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          <div className="max-w-[68ch]">
-            {TOPICS.map(({ id, question, answer }) => (
-              <section
-                key={id}
-                id={id}
-                className="scroll-mt-20 border-t border-border/60 py-8 first:border-t-0 first:pt-0"
-              >
-                <h2 className="text-lg font-semibold leading-snug tracking-[-0.01em] text-foreground">
-                  {question}
-                </h2>
-                {answer.map((paragraph, index) => (
-                  <p
-                    key={index}
-                    className="mt-4 text-[0.9375rem] leading-relaxed text-foreground/90"
-                  >
-                    {paragraph}
-                  </p>
+      <section aria-label="Help topics" className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {TOPICS.map(({ id, title, summary, details }) => (
+            <details
+              key={id}
+              id={id}
+              className="group bolt-panel-light open:bg-muted/10"
+            >
+              <summary className="cursor-pointer select-none p-5 list-none [&::-webkit-details-marker]:hidden">
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="text-base font-semibold leading-snug">{title}</h2>
+                  <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{summary}</p>
+              </summary>
+              <div className="border-t px-5 pb-5 pt-4">
+                {details.map(({ question, answer }, i) => (
+                  <div key={i} className={i > 0 ? "mt-4" : ""}>
+                    <p className="text-sm font-medium">{question}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{answer}</p>
+                  </div>
                 ))}
-              </section>
-            ))}
+              </div>
+            </details>
+          ))}
+        </div>
 
-            <aside className="border-t border-border/60 py-8">
-              <h2 className="text-lg font-semibold leading-snug text-foreground">
-                Still stuck?
-              </h2>
-              <p className="mt-3 text-[0.9375rem] leading-relaxed text-muted-foreground">
-                The in-app assistant answers questions against your own workspace once you are
-                signed in. For anything else, <Link to="/contact" className="font-medium text-foreground underline-offset-4 hover:underline">contact us</Link>.
-              </p>
-            </aside>
+        <div className="mt-12 flex flex-wrap items-center gap-4 border-t pt-8">
+          <p className="text-sm text-muted-foreground">
+            The in-app assistant answers questions against your own workspace once signed in.
+          </p>
+          <div className="flex gap-3">
+            <Link
+              to="/journal"
+              className="inline-flex items-center gap-1 font-mono text-sm text-primary hover:underline"
+            >
+              Journal <ArrowRight className="h-3 w-3" />
+            </Link>
+            <Link
+              to="/contact"
+              className="inline-flex items-center gap-1 font-mono text-sm text-primary hover:underline"
+            >
+              Contact <ExternalLink className="h-3 w-3" />
+            </Link>
           </div>
         </div>
       </section>
     </PublicPage>
-  );
+  )
 }

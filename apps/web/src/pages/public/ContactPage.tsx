@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Loader2, Mail, Send } from "lucide-react";
-import { PublicPage } from "../../components/shared/PublicPage.tsx";
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import { Mail, MessageSquare, Send } from "lucide-react"
+import { PublicPage } from "../../components/shared/PublicPage.tsx"
+import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
 
-const CONTACT_EMAIL = "support@sitesurveyor.tech";
+const CONTACT_EMAIL = "support@sitesurveyor.tech"
 
 const SUBJECT_OPTIONS = [
   { value: "support", label: "Product support" },
@@ -12,68 +12,60 @@ const SUBJECT_OPTIONS = [
   { value: "security", label: "Security or privacy" },
   { value: "market", label: "Marketplace listing" },
   { value: "other", label: "Something else" },
-] as const;
+] as const
 
-type SubjectValue = (typeof SUBJECT_OPTIONS)[number]["value"];
+type SubjectValue = (typeof SUBJECT_OPTIONS)[number]["value"]
 
-/**
- * The public contact page. No backend form pipeline exists yet, so the form
- * composes a mailto: draft in the visitor's own mail client — nothing is
- * transmitted from the page itself, and the address stays visible for people
- * who prefer to write directly.
- */
 export default function ContactPage() {
-  useDocumentTitle(`Contact — SiteSurveyor`);
+  useDocumentTitle("Contact — SiteSurveyor")
 
-  const [subject, setSubject] = useState<SubjectValue>("support");
-  const [message, setMessage] = useState("");
-  const [opened, setOpened] = useState(false);
+  const [subject, setSubject] = useState<SubjectValue>("support")
+  const [message, setMessage] = useState("")
+  const [opened, setOpened] = useState(false)
 
-  const subjectLabel = SUBJECT_OPTIONS.find(({ value }) => value === subject)?.label ?? "Support";
+  const subjectLabel =
+    SUBJECT_OPTIONS.find(({ value }) => value === subject)?.label ?? "Support"
 
   function composeMailto(): string {
     const query = new URLSearchParams({
       subject: `[${subjectLabel}] SiteSurveyor enquiry`,
       body: message.trim() ? `${message.trim()}\n` : "",
-    });
-    return `mailto:${CONTACT_EMAIL}?${query.toString()}`;
+    })
+    return `mailto:${CONTACT_EMAIL}?${query.toString()}`
   }
 
   return (
     <PublicPage section="Contact">
-      <section aria-labelledby="contact-heading" className="border-b border-border/70 bg-card">
-        <div className="mx-auto w-full max-w-5xl px-4 pb-12 pt-14 sm:px-6 sm:pb-16 sm:pt-20">
-          <h1 id="contact-heading" className="market-hero-title max-w-3xl text-balance text-foreground">
-            Talk to the people building it
+      <section aria-labelledby="contact-heading" className="border-b bg-card">
+        <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-20">
+          <h1 id="contact-heading" className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            Contact
           </h1>
-          <p className="mt-5 max-w-[65ch] text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Product questions, marketplace listings, security reports — write to us directly. A
-            signed-in workspace also has the in-app assistant for questions about your own records.
+          <p className="mt-3 text-base text-muted-foreground">
+            Product questions, listings, security reports — write to us.
           </p>
         </div>
       </section>
 
-      <section aria-label="Contact form and channels" className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="max-w-[62ch]">
+      <section aria-label="Contact form" className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+        <div className="grid gap-10 lg:grid-cols-[1fr_280px] lg:gap-12">
           <form
-            className="border-t border-border/60 pt-8"
+            className="space-y-5"
             onSubmit={(event) => {
-              event.preventDefault();
-              window.location.href = composeMailto();
-              setOpened(true);
+              event.preventDefault()
+              window.location.href = composeMailto()
+              setOpened(true)
             }}
           >
-            <h2 className="text-lg font-semibold leading-snug text-foreground">Write to us</h2>
-
-            <div className="mt-5">
-              <label htmlFor="contact-subject" className="text-sm font-medium text-foreground">
-                What is this about?
+            <div>
+              <label htmlFor="contact-subject" className="text-sm font-medium">
+                Subject
               </label>
               <select
                 id="contact-subject"
                 value={subject}
                 onChange={(event) => setSubject(event.target.value as SubjectValue)}
-                className="mt-1.5 block h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1 block w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {SUBJECT_OPTIONS.map(({ value, label }) => (
                   <option key={value} value={value}>
@@ -83,66 +75,78 @@ export default function ContactPage() {
               </select>
             </div>
 
-            <div className="mt-4">
-              <label htmlFor="contact-message" className="text-sm font-medium text-foreground">
-                Your message
+            <div>
+              <label htmlFor="contact-message" className="text-sm font-medium">
+                Message
               </label>
               <textarea
                 id="contact-message"
-                rows={6}
+                rows={5}
                 required
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Tell us what you need. If it is a support question, include what you were doing when it went wrong."
-                className="mt-1.5 block w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="What do you need? Include context if it's a support question."
+                className="mt-1 block w-full resize-y rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
 
             <button
               type="submit"
-              className="web3-btn web3-btn-primary mt-5 min-h-11 w-full gap-2 sm:w-auto"
+              className="inline-flex items-center gap-2 bg-primary px-5 py-2.5 font-mono text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
-              <Send className="size-4" aria-hidden="true" />
+              <Send className="h-4 w-4" />
               Open email draft
             </button>
 
             {opened ? (
-              <p role="status" className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                Nothing was sent from this page — your email client opened with the draft. If it
-                did not, write to {CONTACT_EMAIL} directly.
+              <p className="text-xs text-muted-foreground" role="status">
+                Your email client opened with the draft. If it didn't, write to{" "}
+                <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary hover:underline">
+                  {CONTACT_EMAIL}
+                </a>
+                .
               </p>
             ) : null}
           </form>
 
-          <div className="mt-10 border-t border-border/60 py-8">
-            <h2 className="text-lg font-semibold leading-snug text-foreground">Direct channels</h2>
-            <ul className="mt-4 space-y-3 text-[0.9375rem]">
-              <li className="flex items-center gap-2.5">
-                <Mail className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <a
-                  href={`mailto:${CONTACT_EMAIL}`}
-                  className="web3-mono text-foreground underline-offset-4 hover:underline"
-                >
-                  {CONTACT_EMAIL}
-                </a>
-              </li>
-            </ul>
-            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Security reports: describe the issue without exploit details in the first message and
-              we will follow up. See also{" "}
-              <Link to="/privacy" className="font-medium text-foreground underline-offset-4 hover:underline">
-                Privacy
-              </Link>{" "}
-              for how data is handled, and{" "}
-              <Link to="/help" className="font-medium text-foreground underline-offset-4 hover:underline">
-                Help
-              </Link>{" "}
-              for answers to common questions.
-            </p>
-          </div>
+          <aside className="space-y-8 lg:border-l lg:pl-10">
+            <div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">Direct</h2>
+              </div>
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="mt-2 block font-mono text-sm text-primary hover:underline"
+              >
+                {CONTACT_EMAIL}
+              </a>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Security reports: describe the issue without exploit details — we follow up first.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">In-app assistant</h2>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Signed in? The assistant answers questions against your own workspace records.
+              </p>
+            </div>
+
+            <div className="space-y-2 font-mono text-sm">
+              <Link to="/help" className="block text-primary hover:underline">
+                → Help & FAQ
+              </Link>
+              <Link to="/privacy" className="block text-primary hover:underline">
+                → Privacy policy
+              </Link>
+            </div>
+          </aside>
         </div>
       </section>
     </PublicPage>
-  );
+  )
 }
