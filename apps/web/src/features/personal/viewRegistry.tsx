@@ -23,6 +23,7 @@ const FileManagerPage = lazy(() => import("../../pages/shared/FileManagerPage"))
 const AdminActivityPage = lazy(() => import("../../pages/admin/AdminActivityPage"));
 const AdminAuditPage = lazy(() => import("../../pages/admin/AdminAuditPage"));
 const AdminOverviewPage = lazy(() => import("../../pages/admin/AdminOverviewPage"));
+const AdminPricingPage = lazy(() => import("../../pages/admin/AdminPricingPage"));
 const AdminUsersPage = lazy(() => import("../../pages/admin/AdminUsersPage"));
 const AdminWorkspacesPage = lazy(() => import("../../pages/admin/AdminWorkspacesPage"));
 
@@ -177,6 +178,13 @@ export function renderPersonalView(
             workspaceId={user.workspaceId}
             userName={user.name}
           />
+        </Suspense>
+      );
+
+    case "admin_pricing":
+      return (
+        <Suspense fallback={<PageLoader />}>
+          <AdminPricingPage isPlatformAdmin={user.isPlatformAdmin} />
         </Suspense>
       );
 

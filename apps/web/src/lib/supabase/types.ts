@@ -5270,6 +5270,78 @@ export type Database = {
       }
     }
     Functions: {
+      admin_get_pricing_configuration: {
+        Args: never
+        Returns: Json
+      }
+      admin_update_billing_operation_rate: {
+        Args: {
+          p_active: boolean
+          p_credits: number
+          p_estimated_cost: number
+          p_operation: string
+        }
+        Returns: {
+          active: boolean
+          credits: number
+          estimated_cost: number
+          operation: string
+          updated_at: string
+        }
+      }
+      admin_update_billing_package: {
+        Args: {
+          p_active: boolean
+          p_amount: number
+          p_credits: number | null
+          p_description: string
+          p_duration_days: number | null
+          p_estimated_infrastructure_cost: number
+          p_estimated_payment_fee: number
+          p_id: string
+          p_label: string
+          p_sort_order: number
+          p_storage_mb: number | null
+        }
+        Returns: {
+          active: boolean
+          amount: number
+          created_at: string
+          credits: number | null
+          currency_code: string
+          description: string
+          duration_days: number | null
+          estimated_infrastructure_cost: number
+          estimated_payment_fee: number
+          id: string
+          kind: string
+          label: string
+          sort_order: number
+          storage_mb: number | null
+          updated_at: string
+        }
+      }
+      admin_update_survey_credit_rate: {
+        Args: {
+          p_active: boolean
+          p_base_credits: number
+          p_category: string
+          p_estimated_cost: number
+          p_label: string
+          p_minimum_credits: number
+          p_per_hectare_credits: number
+        }
+        Returns: {
+          active: boolean
+          base_credits: number
+          category: string
+          estimated_cost: number
+          label: string
+          minimum_credits: number
+          per_hectare_credits: number
+          updated_at: string
+        }
+      }
       accept_workspace_invitation: {
         Args: { target_invitation_token: string }
         Returns: string

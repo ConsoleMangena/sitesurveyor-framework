@@ -62,6 +62,7 @@ export const BUSINESS_ONLY_VIEWS: WorkspaceView[] = ["dispatch"];
 
 export const ADMIN_PLATFORM_VIEWS: WorkspaceView[] = [
   "admin_overview",
+  "admin_pricing",
   "admin_activity",
   "admin_users",
   "admin_workspaces",

@@ -146,7 +146,7 @@ Solana and fiat confirmations stay behaviourally and visually distinct.
 **Refunds.** PesePay exposes no refund call, so the money side settles with the provider out of band
 and is then recorded in-product. Both recording paths are database functions, not client writes —
 `record_pesepay_transaction_refund()` and `reverse_workspace_ai_credits()` re-check
-`profiles.is_platform_admin` inside `security definer` functions (the two documented exceptions to
+`profiles.is_platform_admin` inside `security definer` functions (documented exceptions to
 service-role-only grants), take a `pg_advisory_xact_lock` on the corrected row so the same value
 cannot be clawed back twice, and are idempotent. Reclaims are capped at the current balance and never
 go negative; a storage refund ends the allocation window rather than deleting files. The credit
@@ -154,6 +154,16 @@ ledger stays append-only — a correction is a `reversal` row linked to the entr
 actions require a written reason of at least three characters. A refund applies only to a payment
 that reached `completed`; a table check requires `refunded` rows to carry `refunded_at` and
 `refund_reason`, which only the function sets.
+
+**Platform pricing.** Admin → Pricing uses four additional browser-callable `security definer`
+exceptions: `admin_get_pricing_configuration()`, `admin_update_billing_package()`,
+`admin_update_billing_operation_rate()` and `admin_update_survey_credit_rate()`. They are executable
+by `authenticated`, not `anon`, and each call re-checks `profiles.is_platform_admin`; ordinary users
+cannot use them to read inactive rates or write prices. Package and survey identifiers and package
+kinds are immutable, all numeric inputs are checked in Postgres, and the pricing tables still expose
+only active rows through their SELECT policies. These RPCs update existing configuration rows and do
+not write historical purchase or credit-ledger snapshots. Marketplace prices remain seller-owned and
+are outside this rate card.
 
 ## 9. Secrets
 

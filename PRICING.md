@@ -126,27 +126,30 @@ and are priced from whatever the form then holds.
 
 ## Derived catalog
 
-Prices are the current `billing_packages` rows. Contribution = price − infra − fee.
+Prices are the current `billing_packages` rows, raised 25% across the catalog on
+2026-11-14 (`20261114000000_package_price_increase.sql`). Contribution = price −
+infra − fee.
 
 | Package | Price | Infra (model) | Fee @ 3.5% | Contribution | Margin |
 | --- | --- | --- | --- | --- | --- |
-| 100 AI credits | $4.00 | $1.00 | $0.14 | $2.86 | 72% |
-| 500 AI credits | $15.00 | $5.00 | $0.53 | $9.47 | 63% |
-| 2,000 AI credits | $40.00 | $20.00 | $1.40 | $18.60 | 47% |
-| 10 GB / 30 days | $2.00 | $0.21 | $0.07 | $1.72 | 86% |
-| 50 GB / 90 days | $8.00 | $3.20 | $0.28 | $4.52 | 57% |
-| 100 GB / 90 days | $14.00 | $6.39 | $0.49 | $7.12 | 51% |
+| 100 AI credits | $5.00 | $1.00 | $0.18 | $3.82 | 76% |
+| 500 AI credits | $18.75 | $5.00 | $0.66 | $13.09 | 70% |
+| 2,000 AI credits | $50.00 | $20.00 | $1.75 | $28.25 | 57% |
+| 10 GB / 30 days | $2.50 | $0.21 | $0.09 | $2.20 | 88% |
+| 50 GB / 90 days | $10.00 | $3.20 | $0.35 | $6.45 | 65% |
+| 100 GB / 90 days | $17.50 | $6.39 | $0.61 | $10.50 | 60% |
 
 Every tier stays above break-even on marginal cost even with the conservative
 assumptions, and the volume tiers keep a positive margin while offering a lower
-unit price. AI credits are the thinnest at the largest tier because the per-credit
-price falls faster than the (unmeasured) per-credit cost.
+unit price (5¢, 3.75¢ and 2.5¢ per AI credit). AI credits are the thinnest at the
+largest tier because the per-credit price falls faster than the (unmeasured)
+per-credit cost.
 
 ## Durability risk the table does not capture
 
 Storage is bought for a window, but the bytes are never auto-deleted. A 100 GB
 allocation that expires still costs 100 × $0.0213 = $2.13 every month afterwards,
-so the one-off $14 payment is consumed after roughly six and a half months of
+so the one-off $17.50 payment is consumed after roughly eight months of
 continued storage, and the loss grows from there. Whichever way this is resolved
 is a product decision that has not been taken:
 
@@ -163,17 +166,27 @@ true cost of any expired storage package.
 
 | Control | Where | Who can change it |
 | --- | --- | --- |
-| Package prices, sizes, credit amounts, durations, active flag | `billing_packages` | Deployment operator |
-| Credits charged per AI operation and its estimated cost | `billing_operation_rates` | Deployment operator |
-| Fixed cost, per-hectare rate and floor per survey type | `survey_credit_rates` | Deployment operator |
+| Package names, descriptions, prices, sizes, credit amounts, durations, ordering and active flag | Admin → Pricing → Packages | Platform administrator |
+| Credits charged per AI operation, its estimated cost and active flag | Admin → Pricing → AI operations | Platform administrator |
+| Survey names, fixed cost, per-hectare rate, floor, estimated cost and active flag | Admin → Pricing → Survey formulas | Platform administrator |
 
-All three tables are read-only for `authenticated` under RLS — SELECT on active rows
-and nothing else. There is **no admin price-editing interface**, so changes ship as
-migrations that UPDATE these rows; `20261103190000_pricing_cost_basis.sql` is the
-current one for packages, and `20261107120000_survey_credit_pricing.sql` is the
-current one for the survey rate card. Estimates are copied onto each purchase
-transaction at fulfilment, so a correction changes future purchases and leaves
-historical revenue intact.
+The admin editor reads and saves the database rate card through the narrow RPCs in
+`20261114010000_admin_dynamic_pricing.sql`. `authenticated` callers can execute
+these functions, but every function independently requires `is_platform_admin()`;
+ordinary table access remains SELECT-only for active rows. The full configuration,
+including inactive rows, is available only through the checked admin read RPC.
+Identifiers and package kinds are immutable, and these RPCs update existing rows
+rather than creating or deleting catalog entries.
+
+Edits are authoritative as soon as they are saved: they affect future purchases,
+charges and quotes without requiring a frontend deployment. Package purchase and
+cost estimates are copied onto transactions at fulfilment, so historical snapshots
+remain unchanged. The separate `20261114000000_package_price_increase.sql`
+migration installs the reviewed 25% increase as the initial catalog for this
+release; later browser edits are not reapplied or overwritten by that migration.
+Seed values for AI and survey rates remain documented in
+`20261103120000_billing_credits.sql`, `20261103190000_pricing_cost_basis.sql` and
+`20261107120000_survey_credit_pricing.sql`.
 
 ## Refunds in these numbers
 
