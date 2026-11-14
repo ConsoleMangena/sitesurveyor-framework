@@ -174,6 +174,15 @@ const DATABASE_ERROR_MESSAGES: Array<{ contains: string; message: string }> = [
     message:
       "That email address already belongs to another SiteSurveyor account, so this one can't claim it. Sign in with that account and connect this sign-in method from Account security.",
   },
+  {
+    // Raised by handle_new_auth_user when a provider (Google/GitHub) signup
+    // arrives with an email an existing account already claims. With manual
+    // linking on, Auth would otherwise create a second account for the same
+    // person.
+    contains: "SITE_SURVEYOR_EMAIL_CLAIMED",
+    message:
+      "You already have a SiteSurveyor account with this email. Sign in with your original method (email and password, or the other provider), then connect this sign-in method from Account → Security.",
+  },
 ];
 
 function databaseErrorMessage(raw: string): string | undefined {

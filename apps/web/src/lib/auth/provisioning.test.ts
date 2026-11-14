@@ -207,7 +207,12 @@ describe("provisionAccount", () => {
 
   it("mirrors the profile into Auth metadata when it is not there yet", async () => {
     await provisionAccount(
-      makeUser({ user_metadata: { full_name: "Sam Surveyor" } } as Partial<User>),
+      makeUser({
+        user_metadata: {
+          full_name: "Sam Surveyor",
+          account_type: "personal",
+        },
+      } as Partial<User>),
     );
 
     expect(tableState.updateUser).toHaveBeenCalledTimes(1);
@@ -281,12 +286,33 @@ describe("provisionAccount", () => {
   it("reports DETAILS_REQUIRED for a brand-new account with no name", async () => {
     mockGetSignInProfile.mockResolvedValue(null);
 
+    // The caller supplies the account type (repair path), so this is not a
+    // provider signup even though the metadata is empty.
     const outcome = await provisionAccount(
       makeUser({ user_metadata: {} } as Partial<User>),
+      { accountType: "personal" },
     );
 
     expect(outcome).toEqual({ blocker: "DETAILS_REQUIRED", created: false });
     expect(profileWrites()).toHaveLength(0);
+  });
+
+  it("reports ONBOARDING_REQUIRED for a provider signup before the survey", async () => {
+    // Provider shape: an email on the session but no account_type metadata —
+    // exactly what the signup trigger leaves Google/GitHub accounts with.
+    mockGetSignInProfile.mockResolvedValue({
+      full_name: "Sam Ranger",
+      email: "sam@example.com",
+      auth_signup_account_type: null,
+    });
+
+    const outcome = await provisionAccount(
+      makeUser({ user_metadata: {} } as Partial<User>),
+    );
+
+    expect(outcome).toEqual({ blocker: "ONBOARDING_REQUIRED", created: false });
+    expect(profileWrites()).toHaveLength(0);
+    expect(tableState.rpcCalls).toHaveLength(0);
   });
 
   it("retries the create without an email when another account claims it", async () => {
@@ -518,10 +544,27 @@ describe("ensureAccountProvisioned", () => {
 
   it("throws a DETAILS_REQUIRED ProvisioningError when there is no name", async () => {
     await expect(
-      ensureAccountProvisioned(makeUser({ user_metadata: {} } as Partial<User>)),
+      ensureAccountProvisioned(makeUser({ user_metadata: {} } as Partial<User>), {
+        accountType: "personal",
+      }),
     ).rejects.toMatchObject({
       name: "ProvisioningError",
       blocker: "DETAILS_REQUIRED",
+    });
+  });
+
+  it("throws an ONBOARDING_REQUIRED ProvisioningError for a provider signup", async () => {
+    mockGetSignInProfile.mockResolvedValue({
+      full_name: "Sam Ranger",
+      email: "sam@example.com",
+      auth_signup_account_type: null,
+    });
+
+    await expect(
+      ensureAccountProvisioned(makeUser({ user_metadata: {} } as Partial<User>)),
+    ).rejects.toMatchObject({
+      name: "ProvisioningError",
+      blocker: "ONBOARDING_REQUIRED",
     });
   });
 

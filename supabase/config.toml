@@ -451,13 +451,12 @@ skip_nonce_check = false
 #   3. Google returns a verified email on every identity, so the callback never
 #      lands in the "ask for an email" state GitHub can produce.
 #
-# WARNING: `supabase config push` sends what this file *resolves to*. The secret
-# below is read from SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET, which is not set on
-# the machines in this repository, so pushing blanks the working provider
-# secret on the hosted project and breaks Google sign-in at the code-exchange
-# step. Set that variable first, or leave the hosted provider to the dashboard.
+# NOTE: This block stays `enabled = false` locally. The hosted provider is
+# enabled, with its Client ID/Secret, in the Supabase dashboard (same policy as
+# GitHub). Declaring `enabled = true` here without a client_id makes every CLI
+# command fail config validation (`Missing required field ... client_id`).
 [auth.external.google]
-enabled = true
+enabled = false
 client_id = ""
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"

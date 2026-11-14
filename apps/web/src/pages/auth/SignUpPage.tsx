@@ -21,6 +21,7 @@ import ErrorNotice from "../../components/errors/ErrorNotice";
 import { GitHubButton } from "../../components/auth/GitHubButton";
 import { GoogleButton } from "../../components/auth/GoogleButton";
 import { signUpWithEmail } from "../../lib/auth/email-auth.ts";
+import { isEmailAlreadyRegistered } from "../../lib/auth/oauth.ts";
 import {
   ensureAccountProvisioned,
   type AccountType,
@@ -94,6 +95,19 @@ export default function SignUpPage() {
 
   async function onSubmit(values: SignUpValues) {
     setError(null);
+    // Wallet accounts keep their email only on the profile, and a provider
+    // account whose email was claimed is refused at signup — so check the
+    // profile mirror here and stop early with the fix in the message.
+    try {
+      if (await isEmailAlreadyRegistered(values.email)) {
+        setError(
+          "An account with this email already exists. Sign in instead — if you used a wallet or Google with this address, sign in that way and add this email from Account settings.",
+        );
+        return;
+      }
+    } catch {
+      // Unreachable: the helper fails open, but do not block signup on it.
+    }
     try {
       const result = await signUpWithEmail({
         email: values.email,

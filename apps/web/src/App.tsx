@@ -16,6 +16,7 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import AuthCallbackPage from "./pages/auth/AuthCallbackPage";
 import AccountSecurityPage from "./pages/auth/AccountSecurityPage";
+import OnboardingPage from "./pages/auth/OnboardingPage";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 const PublicTransportPage = lazy(() => import("./pages/public/PublicTransportPage"));
@@ -255,6 +256,9 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           {/* OAuth + email-link landing point; provisioning runs inside. */}
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/onboarding" element={<OnboardingPage />} />
+          </Route>
           <Route
             path="/auth/wallet"
             element={<Navigate to="/login" replace />}

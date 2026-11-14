@@ -25,6 +25,11 @@ export type ProvisioningBlocker =
   | "EMAIL_REQUIRED"
   /** A new account has no name on record, so there is nothing to write. */
   | "DETAILS_REQUIRED"
+  /**
+   * A provider signup (Google/GitHub) that has not completed the onboarding
+   * survey yet: no account type, no name on the profile, no workspace.
+   */
+  | "ONBOARDING_REQUIRED"
   | "PROFILE_UNREADABLE";
 
 export class ProvisioningError extends Error {
@@ -50,6 +55,19 @@ export interface ProvisioningOutcome {
   blocker?: ProvisioningBlocker;
   /** True when this call created the profile row / workspace. */
   created: boolean;
+}
+
+/**
+ * True when this session came from a provider signup (Google/GitHub) rather
+ * than an email or wallet signup. Providers carry an email but no
+ * `account_type` metadata — email signups always set it, and wallet signups
+ * have no email on the session at all — so this shape is unambiguous. The
+ * profile must go through the onboarding survey before a dashboard is
+ * allocated.
+ */
+export function isProviderSignup(user: User): boolean {
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  return Boolean(readText(user.email)) && !readText(metadata.account_type);
 }
 
 function readText(value: unknown): string | null {
@@ -95,6 +113,18 @@ export async function provisionAccount(
   }
 
   const existing = await getSignInProfile(user.id);
+
+  // Provider signups (Google/GitHub) must complete the onboarding survey
+  // before a dashboard is allocated: the survey collects the name, account
+  // type and company that email signups gather on their form. A profile row
+  // may exist (the signup trigger created a shell), but until the survey has
+  // been submitted there is no account type and no workspace to route to.
+  // An existing profile with an account type means the survey was done on a
+  // previous sign-in — fall through and provision normally.
+  const surveyDone = Boolean(existing?.auth_signup_account_type);
+  if (isProviderSignup(user) && !surveyDone && !input?.accountType) {
+    return { blocker: "ONBOARDING_REQUIRED", created: false };
+  }
 
   if (!existing && !fullName) {
     // A brand-new account with no name has nothing to map to a usable
@@ -233,6 +263,61 @@ export async function provisionAccount(
 }
 
 /**
+ * Submit the onboarding survey for a provider signup and allocate their
+ * dashboard.
+ *
+ * The signup trigger deliberately leaves provider accounts without a
+ * workspace or account type until this runs. The RPC allocates the workspace
+ * (personal or business, per the survey answer) and writes the profile
+ * fields atomically; it is idempotent, handing back the existing workspace
+ * if the survey was somehow submitted twice. Auth metadata is mirrored
+ * afterwards so wallet-recognition and the workspace mapping see the same
+ * values on later sign-ins.
+ */
+export async function completeProviderOnboarding(
+  user: User,
+  input: ProvisioningInput,
+): Promise<ProvisioningOutcome> {
+  const fullName = input.fullName.trim();
+  const accountType = input.accountType;
+  const companyName = input.companyName?.trim() || undefined;
+
+  const { data, error } = await supabase.rpc("complete_provider_onboarding", {
+    p_full_name: fullName,
+    p_account_type: accountType,
+    p_company_name: companyName ?? null,
+  });
+  if (error) {
+    throw new ProvisioningError(
+      "PROFILE_UNREADABLE",
+      error.message?.trim() ||
+        "Could not save your SiteSurveyor account. Please try again.",
+    );
+  }
+
+  // Mirror into Auth metadata so the workspace mapping resolves the account
+  // type without a profile read. A failure here is non-fatal: the profile
+  // row is authoritative and a later sign-in repairs the mirror.
+  const { error: metadataError } = await supabase.auth.updateUser({
+    data: {
+      full_name: fullName,
+      account_type: accountType,
+      company: companyName ?? (accountType === "personal" ? "Independent Surveyor" : "My Company"),
+      workspace_name: accountType === "business" ? companyName : undefined,
+      contact_email: input.email ?? undefined,
+    },
+  });
+  if (metadataError) {
+    console.warn(
+      "[provisioning] could not sync auth metadata:",
+      metadataError.message,
+    );
+  }
+
+  return { created: Boolean(data) };
+}
+
+/**
  * Convenience wrapper used by sign-in pages: run provisioning and translate
  * the "no email yet" state into the `EMAIL_REQUIRED` blocker the UI expects.
  */
@@ -251,6 +336,12 @@ export async function ensureAccountProvisioned(
     throw new ProvisioningError(
       "DETAILS_REQUIRED",
       "Add your name to finish setting up this account.",
+    );
+  }
+  if (outcome.blocker === "ONBOARDING_REQUIRED") {
+    throw new ProvisioningError(
+      "ONBOARDING_REQUIRED",
+      "Tell us a little about yourself to finish setting up this account.",
     );
   }
   return outcome;

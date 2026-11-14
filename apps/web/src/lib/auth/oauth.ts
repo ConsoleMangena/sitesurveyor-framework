@@ -124,6 +124,30 @@ export function githubEmailIsUsable(user: User | null | undefined): boolean {
 export const GOOGLE_PROVIDER = "google";
 
 /**
+ * True when a profile whose email matches `email` already exists. Called by
+ * the sign-in pages *before* starting a Google/GitHub redirect: with manual
+ * linking on, Auth would otherwise create a second account for an email that
+ * already belongs to one.
+ *
+ * The lookup runs as a security-definer RPC because profiles RLS lets a user
+ * read only their own row. It returns a bare boolean — no data about the
+ * matched account — so it is safe to expose pre-auth.
+ */
+export async function isEmailAlreadyRegistered(email: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("is_email_already_registered", {
+    candidate_email: email.trim().toLowerCase(),
+  });
+  if (error) {
+    // Fail open: a dead check must not lock the front door. The database
+    // trigger still refuses the duplicate, so the worst case is a worse
+    // error screen, never a silent second account.
+    console.warn("[oauth] email check failed:", error.message);
+    return false;
+  }
+  return data === true;
+}
+
+/**
  * Start Google sign-in. The browser navigates away to Google and comes back
  * at `/auth/callback`; nothing after this line runs in this tab.
  *

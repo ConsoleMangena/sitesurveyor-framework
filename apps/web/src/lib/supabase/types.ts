@@ -5422,6 +5422,14 @@ export type Database = {
         Args: { p_worker_id: string }
         Returns: Json
       }
+      complete_provider_onboarding: {
+        Args: {
+          p_full_name: string
+          p_account_type: string
+          p_company_name?: string | null
+        }
+        Returns: string
+      }
       create_business_workspace: {
         Args: { workspace_name: string; workspace_slug?: string }
         Returns: string
@@ -5462,6 +5470,10 @@ export type Database = {
           allowed_roles: Database["public"]["Enums"]["workspace_member_role"][]
           target_workspace_id: string
         }
+        Returns: boolean
+      }
+      is_email_already_registered: {
+        Args: { candidate_email: string }
         Returns: boolean
       }
       is_business_workspace: {

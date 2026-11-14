@@ -78,6 +78,13 @@ export default function AuthCallbackPage() {
                 setPhase("needs-details");
                 return;
               }
+              // Provider signup that has not completed the onboarding
+              // survey: send them to it. The survey allocates the dashboard
+              // (personal or business) on submit.
+              if (err.blocker === "ONBOARDING_REQUIRED") {
+                navigate("/onboarding", { replace: true });
+                return;
+              }
             }
             setPhase("failed");
             setMessage(
