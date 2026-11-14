@@ -31,7 +31,7 @@ import {
 import {
   addEmailAndPassword,
 } from "../../lib/auth/email-auth.ts";
-import { linkGitHub, unlinkGitHub } from "../../lib/auth/oauth.ts";
+import { linkGitHub, linkGoogle, unlinkGitHub, unlinkGoogle } from "../../lib/auth/oauth.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
 import {
   discoverEthereumProviders,
@@ -113,6 +113,34 @@ export default function AccountSecurity({
       }
     } catch (err) {
       fail(err, "Could not update the GitHub link.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // ── Google ────────────────────────────────────────────────────────────
+  const google = list.methods.find((m) => m.kind === "google");
+
+  async function handleGoogle() {
+    setError(null);
+    setNotice(null);
+    setBusy("google");
+    try {
+      if (google) {
+        // auth-js needs the whole identity row, not just the id.
+        const identity = (user.identities ?? []).find(
+          (entry) => entry.id === google.id,
+        );
+        if (!identity) throw new Error("That Google link is no longer present.");
+        await unlinkGoogle(identity);
+        setNotice("Google removed.");
+        await refresh();
+      } else {
+        // Redirects the browser away; nothing after this runs here.
+        await linkGoogle();
+      }
+    } catch (err) {
+      fail(err, "Could not update the Google link.");
     } finally {
       setBusy(null);
     }
@@ -243,6 +271,8 @@ export default function AccountSecurity({
                         setWalletAction({ mode: "unlink", method });
                       } else if (method.kind === "email") {
                         void handleUnlinkEmail();
+                      } else if (method.kind === "google") {
+                        void handleGoogle();
                       } else {
                         void handleGitHub();
                       }
@@ -299,6 +329,24 @@ export default function AccountSecurity({
                 <Link2 className="size-3.5" />
               )}
               Link GitHub
+            </Button>
+          ) : null}
+
+          {!google ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={busy !== null}
+              onClick={() => void handleGoogle()}
+            >
+              {busy === "google" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Link2 className="size-3.5" />
+              )}
+              Link Google
             </Button>
           ) : null}
         </div>
@@ -360,6 +408,7 @@ export default function AccountSecurity({
 function MethodIcon({ method }: { method: SignInMethod }) {
   if (method.kind === "email") return <Mail className="size-4" />;
   if (method.kind === "github") return <GitHubGlyph className="size-4" />;
+  if (method.kind === "google") return <GoogleGlyph className="size-4" />;
   return <Wallet className="size-4" />;
 }
 
@@ -367,6 +416,29 @@ function GitHubGlyph({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.06-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.28 0 .32.21.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5Z" />
+    </svg>
+  );
+}
+
+function GoogleGlyph({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.57 5.57 0 0 1-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A11.99 11.99 0 0 0 12 24Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.27 14.29A7.2 7.2 0 0 1 4.89 12c0-.8.14-1.57.38-2.29V6.62H1.29a12 12 0 0 0 0 10.76l3.98-3.09Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75Z"
+      />
     </svg>
   );
 }

@@ -438,6 +438,34 @@ url = ""
 # If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
 
+# Google OAuth — required for "Continue with Google".
+#   1. Create an *OAuth client ID* (Web application) at
+#      https://console.cloud.google.com/apis/credentials
+#      Authorised JavaScript origins = https://sitesurveyor.tech and http://localhost:5174
+#      Authorised redirect URI = https://csjjmuexzuewqnopzbik.supabase.co/auth/v1/callback
+#   2. In the Supabase dashboard: Authentication → Sign In / Up → Google → enable,
+#      paste the Client ID and Client Secret there, and Save. Configuring the
+#      hosted Google provider in the dashboard (not via `config push`) is
+#      deliberate: the secret lives only in the dashboard, mirroring how the
+#      GitHub provider is managed.
+#   3. Google returns a verified email on every identity, so the callback never
+#      lands in the "ask for an email" state GitHub can produce.
+#
+# WARNING: `supabase config push` sends what this file *resolves to*. The secret
+# below is read from SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET, which is not set on
+# the machines in this repository, so pushing blanks the working provider
+# secret on the hosted project and breaks Google sign-in at the code-exchange
+# step. Set that variable first, or leave the hosted provider to the dashboard.
+[auth.external.google]
+enabled = true
+client_id = ""
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Overrides the default auth callback URL derived from auth.external_url.
+redirect_uri = ""
+# Google is an OIDC provider; GoTrue receives an ID token rather than calling a
+# profile API, so no email_optional override is needed.
+
 # Use Firebase Auth as a third-party provider alongside Supabase Auth.
 [auth.third_party.firebase]
 enabled = false

@@ -152,7 +152,7 @@ export default function AuthCallbackPage() {
               <h2 className="auth-note-title">Add an email address</h2>
               <p className="auth-note-lead">
                 {emailWasPrivate
-                  ? "That GitHub account keeps its email address private, so SiteSurveyor has nothing to build your account around. Add one and this sign-in will work from then on."
+                  ? "That sign-in account keeps its email address private, so SiteSurveyor has nothing to build your account around. Add one and this sign-in will work from then on."
                   : "SiteSurveyor couldn't read an email address off that sign-in, and it needs one for your account. Add one and this sign-in will work from then on."}
               </p>
             </div>

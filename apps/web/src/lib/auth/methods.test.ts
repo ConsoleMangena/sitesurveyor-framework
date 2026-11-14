@@ -105,6 +105,20 @@ describe("buildMethodList", () => {
     expect(list.methods[1].detail).toBe("sam@users.noreply.github.com");
   });
 
+  it("lists google alongside email", () => {
+    const user = makeUser(
+      [
+        { id: "e-1", provider: "email", email: "sam@example.com" },
+        { id: "gg-1", provider: "google", email: "sam@gmail.com" },
+      ],
+      { email: "sam@example.com", email_confirmed_at: "2026-01-01T00:00:00Z" },
+    );
+
+    const list = buildMethodList(user);
+    expect(list.methods.map((m) => m.kind)).toEqual(["email", "google"]);
+    expect(list.methods[1].detail).toBe("sam@gmail.com");
+  });
+
   it("expands web3 identities into wallet methods with chain and address", () => {
     const user = makeUser([
       { id: "web3:ethereum:0x1111111111111111111111111111111111111111", provider: "web3" },

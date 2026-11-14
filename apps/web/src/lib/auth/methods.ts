@@ -25,7 +25,7 @@ import {
   type WalletChain,
 } from "./web3-auth.ts";
 
-export type SignInMethodKind = "email" | "github" | "wallet";
+export type SignInMethodKind = "email" | "github" | "google" | "wallet";
 
 export interface SignInMethod {
   kind: SignInMethodKind;
@@ -116,6 +116,19 @@ export function buildMethodList(
       detail: github.email || undefined,
       email: github.email,
       createdAt: github.createdAt,
+      removable: false,
+    });
+  }
+
+  const google = findProviderIdentity(user, "google");
+  if (google) {
+    methods.push({
+      kind: "google",
+      id: google.id,
+      label: "Google",
+      detail: google.email || undefined,
+      email: google.email,
+      createdAt: google.createdAt,
       removable: false,
     });
   }

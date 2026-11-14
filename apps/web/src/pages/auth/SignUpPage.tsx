@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { PasswordInput } from "../../components/password-input";
 import ErrorNotice from "../../components/errors/ErrorNotice";
 import { GitHubButton } from "../../components/auth/GitHubButton";
+import { GoogleButton } from "../../components/auth/GoogleButton";
 import { signUpWithEmail } from "../../lib/auth/email-auth.ts";
 import {
   ensureAccountProvisioned,
@@ -315,6 +316,7 @@ export default function SignUpPage() {
 
         <div className="grid gap-2">
           <GitHubButton disabled={submitting} />
+          <GoogleButton disabled={submitting} />
         </div>
       </div>
     </AuthShell>

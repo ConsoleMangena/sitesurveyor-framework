@@ -18,6 +18,7 @@ import {
 import { PasswordInput } from "../../components/password-input";
 import ErrorNotice from "../../components/errors/ErrorNotice";
 import { GitHubButton } from "../../components/auth/GitHubButton";
+import { GoogleButton } from "../../components/auth/GoogleButton";
 import { signInWithEmail } from "../../lib/auth/email-auth.ts";
 import { ensureAccountProvisioned } from "../../lib/auth/provisioning.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
@@ -175,6 +176,7 @@ export default function SignInPage() {
 
         <div className="grid gap-2">
           <GitHubButton disabled={submitting} />
+          <GoogleButton disabled={submitting} />
         </div>
       </div>
     </AuthShell>

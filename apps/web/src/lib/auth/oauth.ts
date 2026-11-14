@@ -19,14 +19,14 @@ import { authRedirectTo } from "../platform.ts";
 export const GITHUB_PROVIDER = "github";
 
 /**
- * Where GitHub sends the browser back after authorising.
+ * Where a provider sends the browser back after authorising.
  *
  * In the browser that is this origin. In the desktop shell the sign-in is
  * completed by the system browser, so the redirect goes to the bridge page on
  * the hosted web build, which hands the result to the app over its
  * `sitesurveyor://` protocol — see `authRedirectTo`.
  */
-function githubRedirectTo(): string {
+function oauthRedirectTo(): string {
   if (typeof window === "undefined") return "";
   return authRedirectTo("/auth/callback");
 }
@@ -38,7 +38,7 @@ function githubRedirectTo(): string {
 export async function signInWithGitHub(): Promise<void> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: GITHUB_PROVIDER,
-    options: { redirectTo: githubRedirectTo() },
+    options: { redirectTo: oauthRedirectTo() },
   });
   if (error) throw new Error(error.message || "Could not start GitHub sign-in.");
 }
@@ -51,7 +51,7 @@ export async function signInWithGitHub(): Promise<void> {
 export async function linkGitHub(): Promise<void> {
   const { error } = await supabase.auth.linkIdentity({
     provider: GITHUB_PROVIDER,
-    options: { redirectTo: githubRedirectTo() },
+    options: { redirectTo: oauthRedirectTo() },
   });
   if (error) throw new Error(error.message || "Could not start GitHub linking.");
 }
@@ -119,4 +119,45 @@ export function githubEmailIsUsable(user: User | null | undefined): boolean {
   const identity = findProviderIdentity(user, GITHUB_PROVIDER);
   const linked = identity?.identityData?.email;
   return typeof linked === "string" && linked.trim().length > 0;
+}
+
+export const GOOGLE_PROVIDER = "google";
+
+/**
+ * Start Google sign-in. The browser navigates away to Google and comes back
+ * at `/auth/callback`; nothing after this line runs in this tab.
+ *
+ * Google always returns a verified address, so the callback never lands in
+ * the "ask for an email" state this flow can produce for GitHub.
+ */
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: GOOGLE_PROVIDER,
+    options: { redirectTo: oauthRedirectTo() },
+  });
+  if (error) throw new Error(error.message || "Could not start Google sign-in.");
+}
+
+/**
+ * Attach Google to the account you are already signed in as. In the browser
+ * auth-js performs a full-page redirect to Google and back; this resolves
+ * only if the redirect could not be started.
+ */
+export async function linkGoogle(): Promise<void> {
+  const { error } = await supabase.auth.linkIdentity({
+    provider: GOOGLE_PROVIDER,
+    options: { redirectTo: oauthRedirectTo() },
+  });
+  if (error) throw new Error(error.message || "Could not start Google linking.");
+}
+
+/**
+ * Detach Google from the account, provided another method remains.
+ *
+ * Same shape as `unlinkGitHub`: auth-js wants the whole `UserIdentity` row,
+ * so callers pass the identity they read off the user.
+ */
+export async function unlinkGoogle(identity: UserIdentity): Promise<void> {
+  const { error } = await supabase.auth.unlinkIdentity(identity);
+  if (error) throw new Error(error.message || "Could not remove Google.");
 }
