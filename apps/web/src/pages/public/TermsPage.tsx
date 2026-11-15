@@ -12,7 +12,7 @@ const SECTIONS: Array<{
   {
     id: "service",
     title: "The service",
-    body: "SiteSurveyor is an operational workspace for surveying work — quoting, projects, dispatch, evidence, billing and settlement — with an AI assistant, a marketplace, a transport board and a native desktop shell. Open-source software hosted by Eineva Incorporated. Provided as is; features change as the product develops.",
+    body: "SiteSurveyor is an operational workspace for surveying work (quoting, projects, dispatch, evidence, billing and settlement) with an AI assistant, a marketplace, a transport board and a native desktop shell. Open-source software hosted by Eineva Incorporated. Provided as is; features change as the product develops.",
   },
   {
     id: "accounts",
@@ -22,7 +22,7 @@ const SECTIONS: Array<{
   {
     id: "blockchain",
     title: "Blockchain records",
-    body: "Anchoring writes a wallet-signed statement to the Solana cluster you select, visible to anyone on that cluster. Anchors prove byte integrity only — not authorship, land ownership, coordinate accuracy or legal validity. Once written, an anchor Memo cannot be removed. Development deployments target Solana devnet; transactions carry no production value.",
+    body: "Anchoring writes a wallet-signed statement to the Solana cluster you select, visible to anyone on that cluster. Anchors prove byte integrity only, not authorship, land ownership, coordinate accuracy or legal validity. Once written, an anchor Memo cannot be removed. Development deployments target Solana devnet; transactions carry no production value.",
   },
   {
     id: "payments",
@@ -32,22 +32,22 @@ const SECTIONS: Array<{
   {
     id: "ai",
     title: "AI assistance",
-    body: "The assistant reads and writes real workspace records through allowlisted tools. Created and updated records execute as they claim — review them. AI output is not a substitute for a licensed surveyor's review, and the assistant does not execute CAD drafting commands.",
+    body: "The assistant reads and writes real workspace records through allowlisted tools. Created and updated records execute as they claim, so review them. AI output is not a substitute for a licensed surveyor's review, and the assistant does not execute CAD drafting commands.",
   },
   {
     id: "content",
     title: "Your content",
-    body: "You keep ownership of content you create and upload. You grant the service the limited right to store, process and display it as needed to operate your workspace — including supplying workspace records to the AI provider when you use the assistant. See Privacy for what leaves your workspace.",
+    body: "You keep ownership of content you create and upload. You grant the service the limited right to store, process and display it as needed to operate your workspace, including supplying workspace records to the AI provider when you use the assistant. See Privacy for what leaves your workspace.",
   },
   {
     id: "liability",
     title: "Liability",
-    body: "To the maximum extent permitted by law, SiteSurveyor and Eineva Incorporated are not liable for indirect or consequential losses arising from use of the service — including loss of data you did not back up, lost profits, or disputes arising from marketplace or transport dealings between users.",
+    body: "To the maximum extent permitted by law, SiteSurveyor and Eineva Incorporated are not liable for indirect or consequential losses arising from use of the service, including loss of data you did not back up, lost profits, or disputes arising from marketplace or transport dealings between users.",
   },
 ]
 
 export default function TermsPage() {
-  useDocumentTitle("Terms — SiteSurveyor")
+  useDocumentTitle("Terms | SiteSurveyor")
 
   return (
     <PublicPage section="Terms">

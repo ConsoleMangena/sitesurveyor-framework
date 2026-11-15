@@ -63,6 +63,11 @@
   .public-photo-feature-copy > p { margin: 1.25rem 0 0; max-width: 55ch; color: var(--muted-foreground); line-height: 1.8; }
   .public-photo-feature-copy .public-home-secondary { margin-top: 2rem; }
 
+  .public-home-chain-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.25rem; align-items: start; }
+  .public-home-chain-grid .survey-photo-frame { aspect-ratio: 4 / 3; }
+  .public-home-chain-grid .survey-photo:last-child { margin-top: 2.5rem; }
+  .public-home-chain-grid .survey-photo:last-child .survey-photo-frame { aspect-ratio: 3 / 4; }
+
   .public-journal-list { display: grid; gap: 2rem; }
   .public-journal-item > a { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 2rem; align-items: center; color: inherit; text-decoration: none; }
   .public-journal-item .survey-photo-frame { aspect-ratio: 4 / 3; }
@@ -86,6 +91,8 @@
     .public-editorial-copy h1 { max-width: 22ch; }
     .public-editorial-photo .survey-photo-frame { aspect-ratio: 16 / 10; }
     .public-photo-feature-grid { gap: 2.5rem; }
+    .public-home-chain-grid { grid-template-columns: 1fr; }
+    .public-home-chain-grid .survey-photo:last-child { margin-top: 0; }
   }
 
   @media (max-width: 40rem) {

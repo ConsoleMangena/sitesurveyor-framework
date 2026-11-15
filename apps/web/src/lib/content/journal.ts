@@ -59,14 +59,14 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
         heading: "What changes in practice",
         paragraphs: [
           "The practical difference shows up at the edges of the job. Time and expenses are logged against the project while the crew is still on site, so the invoice is assembled from records instead of recollection. Files keep their versions, so the plan the invoice refers to is the plan that was actually issued. The assistant reads the same records, which is why a question like \"summarise open quotes and overdue invoices\" has a real answer.",
-          "None of this removes professional judgement. Coordinates, datums, units and totals still get reviewed by a licensed surveyor — the record just stops getting in the way of the review.",
+          "None of this removes professional judgement. Coordinates, datums, units and totals still get reviewed by a licensed surveyor. The record just stops getting in the way of the review.",
         ],
       },
     ],
   },
   {
     slug: "hash-anchors-explained",
-    title: "What a hash anchor proves — and what it does not",
+    title: "What a hash anchor proves, and what it does not",
     summary:
       "A plain explanation of the Solana anchoring in File Manager: what goes on chain, what stays off, and the exact line between integrity and authority.",
     date: "2026-11-09",
@@ -76,14 +76,14 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
       {
         heading: "The statement on chain",
         paragraphs: [
-          "Anchoring a file writes one wallet-signed Solana Memo: ssv1:<attachment-id>:sha256:<file-digest>. That is the whole statement — an identifier, a digest, and a signature. The original file never leaves Supabase Storage; a full-file anchor (ssv2) additionally commits a manifest digest and chunk count for encrypted copies, and still keeps the bytes off-chain.",
+          "Anchoring a file writes one wallet-signed Solana Memo: ssv1:<attachment-id>:sha256:<file-digest>. That is the whole statement: an identifier, a digest, and a signature. The original file never leaves Supabase Storage; a full-file anchor (ssv2) additionally commits a manifest digest and chunk count for encrypted copies, and still keeps the bytes off-chain.",
           "The signature proves that the wallet signed that digest at that time. The digest proves that the file's bytes are exactly the bytes hashed. Together they let anyone re-verify, years later, that the document in question has not changed since the anchor was written.",
         ],
       },
       {
         heading: "The line integrity cannot cross",
         paragraphs: [
-          "A hash proves byte equivalence only. It does not prove authorship, land ownership, coordinate accuracy or legal validity — a signed anchor of a wrong plan is a permanently signed wrong plan. That is why the file manager keeps verification (re-download, re-hash, compare) separate from review, and why anchoring is a deliberate per-file choice rather than an automatic step.",
+          "A hash proves byte equivalence only. It does not prove authorship, land ownership, coordinate accuracy or legal validity. A signed anchor of a wrong plan is a permanently signed wrong plan. That is why the file manager keeps verification (re-download, re-hash, compare) separate from review, and why anchoring is a deliberate per-file choice rather than an automatic step.",
           "The same discipline governs what may enter a custom memo: never client names, coordinates, legal descriptions or secrets. The chain is public and permanent; the workspace is private and versioned. The anchor carries the minimum needed to associate a proof with an attachment, and nothing more.",
         ],
       },
@@ -93,7 +93,7 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
     slug: "designing-for-the-390-pixel-field-phone",
     title: "Designing for the 390-pixel field phone",
     summary:
-      "Field work happens on phones with gloves, glare and one free hand — the accessibility and layout rules the app is held to, and why mobile-web is a first-class target.",
+      "Field work happens on phones with gloves, glare and one free hand. A look at the accessibility and layout rules the app is held to, and why mobile-web is a first-class target.",
     date: "2026-11-14",
     topic: "Engineering",
     synthetic: true,
@@ -102,13 +102,13 @@ export const JOURNAL_ENTRIES: JournalEntry[] = [
         heading: "The real usage scene",
         paragraphs: [
           "The honest picture of the app's mobile audience is not a desk with good lighting: it is a surveyor between site visits, holding a phone in one hand, maybe with gloves on, in full sun. Layouts that survive a 390-pixel viewport, controls large enough to hit reliably, and text with real contrast against glare are requirements, not refinements.",
-          "The baseline the app is held to: every control is keyboard-operable, focus is visible, fields are labelled, error text is tied to its field, and no layout breaks at 390px. The same rules that serve screen readers serve the sunlit screen — both punish low-contrast text and ambiguous controls.",
+          "The baseline the app is held to: every control is keyboard-operable, focus is visible, fields are labelled, error text is tied to its field, and no layout breaks at 390px. The same rules that serve screen readers serve the sunlit screen: both punish low-contrast text and ambiguous controls.",
         ],
       },
       {
         heading: "Evidence travels with the work",
         paragraphs: [
-          "The phone is also where evidence is created: site photos, plan uploads, job notes. The file manager's upload, version and integrity-verify flows are designed to run from a phone browser against private workspace storage, with the SHA-256 computed locally before anything is sent. Offline, the app says so plainly — cached screens are presentation, and live queries, uploads and payments wait for the network.",
+          "The phone is also where evidence is created: site photos, plan uploads, job notes. The file manager's upload, version and integrity-verify flows are designed to run from a phone browser against private workspace storage, with the SHA-256 computed locally before anything is sent. Offline, the app says so plainly: cached screens are presentation, and live queries, uploads and payments wait for the network.",
         ],
       },
     ],

@@ -152,7 +152,7 @@ export default function AdminActivityPage({ isPlatformAdmin }: AdminActivityPage
         <>
           <Card className="overflow-hidden">
             <CardContent className="p-0">
-              <ResponsiveTable>
+              <ResponsiveTable records>
                 <Table className="min-w-[540px]">
                   <TableHeader>
                     <TableRow>

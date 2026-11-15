@@ -1205,7 +1205,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                   className="pl-8 pr-7 h-9"
                 />
                 {search && (
-                  <button type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search">
+                  <button type="button" onClick={() => setSearch("")} className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear search">
                     <X size={14} />
                   </button>
                 )}
@@ -1297,7 +1297,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
           )}
 
           <div className="border rounded-none overflow-hidden">
-            <ResponsiveTable>
+            <ResponsiveTable records>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1332,7 +1332,7 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                           aria-label={`Select ${name}`}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-label="File name">
                         <div className="space-y-0.5">
                           <div
                             className={`truncate max-w-[200px] sm:max-w-xs ${canPreviewFile(file) ? "cursor-pointer text-primary hover:underline" : ""}`}
@@ -1389,14 +1389,14 @@ export default function FileManagerPage({ workspaceId }: FileManagerPageProps) {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                      <TableCell data-label="Type" className="hidden sm:table-cell text-muted-foreground">
                         {type}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-right text-muted-foreground">{formatSize(file.size_bytes)}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground">
+                      <TableCell data-label="Size" className="hidden md:table-cell text-right text-muted-foreground">{formatSize(file.size_bytes)}</TableCell>
+                      <TableCell data-label={isTrash ? "Deleted" : "Uploaded"} className="hidden lg:table-cell text-muted-foreground">
                         {formatDateLabel(isTrash ? file.deleted_at ?? file.created_at : file.created_at)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-label="Actions">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${name}`}>

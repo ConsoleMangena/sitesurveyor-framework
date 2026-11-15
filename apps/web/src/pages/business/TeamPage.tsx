@@ -564,7 +564,7 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
                   <TableRow>
                     <TableHead className="min-w-[200px]">Email</TableHead>
                     <TableHead className="w-[100px]">Role</TableHead>
-                    <TableHead className="hidden sm:table-cell w-[120px]">Expires</TableHead>
+                    <TableHead className="w-[120px]">Expires</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -579,7 +579,7 @@ export default function TeamPage({ workspaceId }: TeamPageProps) {
                         {roleLabels[invite.role] ?? invite.role}
                       </TableCell>
                       <TableCell
-                        className="align-middle hidden sm:table-cell whitespace-nowrap"
+                        className="align-middle whitespace-nowrap"
                         data-label="Expires"
                       >
                         {new Date(invite.expires_at).toLocaleDateString()}

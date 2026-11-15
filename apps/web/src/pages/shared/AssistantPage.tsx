@@ -591,7 +591,7 @@ export default function AssistantPage({ onNavigate, workspaceId }: AssistantPage
             title="SiteSurveyor AI runs on NVIDIA Nemotron 3 Ultra"
           >
             <span className="web3-live-dot" aria-hidden="true" />
-            {ENGINE_LABEL}
+            <span className="hidden sm:inline">{ENGINE_LABEL}</span>
           </span>
         </header>
 

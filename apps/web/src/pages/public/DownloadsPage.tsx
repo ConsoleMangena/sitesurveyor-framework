@@ -36,7 +36,7 @@ const PLATFORMS: Array<{
 ];
 
 export default function DownloadsPage() {
-  useDocumentTitle("Desktop downloads — SiteSurveyor");
+  useDocumentTitle("Desktop downloads | SiteSurveyor");
   const user = useAuthStore((state) => state.user);
 
   return (
@@ -44,7 +44,7 @@ export default function DownloadsPage() {
         <PublicHero
           id="downloads-heading"
           title="SiteSurveyor for your desktop"
-          description="The same workspace as a native window — project workflows, file evidence, AI chat, the market and Solana payments, without a browser tab. Built with Tauri (Rust)."
+          description="The same workspace as a native window: project workflows, file evidence, AI chat, the market and Solana payments, without a browser tab. Built with Tauri (Rust)."
           image="scanning"
         >
           <ul className="grid gap-4 sm:grid-cols-3">
@@ -81,7 +81,7 @@ export default function DownloadsPage() {
           </h2>
           <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
             Two commands from the repository root produce installers for the machine you are on.
-            Requires Node 22.18+, Rust stable and the platform's build tooling — see{" "}
+            Requires Node 22.18+, Rust stable and the platform's build tooling. See{" "}
             <span className="web3-mono text-foreground">apps/desktop/README.md</span> for the full
             matrix.
           </p>

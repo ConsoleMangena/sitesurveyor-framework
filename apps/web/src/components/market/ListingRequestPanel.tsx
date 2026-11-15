@@ -230,7 +230,7 @@ export function ListingRequestPanel({
               {request.status}
             </span>
             {request.status === "accepted" ? (
-              <span className="text-muted-foreground"> — you can pay now</span>
+              <span className="text-muted-foreground">: you can pay now</span>
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">

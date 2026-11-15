@@ -34,11 +34,11 @@ describe("AuthShell", () => {
     expect(screen.getByText("New to SiteSurveyor?")).toBeInTheDocument();
   });
 
-  it("keeps the public-market escape hatch and theme toggle", () => {
+  it("keeps the marketplace escape hatch and theme toggle", () => {
     renderShell();
 
-    const marketLink = screen.getByRole("link", { name: /public market|home/i });
-    expect(marketLink).toHaveAttribute("href", "/");
+    const marketLink = screen.getByRole("link", { name: /surveyor's market|market/i });
+    expect(marketLink).toHaveAttribute("href", "/market");
     expect(
       screen.getByRole("button", { name: /switch to (light|dark) theme/i }),
     ).toBeInTheDocument();

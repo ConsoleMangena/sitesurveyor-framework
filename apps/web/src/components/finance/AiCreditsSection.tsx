@@ -148,7 +148,7 @@ export default function AiCreditsSection({
       />
 
       <div className="border rounded-none overflow-hidden">
-        <ResponsiveTable>
+            <ResponsiveTable records>
           <Table>
             <TableHeader>
               <TableRow>
@@ -184,16 +184,17 @@ export default function AiCreditsSection({
               ) : (
                 entries.map((entry) => (
                   <TableRow key={entry.id}>
-                    <TableCell className="whitespace-nowrap text-sm">{formatDate(entry.created_at)}</TableCell>
-                    <TableCell>
+                    <TableCell data-label="Date" className="whitespace-nowrap text-sm">{formatDate(entry.created_at)}</TableCell>
+                    <TableCell data-label="Type">
                       <Badge variant={entry.kind === "usage" ? "secondary" : "success"}>
                         {KIND_LABELS[entry.kind] ?? entry.kind}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell max-w-[280px] truncate text-sm text-muted-foreground">
+                    <TableCell data-label="Detail" className="hidden sm:table-cell max-w-[280px] truncate text-sm text-muted-foreground">
                       {entry.description}
                     </TableCell>
                     <TableCell
+                      data-label="Credits"
                       className={`text-right font-mono text-sm tabular-nums ${
                         Number(entry.credits_delta) < 0 ? "text-destructive" : "text-success"
                       }`}
@@ -201,11 +202,11 @@ export default function AiCreditsSection({
                       {Number(entry.credits_delta) > 0 ? "+" : ""}
                       {Number(entry.credits_delta).toLocaleString()}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-mono text-sm tabular-nums">
+                    <TableCell data-label="Balance after" className="hidden md:table-cell text-right font-mono text-sm tabular-nums">
                       {Number(entry.balance_after).toLocaleString()}
                     </TableCell>
                     {isPlatformAdmin && (
-                      <TableCell className="text-right">
+                      <TableCell data-label="Correction" className="text-right">
                         {reversalFor === entry.id ? (
                           <div className="flex items-center justify-end gap-1.5">
                             <Input

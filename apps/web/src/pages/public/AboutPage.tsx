@@ -25,7 +25,7 @@ const PILLARS = [
   {
     icon: FolderKanban,
     title: "One continuous record",
-    note: "Plan the job, price the quote, dispatch the crew, collect the evidence, invoice the client — every record stays attached to the project it belongs to.",
+    note: "Plan the job, price the quote, dispatch the crew, collect the evidence, invoice the client: every record stays attached to the project it belongs to.",
   },
   {
     icon: FileCheck2,
@@ -40,7 +40,7 @@ const PILLARS = [
   {
     icon: Store,
     title: "The trade's own market",
-    note: "Instruments, professionals, firms, jobs and training — with map discovery and on-chain payment — so demand and supply meet in one place.",
+    note: "Instruments, professionals, firms, jobs and training, with map discovery and on-chain payment, so demand and supply meet in one place.",
   },
 ];
 
@@ -82,13 +82,13 @@ const TRUST_LAYER = [
   {
     icon: Scale,
     title: "On-chain only where it counts",
-    note: "Solana carries wallet sign-in, USDC settlement, and minimal SHA-256 anchor statements — proofs, never content.",
+    note: "Solana carries wallet sign-in, USDC settlement, and minimal SHA-256 anchor statements: proofs, never content.",
   },
 ];
 
 /** How the repository is laid out. */
 const LAYOUT = [
-  { icon: LayoutGrid, name: "apps/web", note: "React 19 + TypeScript PWA — the shared frontend" },
+  { icon: LayoutGrid, name: "apps/web", note: "React 19 + TypeScript PWA, the shared frontend" },
   { icon: Cpu, name: "apps/desktop", note: "Tauri (Rust) desktop shell over the web app" },
   { icon: Leaf, name: "apps/mobile", note: "Placeholder for the Tauri mobile shell" },
   { icon: MapIcon, name: "apps/engine", note: "Python satellite survey engine (worker, MCP server, CLI)" },
@@ -97,7 +97,7 @@ const LAYOUT = [
 ];
 
 export default function AboutPage() {
-  useDocumentTitle(`About — SiteSurveyor`);
+  useDocumentTitle("About | SiteSurveyor");
   const user = useAuthStore((state) => state.user);
 
   return (
@@ -105,7 +105,7 @@ export default function AboutPage() {
         <PublicHero
           id="about-heading"
           title="One workspace to manage and deliver the survey."
-          description="Surveying work usually lives in a paper field book, a spreadsheet and three disconnected systems. SiteSurveyor keeps it in one continuous record instead — so a field professional can run a job end to end, from quote to settled invoice, without leaving the workspace."
+          description="Surveying work usually lives in a paper field book, a spreadsheet and three disconnected systems. SiteSurveyor keeps it in one continuous record instead, so a field professional can run a job end to end, from quote to settled invoice, without leaving the workspace."
           image="calibration"
         >
           <p className="text-xs leading-relaxed text-muted-foreground">
@@ -226,7 +226,7 @@ export default function AboutPage() {
           </h2>
           <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
             SiteSurveyor is an Eineva Labs product and open-source initiative. Commit defaults are
-            Solana devnet and PesePay sandbox — demonstration values, not production settlement.
+            Solana devnet and PesePay sandbox: demonstration values, not production settlement.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link

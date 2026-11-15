@@ -250,7 +250,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
                 What are you looking for?
               </p>
               <p className="mx-auto max-w-[34ch] text-micro leading-5 text-muted-foreground">
-                I search the live market — instruments, people, jobs, firms and
+                I search the live market: instruments, people, jobs, firms and
                 training.
               </p>
             </div>

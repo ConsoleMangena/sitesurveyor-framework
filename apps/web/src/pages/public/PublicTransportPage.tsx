@@ -324,7 +324,7 @@ export default function PublicTransportPage() {
 
   const handleBookingConfirmed = useCallback((booking: HireBooking) => {
     setRecentBookings((previous) => [booking, ...previous.slice(0, 19)]);
-    toast.success(`Trip booked — ${booking.bookingRef}`, {
+    toast.success(`Trip booked: ${booking.bookingRef}`, {
       description: `${booking.vehicle.model} · ${booking.vehicle.driverName} · $${booking.fareBreakdown.totalFare.toFixed(2)}`,
     });
   }, []);
@@ -346,7 +346,7 @@ export default function PublicTransportPage() {
     if (!next) return;
     setRecentBookings(updateBookingStatus(booking.bookingRef, next.status));
     if (next.status === "completed") {
-      toast.success(`Trip completed — ${booking.bookingRef}`, {
+      toast.success(`Trip completed: ${booking.bookingRef}`, {
         description: `${booking.vehicle.model} · $${booking.fareBreakdown.totalFare.toFixed(2)}`,
       });
     }
@@ -448,7 +448,7 @@ export default function PublicTransportPage() {
                 </span>
               </div>
               <p className="mt-3 text-micro font-medium text-muted-foreground">
-                Illustrative only — not live availability.
+                Illustrative only, not live availability.
               </p>
             </div>
 

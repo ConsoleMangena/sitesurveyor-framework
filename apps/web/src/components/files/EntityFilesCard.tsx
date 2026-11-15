@@ -404,7 +404,7 @@ export function EntityFilesCard({
             )}
           </Empty>
         ) : (
-          <ResponsiveTable>
+          <ResponsiveTable records>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -422,7 +422,7 @@ export function EntityFilesCard({
                   const isBusy = busyFileId === file.id;
                   return (
                     <TableRow key={file.id}>
-                      <TableCell>
+                      <TableCell data-label="File">
                         <div className="flex items-center gap-2">
                           <FileTypeIcon path={file.storage_path} mime={file.mime_type} />
                           <div>
@@ -433,16 +433,16 @@ export function EntityFilesCard({
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
+                      <TableCell data-label="Type" className="hidden text-sm text-muted-foreground sm:table-cell">
                         {category}
                       </TableCell>
-                      <TableCell className="hidden text-right text-sm text-muted-foreground md:table-cell">
+                      <TableCell data-label="Size" className="hidden text-right text-sm text-muted-foreground md:table-cell">
                         {formatSize(file.size_bytes)}
                       </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
+                      <TableCell data-label="Uploaded" className="hidden text-sm text-muted-foreground lg:table-cell">
                         {formatDate(file.created_at)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-label="Actions">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             size="icon"

@@ -13,7 +13,7 @@ import {
 } from "../../lib/content/journal.ts"
 
 export default function JournalPage() {
-  useDocumentTitle("Blogs — SiteSurveyor")
+  useDocumentTitle("Blogs | SiteSurveyor")
 
   const entries = [...JOURNAL_ENTRIES].sort((a, b) => b.date.localeCompare(a.date))
 

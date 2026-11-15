@@ -396,7 +396,7 @@ export default function BillingLedgerSection({
             </Empty>
           ) : (
             <div className="border rounded-none overflow-hidden">
-              <ResponsiveTable>
+              <ResponsiveTable records>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -413,13 +413,13 @@ export default function BillingLedgerSection({
                   <TableBody>
                     {filtered.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="whitespace-nowrap text-sm">
+                        <TableCell data-label="Date" className="whitespace-nowrap text-sm">
                           <time dateTime={row.created_at}>
                             {new Date(row.created_at).toLocaleString()}
                           </time>
                         </TableCell>
-                        <TableCell className="text-sm">{pesepayKindLabel(row.kind)}</TableCell>
-                        <TableCell className="hidden md:table-cell max-w-[260px] text-sm text-muted-foreground">
+                        <TableCell data-label="Type" className="text-sm">{pesepayKindLabel(row.kind)}</TableCell>
+                        <TableCell data-label="Detail" className="hidden md:table-cell max-w-[260px] text-sm text-muted-foreground">
                           <span className="block truncate">{row.description}</span>
                           {row.status === "refunded" && row.refund_reason ? (
                             <span className="block truncate text-xs">
@@ -427,21 +427,21 @@ export default function BillingLedgerSection({
                             </span>
                           ) : null}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums">
+                        <TableCell data-label="Amount" className="text-right font-mono text-sm tabular-nums">
                           {row.kind === "deposit" ? "+ " : ""}
                           {formatMoney(Number(row.amount), row.currency_code)}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell text-right font-mono text-xs tabular-nums text-muted-foreground">
+                        <TableCell data-label="Fee" className="hidden lg:table-cell text-right font-mono text-xs tabular-nums text-muted-foreground">
                           {Number(row.estimated_payment_fee) > 0
                             ? formatMoney(Number(row.estimated_payment_fee), row.currency_code)
                             : "—"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-label="Status">
                           <Badge variant={pesepayStatusVariant(row.status)}>
                             {pesepayStatusLabel(row.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell data-label="Reference" className="hidden sm:table-cell">
                           {row.pesepay_reference ? (
                             <span
                               className="block max-w-40 truncate font-mono text-xs"
@@ -453,7 +453,7 @@ export default function BillingLedgerSection({
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell data-label="Actions" className="text-right">
                           {row.status === "pending" && row.kind !== "invoice_payment" ? (
                             <Button
                               variant="outline"

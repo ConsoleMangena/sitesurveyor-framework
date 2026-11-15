@@ -158,7 +158,7 @@ function CartSheetBody({ buyer, onClose }: { buyer: CartBuyer | null; onClose: (
             <Alert key={item.listingId} variant="destructive">
               <TriangleAlert className="size-4" />
               <AlertDescription>
-                <span className="font-medium">{item.name}</span> — {message}
+                <span className="font-medium">{item.name}</span>: {message}
               </AlertDescription>
             </Alert>
           ))}

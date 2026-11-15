@@ -41,6 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import type { WorkspaceRowAdmin } from "@/lib/repositories/adminPlatform";
 
@@ -252,7 +253,7 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
         </ToggleGroup>
       </div>
 
-      <div className="overflow-x-auto">
+      <ResponsiveTable records>
         <Table className="min-w-[640px]">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -295,7 +296,7 @@ export function RecentWorkspacesTable({ workspaces, ownerLabels }: RecentWorkspa
             )}
           </TableBody>
         </Table>
-      </div>
+      </ResponsiveTable>
 
       <div className="flex flex-col gap-3 px-4 pb-1 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-muted-foreground text-sm">

@@ -61,7 +61,7 @@ export function SampleBadge() {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2 py-0.5 text-micro font-semibold text-muted-foreground"
-      title="Sample content from a demo workspace — it cannot accept requests or orders"
+      title="Sample content from a demo workspace. It cannot accept requests or orders"
     >
       Sample
     </span>

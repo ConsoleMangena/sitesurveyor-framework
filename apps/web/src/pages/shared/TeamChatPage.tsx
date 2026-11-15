@@ -2,12 +2,9 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
   ArrowLeft,
   ChevronDown,
-  ImagePlus,
   Loader2,
   MessageSquare,
-  Paperclip,
   Pencil,
-  Plus,
   Reply,
   Send,
   Trash2,
@@ -18,6 +15,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button.tsx";
 import ErrorNotice from "@/components/errors/ErrorNotice.tsx";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar.tsx";
 import { ChatRoster } from "./ChatRoster.tsx";
@@ -684,25 +682,31 @@ export default function TeamChatPage({
       </aside>
 
       {showMobileRoster && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowMobileRoster(false)}
-          />
-          <div className="absolute inset-y-0 left-0 z-10 flex w-72 flex-col border-r border-border bg-background">
-            <ChatRoster
-              members={members}
-              messages={messages}
-              search={rosterSearch}
-              onSearchChange={setRosterSearch}
-              onJump={(id) => {
-                scrollToMessage(id);
-                setShowMobileRoster(false);
-              }}
-              highlightedId={highlightedId}
-            />
-          </div>
-        </div>
+        <Sheet open={showMobileRoster} onOpenChange={setShowMobileRoster}>
+          <SheetContent
+            side="left"
+            className="w-72 max-w-[85vw] border-r p-0"
+          >
+            <SheetHeader className="border-b px-3 py-3 text-left">
+              <SheetTitle className="text-sm font-semibold text-foreground">
+                Team members
+              </SheetTitle>
+            </SheetHeader>
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <ChatRoster
+                members={members}
+                messages={messages}
+                search={rosterSearch}
+                onSearchChange={setRosterSearch}
+                onJump={(id) => {
+                  scrollToMessage(id);
+                  setShowMobileRoster(false);
+                }}
+                highlightedId={highlightedId}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
@@ -965,33 +969,6 @@ export default function TeamChatPage({
           <ReplyBanner replyTo={replySnapshot} onCancel={() => setReplyTo(null)} />
         )}
         <div className="flex items-center gap-2 rounded-none border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hidden size-9 rounded-none text-muted-foreground lg:inline-flex"
-            aria-label="Add files"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hidden size-9 rounded-none text-muted-foreground lg:inline-flex"
-            aria-label="Attach image"
-          >
-            <ImagePlus className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hidden size-9 rounded-none text-muted-foreground lg:inline-flex"
-            aria-label="Attach file"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
           <input
             ref={composerRef}
             type="text"
@@ -1021,13 +998,14 @@ export default function TeamChatPage({
         </div>
       </form>
       <div className="-mt-2 flex items-center justify-between px-1 text-[10px] text-muted-foreground/60">
-        <span>
+        <span className="hidden sm:inline">
           Enter to send · Shift+Enter for a new line
           {replySnapshot ? " · Esc to cancel reply" : ""}
         </span>
         {inputValue.length > MAX_MESSAGE_LENGTH - 200 && (
           <span
             className={cn(
+              "ml-auto sm:ml-0",
               inputValue.length >= MAX_MESSAGE_LENGTH &&
                 "font-medium text-destructive"
             )}

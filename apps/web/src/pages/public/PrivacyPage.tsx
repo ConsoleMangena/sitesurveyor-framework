@@ -17,7 +17,7 @@ const SECTIONS: Array<{
   {
     id: "storage",
     title: "What is stored, and where",
-    body: "Account profiles, quotes, jobs, invoices and operational records live in a managed Postgres database (Supabase) protected by row-level security. Original survey files — plans, photos, point clouds — are stored as private objects in workspace storage. File metadata (names, digests, versions) sits alongside the records the files document.",
+    body: "Account profiles, quotes, jobs, invoices and operational records live in a managed Postgres database (Supabase) protected by row-level security. Original survey files (plans, photos, point clouds) are stored as private objects in workspace storage. File metadata (names, digests, versions) sits alongside the records the files document.",
   },
   {
     id: "on-chain",
@@ -39,11 +39,11 @@ const SECTIONS: Array<{
 const CONTROLS = [
   "Connect or disconnect sign-in methods from Account → Security.",
   "Files support versioning, restore and soft delete; permanent delete requires confirmation.",
-  "Encrypted full-file copies are sealed under a passphrase only you hold — losing it leaves the original intact but the copies unrebuildable.",
+  "Encrypted full-file copies are sealed under a passphrase only you hold; losing it leaves the original intact but the copies unrebuildable.",
 ]
 
 export default function PrivacyPage() {
-  useDocumentTitle("Privacy — SiteSurveyor")
+  useDocumentTitle("Privacy | SiteSurveyor")
 
   return (
     <PublicPage section="Privacy">

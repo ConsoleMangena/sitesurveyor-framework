@@ -793,7 +793,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
           </div>
 
           {activeTab === "time" ? (
-            <ResponsiveTable>
+            <ResponsiveTable records>
               {filteredTimeEntries.length === 0 ? (
                 renderEmptyState()
               ) : (
@@ -857,7 +857,7 @@ export default function TimeTrackingPage({ workspaceId }: TimeTrackingPageProps)
               )}
             </ResponsiveTable>
           ) : (
-            <ResponsiveTable>
+            <ResponsiveTable records>
               {filteredExpenseEntries.length === 0 ? (
                 renderEmptyState()
               ) : (

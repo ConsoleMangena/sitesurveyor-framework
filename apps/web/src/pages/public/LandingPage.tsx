@@ -82,7 +82,7 @@ const QUICK_START = [
 
 /** The public home. The authenticated workspace lives at `/workspace`. */
 export default function LandingPage() {
-  useDocumentTitle("SiteSurveyor — Plan the work. Prove the survey.");
+  useDocumentTitle("SiteSurveyor | Plan the work. Prove the survey.");
   const user = useAuthStore((state) => state.user);
   const workspacePath = user ? "/workspace" : "/signup";
 
@@ -96,7 +96,7 @@ export default function LandingPage() {
             </h1>
             <div>
               <p className="public-home-intro">
-                One open workspace that runs a survey job from quote to cash — with the crew, site files and evidence connected throughout.
+                One open workspace that runs a survey job from quote to cash, with the crew, site files and evidence connected throughout.
               </p>
               <div className="public-home-hero-actions">
                 <Link to={workspacePath} className="public-home-primary">
@@ -226,6 +226,18 @@ export default function LandingPage() {
               <div className="public-home-fact"><dt><CloudOff className="mr-2 inline size-4 text-primary" aria-hidden="true" />Infrastructure under your control</dt><dd>Open-source software with BYO infrastructure and an offline-capable desktop workspace.</dd></div>
             </dl>
           </div>
+        </div>
+      </section>
+
+      <section className="public-home-container public-photo-feature public-photo-feature-grid" aria-labelledby="chain-heading">
+        <div className="public-photo-feature-copy">
+          <h2 id="chain-heading">Proofs on chain. Content stays private.</h2>
+          <p>Connect a Solana wallet to anchor SHA-256 digests and settle invoices in USDC. The chain carries wallet-signed statements, while your files, coordinates and client records stay in the workspace.</p>
+          <Link to="/help#anchoring" className="public-home-secondary">See how anchoring works <ArrowRight className="size-4" aria-hidden="true" /></Link>
+        </div>
+        <div className="public-home-chain-grid">
+          <SurveyPhoto image="blockchain-wallet" />
+          <SurveyPhoto image="blockchain-signing" />
         </div>
       </section>
 

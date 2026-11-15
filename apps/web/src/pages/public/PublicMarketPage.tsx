@@ -119,14 +119,14 @@ const LISTING_TYPE_OPTIONS = [
 const PRICE_OPTIONS = [
   { value: "all", label: "Any price" },
   { value: "under-100", label: "Under 100" },
-  { value: "100-500", label: "100–500" },
+  { value: "100-500", label: "100-500" },
   { value: "over-500", label: "Over 500" },
 ] as const;
 
 const EXPERIENCE_OPTIONS = [
   { value: "all", label: "Any experience" },
   { value: "0-2", label: "Up to 2 years" },
-  { value: "3-5", label: "3–5 years" },
+  { value: "3-5", label: "3-5 years" },
   { value: "6-plus", label: "6+ years" },
 ] as const;
 
@@ -193,7 +193,7 @@ export default function PublicMarketPage() {
   const navigate = useNavigate();
   const market = useSolanaMarketFeed();
   useDocumentTitle(
-    "Surveyor's Market — instruments, surveyors, jobs and training | SiteSurveyor",
+    "Surveyor's Market: instruments, surveyors, jobs and training | SiteSurveyor",
   );
   // Demo rows seeded by the sample workspace look exactly like real supply;
   // they are badged here so a visitor never waits on a demo seller.
@@ -1655,12 +1655,12 @@ function LoadErrorPanel({
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">
         {failure.reason === "timeout"
-          ? "The request didn't complete in time — check your connection."
+          ? "The request didn't complete in time. Check your connection."
           : "The market data couldn't be loaded."}
       </p>
       {failure.missingRelation ? (
         <p className="mx-auto mt-3 max-w-md rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-left text-xs text-warning">
-          public_market views not found — apply backend/sql migrations 0001–0004
+          public_market views not found. Apply backend/sql migrations 0001-0004
           to this Supabase project (supabase db push).
         </p>
       ) : null}

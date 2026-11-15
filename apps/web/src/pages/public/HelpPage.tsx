@@ -19,7 +19,7 @@ const TOPICS: Array<{
       {
         question: "What does the wallet signature mean?",
         answer:
-          "A signature proves you control the wallet — it is not a payment. Sign-in never asks for a seed phrase.",
+          "A signature proves you control the wallet. It is not a payment. Sign-in never asks for a seed phrase.",
       },
       {
         question: "Duplicate email?",
@@ -60,7 +60,7 @@ const TOPICS: Array<{
   {
     id: "ai",
     title: "AI assistant",
-    summary: "Calls real tools against your workspace — not just text.",
+    summary: "Calls real tools against your workspace, not just text.",
     details: [
       {
         question: "What can it do?",
@@ -70,7 +70,7 @@ const TOPICS: Array<{
       {
         question: "Can it draft CAD?",
         answer:
-          "No — the assistant reads drawings but no screen executes CAD commands.",
+          "No. The assistant reads drawings, but no screen executes CAD commands.",
       },
     ],
   },
@@ -99,7 +99,7 @@ const TOPICS: Array<{
       {
         question: "How do payments work?",
         answer:
-          "USDC settles on the selected cluster. Card & mobile money funds a prepaid balance — sandbox keys in development.",
+          "USDC settles on the selected cluster. Card & mobile money funds a prepaid balance (sandbox keys in development).",
       },
       {
         question: "Marketplace orders?",
@@ -123,7 +123,7 @@ const TOPICS: Array<{
   {
     id: "offline",
     title: "Offline",
-    summary: "PWA with caching — live queries, uploads and payments need network.",
+    summary: "PWA with caching. Live queries, uploads and payments need network.",
     details: [
       {
         question: "What works offline?",
@@ -135,14 +135,14 @@ const TOPICS: Array<{
 ]
 
 export default function HelpPage() {
-  useDocumentTitle("Help — SiteSurveyor")
+  useDocumentTitle("Help | SiteSurveyor")
 
   return (
     <PublicPage section="Help">
       <PublicHero
         id="help-heading"
         title="How SiteSurveyor works"
-        description="Accounts, workflow, evidence, money and networks — the way the product actually behaves."
+        description="Accounts, workflow, evidence, money and networks: the way the product actually behaves."
         image="receiver"
       />
 

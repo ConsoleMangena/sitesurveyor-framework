@@ -79,6 +79,26 @@ export const SURVEY_PHOTOS = {
     width: 900,
     height: 675,
   },
+  "blockchain-wallet": {
+    src: "/images/market/equipment/blockchain-ledger-wallet.jpg",
+    alt: "A hardware cryptocurrency wallet connected to a laptop for cryptographic signing",
+    caption: "Wallet-signed SHA-256 digests anchor evidence without putting files on chain.",
+    author: "Motokoka · Wikimedia Commons",
+    licence: "CC BY-SA 4.0",
+    href: "https://commons.wikimedia.org/wiki/File:Ledger_Nano_S_-_Hard_Wallet_-_Cold_Storage_for_Cryptocurrency_05.jpg",
+    width: 960,
+    height: 720,
+  },
+  "blockchain-signing": {
+    src: "/images/market/equipment/blockchain-wallet-signing.jpg",
+    alt: "A touchscreen hardware wallet displaying a transaction confirmation screen",
+    caption: "Every on-chain anchor and settlement requires an explicit signature.",
+    author: "FlippyFlink · Wikimedia Commons",
+    licence: "CC0",
+    href: "https://commons.wikimedia.org/wiki/File:Trezor_Safe_7.jpg",
+    width: 960,
+    height: 1280,
+  },
 } as const;
 
 export type SurveyPhotoKey = keyof typeof SURVEY_PHOTOS;

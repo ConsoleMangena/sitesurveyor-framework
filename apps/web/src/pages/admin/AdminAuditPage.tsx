@@ -216,7 +216,7 @@ export default function AdminAuditPage({ isPlatformAdmin }: AdminAuditPageProps)
         <>
           <Card className="overflow-hidden">
             <CardContent className="p-0">
-              <ResponsiveTable>
+              <ResponsiveTable records>
                 <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>

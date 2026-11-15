@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { cn } from "@/lib/utils";
 import type { ProjectWithOrg } from "@/lib/repositories/projects";
@@ -240,7 +241,7 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
           ))}
         </ToggleGroup>
 
-        <div className="w-full overflow-x-auto">
+        <ResponsiveTable records>
           <Table className="min-w-[520px]">
             <TableHeader className="border-t">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -283,7 +284,7 @@ export function RecentProjectsTable({ projects }: RecentProjectsTableProps) {
               )}
             </TableBody>
           </Table>
-        </div>
+        </ResponsiveTable>
       </div>
     </DashboardCard>
   );

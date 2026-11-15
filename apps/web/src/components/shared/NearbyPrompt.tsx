@@ -81,7 +81,7 @@ export function NearbyPrompt({ geo, count, noun = "results", className }: Nearby
         {status === "locating" ? "Locating…" : "Use my location"}
       </Button>
       <span className="text-xs leading-5 text-muted-foreground">
-        Group everything by how close it is to you — no coordinates to type.
+        Group everything by how close it is to you, no coordinates to type.
       </span>
     </div>
   );

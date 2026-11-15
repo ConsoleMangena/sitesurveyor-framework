@@ -170,7 +170,7 @@ export default function StorageSection({
       />
 
       <div className="border rounded-none overflow-hidden">
-        <ResponsiveTable>
+        <ResponsiveTable records>
           <Table>
             <TableHeader>
               <TableRow>
@@ -204,22 +204,22 @@ export default function StorageSection({
                     new Date(purchase.expires_at).getTime() <= loadedAtMs;
                   return (
                     <TableRow key={purchase.id}>
-                      <TableCell className="whitespace-nowrap text-sm">
+                      <TableCell data-label="Purchased" className="whitespace-nowrap text-sm">
                         {formatDate(purchase.created_at)}
                       </TableCell>
-                      <TableCell className="font-mono text-sm tabular-nums">
+                      <TableCell data-label="Capacity" className="font-mono text-sm tabular-nums">
                         {Number(purchase.storage_mb).toLocaleString()} MB
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell whitespace-nowrap text-sm">
+                      <TableCell data-label="Valid until" className="hidden sm:table-cell whitespace-nowrap text-sm">
                         {purchase.expires_at ? formatDate(purchase.expires_at) : "Base allowance"}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell whitespace-nowrap text-sm text-muted-foreground">
+                      <TableCell data-label="Paid" className="hidden md:table-cell whitespace-nowrap text-sm text-muted-foreground">
                         {purchase.payment_method}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
+                      <TableCell data-label="Amount" className="text-right font-mono text-sm tabular-nums">
                         ${Number(purchase.amount).toFixed(2)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-label="Status">
                         <Badge variant={expired ? "secondary" : "success"}>
                           {expired ? "Expired" : "Active"}
                         </Badge>

@@ -13,7 +13,7 @@ import {
 export default function JournalPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const entry = slug ? getJournalEntry(slug) : undefined
-  useDocumentTitle(entry ? `${entry.title} — SiteSurveyor Blogs` : "Blogs — SiteSurveyor")
+  useDocumentTitle(entry ? `${entry.title} | SiteSurveyor Blogs` : "Blogs | SiteSurveyor")
 
   if (!entry) {
     return <Navigate to="/journal" replace />
@@ -45,7 +45,7 @@ export default function JournalPostPage() {
           {entry.synthetic ? (
             <div className="mt-4 flex items-start gap-2 rounded-md border border-dashed bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Examples are illustrative — they describe how the product works, not production records.
+              Examples are illustrative. They describe how the product works, not production records.
             </div>
           ) : null}
         </header>

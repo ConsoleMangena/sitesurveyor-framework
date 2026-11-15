@@ -109,7 +109,7 @@ export function NavUser({ user, onProfile, onLogout }: NavUserProps) {
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-accent text-start transition-colors"
                 >
                   <Store className="size-4 shrink-0 text-muted-foreground" />
-                  <span>Public market</span>
+                  <span>Surveyor's Market</span>
                 </Link>
                 <button
                   type="button"
@@ -183,7 +183,7 @@ export function NavUser({ user, onProfile, onLogout }: NavUserProps) {
               />
               <AccountMenuItem
                 icon={Store}
-                label="Public market"
+                label="Surveyor's Market"
                 to="/market"
                 onClick={handleMarket}
               />

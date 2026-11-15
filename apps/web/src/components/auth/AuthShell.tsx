@@ -53,10 +53,10 @@ export default function AuthShell({
 
         <section className="auth-side">
           <header className="auth-side-bar">
-            <Link to="/" className="auth-escape">
+            <Link to="/market" className="auth-escape">
               <Store className="size-4" aria-hidden="true" />
-              <span className="auth-escape-full">Public market</span>
-              <span className="auth-escape-short">Home</span>
+              <span className="auth-escape-full">Surveyor's Market</span>
+              <span className="auth-escape-short">Market</span>
             </Link>
             <ThemeToggle />
           </header>

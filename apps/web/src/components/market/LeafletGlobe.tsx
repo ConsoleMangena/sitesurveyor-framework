@@ -233,7 +233,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
           alt: `${members.length} market pins here, press Enter to open`,
         });
         marker.bindTooltip(
-          `${members.length} pins here — click to ${
+          `${members.length} pins here, click to ${
             hasSpread(members) && map.getZoom() < MAX_CLUSTER_ZOOM
               ? "zoom in"
               : "list them"

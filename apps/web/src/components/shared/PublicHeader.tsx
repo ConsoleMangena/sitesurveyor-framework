@@ -39,7 +39,7 @@ export function PublicHeader({ section, actions, account }: PublicHeaderProps) {
           <Link to="/" aria-label="SiteSurveyor home" className="web3-brand">
             <img src="/logo.svg" alt="" className="web3-brand-logo" aria-hidden="true" />
             <span className="web3-brand-name">SiteSurveyor</span>
-            {section ? <span className="sr-only"> — {section}</span> : null}
+            {section ? <span className="sr-only">: {section}</span> : null}
           </Link>
           <PublicNavLinks />
         </div>

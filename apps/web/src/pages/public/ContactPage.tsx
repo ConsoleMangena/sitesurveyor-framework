@@ -20,7 +20,7 @@ const SUBJECT_OPTIONS = [
 type SubjectValue = (typeof SUBJECT_OPTIONS)[number]["value"]
 
 export default function ContactPage() {
-  useDocumentTitle("Contact — SiteSurveyor")
+  useDocumentTitle("Contact | SiteSurveyor")
 
   const { openAssistant } = useAssistant()
   const [subject, setSubject] = useState<SubjectValue>("support")
@@ -43,7 +43,7 @@ export default function ContactPage() {
       <PublicHero
         id="contact-heading"
         title="Contact"
-        description="Product questions, listings, security reports — write to us."
+        description="Product questions, listings and security reports: write to us."
         image="levelling"
       />
 
@@ -122,7 +122,7 @@ export default function ContactPage() {
                 {CONTACT_EMAIL}
               </a>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Security reports: describe the issue without exploit details — we follow up first.
+                Security reports: describe the issue without exploit details, and we follow up first.
               </p>
             </div>
 

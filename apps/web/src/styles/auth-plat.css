@@ -22,7 +22,7 @@
   display: grid;
   grid-template-columns: 1fr;
   width: 100%;
-  max-width: 1180px;
+  max-width: 1360px;
   min-height: 100svh;
   background: var(--card);
   color: var(--card-foreground);
@@ -550,22 +550,20 @@
   --auth-measure: 34rem;
 }
 
-/* A wide screen is a short one most of the time: the working block takes the
+/* A desktop sheet is taller than most forms need: the working block takes the
    height the column has left and settles in the middle of it, so the sheet
-   reads composed instead of top-piled. The two hooks mark the ends of that
-   block — the air goes above the first and below the last, so nothing inside
-   it drifts apart. Auto margins collapse to nothing once the block is taller
-   than the space, so a long form is never cut. */
-.auth-side-body--wide > .auth-content {
-  flex: 1 0 auto;
-}
+   reads composed instead of top-piled. The sheet's own edges — the brand bar
+   and the footer band — stay pinned; only the working block floats. Auto
+   margins collapse to nothing once the block is taller than the space, so a
+   long form is never cut. */
+@media (min-width: 1024px) {
+  .auth-side-body > :first-child {
+    margin-block-start: auto;
+  }
 
-.auth-side-body--wide .auth-group-start {
-  margin-block-start: auto;
-}
-
-.auth-side-body--wide .auth-group-end {
-  margin-block-end: auto;
+  .auth-side-body > :last-child {
+    margin-block-end: auto;
+  }
 }
 
 .auth-brand {
@@ -902,7 +900,11 @@ button.auth-field-row:focus-visible {
        eats the bottom of the title block. */
     grid-template-rows: minmax(0, 1fr);
     min-height: 0;
-    height: clamp(560px, calc(100svh - 88px), 880px);
+    /* The sheet fills the board's working area: its height is the viewport
+       minus the board's own padding at that height, so the margins around the
+       sheet stay even instead of growing a fixed 88px band. The 1120px ceiling
+       keeps extreme portrait monitors from stretching the form absurdly. */
+    height: clamp(560px, calc(100svh - clamp(40px, 8svh, 88px)), 1120px);
     border: 1px solid var(--border);
     border-radius: calc(var(--radius) + 6px);
     box-shadow:
