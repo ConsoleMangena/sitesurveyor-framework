@@ -185,7 +185,7 @@ export function Web3MarketTerminal({
             role="tab"
             aria-selected={activeToken === "SOL"}
             onClick={() => setActiveToken("SOL")}
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150"
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 max-sm:min-h-9"
             style={{
               background:
                 activeToken === "SOL"
@@ -224,7 +224,7 @@ export function Web3MarketTerminal({
             role="tab"
             aria-selected={activeToken === "USDC"}
             onClick={() => setActiveToken("USDC")}
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150"
+            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 max-sm:min-h-9"
             style={{
               background:
                 activeToken === "USDC"
@@ -266,7 +266,7 @@ export function Web3MarketTerminal({
             disabled={loading}
             title="Refresh on-chain market feed"
             aria-label="Refresh feed"
-            className="inline-flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+            className="inline-flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/5 max-sm:min-h-9 max-sm:min-w-9"
             style={{
               color: "var(--web3-text-muted)",
               border: "1px solid var(--web3-border)",
@@ -281,7 +281,7 @@ export function Web3MarketTerminal({
           <button
             type="button"
             onClick={() => setIsChartExpanded((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all max-sm:min-h-9"
             style={{
               background: isChartExpanded ? "var(--web3-panel)" : "var(--web3-bg)",
               color: "var(--web3-text)",
@@ -520,7 +520,7 @@ export function Web3MarketTerminal({
           <button
             type="button"
             onClick={() => setIsChartExpanded(true)}
-            className="text-xs font-semibold hover:underline"
+            className="text-xs font-semibold hover:underline max-sm:inline-flex max-sm:min-h-9 max-sm:items-center"
             style={{ color: "var(--web3-brand)" }}
           >
             Show Technical Candlestick Chart →

@@ -481,6 +481,29 @@
     color: var(--foreground);
   }
 
+  /* A fixed three-cell readout (the route planner). auto-fit would collapse
+     spare tracks into 1px slivers of the rule colour and, on a phone, leave
+     the third cell alone beside an empty grey block; three equal columns
+     above phone width and three label/value rows below keep every cell
+     filled at every width. */
+  .web3-ticker--thirds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 40rem) {
+    .web3-ticker--thirds {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .web3-ticker--thirds .web3-ticker-cell {
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+    }
+  }
+
   /* ── Buttons ─────────────────────────────────────────────────── */
 
   .web3-btn {

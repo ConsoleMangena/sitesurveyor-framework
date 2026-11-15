@@ -745,7 +745,7 @@ export const TransportMap = forwardRef<TransportMapHandle, TransportMapProps>(
                 onClick={fitRoute}
                 title="Fit the map to the route"
                 aria-label="Fit the map to the route"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                className="flex min-h-11 items-center gap-1.5 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
               >
                 <IconArrowsMaximize className="size-3.5 text-muted-foreground" aria-hidden="true" />
                 <span className="hidden sm:inline">Fit route</span>

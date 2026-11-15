@@ -1,4 +1,16 @@
 @layer components {
+  /* Sticky bars and anchor jumps on every public page seat against the real
+     header height, which shrinks at the mobile breakpoint. */
+  :root {
+    --public-header-h: 5rem;
+  }
+
+  @media (max-width: 56rem) {
+    :root {
+      --public-header-h: 4.25rem;
+    }
+  }
+
   .public-site-header {
     position: sticky;
     top: 0;
@@ -240,6 +252,8 @@
 
   @media (max-width: 40rem) {
     .public-site-actions { gap: 0.375rem; }
+    /* Icon-only page tools (cart, trips) still need a thumb-sized target. */
+    .public-site-tool { min-width: 2.75rem; justify-content: center; padding: 0 0.375rem; }
     .web3-brand-name { font-size: 0.9375rem; }
     .public-mobile-navigation .public-site-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .public-sign-in-link { padding: 0 0.25rem; font-size: 0.8125rem; }

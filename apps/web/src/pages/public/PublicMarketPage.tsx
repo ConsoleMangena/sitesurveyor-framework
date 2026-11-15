@@ -1012,9 +1012,9 @@ export default function PublicMarketPage() {
           </div>
         </section>
 
-        <section aria-label="Marketplace search and results" ref={registryRef} className="market-registry scroll-mt-16">
+        <section aria-label="Marketplace search and results" ref={registryRef} className="market-registry scroll-mt-[calc(var(--public-header-h)+3.5rem)]">
 
-          <div role="group" aria-label="Marketplace categories" className="sticky top-14 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+          <div role="group" aria-label="Marketplace categories" className="sticky top-[var(--public-header-h)] z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
             <div className="scrollbar-none mx-auto flex w-full max-w-7xl items-center gap-1 overflow-x-auto px-3 sm:px-5">
               {SCOPE_TABS.map((tab) => (
                 <button
@@ -1290,7 +1290,14 @@ export default function PublicMarketPage() {
 
             </div>
 
-            <div className={cn("items-start gap-6", marketView === "split" ? "xl:grid xl:grid-cols-[minmax(0,1fr)_340px]" : "block")}>
+            <div
+              className={cn(
+                "items-start gap-6",
+                marketView === "list"
+                  ? "block"
+                  : cn("grid grid-cols-1", marketView === "split" && "xl:grid-cols-[minmax(0,1fr)_340px]"),
+              )}
+            >
               <div className="min-w-0 space-y-7">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-muted-foreground" aria-live="polite">
@@ -1376,7 +1383,7 @@ export default function PublicMarketPage() {
               </div>
 
               {marketView !== "list" ? (
-                <aside aria-label="Synchronized marketplace map" className={cn("overflow-hidden rounded-2xl border border-border bg-card", marketView === "split" ? "mt-8 xl:sticky xl:top-32 xl:mt-0" : "w-full")}>
+                <aside aria-label="Synchronized marketplace map" className={cn("overflow-hidden rounded-2xl border border-border bg-card", marketView === "split" ? "order-first xl:order-none xl:sticky xl:top-[calc(var(--public-header-h)+4rem)]" : "order-first w-full")}>
                   <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                     <div className="flex items-center gap-2">
                       <MapPinned className="size-4 text-primary" aria-hidden="true" />
@@ -1398,7 +1405,7 @@ export default function PublicMarketPage() {
                       <span className="font-mono text-xs tabular-nums text-muted-foreground">{totalPoints} mapped</span>
                     </div>
                   </div>
-                  <Suspense fallback={<div className={cn("animate-pulse bg-muted/40", marketView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[440px]")} />}>
+                  <Suspense fallback={<div className={cn("animate-pulse bg-muted/40", marketView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[42svh] min-h-[300px] xl:h-[440px]")} />}>
                     <PublicMarketGlobe
                       ref={globeRef}
                       dots={dots}
@@ -1409,7 +1416,7 @@ export default function PublicMarketPage() {
                       failed={failed}
                       onSelect={handlePinSelect}
                       onRetry={retry}
-                      heightClassName={marketView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[440px]"}
+                      heightClassName={marketView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[42svh] min-h-[300px] xl:h-[440px]"}
                     />
                   </Suspense>
                   <div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">Select a pin to view its listing. Selecting a card centers its location.</div>

@@ -503,7 +503,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                             aria-pressed={!hidden}
                             aria-label={`${hidden ? "Show" : "Hide"} ${kind} pins`}
                             onClick={() => toggleKind(kind)}
-                            className={`flex items-center gap-1.5 text-micro font-medium transition-opacity ${
+                            className={`-my-1 flex min-h-8 items-center gap-1.5 py-1 text-micro font-medium transition-opacity ${
                               hidden
                                 ? "opacity-40 line-through"
                                 : "text-foreground"
@@ -534,7 +534,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                   onClick={() => zoomBy(1)}
                   title="Zoom in"
                   aria-label="Zoom in"
-                  className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                  className="flex size-10 items-center justify-center text-foreground transition-colors hover:bg-muted"
                 >
                   <Plus className="size-4" aria-hidden="true" />
                 </button>
@@ -544,7 +544,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                   onClick={() => zoomBy(-1)}
                   title="Zoom out"
                   aria-label="Zoom out"
-                  className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-muted"
+                  className="flex size-10 items-center justify-center text-foreground transition-colors hover:bg-muted"
                 >
                   <Minus className="size-4" aria-hidden="true" />
                 </button>
@@ -559,7 +559,7 @@ const LeafletGlobe = forwardRef<MarketGlobeHandle, LeafletGlobeProps>(
                   setOpenCluster(null);
                   fitToDots();
                 }}
-                className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/92 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:bg-background hover:shadow"
+                className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/92 px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm backdrop-blur-md transition-all hover:bg-background hover:shadow"
                 title="Fit map to the pins"
               >
                 <RotateCcw className="size-3 text-muted-foreground" />

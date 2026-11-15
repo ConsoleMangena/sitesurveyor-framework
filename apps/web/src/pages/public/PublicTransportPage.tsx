@@ -425,7 +425,7 @@ export default function PublicTransportPage() {
       />
 
       <main>
-        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:py-16">
+        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-start lg:gap-12 lg:py-16">
           <div className="max-w-xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-micro font-semibold uppercase tracking-[0.14em] text-primary">
               <IconSteeringWheel className="size-3.5" aria-hidden="true" />
@@ -496,18 +496,18 @@ export default function PublicTransportPage() {
             </div>
 
             <div className="flex-1 space-y-4 px-4 py-4 sm:px-5">
-              <div className="flex items-start gap-3">
-                <div className="mt-1.5 flex shrink-0 flex-col items-center" aria-hidden="true">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-success/12 text-[10px] font-bold text-success ring-1 ring-success/25">
-                    A
-                  </span>
-                  <span className="my-1.5 h-14 w-px border-l border-dashed border-border" />
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary/12 text-[10px] font-bold text-primary ring-1 ring-primary/25">
-                    B
-                  </span>
-                </div>
-
-                <div className="min-w-0 flex-1 space-y-4">
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3">
+                <span
+                  aria-hidden="true"
+                  className="col-start-1 row-start-1 mt-1.5 flex size-6 items-center justify-center rounded-full bg-success/12 text-[10px] font-bold text-success ring-1 ring-success/25"
+                >
+                  A
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="col-start-1 row-span-2 row-start-1 mt-9 w-px justify-self-center border-l border-dashed border-border"
+                />
+                <div className="col-start-2 row-start-1 min-w-0">
                   <LocationSearchField
                     kind="pickup"
                     location={pickup}
@@ -517,7 +517,17 @@ export default function PublicTransportPage() {
                     onTogglePin={() => handleTogglePin("pickup")}
                     onUseLocation={handleUseCurrentLocation}
                   />
+                </div>
+                <div className="col-start-2 row-start-2 min-w-0 py-4">
                   <NearbyPrompt geo={geo} count={baseFleet.length} noun="vehicles" />
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="col-start-1 row-start-3 mt-1.5 flex size-6 items-center justify-center rounded-full bg-primary/12 text-[10px] font-bold text-primary ring-1 ring-primary/25"
+                >
+                  B
+                </span>
+                <div className="col-start-2 row-start-3 min-w-0">
                   <LocationSearchField
                     kind="dropoff"
                     location={dropoff}
@@ -554,7 +564,7 @@ export default function PublicTransportPage() {
               </div>
             </div>
 
-            <div className="web3-ticker shrink-0 border-t border-border/80">
+            <div className="web3-ticker web3-ticker--thirds shrink-0 border-t border-border/80">
               <div className="web3-ticker-cell">
                 <span className="web3-ticker-label">
                   <IconRoad className="size-3.5" aria-hidden="true" />
@@ -580,7 +590,7 @@ export default function PublicTransportPage() {
           </section>
         </section>
 
-        <section ref={fleetRef} className="market-registry mt-10 scroll-mt-16 sm:mt-12">
+        <section ref={fleetRef} className="market-registry mt-10 scroll-mt-[calc(var(--public-header-h)+1rem)] sm:mt-12">
           <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-11 sm:px-6 sm:py-14">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="max-w-2xl">
@@ -839,7 +849,14 @@ export default function PublicTransportPage() {
               ) : null}
             </div>
 
-            <div className={cn("items-start gap-6", fleetView === "split" ? "xl:grid xl:grid-cols-[minmax(0,1fr)_340px]" : "block")}>
+            <div
+              className={cn(
+                "items-start gap-6",
+                fleetView === "list"
+                  ? "block"
+                  : cn("grid grid-cols-1", fleetView === "split" && "xl:grid-cols-[minmax(0,1fr)_340px]"),
+              )}
+            >
               <div className="min-w-0">
                 {filteredFleet.length === 0 ? (
                   <div className="flex flex-col items-center rounded-2xl border border-dashed border-border px-6 py-14 text-center">
@@ -878,7 +895,9 @@ export default function PublicTransportPage() {
                   aria-label="Route and fleet map"
                   className={cn(
                     "market-map-frame overflow-hidden rounded-2xl border border-border/80 bg-card",
-                    fleetView === "split" ? "mt-8 xl:sticky xl:top-32 xl:mt-0" : "mt-8 w-full",
+                    fleetView === "split"
+                      ? "order-first xl:order-none xl:sticky xl:top-[calc(var(--public-header-h)+1.25rem)]"
+                      : "order-first w-full",
                   )}
                 >
                   <div className="flex items-center justify-between gap-3 border-b border-border/80 px-4 py-3">
@@ -899,7 +918,7 @@ export default function PublicTransportPage() {
                     activePinMode={activePinMode}
                     onSelectVehicle={handleSelectVehicle}
                     onCoordinatesChange={handleCoordinatesChange}
-                    className={fleetView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[440px]"}
+                    className={fleetView === "map" ? "h-[65dvh] min-h-[440px]" : "h-[42svh] min-h-[300px] xl:h-[440px]"}
                   />
                   <div className="border-t border-border/80 px-4 py-2.5 text-micro text-muted-foreground">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
