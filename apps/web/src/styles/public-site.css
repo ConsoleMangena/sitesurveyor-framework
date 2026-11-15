@@ -132,7 +132,7 @@
   .public-home-secondary { border: 1px solid var(--border); background: var(--card); }
   .public-home-secondary:hover { background: var(--muted); }
 
-  .public-product-preview { position: relative; overflow: hidden; padding: 2.5rem 2.5rem 0; background: #ece9e2; }
+  .public-product-preview { position: relative; overflow: hidden; margin-top: 3rem; padding: 2.5rem 2.5rem 0; background: #ece9e2; }
   .dark .public-product-preview { background: #202321; }
   .public-product-window { overflow: hidden; border: 1px solid var(--border); border-bottom: 0; border-radius: 0.875rem 0.875rem 0 0; background: var(--card); box-shadow: 0 20px 45px rgb(15 23 42 / 0.12); }
   .public-product-toolbar { display: flex; height: 2.5rem; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 0 1rem; color: var(--muted-foreground); font-size: 0.75rem; }
@@ -244,7 +244,7 @@
     .public-home-hero { padding-top: 4rem; }
     .public-home-hero-grid { grid-template-columns: 1fr; gap: 1.5rem; }
     .public-home-intro { max-width: 36rem; }
-    .public-product-preview { padding: 1.5rem 1.5rem 0; }
+    .public-product-preview { margin-top: 2.5rem; padding: 1.5rem 1.5rem 0; }
     .public-product-body { grid-template-columns: 9rem 1fr; }
     .public-product-sidebar { padding-right: 0.75rem; padding-left: 0.75rem; }
     .public-home-split { gap: 3rem; }
@@ -262,7 +262,7 @@
     .public-home-title { font-size: clamp(1.75rem, 7vw, 2.25rem); letter-spacing: -0.03em; }
     .public-home-hero { padding: 3.5rem 0 2.5rem; }
     .public-home-primary, .public-home-secondary { flex: 1; justify-content: center; }
-    .public-product-preview { padding: 1rem 1rem 0; }
+    .public-product-preview { margin-top: 2rem; padding: 1rem 1rem 0; }
     .public-product-body { display: block; min-height: 0; }
     .public-product-sidebar { display: none; }
     .public-product-main { padding: 1rem; }
