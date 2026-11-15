@@ -13,8 +13,8 @@ import {
   Sparkles,
   Store,
 } from "lucide-react";
-import { PublicNavLinks } from "../../components/shared/PublicNavLinks.tsx";
-import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
+import { PublicPage } from "../../components/shared/PublicPage.tsx";
+import { PublicHero } from "../../components/shared/PublicHero.tsx";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 
@@ -101,49 +101,17 @@ export default function AboutPage() {
   const user = useAuthStore((state) => state.user);
 
   return (
-    <div className="web3-surface">
-      <header className="web3-header">
-        <div className="web3-header-inner">
-          <span className="flex min-w-0 items-baseline gap-2">
-            <Link to="/" aria-label="SiteSurveyor home" className="web3-brand">
-              <img src="/logo.svg" alt="" className="web3-brand-logo" aria-hidden="true" />
-              <span className="web3-brand-name">SiteSurveyor</span>
-            </Link>
-            <span className="web3-brand-sub hidden truncate sm:inline">/ About</span>
-          </span>
-
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <PublicNavLinks />
-            <ThemeToggle />
-            <Link
-              to={user ? "/" : "/login"}
-              className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap px-3 text-xs"
-            >
-              {user ? "Open workspace" : "Sign in"}
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main>
-        {/* ── Hero ─────────────────────────────────────────────────── */}
-        <section aria-labelledby="about-heading" className="border-b border-border/70 bg-card">
-          <div className="mx-auto w-full max-w-5xl px-4 pb-12 pt-14 sm:px-6 sm:pb-16 sm:pt-20">
-            <h1 id="about-heading" className="market-hero-title max-w-3xl text-balance text-foreground">
-              The only workspace a surveyor needs to manage and execute a project
-            </h1>
-            <p className="mt-5 max-w-[65ch] text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Surveying work usually lives in a paper field book, a spreadsheet and three
-              disconnected systems. SiteSurveyor keeps it in one continuous record instead —
-              so a field professional can run a job end to end, from quote to settled invoice,
-              without leaving the workspace.
-            </p>
-            <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
-              Version {APP_VERSION} · A product of Eineva Incorporated · An open-source initiative
-              for safer digital surveying
-            </p>
-          </div>
-        </section>
+    <PublicPage section="About">
+        <PublicHero
+          id="about-heading"
+          title="One workspace to manage and deliver the survey."
+          description="Surveying work usually lives in a paper field book, a spreadsheet and three disconnected systems. SiteSurveyor keeps it in one continuous record instead — so a field professional can run a job end to end, from quote to settled invoice, without leaving the workspace."
+          image="calibration"
+        >
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Version {APP_VERSION} · A product of Eineva Incorporated · An open-source initiative for safer digital surveying
+          </p>
+        </PublicHero>
 
         {/* ── Pillars: the emphasis section ────────────────────────── */}
         <section
@@ -262,7 +230,7 @@ export default function AboutPage() {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
-              to={user ? "/" : "/signup"}
+              to={user ? "/workspace" : "/signup"}
               className="web3-btn web3-btn-primary px-5"
             >
               {user ? "Open your workspace" : "Create an account"}
@@ -272,45 +240,6 @@ export default function AboutPage() {
             </Link>
           </div>
         </section>
-      </main>
-
-      <footer className="border-t border-border/60 py-8">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 text-xs text-muted-foreground sm:px-6">
-          <p>
-            A product of <strong className="text-foreground">Eineva Incorporated</strong> · Version{" "}
-            {APP_VERSION}
-          </p>
-          <nav aria-label="Site links" className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Link to="/market" className="hover:text-foreground">
-              Marketplace
-            </Link>
-            <Link to="/transport" className="hover:text-foreground">
-              Transport
-            </Link>
-            <Link to="/downloads" className="hover:text-foreground">
-              Desktop
-            </Link>
-            <Link to="/journal" className="hover:text-foreground">
-              Journal
-            </Link>
-            <Link to="/help" className="hover:text-foreground">
-              Help
-            </Link>
-            <Link to="/contact" className="hover:text-foreground">
-              Contact
-            </Link>
-            <Link to="/privacy" className="hover:text-foreground">
-              Privacy
-            </Link>
-            <Link to="/terms" className="hover:text-foreground">
-              Terms
-            </Link>
-            <Link to="/about" className="hover:text-foreground" aria-current="page">
-              About
-            </Link>
-          </nav>
-        </div>
-      </footer>
-    </div>
+    </PublicPage>
   );
 }

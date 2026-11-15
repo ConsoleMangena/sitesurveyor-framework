@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom"
+import { PublicHero } from "../../components/shared/PublicHero.tsx"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
+import { PublicSection } from "../../components/shared/PublicSection.tsx"
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
 
 const SECTIONS: Array<{
@@ -45,18 +47,14 @@ export default function PrivacyPage() {
 
   return (
     <PublicPage section="Privacy">
-      <section aria-labelledby="privacy-heading" className="border-b bg-card">
-        <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-20">
-          <h1 id="privacy-heading" className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Privacy
-          </h1>
-          <p className="mt-3 max-w-xl text-base text-muted-foreground">
-            What we store, what leaves your workspace, and what reaches a public blockchain.
-          </p>
-        </div>
-      </section>
+      <PublicHero
+        id="privacy-heading"
+        title="Your survey records belong in your workspace, not on a public ledger."
+        description="What we store, what leaves your workspace, and what reaches a public blockchain."
+        image="boundary"
+      />
 
-      <section aria-label="Privacy statement" className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <PublicSection aria-label="Privacy statement" className="public-reading-section">
         <div className="max-w-2xl space-y-8">
           {SECTIONS.map(({ id, title, body }) => (
             <section key={id} id={id}>
@@ -87,7 +85,7 @@ export default function PrivacyPage() {
             </p>
           </section>
         </div>
-      </section>
+      </PublicSection>
     </PublicPage>
   )
 }

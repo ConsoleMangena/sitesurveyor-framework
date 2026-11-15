@@ -74,7 +74,7 @@ export default function OnboardingPage() {
         current.user.email &&
         current.user.user_metadata?.account_type
       ) {
-        navigate("/", { replace: true });
+        navigate("/workspace", { replace: true });
         return;
       }
       setSession(current);
@@ -110,7 +110,7 @@ export default function OnboardingPage() {
 
       // The USER_UPDATED event fired by the metadata mirror re-syncs the
       // workspace mapping in App.tsx; give it a beat, then hand over.
-      navigate("/", { replace: true });
+      navigate("/workspace", { replace: true });
     } catch (err) {
       setAuthLoading(false);
       setError(

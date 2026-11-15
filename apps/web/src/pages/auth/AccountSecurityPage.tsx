@@ -70,7 +70,7 @@ export default function AccountSecurityPage() {
       showBrand={false}
       footer={
         <Link
-          to="/"
+          to="/workspace"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />

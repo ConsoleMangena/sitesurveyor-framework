@@ -43,7 +43,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link to="/">
+              <Link to="/workspace">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg border bg-background">
                   <img src="/logo.svg" alt="" aria-hidden="true" className="size-5" />
                 </div>

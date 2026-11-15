@@ -19,7 +19,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
+import { PublicHeader } from "../../components/shared/PublicHeader.tsx";
 import { cn } from "../../lib/utils.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
@@ -38,7 +38,6 @@ import {
   type MarketDot,
   type MarketDotKind,
 } from "../../components/market/marketDots";
-import { MarketConciergeDialog } from "../../components/market/MarketConciergeDialog.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import {
@@ -80,7 +79,7 @@ import {
 } from "../../components/market/marketItems.ts";
 import { getSavedMarketSearch, saveMarketSearch, removeMarketSearch } from "../../lib/repositories/marketPreferences.ts";
 import { NearbyPrompt } from "../../components/shared/NearbyPrompt.tsx";
-import { PublicNavLinks } from "../../components/shared/PublicNavLinks.tsx";
+import { PublicFooter } from "../../components/shared/PublicFooter.tsx";
 import { useDeviceLocation } from "../../lib/geo/useDeviceLocation.ts";
 import { groupByDistance, formatDistanceKm, haversineKm, type DistanceGroup } from "../../lib/geo/distance.ts";
 
@@ -230,7 +229,6 @@ export default function PublicMarketPage() {
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [country, setCountry] = useState("");
   const [marketView, setMarketView] = useState<MarketView>("split");
-  const [conciergeOpen, setConciergeOpen] = useState(false);
   const [flatLimit, setFlatLimit] = useState(FLAT_PAGE_SIZE);
 
   // Device GPS: when the visitor shares their location the registry ranges
@@ -939,84 +937,45 @@ export default function PublicMarketPage() {
 
   return (
     <div className="web3-surface">
-      <header className="web3-header">
-        <div className="web3-header-inner">
-          <span className="flex min-w-0 items-baseline gap-2">
-            <Link
-              to="/"
-              aria-label="SiteSurveyor home"
-              className="web3-brand"
-            >
-              <img
-                src="/logo.svg"
-                alt=""
-                className="web3-brand-logo"
-                aria-hidden="true"
-              />
-              <span className="web3-brand-name">SiteSurveyor</span>
-            </Link>
-            <span className="web3-brand-sub hidden truncate sm:inline">/ Surveyor's Market</span>
-          </span>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <PublicNavLinks />
-            <button
-              type="button"
-              onClick={() => user ? setCartOpen(true) : navigate("/login", { state: { from: "/market" } })}
-              className="web3-btn shrink-0 gap-1 px-2 sm:px-2.5"
-              aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
-            >
-              <ShoppingCart className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline">Cart</span>
-              {cartCount > 0 ? (
-                <span className="flex size-4 items-center justify-center rounded-full bg-[var(--web3-brand,#d92d20)] font-mono text-[10px] font-semibold tabular-nums text-white">
-                  {cartCount}
-                </span>
-              ) : null}
-            </button>
-            <ThemeToggle />
-            {user ? (
-              <AccountMenu
-                user={user}
-                onLogout={handleSignOut}
-                trigger={
-                  <Button
-                    variant="outline"
-                    className="group h-8 gap-1.5 rounded-full py-1 pl-1 pr-2.5"
-                    aria-label={`Open account menu (${user.name})`}
-                  >
-                    <AccountMenuAvatar user={user} className="size-6" />
-                    <span className="max-w-[132px] truncate text-xs font-semibold max-sm:hidden">
-                      {user.name}
-                    </span>
-                    <ChevronDown
-                      className="size-3 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
-                      aria-hidden="true"
-                    />
-                  </Button>
-                }
+      <PublicHeader
+        section="Surveyor's Market"
+        actions={
+          <button
+            type="button"
+            onClick={() => user ? setCartOpen(true) : navigate("/login", { state: { from: "/market" } })}
+            className="public-site-tool"
+            aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
+          >
+            <ShoppingCart className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Cart</span>
+            {cartCount > 0 ? (
+              <span className="flex size-4 items-center justify-center rounded-full bg-primary font-mono text-[10px] font-semibold tabular-nums text-primary-foreground">
+                {cartCount}
+              </span>
+            ) : null}
+          </button>
+        }
+        account={user ? (
+          <AccountMenu
+            user={user}
+            onLogout={handleSignOut}
+            trigger={
+              <Button
+                variant="outline"
+                className="group h-8 gap-1.5 rounded-full py-1 pl-1 pr-2.5"
+                aria-label={`Open account menu (${user.name})`}
               >
-                <AccountMenuItem
-                  icon={LayoutGrid}
-                  label="Open your workspace"
-                  to="/"
-                />
-                <AccountMenuItem
-                  icon={PackageSearch}
-                  label="My marketplace requests"
-                  to="/?view=marketplace"
-                />
-              </AccountMenu>
-            ) : (
-              <Link
-                to="/login"
-                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap px-3 text-xs"
-              >
-                Sign in
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+                <AccountMenuAvatar user={user} className="size-6" />
+                <span className="max-w-[132px] truncate text-xs font-semibold max-sm:hidden">{user.name}</span>
+                <ChevronDown className="size-3 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+              </Button>
+            }
+          >
+            <AccountMenuItem icon={LayoutGrid} label="Open your workspace" to="/workspace" />
+            <AccountMenuItem icon={PackageSearch} label="My marketplace requests" to="/workspace?view=marketplace" />
+          </AccountMenu>
+        ) : undefined}
+      />
 
       <main>
         <section aria-labelledby="market-heading" className="border-b border-border/70 bg-card">
@@ -1027,7 +986,7 @@ export default function PublicMarketPage() {
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Buy or hire instruments, connect with surveyors and firms, find work, or discover training.</p>
               </div>
               {user ? (
-                <Button asChild variant="outline" className="h-9 gap-1.5 px-3 text-xs"><Link to="/?view=marketplace"><Plus className="size-3.5" />Manage marketplace listings</Link></Button>
+                <Button asChild variant="outline" className="h-9 gap-1.5 px-3 text-xs"><Link to="/workspace?view=marketplace"><Plus className="size-3.5" />Manage marketplace listings</Link></Button>
               ) : (
                 <Button asChild variant="outline" className="h-9 gap-1.5 px-3 text-xs"><Link to="/login" state={{ from: "/?view=marketplace" }}><Plus className="size-3.5" />List equipment or services</Link></Button>
               )}
@@ -1477,36 +1436,7 @@ export default function PublicMarketPage() {
         </section>
       </main>
 
-      <footer className="border-t border-border/60 py-8">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 sm:px-6">
-          <p className="text-xs text-muted-foreground">
-            Published by SiteSurveyor workspaces · refreshes live
-          </p>
-          <nav aria-label="Site links" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <Link to="/transport" className="hover:text-foreground">Transport</Link>
-            <Link to="/downloads" className="hover:text-foreground">Desktop</Link>
-            <Link to="/about" className="hover:text-foreground">About</Link>
-            {(
-              [
-                ["listing", "Listings"],
-                ["professional", "Pros"],
-                ["job", "Jobs"],
-                ["firm", "Firms"],
-                ["event", "Training"],
-              ] as const
-            ).map(([kind, label]) => (
-              <span key={kind} className="flex items-center gap-1.5">
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: MARKET_DOT_COLORS[kind] }}
-                  aria-hidden="true"
-                />
-                {label}
-              </span>
-            ))}
-          </nav>
-        </div>
-      </footer>
+      <PublicFooter />
 
       <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
         <SheetContent side="bottom" className="web3-theme flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-3xl p-0">
@@ -1648,7 +1578,6 @@ export default function PublicMarketPage() {
         </SheetContent>
       </Sheet>
 
-      <MarketConciergeDialog open={conciergeOpen} onOpenChange={setConciergeOpen} />
 
       <MarketCartSheet
         open={cartOpen}

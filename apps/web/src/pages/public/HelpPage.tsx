@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
+import { PublicHero } from "../../components/shared/PublicHero.tsx"
+import { PublicSection } from "../../components/shared/PublicSection.tsx"
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
 import { ArrowRight, ExternalLink } from "lucide-react"
 
@@ -137,18 +139,14 @@ export default function HelpPage() {
 
   return (
     <PublicPage section="Help">
-      <section aria-labelledby="help-heading" className="border-b bg-card">
-        <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-20">
-          <h1 id="help-heading" className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            How SiteSurveyor works
-          </h1>
-          <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
-            Accounts, workflow, evidence, money and networks — the way the product actually behaves.
-          </p>
-        </div>
-      </section>
+      <PublicHero
+        id="help-heading"
+        title="How SiteSurveyor works"
+        description="Accounts, workflow, evidence, money and networks — the way the product actually behaves."
+        image="receiver"
+      />
 
-      <section aria-label="Help topics" className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <PublicSection aria-label="Help topics" className="max-w-5xl px-0">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {TOPICS.map(({ id, title, summary, details }) => (
             <details
@@ -184,7 +182,7 @@ export default function HelpPage() {
               to="/journal"
               className="inline-flex items-center gap-1 font-mono text-sm text-primary hover:underline"
             >
-              Journal <ArrowRight className="h-3 w-3" />
+              Blogs <ArrowRight className="h-3 w-3" />
             </Link>
             <Link
               to="/contact"
@@ -194,7 +192,7 @@ export default function HelpPage() {
             </Link>
           </div>
         </div>
-      </section>
+      </PublicSection>
     </PublicPage>
   )
 }

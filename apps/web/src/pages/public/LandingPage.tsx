@@ -1,157 +1,244 @@
-import { Link } from "react-router-dom"
-import { PublicNavLinks } from "../../components/shared/PublicNavLinks"
-import { PublicFooter } from "../../components/shared/PublicFooter"
-import { PublicWebOnly } from "../../components/shared/PublicWebOnly"
-import { useDocumentTitle } from "../../hooks/useDocumentTitle"
-import { useAuthStore } from "../../lib/auth/auth-store"
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Blocks,
+  Check,
   ClipboardCheck,
   CloudOff,
+  Download,
+  FileCheck2,
+  FileText,
   FolderKanban,
+  LayoutDashboard,
+  ReceiptText,
   Scale,
+  Settings2,
   ShieldCheck,
-} from "lucide-react"
+  WalletCards,
+} from "lucide-react";
+import { PublicPage } from "../../components/shared/PublicPage";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { useAuthStore } from "../../lib/auth/auth-store";
+import { SurveyPhoto } from "../../components/shared/SurveyPhoto.tsx";
 
-const PILLARS: { icon: typeof FolderKanban; title: string; href: string }[] = [
-  { icon: FolderKanban, title: "One continuous record", href: "/journal/one-record-from-quote-to-cash" },
-  { icon: Blocks, title: "Wallet-first identity", href: "/help#accounts" },
-  { icon: ClipboardCheck, title: "Real tools, not promises", href: "/help#ai" },
-  { icon: Scale, title: "Integrity, not authority", href: "/journal/hash-anchors-explained" },
-  { icon: ShieldCheck, title: "Private by default", href: "/privacy" },
-  { icon: CloudOff, title: "Works offline", href: "/help#offline" },
-]
+const CAPABILITIES = [
+  {
+    icon: FolderKanban,
+    title: "One continuous record",
+    copy: "Keep the quote, project, field work, evidence, invoice and payment connected instead of rebuilding the story across separate tools.",
+    href: "/journal/one-record-from-quote-to-cash",
+    rows: [["Quote", "Scope and price"], ["Project", "Crew and site files"], ["Invoice", "Deliver and settle"]],
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Evidence that stays with the job",
+    copy: "Upload site files, keep field evidence attached to the work, and create hash anchors without confusing a file hash with proof of authorship.",
+    href: "/journal/hash-anchors-explained",
+    rows: [["Site files", "Attached"], ["Evidence", "Organised"], ["Hash anchor", "Verifiable bytes"]],
+  },
+  {
+    icon: CloudOff,
+    title: "Work beyond the connection",
+    copy: "The native desktop app supports offline field work. Keep working on site, then synchronize when a connection is available.",
+    href: "/help#offline",
+    rows: [["Desktop", "Native workspace"], ["Field work", "Offline capable"], ["Connection", "Sync when available"]],
+  },
+  {
+    icon: WalletCards,
+    title: "Flexible identity and settlement",
+    copy: "Use email, Google or GitHub, or connect a Solana wallet. Wallet-first access and payment rails sit alongside familiar account options.",
+    href: "/help#accounts",
+    rows: [["Account", "Email or social"], ["Identity", "Solana wallet"], ["Network", "Chosen deliberately"]],
+  },
+  {
+    icon: Blocks,
+    title: "A market around the work",
+    copy: "Find instruments, people, jobs and training, then arrange transport for what you hire or buy without leaving the public marketplace.",
+    href: "/market",
+    rows: [["Marketplace", "Equipment and people"], ["Transport", "Runs and routes"], ["Training", "Build capability"]],
+  },
+  {
+    icon: ShieldCheck,
+    title: "Private by default, open by design",
+    copy: "An open-source workspace with bring-your-own infrastructure. Inspect the mechanism and choose the services that fit your operation.",
+    href: "/privacy",
+    rows: [["Source", "Open"], ["Infrastructure", "Your choice"], ["Privacy", "Built into the workspace"]],
+  },
+];
 
-/**
- * Signed-out landing page at `/`.
- * Sells the mechanism, not a promise. Each capability links to the page
- * that explains it in full — the landing is a table of contents, not the book.
- */
+const WORKFLOW = [
+  { title: "Quote", copy: "Define the scope and price before the job begins." },
+  { title: "Project", copy: "Plan the work, assign the crew and gather site files." },
+  { title: "Evidence", copy: "Keep field records attached and anchor file bytes." },
+  { title: "Invoice", copy: "Turn the completed record into a clear invoice." },
+  { title: "Payment", copy: "Settle the job and preserve the complete history." },
+];
+
+const QUICK_START = [
+  "Create an account with email, Google, GitHub or a Solana wallet.",
+  "Plan a project: quote it, assign a crew and upload the site files.",
+  "Deliver and settle: anchor evidence, send the invoice and collect payment.",
+];
+
+/** The public home. The authenticated workspace lives at `/workspace`. */
 export default function LandingPage() {
-  useDocumentTitle("SiteSurveyor — Plan the work. Prove the survey.")
-  const user = useAuthStore((state) => state.user)
+  useDocumentTitle("SiteSurveyor — Plan the work. Prove the survey.");
+  const user = useAuthStore((state) => state.user);
+  const workspacePath = user ? "/workspace" : "/signup";
 
   return (
-    <PublicWebOnly>
-      <div className="flex min-h-screen flex-col surface-bolt">
-        <PublicNavLinks />
-
-        {/* Hero */}
-        <section className="mx-auto flex max-w-5xl flex-col items-center px-4 pb-16 pt-24 text-center sm:px-6 sm:pb-24 sm:pt-32">
-          <span className="bolt-chip mb-6">v2 · Open source · BYO infrastructure</span>
-          <h1 className="text-balance text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
-            Plan the work.
-            <br />
-            <span className="text-primary">Prove the survey.</span>
-          </h1>
-          <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-            One workspace that runs a survey job from quote to cash — evidence included.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to={user ? "/?view=jobs" : "/login"}
-              className="inline-flex items-center gap-2 rounded-none bg-primary px-6 py-3 font-mono text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              {user ? "Open workspace" : "Get started"}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/market"
-              className="inline-flex items-center gap-2 rounded-none border border-primary bg-transparent px-6 py-3 font-mono text-sm font-semibold text-primary hover:bg-primary/5"
-            >
-              Browse market
-            </Link>
-          </div>
-        </section>
-
-        {/* Chain strip */}
-        <section className="border-y bg-muted/20">
-          <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 font-mono text-xs text-muted-foreground sm:text-sm">
-              <span>Quote</span> <span className="text-primary">→</span>
-              <span>Project</span> <span className="text-primary">→</span>
-              <span>Job</span> <span className="text-primary">→</span>
-              <span>Evidence</span> <span className="text-primary">→</span>
-              <span>Invoice</span> <span className="text-primary">→</span>
-              <span>Payment</span>
+    <PublicPage>
+      <section className="public-home-hero" aria-labelledby="landing-heading">
+        <div className="public-home-container">
+          <div className="public-home-hero-grid">
+            <h1 id="landing-heading" className="public-home-title">
+              Plan the work.<br />Prove the survey.
+            </h1>
+            <div>
+              <p className="public-home-intro">
+                One open workspace that runs a survey job from quote to cash — with the crew, site files and evidence connected throughout.
+              </p>
+              <div className="public-home-hero-actions">
+                <Link to={workspacePath} className="public-home-primary">
+                  {user ? "Open workspace" : "Get started"}
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+                <Link to="/downloads" className="public-home-secondary">
+                  <Download className="size-4" aria-hidden="true" />
+                  Download desktop
+                </Link>
+              </div>
             </div>
           </div>
-        </section>
 
-        {/* Capability grid */}
-        <section id="capabilities" className="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
-          <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            What it does
+          <div className="public-product-preview" aria-label="Illustration of the SiteSurveyor project workspace">
+            <div className="public-product-window">
+              <div className="public-product-toolbar">
+                <div className="public-product-dots" aria-hidden="true"><span /><span /><span /></div>
+                <span>SiteSurveyor / Project workspace</span>
+                <span>v2 · Open source</span>
+              </div>
+              <div className="public-product-body">
+                <div className="public-product-sidebar" aria-hidden="true">
+                  <div className="public-product-workspace">Survey workspace</div>
+                  <div className="public-product-nav active"><LayoutDashboard className="size-3.5" />Overview</div>
+                  <div className="public-product-nav"><FolderKanban className="size-3.5" />Projects & jobs</div>
+                  <div className="public-product-nav"><FileCheck2 className="size-3.5" />Evidence</div>
+                  <div className="public-product-nav"><ReceiptText className="size-3.5" />Invoices</div>
+                  <div className="public-product-nav"><Settings2 className="size-3.5" />Settings</div>
+                </div>
+                <div className="public-product-main">
+                  <div className="public-product-heading">
+                    <h2>Project workspace</h2>
+                    <span>One continuous record</span>
+                  </div>
+                  <div className="public-product-stats">
+                    <div className="public-product-stat"><small>01 / Plan</small><strong>Quote & project</strong></div>
+                    <div className="public-product-stat"><small>02 / Prove</small><strong>Field evidence</strong></div>
+                    <div className="public-product-stat"><small>03 / Settle</small><strong>Invoice & payment</strong></div>
+                  </div>
+                  <div className="public-product-record">
+                    <div className="public-product-record-head"><span>Job record</span><span>Connected workflow</span></div>
+                    <div className="public-product-row"><span>Scope and quotation</span><span>Project plan</span><span className="public-product-status">Ready</span></div>
+                    <div className="public-product-row"><span>Crew and site files</span><span>Field delivery</span><span>Attached</span></div>
+                    <div className="public-product-row"><span>Evidence and invoice</span><span>Settlement</span><span>Traceable</span></div>
+                  </div>
+                  <p className="public-product-note">Illustrative product view · Your records and results come from your workspace.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="public-home-section" aria-labelledby="capabilities-heading">
+        <div className="public-home-container">
+          <h2 id="capabilities-heading" className="public-home-section-heading">
+            Everything your survey job needs.<br />Nothing lost between tools.
           </h2>
-          <div className="divider-solid mb-8" />
-          <div className="grid gap-px overflow-hidden border bg-border sm:grid-cols-2 lg:grid-cols-3">
-            {PILLARS.map(({ icon: Icon, title, href }) => (
-              <Link
-                key={title}
-                to={href}
-                className="group flex flex-col bg-card p-6 transition-colors hover:bg-muted/20"
-              >
-                <Icon className="mb-3 h-5 w-5 text-primary" />
-                <span className="font-semibold leading-snug">{title}</span>
-                <span className="mt-auto pt-4 font-mono text-xs text-muted-foreground group-hover:text-primary">
-                  Read more →
-                </span>
-              </Link>
+          <p className="public-home-section-copy">
+            From the first scope to final settlement, SiteSurveyor keeps each stage connected to the work that came before it.
+          </p>
+          <div className="public-feature-grid mt-12">
+            {CAPABILITIES.map(({ icon: Icon, title, copy, href, rows }) => (
+              <article key={title} className="public-feature">
+                <div className="public-feature-content">
+                  <Icon className="mb-5 size-5 text-primary" aria-hidden="true" />
+                  <h3>{title}</h3>
+                  <p>{copy}</p>
+                  <Link to={href}>Explore the workflow <ArrowRight className="size-3.5" aria-hidden="true" /></Link>
+                </div>
+                <div className="public-feature-visual" aria-hidden="true">
+                  {rows.map(([label, value]) => (
+                    <div className="public-feature-line" key={label}><strong>{label}</strong><span>{value}</span></div>
+                  ))}
+                </div>
+              </article>
             ))}
           </div>
-        </section>
-
-        {/* Quick-start */}
-        <section className="mx-auto w-full max-w-5xl px-4 pb-16 sm:px-6 sm:pb-24">
-          <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Quick start
-          </h2>
-          <div className="divider-solid mb-8" />
-          <div className="grid gap-8 sm:grid-cols-3">
-            <div>
-              <span className="font-mono text-3xl font-bold text-primary/20">01</span>
-              <h3 className="mt-2 font-semibold">Create an account</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Email, Google, GitHub, or connect a Solana wallet.
-              </p>
-            </div>
-            <div>
-              <span className="font-mono text-3xl font-bold text-primary/20">02</span>
-              <h3 className="mt-2 font-semibold">Plan a project</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Quote it, assign a crew, upload the site files.
-              </p>
-            </div>
-            <div>
-              <span className="font-mono text-3xl font-bold text-primary/20">03</span>
-              <h3 className="mt-2 font-semibold">Deliver and settle</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Anchor evidence, send the invoice, collect payment.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Honest limits */}
-        <section className="border-t bg-muted/10">
-          <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              Honest limits
-            </p>
-            <div className="mt-4 grid gap-6 text-sm text-muted-foreground sm:grid-cols-2">
-              <p>
-                Devnet ≠ mainnet. Warnings are intentional — switch networks deliberately.
-              </p>
-              <p>Hash anchors prove file bytes, not authorship or ownership.</p>
-            </div>
-          </div>
-        </section>
-
-        <div className="mt-auto">
-          <PublicFooter />
         </div>
-      </div>
-    </PublicWebOnly>
-  )
+      </section>
+
+      <section className="public-home-container public-photo-feature public-photo-feature-grid" aria-labelledby="field-heading">
+        <SurveyPhoto image="field-surveyor" />
+        <div className="public-photo-feature-copy">
+          <h2 id="field-heading">Built around the day’s work, not another data silo.</h2>
+          <p>The observation, the crew and the client all belong to the same story. Keep site evidence attached to the work, then carry that context into delivery and settlement.</p>
+          <Link to="/help#workspaces" className="public-home-secondary">See how the workspace works <ArrowRight className="size-4" aria-hidden="true" /></Link>
+        </div>
+      </section>
+
+      <section className="public-home-workflow public-home-section" aria-labelledby="workflow-heading">
+        <div className="public-home-container">
+          <h2 id="workflow-heading" className="public-home-section-heading">One job. One clear way forward.</h2>
+          <p className="public-home-section-copy">Every handoff keeps its context, so the final invoice still carries the story of the original quote.</p>
+          <ol className="public-workflow-list">
+            {WORKFLOW.map(({ title, copy }, index) => (
+              <li className="public-workflow-step" key={title}>
+                <span className="web3-mono text-xs text-muted-foreground">{String(index + 1).padStart(2, "0")}</span>
+                <strong className="mt-3">{title}</strong>
+                <p>{copy}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="public-home-section" aria-labelledby="start-heading">
+        <div className="public-home-container public-home-split">
+          <div>
+            <h2 id="start-heading" className="public-home-section-heading">From account to settled job.</h2>
+            <p className="public-home-section-copy">Set up your workspace and follow the same record through delivery.</p>
+            <ol className="mt-8 space-y-5">
+              {QUICK_START.map((step, index) => (
+                <li key={step} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+                  <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check className="size-3" aria-hidden="true" /></span>
+                  <span><strong className="mr-1 font-semibold text-foreground">{index + 1}.</strong>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div>
+            <h2 className="public-home-section-heading">Know what the system proves.</h2>
+            <dl className="public-home-facts mt-8">
+              <div className="public-home-fact"><dt><FileText className="mr-2 inline size-4 text-primary" aria-hidden="true" />Integrity, not authority</dt><dd>Hash anchors prove file bytes, not authorship or ownership.</dd></div>
+              <div className="public-home-fact"><dt><Scale className="mr-2 inline size-4 text-primary" aria-hidden="true" />Networks chosen deliberately</dt><dd>Devnet is not mainnet. Warnings are intentional; switch networks deliberately.</dd></div>
+              <div className="public-home-fact"><dt><CloudOff className="mr-2 inline size-4 text-primary" aria-hidden="true" />Infrastructure under your control</dt><dd>Open-source software with BYO infrastructure and an offline-capable desktop workspace.</dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section className="public-home-close" aria-labelledby="close-heading">
+        <div className="public-home-container">
+          <h2 id="close-heading" className="public-home-section-heading">Keep the whole survey job in view.</h2>
+          <p className="public-home-section-copy">Plan the work, preserve the evidence, and carry one record through to payment.</p>
+          <div className="public-home-hero-actions">
+            <Link to={workspacePath} className="public-home-primary">{user ? "Open workspace" : "Create your workspace"}<ArrowRight className="size-4" aria-hidden="true" /></Link>
+            <Link to="/market" className="public-home-secondary">Browse marketplace</Link>
+          </div>
+        </div>
+      </section>
+    </PublicPage>
+  );
 }

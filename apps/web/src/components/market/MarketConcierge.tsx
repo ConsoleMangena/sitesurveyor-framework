@@ -192,7 +192,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
 
   return (
     <section
-      aria-label="SiteSurveyor AI market chat"
+      aria-label="SiteSurveyor AI assistant"
       className={cn(
         "flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card lg:min-h-[400px]",
         className,

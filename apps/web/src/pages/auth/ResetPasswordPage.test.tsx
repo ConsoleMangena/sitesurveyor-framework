@@ -23,7 +23,7 @@ function renderReset(url = "/reset-password") {
       <Routes>
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/forgot-password" element={<div>Forgot password</div>} />
-        <Route path="/" element={<div>App home</div>} />
+        <Route path="/workspace" element={<div>App workspace</div>} />
       </Routes>
     </MemoryRouter>,
   );

@@ -2,6 +2,9 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Mail, MessageSquare, Send } from "lucide-react"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
+import { PublicHero } from "../../components/shared/PublicHero.tsx"
+import { PublicSection } from "../../components/shared/PublicSection.tsx"
+import { useAssistant } from "../../components/assistant/assistant-context.ts"
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
 
 const CONTACT_EMAIL = "support@sitesurveyor.tech"
@@ -19,6 +22,7 @@ type SubjectValue = (typeof SUBJECT_OPTIONS)[number]["value"]
 export default function ContactPage() {
   useDocumentTitle("Contact — SiteSurveyor")
 
+  const { openAssistant } = useAssistant()
   const [subject, setSubject] = useState<SubjectValue>("support")
   const [message, setMessage] = useState("")
   const [opened, setOpened] = useState(false)
@@ -36,18 +40,14 @@ export default function ContactPage() {
 
   return (
     <PublicPage section="Contact">
-      <section aria-labelledby="contact-heading" className="border-b bg-card">
-        <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-20">
-          <h1 id="contact-heading" className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Contact
-          </h1>
-          <p className="mt-3 text-base text-muted-foreground">
-            Product questions, listings, security reports — write to us.
-          </p>
-        </div>
-      </section>
+      <PublicHero
+        id="contact-heading"
+        title="Contact"
+        description="Product questions, listings, security reports — write to us."
+        image="levelling"
+      />
 
-      <section aria-label="Contact form" className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <PublicSection aria-label="Contact form">
         <div className="grid gap-10 lg:grid-cols-[1fr_280px] lg:gap-12">
           <form
             className="space-y-5"
@@ -129,11 +129,12 @@ export default function ContactPage() {
             <div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-semibold">In-app assistant</h2>
+                <h2 className="text-sm font-semibold">SiteSurveyor assistant</h2>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Signed in? The assistant answers questions against your own workspace records.
+                Explore the public market with the assistant. Signed in? Use workspace AI to work with your own records.
               </p>
+              <button type="button" onClick={openAssistant} className="mt-3 min-h-11 text-sm font-medium text-primary hover:underline">Ask SiteSurveyor AI</button>
             </div>
 
             <div className="space-y-2 font-mono text-sm">
@@ -146,7 +147,7 @@ export default function ContactPage() {
             </div>
           </aside>
         </div>
-      </section>
+      </PublicSection>
     </PublicPage>
   )
 }

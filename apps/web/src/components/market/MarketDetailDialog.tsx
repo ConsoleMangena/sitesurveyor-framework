@@ -860,7 +860,7 @@ export function MarketDetailDialog({
         <DialogActionRow>
           <CloseAction onClose={onClose} />
           <Button asChild size="sm" className={primaryActionClass}>
-            <Link to="/">Open Workspace</Link>
+            <Link to="/workspace">Open Workspace</Link>
           </Button>
         </DialogActionRow>
       );

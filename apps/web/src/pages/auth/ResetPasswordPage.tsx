@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
       setDone(true);
       setAuthLoading(true);
       // The session is already live; App.tsx maps it on the next event.
-      window.setTimeout(() => navigate("/", { replace: true }), 900);
+      window.setTimeout(() => navigate("/workspace", { replace: true }), 900);
     } catch (err) {
       setAuthLoading(false);
       setError(

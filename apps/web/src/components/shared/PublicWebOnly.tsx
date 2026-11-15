@@ -9,7 +9,7 @@ import { isDesktopShell } from '../../lib/platform'
  */
 export function PublicWebOnly({ children }: { children: ReactNode }) {
   if (isDesktopShell()) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/workspace" replace />
   }
   return <>{children}</>
 }

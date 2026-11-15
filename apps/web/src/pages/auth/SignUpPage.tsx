@@ -140,7 +140,7 @@ export default function SignUpPage() {
           setAuthLoading(false);
         }
       }
-      navigate("/", { replace: true });
+      navigate("/workspace", { replace: true });
     } catch (err) {
       setAuthLoading(false);
       setError(

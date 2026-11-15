@@ -1,12 +1,13 @@
-/* Marketplace assistant: an ambient bot and a viewport-bound floating chat.
-   The launcher is unlabelled — just the bot tile floating over the page. */
+/* Persistent assistant: an ambient bot and a viewport-bound floating chat. */
 .market-assistant-launcher {
   position: fixed;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 3100;
   display: inline-flex;
+  min-height: 52px;
   align-items: center;
+  gap: 10px;
   border: 0;
   border-radius: 18px;
   background: transparent;
@@ -23,6 +24,17 @@
 .market-assistant-close:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+.market-assistant-launcher-label {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  padding: 9px 13px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: 0 6px 18px rgb(2 8 23 / 12%);
 }
 
 .market-assistant-bot {
@@ -125,6 +137,27 @@
   background: var(--card);
   color: var(--muted-foreground);
 }
+
+.market-assistant-workspace-link {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 5px;
+  border-radius: 8px;
+  background: var(--card);
+  padding: 8px 10px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.market-assistant-workspace-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.market-assistant-dialog:has(.market-assistant-workspace-link) .market-assistant-chat > header { padding-top: 62px; }
 
 .market-assistant-chat {
   display: flex;
@@ -229,9 +262,14 @@ body:has([data-slot="dialog-content"][data-state="open"]:not(.market-assistant-d
   }
 
   .market-assistant-bot {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
   }
+
+  .market-assistant-launcher { min-height: 44px; gap: 7px; }
+  .market-assistant-launcher-label { padding: 8px 11px; font-size: 12px; }
+  .market-assistant-character { width: 36px; height: 36px; }
 }
 
 @media (max-height: 560px) {

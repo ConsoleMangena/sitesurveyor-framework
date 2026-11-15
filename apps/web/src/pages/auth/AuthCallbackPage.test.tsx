@@ -48,7 +48,7 @@ function renderCallback(search = "") {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/signup" element={<div>Sign up screen</div>} />
         <Route path="/login" element={<div>Sign in screen</div>} />
-        <Route path="/" element={<div>App home</div>} />
+        <Route path="/workspace" element={<div>App workspace</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -64,7 +64,7 @@ describe("AuthCallbackPage", () => {
   it("waits for the session, provisions the account and hands over", async () => {
     renderCallback();
 
-    expect(await screen.findByText("App home")).toBeInTheDocument();
+    expect(await screen.findByText("App workspace")).toBeInTheDocument();
     expect(mockEnsureAccountProvisioned).toHaveBeenCalledTimes(1);
   });
 

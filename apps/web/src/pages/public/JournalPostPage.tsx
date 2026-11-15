@@ -1,7 +1,9 @@
 import { Link, Navigate, useParams } from "react-router-dom"
 import { ArrowLeft, Info } from "lucide-react"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
+import { SurveyPhoto } from "../../components/shared/SurveyPhoto.tsx"
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { journalPhoto } from "../../lib/content/journalPhotos.ts"
 import {
   getJournalEntry,
   journalFormatDate,
@@ -11,21 +13,21 @@ import {
 export default function JournalPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const entry = slug ? getJournalEntry(slug) : undefined
-  useDocumentTitle(entry ? `${entry.title} — SiteSurveyor Journal` : "Journal — SiteSurveyor")
+  useDocumentTitle(entry ? `${entry.title} — SiteSurveyor Blogs` : "Blogs — SiteSurveyor")
 
   if (!entry) {
     return <Navigate to="/journal" replace />
   }
 
   return (
-    <PublicPage section="Journal">
-      <article className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
+    <PublicPage section="Blogs">
+      <article className="public-section public-journal-post">
         <Link
           to="/journal"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="h-4 w-4" />
-          Journal
+          Blogs
         </Link>
 
         <header className="mt-6">
@@ -36,10 +38,10 @@ export default function JournalPostPage() {
             <span>·</span>
             <span>{journalReadingMinutes(entry)} min read</span>
           </div>
-          <h1 className="mt-3 text-balance text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
+          <h1 className="public-journal-post-title mt-4 text-balance">
             {entry.title}
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-muted-foreground">{entry.summary}</p>
+          <p className="mt-4 max-w-[65ch] text-base leading-relaxed text-muted-foreground">{entry.summary}</p>
           {entry.synthetic ? (
             <div className="mt-4 flex items-start gap-2 rounded-md border border-dashed bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -48,13 +50,15 @@ export default function JournalPostPage() {
           ) : null}
         </header>
 
-        <div className="mt-8 max-w-prose space-y-8">
+        <SurveyPhoto image={journalPhoto(entry.slug)} className="public-journal-lead" />
+
+        <div className="public-journal-body mt-10 space-y-10">
           {entry.sections.map((section) => (
             <section key={section.heading}>
-              <h2 className="text-lg font-semibold leading-snug">{section.heading}</h2>
-              <div className="mt-3 space-y-4">
-                {section.paragraphs.map((paragraph, index) => (
-                  <p key={index} className="text-[0.9375rem] leading-relaxed text-foreground/90">
+              <h2 className="text-xl font-semibold leading-snug">{section.heading}</h2>
+              <div className="mt-4 space-y-5">
+                {section.paragraphs.map((paragraph) => (
+                  <p key={paragraph} className="max-w-[68ch] text-base leading-8 text-foreground/90">
                     {paragraph}
                   </p>
                 ))}

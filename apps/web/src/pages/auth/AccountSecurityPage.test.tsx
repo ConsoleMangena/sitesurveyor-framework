@@ -119,6 +119,6 @@ describe("AccountSecurityPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /back to workspace/i }),
-    ).toHaveAttribute("href", "/");
+    ).toHaveAttribute("href", "/workspace");
   });
 });

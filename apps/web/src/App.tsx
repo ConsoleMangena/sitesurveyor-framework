@@ -17,6 +17,7 @@ import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import AuthCallbackPage from "./pages/auth/AuthCallbackPage";
 import AccountSecurityPage from "./pages/auth/AccountSecurityPage";
 import OnboardingPage from "./pages/auth/OnboardingPage";
+import { AssistantProvider } from "./components/assistant/AssistantProvider.tsx";
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 const PublicTransportPage = lazy(() => import("./pages/public/PublicTransportPage"));
@@ -233,6 +234,7 @@ export default function App() {
       <OfflineStatusBanner />
       <Toaster position="bottom-right" richColors closeButton />
       <BrowserRouter>
+        <AssistantProvider>
         <SessionExpiredBanner />
         <Routes>
           {/* Unified sign-in: email, GitHub, or hand off to the wallet page. */}
@@ -240,7 +242,7 @@ export default function App() {
             path="/login"
             element={
               user ? (
-                <Navigate to="/" replace />
+                <Navigate to="/workspace" replace />
               ) : (
                 <SignInPage />
               )
@@ -250,7 +252,7 @@ export default function App() {
             path="/signup"
             element={
               user ? (
-                <Navigate to="/" replace />
+                <Navigate to="/workspace" replace />
               ) : (
                 <SignUpPage />
               )
@@ -260,7 +262,7 @@ export default function App() {
             path="/forgot-password"
             element={
               user ? (
-                <Navigate to="/" replace />
+                <Navigate to="/workspace" replace />
               ) : (
                 <ForgotPasswordPage />
               )
@@ -305,13 +307,7 @@ export default function App() {
           <Route path="/terms" element={lazyPublic(<TermsPage />)} />
           <Route
             path="/"
-            element={
-              user ? (
-                <WorkspaceRouter />
-              ) : (
-                lazyPublic(<LandingPage />)
-              )
-            }
+            element={lazyPublic(<LandingPage />)}
           />
           <Route element={<ProtectedRoute />}>
             <Route path="/workspace/*" element={
@@ -324,6 +320,7 @@ export default function App() {
             element={<Navigate to="/" replace />}
           />
         </Routes>
+        </AssistantProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );

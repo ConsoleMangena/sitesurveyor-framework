@@ -1,44 +1,60 @@
 import { Link, useLocation } from "react-router-dom";
 
-const FOOTER_LINKS: Array<{ to: string; label: string }> = [
-  { to: "/market", label: "Marketplace" },
-  { to: "/transport", label: "Transport" },
-  { to: "/downloads", label: "Desktop" },
-  { to: "/about", label: "About" },
-  { to: "/journal", label: "Journal" },
-  { to: "/help", label: "Help" },
-  { to: "/contact", label: "Contact" },
-  { to: "/privacy", label: "Privacy" },
-  { to: "/terms", label: "Terms" },
+const FOOTER_GROUPS = [
+  {
+    label: "Products",
+    links: [
+      { to: "/market", label: "Marketplace" },
+      { to: "/transport", label: "Transport" },
+      { to: "/downloads", label: "Desktop" },
+    ],
+  },
+  {
+    label: "Resources",
+    links: [
+      { to: "/journal", label: "Blogs" },
+      { to: "/help", label: "Help" },
+      { to: "/contact", label: "Contact" },
+    ],
+  },
+  {
+    label: "Company",
+    links: [
+      { to: "/about", label: "About" },
+      { to: "/privacy", label: "Privacy" },
+      { to: "/terms", label: "Terms" },
+    ],
+  },
 ];
 
-/**
- * The footer every public page carries. One component instead of five
- * hand-copied variants, so adding a public page is one array entry — which is
- * how the journal, help, contact and legal pages got wired in.
- */
 export function PublicFooter() {
   const { pathname } = useLocation();
 
   return (
-    <footer className="border-t border-border/60 py-8">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 text-xs text-muted-foreground sm:px-6">
-        <nav aria-label="Site links" className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          {FOOTER_LINKS.map(({ to, label }) => (
-            <Link
-              key={to}
-              to={to}
-              className="hover:text-foreground"
-              aria-current={pathname === to ? "page" : undefined}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <p>
-          A product of <strong className="text-foreground">Eineva Incorporated</strong> · An
-          open-source initiative for safer digital surveying
-        </p>
+    <footer className="public-site-footer">
+      <div className="public-site-footer-grid">
+        <div className="public-site-footer-brand">
+          <Link to="/" aria-label="SiteSurveyor home" className="web3-brand">
+            <img src="/logo.svg" alt="" className="web3-brand-logo" aria-hidden="true" />
+            <span className="web3-brand-name">SiteSurveyor</span>
+          </Link>
+          <p>Plan the work.<br />Prove the survey.</p>
+          <span>An open-source initiative for safer digital surveying.</span>
+        </div>
+        {FOOTER_GROUPS.map((group) => (
+          <nav key={group.label} aria-label={group.label} className="public-site-footer-group">
+            <h2>{group.label}</h2>
+            {group.links.map(({ to, label }) => (
+              <Link key={to} to={to} aria-current={pathname === to ? "page" : undefined}>
+                {label}
+              </Link>
+            ))}
+          </nav>
+        ))}
+      </div>
+      <div className="public-site-footer-bottom">
+        <span>A product of <strong>Eineva Incorporated</strong></span>
+        <span>© {new Date().getFullYear()} SiteSurveyor</span>
       </div>
     </footer>
   );

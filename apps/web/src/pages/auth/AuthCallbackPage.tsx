@@ -62,7 +62,7 @@ export default function AuthCallbackPage() {
           try {
             setAuthLoading(true);
             await ensureAccountProvisioned(session.user);
-            navigate("/", { replace: true });
+            navigate("/workspace", { replace: true });
           } catch (err) {
             // Sign-in itself worked; the account just still has gaps the
             // user can fill. `ensureAccountProvisioned` throws for both of

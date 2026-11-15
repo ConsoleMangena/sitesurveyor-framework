@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom"
+import { PublicHero } from "../../components/shared/PublicHero.tsx"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
+import { PublicSection } from "../../components/shared/PublicSection.tsx"
 import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
 
 const SECTIONS: Array<{
@@ -49,18 +51,14 @@ export default function TermsPage() {
 
   return (
     <PublicPage section="Terms">
-      <section aria-labelledby="terms-heading" className="border-b bg-card">
-        <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-20">
-          <h1 id="terms-heading" className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Terms of use
-          </h1>
-          <p className="mt-3 max-w-xl text-base text-muted-foreground">
-            Accounts, blockchain records, payments and the limits of what we promise.
-          </p>
-        </div>
-      </section>
+      <PublicHero
+        id="terms-heading"
+        title="Clear terms for work that happens on the ground."
+        description="Accounts, blockchain records, payments and the limits of what we promise."
+        image="setting-out"
+      />
 
-      <section aria-label="Terms of use" className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <PublicSection aria-label="Terms of use" className="public-reading-section">
         <div className="max-w-2xl space-y-8">
           {SECTIONS.map(({ id, title, body }) => (
             <section key={id} id={id}>
@@ -79,7 +77,7 @@ export default function TermsPage() {
             </p>
           </section>
         </div>
-      </section>
+      </PublicSection>
     </PublicPage>
   )
 }

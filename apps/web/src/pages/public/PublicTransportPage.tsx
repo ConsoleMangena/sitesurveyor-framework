@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   IconAdjustmentsHorizontal,
   IconArrowsExchange,
-  IconArrowUpRight,
   IconChevronDown,
+  IconClock,
   IconCurrentLocation,
   IconHistory,
   IconLayoutGrid,
+  IconMapPins,
+  IconRoad,
   IconRoute,
   IconSearch,
   IconSettings,
@@ -34,8 +36,8 @@ import {
   SheetTitle,
 } from "../../components/ui/sheet.tsx";
 import { AccountMenu, AccountMenuAvatar, AccountMenuItem } from "../../components/account-menu.tsx";
-import { PublicNavLinks } from "../../components/shared/PublicNavLinks.tsx";
-import { ThemeToggle } from "../../components/theme/ThemeToggle.tsx";
+import { PublicHeader } from "../../components/shared/PublicHeader.tsx";
+import { PublicFooter } from "../../components/shared/PublicFooter.tsx";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { cn } from "../../lib/utils.ts";
 import TransportMap, { type TransportMapHandle } from "../../components/transport/TransportMap.tsx";
@@ -45,10 +47,10 @@ import { VehicleHireCard } from "../../components/transport/VehicleHireCard.tsx"
 import { VehicleDetailDialog } from "../../components/transport/VehicleDetailDialog.tsx";
 import { BookingSlip } from "../../components/transport/BookingSlip.tsx";
 import { VEHICLE_TIER_THEME } from "../../components/transport/vehicleTierTheme.ts";
-import { MarketConciergeDialog } from "../../components/market/MarketConciergeDialog.tsx";
+import { useAssistant } from "../../components/assistant/assistant-context.ts";
 import { NearbyPrompt } from "../../components/shared/NearbyPrompt.tsx";
 import { useDeviceLocation } from "../../lib/geo/useDeviceLocation.ts";
-import { groupByDistance, formatDistanceKm, type DistanceGroup } from "../../lib/geo/distance.ts";
+import { groupByDistance } from "../../lib/geo/distance.ts";
 import {
   calculateHireFare,
   calculateRoadDistanceKm,
@@ -58,6 +60,7 @@ import {
   isUpcomingTrip,
   loadSavedBookings,
   removeBookingFromStorage,
+  SURVEY_GPS_PRESETS,
   TRIP_PROGRESS_STAGES,
   updateBookingStatus,
   VEHICLE_TIERS,
@@ -132,8 +135,7 @@ export default function PublicTransportPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [recentBookings, setRecentBookings] = useState<HireBooking[]>(() => loadSavedBookings());
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [conciergeOpen, setConciergeOpen] = useState(false);
-  const [mobileView, setMobileView] = useState<"vehicles" | "map">("vehicles");
+  const { openAssistant } = useAssistant();
 
   // Device GPS: pickup comes from the phone, not typed coordinates. A cached
   // fix from a previous visit is applied silently; a manual edit overrides it
@@ -163,7 +165,8 @@ export default function PublicTransportPage() {
     for (const tierId of TIER_IDS) {
       counts[tierId] = baseFleet.filter((vehicle) => vehicle.tierId === tierId).length;
     }
-    return counts;  }, [baseFleet]);
+    return counts;
+  }, [baseFleet]);
 
   const filteredFleet = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -193,14 +196,9 @@ export default function PublicTransportPage() {
       });
   }, [baseFleet, selectedTier, minSeats, minPayload, search, sort, distanceKm]);
 
-  // Group the fleet by how far each driver is from the pickup point — the
-  // reference is the pickup (device GPS by default), so "nearby" means "close
-  // to where the crew is standing".
-  const fleetById = useMemo(
-    () => new Map(filteredFleet.map((vehicle) => [vehicle.id, vehicle])),
-    [filteredFleet],
-  );
-  const fleetGroups: DistanceGroup<HireVehicle>[] = useMemo(
+  // Keep the nearby fleet sorted as one simple registry, without splitting the
+  // Qoder layout into separate distance sections.
+  const nearbyFleet = useMemo(
     () =>
       groupByDistance(
         filteredFleet.map((vehicle) => ({
@@ -209,11 +207,8 @@ export default function PublicTransportPage() {
           lng: vehicle.currentLng,
         })),
         { lat: pickup.lat, lng: pickup.lng },
-      ).map((group) => ({
-        ...group,
-        items: group.items.map((row) => ({ ...row, item: fleetById.get(row.item.id) ?? row.item })),
-      })),
-    [filteredFleet, fleetById, pickup],
+      ).flatMap((group) => group.items.map(({ item }) => item)),
+    [filteredFleet, pickup],
   );
 
   const activeVehicle = useMemo(() => {
@@ -323,13 +318,9 @@ export default function PublicTransportPage() {
     setIsBookingOpen(true);
   }, [navigate, user]);
 
-  const handleReviewBooking = useCallback(() => {
-    if (!user) {
-      navigate("/login", { state: { from: "/transport" } });
-      return;
-    }
-    setIsBookingOpen(true);
-  }, [navigate, user]);
+  const handleBookNearest = useCallback(() => {
+    if (nearbyFleet[0]) handleBookVehicleNow(nearbyFleet[0]);
+  }, [handleBookVehicleNow, nearbyFleet]);
 
   const handleBookingConfirmed = useCallback((booking: HireBooking) => {
     setRecentBookings((previous) => [booking, ...previous.slice(0, 19)]);
@@ -370,72 +361,51 @@ export default function PublicTransportPage() {
     fleetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const applyPreset = (preset: LocationCoordinate) => {
+    setDropoff(preset);
+    mapRef.current?.centerCoordinate(preset.lat, preset.lng);
+  };
+
   return (
     <div className="web3-surface">
-      <header className="web3-header">
-        <div className="web3-header-inner">
-          <span className="flex min-w-0 items-baseline gap-2">
-            <Link to="/" aria-label="SiteSurveyor home" className="web3-brand">
-              <img src="/logo.svg" alt="" className="web3-brand-logo" aria-hidden="true" />
-              <span className="web3-brand-name">SiteSurveyor</span>
-            </Link>
-            <span className="web3-brand-sub hidden truncate sm:inline">/ Field Vehicle Hire</span>
-          </span>
-
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <PublicNavLinks />
-
-            <button
-              type="button"
-              onClick={() => user ? setHistoryOpen(true) : navigate("/login", { state: { from: "/transport" } })}
-              className="web3-btn shrink-0 gap-1 px-2 sm:px-2.5"
-              aria-label={`Open your trips, ${recentBookings.length} recorded`}
-            >
-              <IconHistory className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline">Trips</span>
-              {recentBookings.length > 0 ? (
-                <span className="flex size-4 items-center justify-center rounded-full bg-primary font-mono text-[10px] font-semibold tabular-nums text-primary-foreground">
-                  {recentBookings.length}
-                </span>
-              ) : null}
-            </button>
-
-            <ThemeToggle />
-
-            {user ? (
-              <AccountMenu
-                user={user}
-                trigger={
-                  <Button
-                    variant="outline"
-                    className="group h-8 gap-1.5 rounded-full py-1 pl-1 pr-2.5"
-                    aria-label={`Open account menu (${user.name})`}
-                  >
-                    <AccountMenuAvatar user={user} className="size-6" />
-                    <span className="max-w-[132px] truncate text-xs font-semibold max-sm:hidden">
-                      {user.name}
-                    </span>
-                    <IconChevronDown
-                      className="size-3 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
-                      aria-hidden="true"
-                    />
-                  </Button>
-                }
+      <PublicHeader
+        section="Field Vehicle Hire"
+        actions={
+          <button
+            type="button"
+            onClick={() => user ? setHistoryOpen(true) : navigate("/login", { state: { from: "/transport" } })}
+            className="public-site-tool"
+            aria-label={`Open your trips, ${recentBookings.length} recorded`}
+          >
+            <IconHistory className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Trips</span>
+            {recentBookings.length > 0 ? (
+              <span className="flex size-4 items-center justify-center rounded-full bg-primary font-mono text-[10px] font-semibold tabular-nums text-primary-foreground">
+                {recentBookings.length}
+              </span>
+            ) : null}
+          </button>
+        }
+        account={user ? (
+          <AccountMenu
+            user={user}
+            trigger={
+              <Button
+                variant="outline"
+                className="group h-8 gap-1.5 rounded-full py-1 pl-1 pr-2.5"
+                aria-label={`Open account menu (${user.name})`}
               >
-                <AccountMenuItem icon={IconLayoutGrid} label="Open your workspace" to="/" />
-                <AccountMenuItem icon={IconSettings} label="Settings" to="/?view=settings" />
-              </AccountMenu>
-            ) : (
-              <Link
-                to="/login"
-                className="web3-btn web3-btn-primary shrink-0 whitespace-nowrap px-3 text-xs"
-              >
-                Sign in
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+                <AccountMenuAvatar user={user} className="size-6" />
+                <span className="max-w-[132px] truncate text-xs font-semibold max-sm:hidden">{user.name}</span>
+                <IconChevronDown className="size-3 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+              </Button>
+            }
+          >
+            <AccountMenuItem icon={IconLayoutGrid} label="Open your workspace" to="/workspace" />
+            <AccountMenuItem icon={IconSettings} label="Settings" to="/workspace?view=settings" />
+          </AccountMenu>
+        ) : undefined}
+      />
 
       <main>
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-12 lg:py-16">
@@ -448,8 +418,7 @@ export default function PublicTransportPage() {
               <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1]">
                 Hire a vehicle for a survey run
               </h1>
-              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base">Set the site, match the equipment, review the sample fare.</p>
-              <div className="mt-4 hidden flex-wrap items-center gap-2 sm:flex">
+              <div className="mt-5 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background px-2.5 py-1 text-micro font-semibold text-muted-foreground">
                   <IconCurrentLocation className="size-3.5 text-success" aria-hidden="true" />
                   GPS pickup
@@ -464,33 +433,140 @@ export default function PublicTransportPage() {
                 </span>
               </div>
 
-              <p className="mt-4 text-sm font-medium text-muted-foreground"><span className="mr-2 inline-block size-1.5 rounded-full bg-success" />{baseFleet.length} sample vehicles nearby  — illustrative availability and fares</p>
-
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button type="button" onClick={handleBookNearest} className="web3-btn web3-btn-primary gap-1.5">
+                  Book nearest vehicle
+                  <IconTruck className="size-4" aria-hidden="true" />
+                </button>
+                <button type="button" onClick={scrollToFleet} className="web3-btn gap-1.5">
+                  Browse the sample fleet
+                  <IconChevronDown className="size-4" aria-hidden="true" />
+                </button>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
+                  {baseFleet.length} sample vehicles nearby
+                </span>
+              </div>
+              <p className="mt-3 text-micro font-medium text-muted-foreground">
+                Illustrative only — not live availability.
+              </p>
             </div>
 
-            <section aria-label="Route planner" className="overflow-hidden rounded-2xl border border-border/80 bg-card">
-              <div className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
-                <div><p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">01 · Route</p><h2 className="mt-1 text-lg font-semibold">Where is the crew going?</h2></div>
-                <Button type="button" variant="ghost" size="sm" onClick={handleSwapCoordinates} className="h-10 gap-1.5"><IconArrowsExchange className="size-4" />Swap</Button>
-              </div>
-              <div className="space-y-4 p-4 sm:p-5">
-                <LocationSearchField kind="pickup" location={pickup} pinActive={activePinMode === "pickup"} isLocating={geo.status === "locating"} onChange={(place) => handleCoordinatesChange("pickup", place)} onTogglePin={() => setActivePinMode(activePinMode === "pickup" ? null : "pickup")} onUseLocation={handleUseCurrentLocation} />
-                <NearbyPrompt geo={geo} count={baseFleet.length} noun="vehicles" />
-                <LocationSearchField kind="dropoff" location={dropoff} pinActive={activePinMode === "dropoff"} onChange={(place) => handleCoordinatesChange("dropoff", place)} onTogglePin={() => setActivePinMode(activePinMode === "dropoff" ? null : "dropoff")} />
-                <div className="grid grid-cols-3 gap-2 border-t pt-4" aria-label="Route estimate">
-                  <div><p className="text-xs text-muted-foreground">Distance</p><p className="mt-1 font-semibold tabular-nums">{distanceKm.toLocaleString()} km</p></div>
-                  <div><p className="text-xs text-muted-foreground">Est. drive</p><p className="mt-1 font-semibold">{formatDriveDuration(durationMinutes)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Available</p><p className="mt-1 font-semibold">{filteredFleet.length} vehicles</p></div>
+            <section
+              aria-label="Route planner"
+              className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card lg:flex-1"
+            >
+              <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <IconSteeringWheel className="size-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="market-map-title text-foreground">Plan the route</h2>
+                    <p className="text-micro text-muted-foreground">
+                      Exact GPS coordinates, priced by road distance
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs leading-5 text-muted-foreground">Estimates use a straight-line distance adjusted for roads, not turn-by-turn routing. Sample fleet and fares; no live dispatch.</p>
-                <Button type="button" onClick={() => { setMobileView("vehicles"); scrollToFleet(); }} className="h-11 w-full">Choose a vehicle <IconTruck className="size-4" /></Button>
+                <button
+                  type="button"
+                  onClick={handleSwapCoordinates}
+                  title="Swap pickup and destination"
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+                >
+                  <IconArrowsExchange className="size-3.5" aria-hidden="true" />
+                  Swap
+                </button>
+              </div>
+
+              <div className="flex-1 space-y-4 px-4 py-4 sm:px-5">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1.5 flex shrink-0 flex-col items-center" aria-hidden="true">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-success/12 text-[10px] font-bold text-success ring-1 ring-success/25">
+                      A
+                    </span>
+                    <span className="my-1.5 h-14 w-px border-l border-dashed border-border" />
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/12 text-[10px] font-bold text-primary ring-1 ring-primary/25">
+                      B
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1 space-y-4">
+                    <LocationSearchField
+                      kind="pickup"
+                      location={pickup}
+                      pinActive={activePinMode === "pickup"}
+                      isLocating={geo.status === "locating"}
+                      onChange={(place) => handleCoordinatesChange("pickup", place)}
+                      onTogglePin={() => setActivePinMode(activePinMode === "pickup" ? null : "pickup")}
+                      onUseLocation={handleUseCurrentLocation}
+                    />
+                    <NearbyPrompt geo={geo} count={baseFleet.length} noun="vehicles" />
+                    <LocationSearchField
+                      kind="dropoff"
+                      location={dropoff}
+                      pinActive={activePinMode === "dropoff"}
+                      onChange={(place) => handleCoordinatesChange("dropoff", place)}
+                      onTogglePin={() => setActivePinMode(activePinMode === "dropoff" ? null : "dropoff")}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 border-t border-border/70 pt-3">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <IconMapPins className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    Survey baselines
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SURVEY_GPS_PRESETS.slice(0, 6).map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => applyPreset(preset)}
+                        aria-pressed={dropoff.id === preset.id}
+                        className={cn(
+                          "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                          dropoff.id === preset.id
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border/80 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        {preset.label.replace(/ (Depot|Station|Yard|Hub|Base|Post|Terminal|Outpost|Belt)$/, "")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="web3-ticker shrink-0 border-t border-border/80">
+                <div className="web3-ticker-cell">
+                  <span className="web3-ticker-label">
+                    <IconRoad className="size-3.5" aria-hidden="true" />
+                    Road distance
+                  </span>
+                  <span className="web3-ticker-value">{distanceKm.toLocaleString()} km</span>
+                </div>
+                <div className="web3-ticker-cell">
+                  <span className="web3-ticker-label">
+                    <IconClock className="size-3.5" aria-hidden="true" />
+                    Drive time
+                  </span>
+                  <span className="web3-ticker-value">{formatDriveDuration(durationMinutes)}</span>
+                </div>
+                <div className="web3-ticker-cell">
+                  <span className="web3-ticker-label">
+                    <IconTruck className="size-3.5" aria-hidden="true" />
+                    Sample fleet
+                  </span>
+                  <span className="web3-ticker-value">{baseFleet.length} vehicles</span>
+                </div>
               </div>
             </section>
           </div>
 
           <div
             aria-label="Interactive dispatch map"
-            className={cn("market-map-frame min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card max-lg:hidden", mobileView === "map" && "max-lg:flex")}
+            className="market-map-frame flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card"
           >
             <div className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/80 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2.5">
@@ -545,17 +621,23 @@ export default function PublicTransportPage() {
           </div>
         </section>
 
-        <div className="mx-auto flex max-w-7xl px-4 pt-4 lg:hidden" role="group" aria-label="Choose results view">
-          <div className="grid w-full grid-cols-2 rounded-xl bg-muted p-1">
-            <button type="button" aria-pressed={mobileView === "vehicles"} onClick={() => setMobileView("vehicles")} className={cn("min-h-11 rounded-lg text-sm font-semibold", mobileView === "vehicles" ? "bg-background shadow-sm" : "text-muted-foreground")}>Vehicles ({filteredFleet.length})</button>
-            <button type="button" aria-pressed={mobileView === "map"} onClick={() => { setMobileView("map"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={cn("min-h-11 rounded-lg text-sm font-semibold", mobileView === "map" ? "bg-background shadow-sm" : "text-muted-foreground")}>Map</button>
-          </div>
-        </div>
-        <section ref={fleetRef} className={cn("market-registry mt-10 scroll-mt-16 sm:mt-12", mobileView === "map" && "max-lg:hidden")}>
+        <section ref={fleetRef} className="market-registry mt-10 scroll-mt-16 sm:mt-12">
           <div className="mx-auto w-full max-w-7xl space-y-7 px-4 py-11 sm:px-6 sm:py-14">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-primary"><IconTruck className="size-4" />02 · Vehicle</span>
+                <span className="inline-flex items-center gap-1.5 text-micro font-semibold uppercase tracking-[0.14em] text-primary">
+                  <IconTruck className="size-3.5" aria-hidden="true" />
+                  Fleet registry
+                  <span aria-hidden="true" className="text-muted-foreground/60">/</span>
+                  <button
+                    type="button"
+                    onClick={openAssistant}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  >
+                    <IconSparkles className="size-3.5" aria-hidden="true" />
+                    Ask AI
+                  </button>
+                </span>
                 <h2 className="market-section-title mt-2 text-balance text-foreground">
                   Browse the fleet
                 </h2>
@@ -766,29 +848,17 @@ export default function PublicTransportPage() {
                   ? "No vehicles match your filters."
                   : `Showing ${filteredFleet.length} of ${baseFleet.length} vehicles for ${distanceKm.toLocaleString()} km`}
               </p>
-              <div className="flex flex-wrap items-center gap-2">
+              {activeFilters.length > 0 ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setConciergeOpen(true)}
-                  className="min-h-11 gap-1.5 px-4 text-sm"
+                  onClick={resetFilters}
+                  className="min-h-11 px-4 text-sm"
                 >
-                  <IconSparkles className="size-4" aria-hidden="true" />
-                  Ask AI
+                  Reset filters
                 </Button>
-                {activeFilters.length > 0 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={resetFilters}
-                    className="min-h-11 px-4 text-sm"
-                  >
-                    Reset filters
-                  </Button>
-                ) : null}
-              </div>
+              ) : null}
             </div>
 
             {filteredFleet.length === 0 ? (
@@ -803,71 +873,30 @@ export default function PublicTransportPage() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-8">
-                {fleetGroups.map((group) => {
-                  const nearest = group.items[0]?.distanceKm;
-                  return (
-                    <section key={group.key} aria-label={`${group.label} vehicles`}>
-                      <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                        <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-                        <span className="text-xs text-muted-foreground">
-                          {group.items.length} {group.items.length === 1 ? "vehicle" : "vehicles"}
-                          {nearest != null ? ` · nearest ${formatDistanceKm(nearest)} away` : ""}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                        {group.items.map(({ item: vehicle, distanceKm: vehicleDistance }) => (
-                          <div key={vehicle.id} onMouseEnter={() => setSelectedVehicleId(vehicle.id)} onFocus={() => setSelectedVehicleId(vehicle.id)} className="flex flex-col gap-1.5">
-                            <VehicleHireCard
-                              vehicle={vehicle}
-                              fareBreakdown={calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm)}
-                              isSelected={activeVehicle?.id === vehicle.id}
-                              onSelect={handleOpenVehicleDetail}
-                              onBookNow={handleBookVehicleNow}
-                            />
-                            <p className="px-1 text-xs text-muted-foreground">
-                              {vehicleDistance != null ? formatDistanceKm(vehicleDistance) : "Distance n/a"} · {vehicle.etaMinutes} min away
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  );
-                })}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {nearbyFleet.map((vehicle) => (
+                  <VehicleHireCard
+                    key={vehicle.id}
+                    vehicle={vehicle}
+                    fareBreakdown={calculateHireFare(VEHICLE_TIERS[vehicle.tierId], distanceKm)}
+                    isSelected={activeVehicle?.id === vehicle.id}
+                    onSelect={handleOpenVehicleDetail}
+                    onBookNow={handleBookVehicleNow}
+                  />
+                ))}
               </div>
             )}
           </div>
         </section>
       </main>
 
-      {activeVehicle ? (
-        <aside aria-label="03 Review booking" className="sticky bottom-3 z-40 mx-auto mt-6 w-[min(calc(100%-2rem),72rem)] rounded-2xl border bg-background/95 p-3 shadow-[0_12px_36px_rgba(15,23,20,0.18)] backdrop-blur-md sm:p-4">
-          {selectedExcluded ? <p role="status" className="mb-2 text-xs font-medium text-warning">Your selected vehicle is hidden by the current filters. Clear filters or choose another vehicle.</p> : null}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-5">
-            <div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-wide text-primary">03 · Review</p><p className="truncate text-sm font-semibold sm:text-base">{activeVehicle.model}</p><p className="text-xs text-muted-foreground">{distanceKm} km · {formatDriveDuration(durationMinutes)} · {activeVehicle.etaMinutes} min ETA</p></div>
-            <div className="text-right"><p className="text-xs text-muted-foreground">Sample fare</p><p className="text-xl font-semibold tabular-nums">${calculateHireFare(VEHICLE_TIERS[activeVehicle.tierId], distanceKm).totalFare.toFixed(2)}</p></div>
-            <Button type="button" className="h-11 w-full sm:w-auto" onClick={handleReviewBooking}>{user ? "Review sample booking" : "Sign in to book"} <IconArrowUpRight className="size-4" /></Button>
-          </div>
-        </aside>
+      {activeVehicle && selectedExcluded ? (
+        <p role="status" className="sr-only">
+          The selected vehicle is hidden by the current filters. Clear filters to choose it.
+        </p>
       ) : null}
 
-      <footer className="border-t border-border/60 py-8">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>Fares follow the route · base fee + road distance + tolls</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            {TIER_IDS.map((tierId) => (
-              <span key={tierId} className="inline-flex items-center gap-1.5">
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: VEHICLE_TIER_THEME[tierId].dot }}
-                  aria-hidden="true"
-                />
-                {VEHICLE_TIERS[tierId].shortName}
-              </span>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       {detailVehicle ? (
         <VehicleDetailDialog
@@ -1174,7 +1203,7 @@ export default function PublicTransportPage() {
         </SheetContent>
       </Sheet>
 
-      <MarketConciergeDialog open={conciergeOpen} onOpenChange={setConciergeOpen} />
+
     </div>
   );
 }

@@ -1,4 +1,6 @@
-import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { ArrowUpRight, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import { MarketAssistantBot } from "./MarketAssistantBot.tsx";
 import {
   Dialog,
@@ -13,13 +15,29 @@ import "../../styles/market-assistant.css";
 interface MarketConciergeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  showWorkspaceLink?: boolean;
 }
 
 /** A compact assistant that stays connected to its bottom-right launcher. */
 export function MarketConciergeDialog({
   open,
   onOpenChange,
+  showWorkspaceLink = false,
 }: MarketConciergeDialogProps) {
+  const launcherRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onOpenChange(false);
+      launcherRef.current?.focus();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open, onOpenChange]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
       <DialogContent
@@ -28,25 +46,40 @@ export function MarketConciergeDialog({
         showCloseButton={false}
         overlayClassName="market-assistant-overlay"
         disableAnimation
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          launcherRef.current?.focus();
+        }}
         className="market-assistant-dialog web3-theme"
       >
-        <DialogTitle className="sr-only">SiteSurveyor AI market assistant</DialogTitle>
+        <DialogTitle className="sr-only">SiteSurveyor AI assistant</DialogTitle>
         <DialogDescription className="sr-only">
-          Search marketplace listings, professionals, jobs, firms and training with AI.
+          Search marketplace listings, professionals, jobs, firms and training, or open your workspace assistant.
         </DialogDescription>
-        <DialogClose className="market-assistant-close" aria-label="Dismiss market assistant">
+        {showWorkspaceLink ? (
+          <Link
+            to="/workspace?view=assistant"
+            className="market-assistant-workspace-link"
+            onClick={() => onOpenChange(false)}
+          >
+            Open workspace AI
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </Link>
+        ) : null}
+        <DialogClose className="market-assistant-close" aria-label="Dismiss assistant">
           <X className="size-4" aria-hidden="true" />
         </DialogClose>
         <MarketConcierge className="market-assistant-chat" />
       </DialogContent>
 
       <button
+        ref={launcherRef}
         type="button"
         data-testid="market-assistant-launcher"
         className="market-assistant-launcher"
         data-open={open}
         onClick={() => onOpenChange(!open)}
-        aria-label={open ? "Close market assistant" : "Open AI market assistant"}
+        aria-label={open ? "Close SiteSurveyor assistant" : "Open SiteSurveyor assistant"}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="market-concierge-dialog"
@@ -54,6 +87,7 @@ export function MarketConciergeDialog({
         <span className="market-assistant-bot" aria-hidden="true">
           <MarketAssistantBot className="market-assistant-character" />
         </span>
+        <span className="market-assistant-launcher-label">Ask AI</span>
       </button>
     </Dialog>
   );
