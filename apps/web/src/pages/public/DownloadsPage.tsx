@@ -19,7 +19,7 @@ const PLATFORMS: Array<{
     icon: Monitor,
     name: "Windows",
     formats: [".exe (NSIS setup)", ".msi (installer)"],
-    requires: "Windows 10 or later. WebView2 ships with Windows 11; the installer fetches it otherwise.",
+    requires: "Windows 10 or later. The installer fetches any missing system component.",
   },
   {
     icon: Command,
@@ -31,7 +31,7 @@ const PLATFORMS: Array<{
     icon: Terminal,
     name: "Linux",
     formats: [".deb · .rpm · .AppImage"],
-    requires: "Needs webkit2gtk, libayatana-appindicator and librsvg.",
+    requires: "Install with your package manager, or run the AppImage directly.",
   },
 ];
 
@@ -44,7 +44,7 @@ export default function DownloadsPage() {
         <PublicHero
           id="downloads-heading"
           title="SiteSurveyor for your desktop"
-          description="The same workspace as a native window: project workflows, file evidence, AI chat, the market and Solana payments, without a browser tab. Built with Tauri (Rust)."
+          description="The same workspace as a native window: project workflows, file evidence, AI chat, the market and Solana payments, without a browser tab."
           image="scanning"
         >
           <ul className="grid gap-4 sm:grid-cols-3">
@@ -81,20 +81,17 @@ export default function DownloadsPage() {
           </h2>
           <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
             Two commands from the repository root produce installers for the machine you are on.
-            Requires Node 22.18+, Rust stable and the platform's build tooling. See{" "}
-            <span className="web3-mono text-foreground">apps/desktop/README.md</span> for the full
-            matrix.
+            Prerequisites and the full platform matrix are in{" "}
+            <span className="web3-mono text-foreground">apps/desktop/README.md</span>.
           </p>
           <pre className="web3-mono mt-5 max-w-[65ch] overflow-x-auto rounded-xl border border-border/60 bg-card px-4 py-3 text-xs text-foreground">
             <code>{`npm --prefix apps/web install
 npm --prefix apps/desktop install && npm --prefix apps/desktop run build`}</code>
           </pre>
           <p className="mt-3 max-w-[65ch] text-xs leading-relaxed text-muted-foreground">
-            Output lands in{" "}
-            <span className="web3-mono text-foreground">
-              apps/desktop/src-tauri/target/release/bundle/
-            </span>
-            .
+            Installers land in the bundle output under{" "}
+            <span className="web3-mono text-foreground">apps/desktop</span>
+            ; the README lists the exact path for each platform.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
