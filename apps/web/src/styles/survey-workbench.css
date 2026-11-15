@@ -190,25 +190,30 @@
     pointer-events: auto;
   }
 
-  .sw-workspace .sw-map {
+  /* The form leads. On a phone the ribbon hands straight off to Observation
+     Controls — the thing a surveyor opens this screen to touch — and the
+     canvas follows the work instead of pushing the form below the fold. The
+     map stays in the flow, smaller, right after the parameters and results,
+     with the attribute table beside its evidence and Contents last. */
+  .sw-workspace .sw-panel--right {
     order: 1;
-    width: 100%;
-    height: 55vh;
-    min-height: 320px;
   }
 
-  .sw-workspace .sw-panel--right {
+  .sw-workspace .sw-map {
+    order: 2;
+    width: 100%;
+    height: 42vh;
+    min-height: 280px;
+  }
+
+  .sw-workspace .sw-dock.sw-panel {
     order: 3;
+    max-height: 320px;
+    overflow: hidden;
   }
 
   .sw-workspace .sw-panel--left {
     order: 4;
-  }
-
-  .sw-workspace .sw-dock.sw-panel {
-    order: 2;
-    max-height: 320px;
-    overflow: hidden;
   }
 
   .sw-workspace .sw-dock .sw-attr-scroll {
@@ -341,8 +346,8 @@
 
 @media (max-width: 640px) {
   .sw-workspace .sw-map {
-    height: 42vh;
-    min-height: 260px;
+    height: 36vh;
+    min-height: 240px;
   }
 
   .sw-chips {
