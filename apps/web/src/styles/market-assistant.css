@@ -88,8 +88,10 @@
 }
 
 /* Explicit positioning on every side overrides the shared centred dialog card.
-   That card centres itself with the `translate` property, so resetting
-   `transform` alone leaves it half its own size off-screen.
+   That card centres itself with Tailwind's -50% translate utilities, which read
+   `--tw-translate-x/y`. The reset has to zero those variables: the CSS minifier
+   drops a bare `translate: none` (or `0 0`) as an initial value, so the card's
+   centre otherwise survives the build and throws the panel half off-screen.
    Inset sizing, rather than a minimum height, keeps it usable in short windows. */
 .market-assistant-dialog[data-slot="dialog-content"] {
   position: fixed;
@@ -108,7 +110,9 @@
   background: var(--background);
   padding: 0;
   color: var(--foreground);
-  translate: none;
+  --tw-translate-x: 0px;
+  --tw-translate-y: 0px;
+  translate: 0 0;
   transform: none;
   transform-origin: calc(100% - 24px) 100%;
   box-shadow: 0 24px 72px rgb(2 8 23 / 28%);
@@ -193,8 +197,22 @@
   scrollbar-gutter: stable;
 }
 
-.market-assistant-chat > div > div:first-child {
+/* The welcome panel and the message thread are both the scroll area's first
+   child, so they need their own hooks: a shared `> div:first-child` rule once
+   forced the thread into a horizontal row that overflowed the card. */
+.market-assistant-dialog .market-assistant-welcome {
   display: flex;
+}
+
+.market-assistant-thread {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.market-assistant-thread > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .market-assistant-chat form {
@@ -281,6 +299,20 @@ body:has([data-slot="dialog-content"][data-state="open"]:not(.market-assistant-d
     border-radius: 18px;
   }
 
+  /* The workspace link keeps its own row, but a short window cannot afford
+     the full 62px lead-in: it would leave the conversation a 70px slot. */
+  .market-assistant-workspace-link {
+    top: 8px;
+    left: 12px;
+    min-height: 26px;
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .market-assistant-dialog:has(.market-assistant-workspace-link) .market-assistant-chat > header {
+    padding-top: 38px;
+  }
+
   .market-assistant-chat > header {
     padding-top: 10px;
     padding-bottom: 9px;
@@ -305,7 +337,11 @@ body:has([data-slot="dialog-content"][data-state="open"]:not(.market-assistant-d
    instead of scrolling it behind the fixed header. Conversations still scroll. */
 @media (max-height: 440px) {
   .market-assistant-chat > header {
-    min-height: 54px;
+    min-height: 44px;
+  }
+
+  .market-assistant-chat > header h2 {
+    font-size: 15px;
   }
 
   .market-assistant-chat > header img,
@@ -318,29 +354,29 @@ body:has([data-slot="dialog-content"][data-state="open"]:not(.market-assistant-d
     padding-bottom: 0;
   }
 
-  .market-assistant-chat > div > div:first-child {
+  .market-assistant-dialog .market-assistant-welcome {
     gap: 8px;
     padding-top: 4px;
     padding-bottom: 8px;
   }
 
-  .market-assistant-chat > div > div:first-child > span,
-  .market-assistant-chat > div > div:first-child > div:first-of-type {
+  .market-assistant-dialog .market-assistant-welcome > span,
+  .market-assistant-dialog .market-assistant-welcome > div:first-of-type {
     display: none;
   }
 
-  .market-assistant-chat > div > div:first-child > div:last-child {
+  .market-assistant-dialog .market-assistant-welcome > div:last-child {
     flex-direction: row;
     justify-content: flex-start;
   }
 
-  .market-assistant-chat > div > div:first-child > div:last-child > button {
+  .market-assistant-dialog .market-assistant-welcome > div:last-child > button {
     min-height: 32px;
     padding: 4px 10px;
     white-space: nowrap;
   }
 
-  .market-assistant-chat > div > div:first-child > div:last-child > button:nth-child(n + 3) {
+  .market-assistant-dialog .market-assistant-welcome > div:last-child > button:nth-child(n + 3) {
     display: none;
   }
 }

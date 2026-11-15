@@ -120,7 +120,7 @@ function MessageBubble({
           type="button"
           onClick={() => onJumpTo(repliedTo.id)}
           className={cn(
-            "mb-1 flex max-w-[75%] items-center gap-2 rounded-none border-l-2 border-primary/60 bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-muted",
+            "mb-1 flex max-w-[85%] items-center gap-2 rounded-none border-l-2 border-primary/60 bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-muted sm:max-w-[75%]",
             isMe && "ml-auto",
           )}
           title="Jump to original message"
@@ -271,7 +271,9 @@ export default function TeamChatPage({
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [members, setMembers] = useState<WorkspaceMemberWithProfile[]>([]);
   const [rosterSearch, setRosterSearch] = useState("");
-  const [showMobileRoster, setShowMobileRoster] = useState(true);
+  // The conversation is what the page opens on. The roster is a drawer the
+  // reader asks for from the header, never a modal over the first message.
+  const [showMobileRoster, setShowMobileRoster] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
@@ -283,7 +285,7 @@ export default function TeamChatPage({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const composerRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const nearBottomRef = useRef(true);
   const lastTypingBroadcastRef = useRef(0);
@@ -324,22 +326,36 @@ export default function TeamChatPage({
     getCurrentUser().then(setUser);
   }, []);
 
+  // The roster drawer is the phone's stand-in for the desktop sidebar; once
+  // the sidebar is back it must not keep covering the conversation.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => {
+      if (mq.matches) setShowMobileRoster(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   // The chat roster mirrors the Team page: workspace members are the people
   // who appear here and are allowed to chat (enforced server-side by RLS).
   useEffect(() => {
     if (!workspaceId) return;
     let cancelled = false;
-    window.setTimeout(() => {
+    // Clear and load in the same tick: a deferred clear alone can land after
+    // the fetch resolves and wipe the roster it just filled.
+    const clear = window.setTimeout(() => {
       if (cancelled) return;
       setMembers([]);
+      listWorkspaceMembers(workspaceId, { statuses: ["active", "invited"] })
+        .then((rows) => {
+          if (!cancelled) setMembers(rows);
+        })
+        .catch((err) => console.error("Failed to load team members", err));
     }, 0);
-    listWorkspaceMembers(workspaceId, { statuses: ["active", "invited"] })
-      .then((rows) => {
-        if (!cancelled) setMembers(rows);
-      })
-      .catch((err) => console.error("Failed to load team members", err));
     return () => {
       cancelled = true;
+      window.clearTimeout(clear);
     };
   }, [workspaceId]);
 
@@ -490,6 +506,16 @@ export default function TeamChatPage({
     markSeen();
   }, [messages, scrollToBottom, markSeen]);
 
+  // The composer grows with the draft but never past a fifth of the screen,
+  // so a long message cannot push the send button out of the viewport.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    const cap = Math.max(96, Math.round(window.innerHeight * 0.2));
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, cap)}px`;
+  }, [inputValue]);
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = inputValue.trim();
@@ -526,7 +552,7 @@ export default function TeamChatPage({
     }
   };
 
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void handleSendMessage();
@@ -685,7 +711,7 @@ export default function TeamChatPage({
         <Sheet open={showMobileRoster} onOpenChange={setShowMobileRoster}>
           <SheetContent
             side="left"
-            className="w-72 max-w-[85vw] border-r p-0"
+            className="w-72 max-w-[85vw] border-r p-0 pl-[max(1rem,env(safe-area-inset-left))]"
           >
             <SheetHeader className="border-b px-3 py-3 text-left">
               <SheetTitle className="text-sm font-semibold text-foreground">
@@ -709,8 +735,8 @@ export default function TeamChatPage({
         </Sheet>
       )}
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-3 py-2">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 [@media(max-height:560px)]:gap-2">
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-3 py-2 [@media(max-height:560px)]:py-1">
           <div className="md:hidden">
             <Button
               variant="ghost"
@@ -754,7 +780,7 @@ export default function TeamChatPage({
         </div>
       )}
 
-      <div className="relative min-h-[320px] flex-1 rounded-lg border border-border/60 bg-card pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="relative min-h-0 flex-1 rounded-lg border border-border/60 bg-card pb-[env(safe-area-inset-bottom,0px)]">
         <div ref={rootRef} className="h-full overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
           <div className="flex flex-col p-4 pb-2">
             {hasMore && (
@@ -850,7 +876,7 @@ export default function TeamChatPage({
                     )}
 
                     <div className={cn(
-                      "flex min-w-0 flex-col max-w-[75%]",
+                      "flex min-w-0 flex-col max-w-[85%] sm:max-w-[75%]",
                       isMe ? "items-end" : "items-start"
                     )}>
                       {isGroupStart && (
@@ -952,7 +978,7 @@ export default function TeamChatPage({
         )}
       </div>
 
-      <div className="-mt-1 flex h-4 items-center px-1">
+      <div className="-mt-1 flex h-4 items-center px-1 [@media(max-height:560px)]:hidden">
         <TypingIndicator names={typingNames} />
       </div>
 
@@ -968,10 +994,10 @@ export default function TeamChatPage({
         {replySnapshot && (
           <ReplyBanner replyTo={replySnapshot} onCancel={() => setReplyTo(null)} />
         )}
-        <div className="flex items-center gap-2 rounded-none border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
-          <input
+        <div className="flex items-end gap-2 rounded-none border border-input bg-card p-2 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
+          <Textarea
             ref={composerRef}
-            type="text"
+            rows={1}
             placeholder={
               replySnapshot ? `Reply to ${replySnapshot.senderName}…` : "Type your messages…"
             }
@@ -980,7 +1006,7 @@ export default function TeamChatPage({
             onKeyDown={handleInputKeyDown}
             disabled={isSending}
             aria-label="Chat message"
-            className="h-8 w-full flex-1 bg-transparent text-sm focus-visible:outline-hidden"
+            className="min-h-9 w-full flex-1 resize-none overflow-y-auto rounded-none border-0 bg-transparent px-1 py-1.5 text-sm leading-5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           />
           <Button
             type="submit"
@@ -997,7 +1023,7 @@ export default function TeamChatPage({
           </Button>
         </div>
       </form>
-      <div className="-mt-2 flex items-center justify-between px-1 text-[10px] text-muted-foreground/60">
+      <div className="-mt-2 flex items-center justify-between px-1 text-[10px] text-muted-foreground/60 [@media(max-height:560px)]:hidden">
         <span className="hidden sm:inline">
           Enter to send · Shift+Enter for a new line
           {replySnapshot ? " · Esc to cancel reply" : ""}

@@ -132,7 +132,7 @@ function stepText(step: AgentStep): string {
   return step.count > 1 ? `${step.label} ×${step.count}` : step.label;
 }
 
-const BUBBLE_BASE = "max-w-full px-3.5 py-2 text-sm leading-relaxed shadow-sm";
+const BUBBLE_BASE = "max-w-full break-words px-3.5 py-2 text-sm leading-relaxed shadow-sm";
 const BUBBLE_USER = `${BUBBLE_BASE} whitespace-pre-wrap rounded-[16px_16px_0_16px] bg-primary text-primary-foreground`;
 const BUBBLE_AGENT = `${BUBBLE_BASE} rounded-[16px_16px_16px_0] border border-border/60 bg-muted text-card-foreground`;
 
@@ -587,7 +587,7 @@ export default function AssistantPage({ onNavigate, workspaceId }: AssistantPage
             </p>
           </div>
           <span
-            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/50 bg-muted/40 px-2.5 font-mono text-[11px] font-medium text-muted-foreground"
+            className="hidden h-7 shrink-0 items-center gap-1.5 rounded-md border border-border/50 bg-muted/40 px-2.5 font-mono text-[11px] font-medium text-muted-foreground sm:inline-flex"
             title="SiteSurveyor AI runs on NVIDIA Nemotron 3 Ultra"
           >
             <span className="web3-live-dot" aria-hidden="true" />

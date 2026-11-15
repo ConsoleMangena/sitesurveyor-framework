@@ -235,7 +235,7 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
         {messages.length === 0 ? (
           <div
             className={cn(
-              "min-h-full flex-col items-center justify-center gap-4 px-1 py-2 text-center",
+              "market-assistant-welcome min-h-full flex-col items-center justify-center gap-4 px-1 py-2 text-center",
               expanded ? "flex" : "hidden lg:flex",
             )}
           >
@@ -269,11 +269,11 @@ export function MarketConcierge({ className }: MarketConciergeProps) {
             </div>
           </div>
         ) : (
-          <div className="space-y-3.5">
+          <div className="market-assistant-thread space-y-3.5">
             {messages.map((message) =>
               message.role === "user" ? (
                 <div key={message.id} className="flex justify-end">
-                  <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm leading-6 whitespace-pre-wrap text-primary-foreground">
+                  <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm leading-6 whitespace-pre-wrap break-words text-primary-foreground">
                     {message.text}
                   </p>
                 </div>
