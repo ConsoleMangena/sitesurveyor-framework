@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- standalone preview entry that mounts on load, not a fast-refresh module */
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";

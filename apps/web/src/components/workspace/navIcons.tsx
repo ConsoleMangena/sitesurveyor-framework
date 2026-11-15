@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- icon lookup helper, not a fast-refresh component module */
 import type { ReactNode } from "react";
 import {
   Activity,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { usePhantomWallet } from "./usePhantomWallet.ts";
 import { CUSTOM_WALLET_NAME } from "../lib/customWalletAdapter.ts";
-import { detectProvider, isWalletConnected, getConnectedWalletAddress } from "../lib/provider.ts";
+import { detectProvider } from "../lib/provider.ts";
 
 export function useSiteSurveyorWallet() {
   const adapter = useWallet();

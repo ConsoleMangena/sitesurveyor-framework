@@ -93,13 +93,6 @@ export function generateSiwsNonce(length = 16): string {
   return Array.from(bytes, (b) => chars[b % chars.length]).join("");
 }
 
-interface SignMessageWallet {
-  publicKey: { toBase58: () => string };
-  signMessage: (message: Uint8Array, encoding?: string) => Promise<unknown>;
-  signIn?: (input: unknown) => Promise<unknown>;
-  name?: string;
-}
-
 function isMwaWallet(wallet: unknown): boolean {
   if (!wallet || typeof wallet !== "object") return false;
   const name = (wallet as { name?: unknown }).name;

@@ -51,7 +51,6 @@ import {
   initiatePesepayCheckout,
   payInvoiceWithBalance,
   verifyOrder,
-  verifyWalletDeposit,
   type PesepayWalletRow,
 } from "../../lib/repositories/pesepay.ts";
 import BillingOverviewSection from "../../components/finance/BillingOverviewSection.tsx";

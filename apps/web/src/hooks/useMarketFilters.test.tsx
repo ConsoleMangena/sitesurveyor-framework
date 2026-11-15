@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { MemoryRouter, useSearchParams } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useMarketFilters } from "./useMarketFilters.ts";
 import type { MarketData } from "../components/market/marketFeed.ts";

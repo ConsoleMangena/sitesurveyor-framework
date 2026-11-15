@@ -18,7 +18,6 @@ import {
 } from "../components/market/marketItems.ts";
 import {
   buildMarketDots,
-  type MarketDot,
   type MarketDotGroup,
   type MarketDotKind,
 } from "../components/market/marketDots.ts";

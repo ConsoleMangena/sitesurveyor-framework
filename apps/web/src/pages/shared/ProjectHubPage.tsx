@@ -62,13 +62,7 @@ import {
 import { generateLocalId } from '@/lib/localDb/utils'
 import { DashboardShell, DashboardHeader } from '@/components/dashboard/DashboardShell.tsx'
 import { KpiCard, KpiGrid } from '@/components/dashboard/KpiCard.tsx'
-import { DialogTemplate } from '@/components/templates/DialogTemplate.tsx'
 import { PageForm } from '@/components/templates/PageForm.tsx'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 
 import {
   createProject,
@@ -90,7 +84,6 @@ import PageLoader from '../../components/PageLoader.tsx'
 import { listOrganizations, createOrganization } from '../../lib/repositories/organizations.ts'
 import type { OrganizationRow } from '../../lib/repositories/organizations.ts'
 import { mapProjectRowToHubProject, type CrsType, type UiHubProject } from '../../lib/mappers.ts'
-import { inviteWorkspaceMember } from '../../lib/repositories/invitations.ts'
 import { getMyWorkspaceMembership } from '../../lib/repositories/workspaces.ts'
 import { canManageProjects, canManageTeam } from '../../lib/permissions.ts'
 import { ProjectDashboard } from '../../features/projects/components/ProjectDashboard.tsx'
