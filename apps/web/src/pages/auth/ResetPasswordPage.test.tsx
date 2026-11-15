@@ -3,12 +3,18 @@ import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ResetPasswordPage from "./ResetPasswordPage.tsx";
 
-const { mockOnAuthStateChange, mockSetPassword } = vi.hoisted(() => ({
+const {
+  mockConsumePasswordRecoverySession,
+  mockOnAuthStateChange,
+  mockSetPassword,
+} = vi.hoisted(() => ({
+  mockConsumePasswordRecoverySession: vi.fn(),
   mockOnAuthStateChange: vi.fn(),
   mockSetPassword: vi.fn(),
 }));
 
 vi.mock("../../lib/auth/session.ts", () => ({
+  consumePasswordRecoverySession: () => mockConsumePasswordRecoverySession(),
   onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
 }));
 
@@ -33,6 +39,17 @@ describe("ResetPasswordPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockOnAuthStateChange.mockReturnValue({ unsubscribe: vi.fn() });
+    mockConsumePasswordRecoverySession.mockReturnValue(null);
+  });
+
+  it("enables recovery when Supabase completed the exchange before mount", () => {
+    mockConsumePasswordRecoverySession.mockReturnValue({
+      user: { id: "user-1" },
+    });
+
+    renderReset("/reset-password?code=already-exchanged");
+
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
   });
 
   it("enables recovery only after Supabase emits PASSWORD_RECOVERY", () => {

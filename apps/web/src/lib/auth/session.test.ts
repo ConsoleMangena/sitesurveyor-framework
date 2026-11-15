@@ -1,15 +1,27 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const mockSignInWithWeb3 = vi.fn();
-const mockUpdateUser = vi.fn();
-const mockUpsert = vi.fn();
-const mockRpc = vi.fn();
+const {
+  mockOnAuthStateChange,
+  mockRpc,
+  mockSignInWithWeb3,
+  mockUpdateUser,
+  mockUpsert,
+} = vi.hoisted(() => ({
+  mockOnAuthStateChange: vi.fn(() => ({
+    data: { subscription: { unsubscribe: vi.fn() } },
+  })),
+  mockRpc: vi.fn(),
+  mockSignInWithWeb3: vi.fn(),
+  mockUpdateUser: vi.fn(),
+  mockUpsert: vi.fn(),
+}));
 
 vi.mock("../supabase/client.ts", () => ({
   supabase: {
     auth: {
       signInWithWeb3: (...args: unknown[]) => mockSignInWithWeb3(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
+      onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
     },
     from: () => ({
       upsert: (...args: unknown[]) => mockUpsert(...args),

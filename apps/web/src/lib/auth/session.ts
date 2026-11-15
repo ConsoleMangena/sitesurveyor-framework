@@ -4,6 +4,24 @@ import { clearCachedUser } from "./authCache.ts";
 import { isRecognisedWalletAccount } from "./wallet-recognition.ts";
 import { isMobileBrowser } from "../../features/phantom/lib/provider.ts";
 
+let pendingPasswordRecoverySession: Session | null = null;
+
+// Keep recovery events available for pages that mount after Supabase finishes
+// exchanging the URL token during client initialization.
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === "PASSWORD_RECOVERY" && session) {
+    pendingPasswordRecoverySession = session;
+  } else if (event === "SIGNED_OUT") {
+    pendingPasswordRecoverySession = null;
+  }
+});
+
+export function consumePasswordRecoverySession(): Session | null {
+  const session = pendingPasswordRecoverySession;
+  pendingPasswordRecoverySession = null;
+  return session;
+}
+
 /** Fallback to the Supabase localStorage session when offline. */
 export function loadStoredSession(): Session | null {
   if (typeof localStorage === "undefined") return null;

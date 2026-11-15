@@ -17,7 +17,10 @@ import {
 import { PasswordInput } from "../../components/password-input";
 import ErrorNotice from "../../components/errors/ErrorNotice";
 import { setPassword } from "../../lib/auth/email-auth.ts";
-import { onAuthStateChange } from "../../lib/auth/session.ts";
+import {
+  consumePasswordRecoverySession,
+  onAuthStateChange,
+} from "../../lib/auth/session.ts";
 import { getAuthUrlError, isPasswordRecoveryUrl } from "../../lib/auth/auth-url.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
@@ -85,6 +88,10 @@ export default function ResetPasswordPage() {
         setReady(true);
       }
     });
+
+    if (consumePasswordRecoverySession()) {
+      setReady(true);
+    }
 
     if (isPasswordRecoveryUrl()) {
       // Auth normally removes code/hash parameters after exchanging them. A
