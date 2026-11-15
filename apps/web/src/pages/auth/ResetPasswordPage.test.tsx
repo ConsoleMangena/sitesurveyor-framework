@@ -5,16 +5,19 @@ import ResetPasswordPage from "./ResetPasswordPage.tsx";
 
 const {
   mockConsumePasswordRecoverySession,
+  mockGetCurrentSession,
   mockOnAuthStateChange,
   mockSetPassword,
 } = vi.hoisted(() => ({
   mockConsumePasswordRecoverySession: vi.fn(),
+  mockGetCurrentSession: vi.fn(),
   mockOnAuthStateChange: vi.fn(),
   mockSetPassword: vi.fn(),
 }));
 
 vi.mock("../../lib/auth/session.ts", () => ({
   consumePasswordRecoverySession: () => mockConsumePasswordRecoverySession(),
+  getCurrentSession: () => mockGetCurrentSession(),
   onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
 }));
 
@@ -40,6 +43,7 @@ describe("ResetPasswordPage", () => {
     vi.clearAllMocks();
     mockOnAuthStateChange.mockReturnValue({ unsubscribe: vi.fn() });
     mockConsumePasswordRecoverySession.mockReturnValue(null);
+    mockGetCurrentSession.mockResolvedValue(null);
   });
 
   it("enables recovery when Supabase completed the exchange before mount", () => {
@@ -48,6 +52,25 @@ describe("ResetPasswordPage", () => {
     });
 
     renderReset("/reset-password?code=already-exchanged");
+
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+  });
+
+  it("enables recovery via getSession when PKCE exchange finished before mount and event was missed", async () => {
+    // consumePasswordRecoverySession missed the event, but the session is in
+    // localStorage — getCurrentSession() returns it asynchronously.
+    mockConsumePasswordRecoverySession.mockReturnValue(null);
+    mockGetCurrentSession.mockResolvedValue({ user: { id: "user-1" } });
+
+    renderReset("/reset-password?code=already-exchanged");
+
+    // Form not yet shown — waiting for the async getSession() promise.
+    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
+
+    // Let the promise resolve.
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     expect(screen.getByLabelText("New password")).toBeInTheDocument();
   });

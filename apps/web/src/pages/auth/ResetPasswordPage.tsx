@@ -19,6 +19,7 @@ import ErrorNotice from "../../components/errors/ErrorNotice";
 import { setPassword } from "../../lib/auth/email-auth.ts";
 import {
   consumePasswordRecoverySession,
+  getCurrentSession,
   onAuthStateChange,
 } from "../../lib/auth/session.ts";
 import { getAuthUrlError, isPasswordRecoveryUrl } from "../../lib/auth/auth-url.ts";
@@ -98,6 +99,17 @@ export default function ResetPasswordPage() {
       isReady = true;
       setReady(true);
     }
+
+    // Handle the case where the PKCE exchange completed before this component
+    // mounted — the PASSWORD_RECOVERY event already fired and was missed, but
+    // the session is now stored. getSession() returns it directly.
+    void getCurrentSession().then((session) => {
+      if (!cancelled && !isReady && session) {
+        isReady = true;
+        if (timerId) clearTimeout(timerId);
+        setReady(true);
+      }
+    });
 
     if (isPasswordRecoveryUrl()) {
       // Auth normally removes code/hash parameters after exchanging them. A
