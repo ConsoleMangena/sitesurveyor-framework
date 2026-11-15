@@ -34,7 +34,7 @@ export default function IndicatorsPanel({
     <section className="sw-block px-4 py-3.5">
       <BlockTitle count={`${scored} / ${categoriesToShow.length}`}>Indicators</BlockTitle>
       {note ? (
-        <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{note}</p>
+        <p className="mt-1.5 text-[12.5px] sm:text-[11.5px] leading-snug text-muted-foreground">{note}</p>
       ) : null}
 
       <div aria-live="polite" className="mt-2.5 grid gap-2">
@@ -70,7 +70,7 @@ function Indicator({
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="sw-accent-swatch" style={{ background: color }} aria-hidden="true" />
-          <span className="truncate text-[11.5px] font-semibold text-muted-foreground">{label}</span>
+          <span className="truncate text-[12.5px] sm:text-[11.5px] font-semibold text-muted-foreground">{label}</span>
         </span>
         <span className={`sw-band sw-band--${band ?? "none"}`}>
           {klass ?? (band ? BAND_LABELS[band] : "Not run")}
@@ -78,7 +78,7 @@ function Indicator({
       </div>
       <p className="sw-mono mt-1 text-[19px] leading-none font-semibold tabular-nums">
         {scoreValueText(score)}
-        <span className="ml-0.5 text-[11px] font-normal text-muted-foreground">/100</span>
+        <span className="ml-0.5 text-[12px] sm:text-[11px] font-normal text-muted-foreground">/100</span>
       </p>
       <div className="sw-meter mt-2">
         <span style={{ width: meterWidth(score), background: color }} />

@@ -35,10 +35,10 @@ import CreditCostPanel from "../../../components/surveys/CreditCostPanel.tsx";
 import type { SurveyFormValues } from "./model.ts";
 
 const fieldClass =
-  "h-8 rounded-md border border-input bg-background px-2.5 text-[12.5px] shadow-xs outline-none focus-visible:ring-[2px] focus-visible:ring-ring/60";
+  "h-9 sm:h-8 rounded-md border border-input bg-background px-2.5 text-[16px] sm:text-[12.5px] shadow-xs outline-none focus-visible:ring-[2px] focus-visible:ring-ring/60";
 const monoClass = `${fieldClass} font-mono tabular-nums`;
 const labelClass =
-  "text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground";
+  "text-[11px] sm:text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground";
 
 interface TargetFormProps {
   currentJob: JobWithProject;
@@ -117,7 +117,7 @@ export default function TargetForm({
       }}
     >
       <div className="flex items-center justify-between pb-1 border-b border-border/60">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <span className="text-[12px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           Observation Controls
         </span>
         {onOpenSetup ? (
@@ -125,7 +125,7 @@ export default function TargetForm({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-[10.5px] text-muted-foreground hover:text-destructive gap-1"
+            className="h-7 sm:h-6 px-2 text-[11.5px] sm:text-[10.5px] text-muted-foreground hover:text-destructive gap-1"
             onClick={onOpenSetup}
             title="Back to this project's Earth Observation"
           >
@@ -138,25 +138,25 @@ export default function TargetForm({
       {/* ── STEP 1: Current Job ─────────────────────────────────────────── */}
       <section className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs">
         <div className="flex items-center gap-2">
-          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[11px] sm:text-[10px] font-bold text-primary">
             1
           </span>
           <span className={labelClass}>Open survey</span>
         </div>
 
-        <div className="mt-2 flex items-center justify-between rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-[11.5px]">
+        <div className="mt-2 flex items-center justify-between rounded-md border border-primary/25 bg-primary/5 px-2.5 py-1.5 text-[12.5px] sm:text-[11.5px]">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 font-medium text-foreground">
               <Briefcase className="size-3.5 text-primary" />
               <span className="truncate">{currentJob.title}</span>
             </div>
             {currentJob.location ? (
-              <p className="truncate text-[10.5px] text-muted-foreground">
+              <p className="truncate text-[11.5px] sm:text-[10.5px] text-muted-foreground">
                 {currentJob.location}
               </p>
             ) : null}
           </div>
-          <Badge variant="outline" className="text-[10px] uppercase">
+          <Badge variant="outline" className="text-[11px] sm:text-[10px] uppercase">
             {currentJob.status}
           </Badge>
         </div>
@@ -165,7 +165,7 @@ export default function TargetForm({
       {/* ── STEP 2: Survey Type / Domain ────────────────────────────────── */}
       <section className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs">
         <div className="flex items-center gap-2 mb-2">
-          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[11px] sm:text-[10px] font-bold text-primary">
             2
           </span>
           <legend className={labelClass}>Survey Type</legend>
@@ -185,14 +185,14 @@ export default function TargetForm({
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-semibold text-foreground">
+                    <span className="text-[12.5px] sm:text-[12px] font-semibold text-foreground">
                       {meta.short}
                     </span>
-                    <Badge variant="default" className="text-[9.5px]">
+                    <Badge variant="default" className="text-[10.5px] sm:text-[9.5px]">
                       {option.id}
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                  <p className="mt-0.5 text-[12px] sm:text-[11px] leading-snug text-muted-foreground">
                     {meta.name}
                   </p>
                 </div>
@@ -206,14 +206,14 @@ export default function TargetForm({
       <section className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+            <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[11px] sm:text-[10px] font-bold text-primary">
               3
             </span>
             <Label className={labelClass}>Earth Observation Data</Label>
           </div>
           <button
             type="button"
-            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80"
+            className="flex items-center gap-1 text-[12px] sm:text-[11px] font-medium text-primary hover:text-primary/80"
             aria-expanded={sourcesOpen}
             onClick={() => setSourcesOpen((open) => !open)}
           >
@@ -222,17 +222,17 @@ export default function TargetForm({
           </button>
         </div>
 
-        <div className="mt-1.5 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
-          <Badge variant="outline" className="text-[10.5px] font-normal">
+        <div className="mt-1.5 flex flex-wrap gap-1 text-[12px] sm:text-[11px] text-muted-foreground">
+          <Badge variant="outline" className="text-[11.5px] sm:text-[10.5px] font-normal">
             {imageryChip(chosen, { year, window: windowId })}
           </Badge>
-          <Badge variant="outline" className="text-[10.5px] font-normal">
+          <Badge variant="outline" className="text-[11.5px] sm:text-[10.5px] font-normal">
             {chosen.dem ?? "Copernicus DEM 30m"}
           </Badge>
-          <Badge variant="outline" className="text-[10.5px] font-normal">
+          <Badge variant="outline" className="text-[11.5px] sm:text-[10.5px] font-normal">
             ALOS PALSAR Radar SAR
           </Badge>
-          <Badge variant="outline" className="text-[10.5px] font-normal">
+          <Badge variant="outline" className="text-[11.5px] sm:text-[10.5px] font-normal">
             Landsat WOfS Water History
           </Badge>
         </div>
@@ -314,10 +314,10 @@ export default function TargetForm({
             </div>
 
             {deadWindow ? (
-              <p className="text-[11px] text-muted-foreground">{deadWindow.reason}</p>
+              <p className="text-[12px] sm:text-[11px] text-muted-foreground">{deadWindow.reason}</p>
             ) : null}
 
-            <details className="mt-2 text-[11px]">
+            <details className="mt-2 text-[12px] sm:text-[11px]">
               <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
                 Fixed Calibrated Models
               </summary>
@@ -334,7 +334,7 @@ export default function TargetForm({
       {/* ── STEP 4: Site Coordinates & Extent ───────────────────────────── */}
       <section className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs space-y-3">
         <div className="flex items-center gap-2">
-          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+          <span className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[11px] sm:text-[10px] font-bold text-primary">
             4
           </span>
           <Label className={labelClass}>Site Coordinates & Extent</Label>
@@ -381,7 +381,7 @@ export default function TargetForm({
           <p
             role="status"
             aria-live="polite"
-            className="rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-[11.5px] leading-snug text-amber-700 dark:text-amber-400"
+            className="rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-[12.5px] sm:text-[11.5px] leading-snug text-amber-700 dark:text-amber-400"
           >
             {note}
           </p>
@@ -405,7 +405,7 @@ export default function TargetForm({
             ))}
           </select>
           {quote ? (
-            <p className="text-[10.5px] text-muted-foreground">
+            <p className="text-[11.5px] sm:text-[10.5px] text-muted-foreground">
               Ground covered:{" "}
               <span className="font-medium text-foreground">{areaText(quote)}</span>
             </p>
@@ -424,7 +424,7 @@ export default function TargetForm({
       {/* ── Submit Action ────────────────────────────────────────────────── */}
       <Button
         type="submit"
-        className="mt-2 h-9 w-full justify-center gap-2 text-[12.5px] font-semibold"
+        className="mt-2 h-10 sm:h-9 w-full justify-center gap-2 text-[13.5px] sm:text-[12.5px] font-semibold"
         disabled={queueing || busy || !affordable}
         title={
           affordable
@@ -457,7 +457,7 @@ export default function TargetForm({
           >
             <span style={{ width: `${progress}%` }} />
           </div>
-          <p className="mt-1 text-[11.5px] text-muted-foreground" role="status" aria-live="polite">
+          <p className="mt-1 text-[12.5px] sm:text-[11.5px] text-muted-foreground" role="status" aria-live="polite">
             {stage ?? "Processing"}{" "}
             <b className="sw-mono font-semibold text-foreground">
               {progress}%{elapsed ? ` · ${elapsed}` : ""}
@@ -468,7 +468,7 @@ export default function TargetForm({
 
       {problems.length || refused ? (
         <div role="alert" className="mt-2 rounded-md border border-destructive/40 bg-destructive/8 px-2.5 py-2">
-          <ul className="list-disc space-y-0.5 pl-4 text-[11.5px] text-destructive">
+          <ul className="list-disc space-y-0.5 pl-4 text-[12.5px] sm:text-[11.5px] text-destructive">
             {problems.map((problem) => (
               <li key={problem}>{problem}</li>
             ))}

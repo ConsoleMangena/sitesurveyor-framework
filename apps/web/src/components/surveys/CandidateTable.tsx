@@ -88,7 +88,7 @@ export default function CandidateTable({
                       {row.letter}
                     </span>
                   </td>
-                  <td className="text-[11px]">{row.kind}</td>
+                  <td className="text-[12px] sm:text-[11px]">{row.kind}</td>
                   <td className="sw-num">{scoreText(row.score)}</td>
                   <td className="sw-num">{distanceText(row.distanceKm)}</td>
                   <td className="sw-num">{coordText(row.latitude)}</td>

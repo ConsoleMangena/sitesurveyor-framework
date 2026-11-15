@@ -42,10 +42,10 @@ import CreditCostPanel from "../../../components/surveys/CreditCostPanel.tsx";
 import { DEFAULT_HALF_DEG, DEFAULT_TARGET, type SurveyFormValues } from "./model.ts";
 
 const fieldClass =
-  "h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-[2px] focus-visible:ring-ring/60";
+  "h-10 sm:h-9 rounded-md border border-input bg-background px-3 text-[16px] sm:text-sm shadow-xs outline-none focus-visible:ring-[2px] focus-visible:ring-ring/60";
 const monoClass = `${fieldClass} font-mono tabular-nums`;
 const labelClass =
-  "text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
+  "text-[12px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
 
 interface EarthObservationSetupFormProps {
   workspaceId: string;
@@ -264,7 +264,7 @@ export default function EarthObservationSetupForm({
                 <select id="eo-new-extent" className={`w-full ${fieldClass}`} value={halfDeg} disabled={saving} onChange={(event) => setHalfDeg(Number(event.target.value))}>
                   {AOI_CHOICES.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}
                 </select>
-                {draftQuote.quote ? <p className="text-[11px] text-muted-foreground">Ground covered: <span className="font-medium text-foreground">{areaText(draftQuote.quote)}</span></p> : null}
+                {draftQuote.quote ? <p className="text-[12px] sm:text-[11px] text-muted-foreground">Ground covered: <span className="font-medium text-foreground">{areaText(draftQuote.quote)}</span></p> : null}
               </div>
               {note ? <p role="status" className="rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs leading-snug text-amber-700 dark:text-amber-400">{note}</p> : null}
             </CardContent>

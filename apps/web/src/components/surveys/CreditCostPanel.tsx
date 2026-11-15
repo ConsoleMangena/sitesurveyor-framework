@@ -47,7 +47,7 @@ export default function CreditCostPanel({
     <div className="rounded-lg border border-border/70 bg-card/60 p-3 shadow-xs">
       <div className="flex items-center gap-2">
         <Coins className="size-3.5 text-primary" aria-hidden="true" />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <span className="text-[12px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           Credit cost
         </span>
         {loading ? (
@@ -65,7 +65,7 @@ export default function CreditCostPanel({
               {quote.credits === 1 ? "credit" : "credits"}
             </span>
           </p>
-          <p className="text-[11.5px] leading-snug text-muted-foreground">
+          <p className="text-[12.5px] sm:text-[11.5px] leading-snug text-muted-foreground">
             for {areaText(quote)} of ground
           </p>
 
@@ -75,10 +75,10 @@ export default function CreditCostPanel({
                 line.credits === line.minimumCredits &&
                 line.baseCredits + line.areaCredits <= line.minimumCredits;
               return (
-                <li key={line.category} className="flex items-start justify-between gap-3 text-[11.5px]">
+                <li key={line.category} className="flex items-start justify-between gap-3 text-[12.5px] sm:text-[11.5px]">
                   <span className="min-w-0 flex-1">
                     <span className="block text-foreground">{line.label}</span>
-                    <span className="block text-[10.5px] text-muted-foreground">
+                    <span className="block text-[11.5px] sm:text-[10.5px] text-muted-foreground">
                       {line.baseCredits} fixed · {line.areaCredits} for the ground
                       {floored ? ` · floor of ${line.minimumCredits} applies` : ""}
                     </span>
@@ -92,16 +92,16 @@ export default function CreditCostPanel({
           </ul>
         </>
       ) : loading ? (
-        <p className="mt-1.5 text-[11.5px] text-muted-foreground">Pricing this survey…</p>
+        <p className="mt-1.5 text-[12.5px] sm:text-[11.5px] text-muted-foreground">Pricing this survey…</p>
       ) : (
-        <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+        <p className="mt-1.5 text-[12.5px] sm:text-[11.5px] text-muted-foreground">
           Price unavailable.
         </p>
       )}
 
       {showBalance ? (
         <div className="mt-2 border-t border-border/60 pt-2">
-          <p className="text-[11.5px] text-muted-foreground">
+          <p className="text-[12.5px] sm:text-[11.5px] text-muted-foreground">
             Workspace balance:{" "}
             <span className="font-mono tabular-nums text-foreground">
               {typeof balance === "number" ? balance.toLocaleString() : "—"}
@@ -112,7 +112,7 @@ export default function CreditCostPanel({
           {short ? (
             <div
               role="alert"
-              className="mt-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-[11.5px] leading-snug text-amber-700 dark:text-amber-400"
+              className="mt-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-[12.5px] sm:text-[11.5px] leading-snug text-amber-700 dark:text-amber-400"
             >
               <p className="flex items-start gap-1.5">
                 <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
@@ -126,7 +126,7 @@ export default function CreditCostPanel({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-1.5 h-7 text-[11px]"
+                  className="mt-1.5 h-8 sm:h-7 text-[12px] sm:text-[11px]"
                   onClick={onNavigateBilling}
                 >
                   Open Billing

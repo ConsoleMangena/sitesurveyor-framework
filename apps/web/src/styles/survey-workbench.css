@@ -230,6 +230,115 @@
   }
 }
 
+/* ── Stacked legibility floor ─────────────────────────────────────────────
+   The dense type above is sized for the console's narrow desktop columns.
+   Stacked, the same strings render full-width on a phone, so the reading
+   sizes lift to a phone floor: no 9.5-10px body text, no sub-28px rows in
+   the panels. Desktop chrome above 980px is untouched. Touch pointers get
+   the larger ribbon rows from the coarse-pointer block at the end. */
+@media (max-width: 980px) {
+  .sw-pane-tab {
+    font-size: 12.5px;
+    padding: 7px 8px;
+  }
+
+  .sw-panel__title {
+    font-size: 12px;
+  }
+
+  .sw-chip {
+    font-size: 11.5px;
+    padding: 3px 9px;
+  }
+
+  .sw-measure__value {
+    font-size: 12px;
+  }
+
+  .sw-measure button {
+    width: 30px;
+    height: 30px;
+  }
+
+  .sw-attr-table {
+    font-size: 13px;
+  }
+
+  .sw-attr-table th {
+    font-size: 10.5px;
+  }
+
+  .sw-attr-table td {
+    padding: 8px 10px;
+  }
+
+  .sw-attr-table .sw-num {
+    font-size: 12px;
+  }
+
+  .sw-band,
+  .sw-legend-band {
+    font-size: 10.5px;
+  }
+
+  .sw-layer {
+    font-size: 13px;
+    padding: 8px 0;
+  }
+
+  .sw-layer input {
+    width: 16px;
+    height: 16px;
+  }
+
+  .sw-kv dd {
+    font-size: 12px;
+  }
+
+  .sw-status {
+    font-size: 11.5px;
+  }
+
+  .sw-pill {
+    font-size: 12px;
+  }
+
+  .sw-rank {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .sw-attr-scroll {
+    max-height: 240px;
+  }
+
+  /* Stacked, there is no width to buy back, so the collapse state cannot hide
+     a panel. The base collapse rule is more specific than the force-visible
+     rule above, so it has to be matched here to actually lose: a tapped
+     chevron otherwise leaves the panel invisible but still occupying its
+     whole column. */
+  .sw-workspace[data-left="collapsed"] > .sw-panel--left,
+  .sw-workspace[data-right="collapsed"] > .sw-panel--right {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* With collapse unable to do anything, the panel-header chevrons that
+     toggle it are dead controls on a phone. */
+  .sw-panel__header button[aria-expanded] {
+    display: none;
+  }
+
+  /* The command row is one swipeable strip when stacked; on a narrow window
+     with a mouse the rows still grow to a height a finger could trust. The
+     coarse-pointer block keeps 36px where it applies. */
+  .sw-ribbon button {
+    min-height: 34px;
+  }
+}
+
 @media (max-width: 640px) {
   .sw-workspace .sw-map {
     height: 42vh;
@@ -244,8 +353,8 @@
   }
 
   .sw-chip {
-    font-size: 10px;
-    padding: 2px 7px;
+    font-size: 11px;
+    padding: 2px 8px;
   }
 
   .sw-measure {
@@ -254,7 +363,7 @@
   }
 
   .sw-measure__value {
-    font-size: 10px;
+    font-size: 11.5px;
   }
 
   .sw-block {

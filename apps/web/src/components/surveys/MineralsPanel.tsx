@@ -38,16 +38,16 @@ export default function MineralsPanel({
 
       {unscreenable.length > 0 ? (
         <details className="mt-2.5 rounded-lg border border-input bg-muted/40 px-2.5 py-2">
-          <summary className="cursor-pointer text-[11.5px] font-semibold text-muted-foreground">
+          <summary className="cursor-pointer text-[12.5px] sm:text-[11.5px] font-semibold text-muted-foreground">
             Not screened by this dataset ({unscreenable.length})
           </summary>
           <ul className="mt-1.5 space-y-1.5">
             {unscreenable.map((item) => (
-              <li key={item.name} className="text-[11px] leading-snug">
+              <li key={item.name} className="text-[12px] sm:text-[11px] leading-snug">
                 <span className="font-semibold text-foreground">{item.name}</span>
                 {item.reason ? <span className="text-muted-foreground"> — {item.reason}</span> : null}
                 {item.needs ? (
-                  <span className="block text-[10.5px] text-muted-foreground">
+                  <span className="block text-[11.5px] sm:text-[10.5px] text-muted-foreground">
                     Would need: {item.needs}
                   </span>
                 ) : null}
@@ -70,7 +70,7 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-[11.5px] font-semibold text-foreground">
+          <p className="truncate text-[12.5px] sm:text-[11.5px] font-semibold text-foreground">
             {item.color ? (
               <span
                 aria-hidden="true"
@@ -81,7 +81,7 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
             {item.name}
             {item.symbol ? <span className="text-muted-foreground"> ({item.symbol})</span> : null}
           </p>
-          <p className="mt-0.5 flex items-center gap-1.5 truncate text-[10.5px] text-muted-foreground">
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] sm:text-[10.5px] text-muted-foreground">
             <span
               aria-hidden="true"
               className="sw-accent-swatch shrink-0"
@@ -99,12 +99,12 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
       </div>
       <p className="sw-mono mt-1 text-[15px] leading-none font-semibold tabular-nums">
         {item.areaTopDecile === null ? "—" : Math.round(item.areaTopDecile)}
-        <span className="ml-0.5 text-[10.5px] font-normal text-muted-foreground">
+        <span className="ml-0.5 text-[11.5px] sm:text-[10.5px] font-normal text-muted-foreground">
           /100 top decile
         </span>
       </p>
       {item.mapAreaKm2 !== null ? (
-        <p className="sw-mono mt-1 text-[10.5px] leading-snug text-muted-foreground tabular-nums">
+        <p className="sw-mono mt-1 text-[11.5px] sm:text-[10.5px] leading-snug text-muted-foreground tabular-nums">
           {item.mapAreaKm2 > 0
             ? `owns ${item.mapAreaKm2.toFixed(2)} km² on the map`
             : "never the strongest system on the map"}

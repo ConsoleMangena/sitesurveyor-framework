@@ -212,7 +212,7 @@ export default function ContentsPanel({
                     className="h-1.5 w-full accent-primary cursor-pointer"
                     title="Adjust classification transparency"
                   />
-                  <span className="font-mono text-[10px] text-muted-foreground w-7 shrink-0 text-right">
+                  <span className="font-mono text-[11px] sm:text-[10px] text-muted-foreground w-7 shrink-0 text-right">
                     {Math.round((rasterOpacity ?? 0.65) * 100)}%
                   </span>
                 </div>
@@ -267,14 +267,14 @@ export default function ContentsPanel({
 
           {hasRaster && layers.raster !== false ? (
             <div className="mt-3 border-t border-border pt-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground block mb-1.5">
+              <span className="text-[11px] sm:text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground block mb-1.5">
                 {rasterCategory === "hazard_safety"
                   ? "Classified Risk"
                   : rasterCategory === "minerals"
                     ? "Dominant mineral system"
                     : "Classified Potential"}
               </span>
-              <div className="space-y-1 text-[11px]">
+              <div className="space-y-1 text-[12px] sm:text-[11px]">
                 {rasterLegend.map((entry) => (
                   <div key={entry.code} className="flex items-center gap-2">
                     <span
@@ -315,7 +315,7 @@ export default function ContentsPanel({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-destructive gap-1"
+                className="h-7 sm:h-6 px-1.5 text-[12px] sm:text-[11px] text-muted-foreground hover:text-destructive gap-1"
                 onClick={onOpenJobSetup}
                 title="Back to this project's Earth Observation"
               >
@@ -327,7 +327,7 @@ export default function ContentsPanel({
 
           {jobs ? (
             jobs.length === 0 ? (
-              <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+              <p className="mt-1.5 text-[12.5px] sm:text-[11.5px] leading-snug text-muted-foreground">
                 No survey has run in this project yet.
               </p>
             ) : (
@@ -348,7 +348,7 @@ export default function ContentsPanel({
                             if (e.key === "Escape") setEditingJobId(null);
                           }}
                           aria-label="Survey name"
-                          className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-[12px] font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-[13px] sm:text-[12px] font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                         />
                       ) : (
                         <button
@@ -361,14 +361,14 @@ export default function ContentsPanel({
                         >
                           <Briefcase className="size-3.5 shrink-0 text-primary" />
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[12px] font-medium text-foreground">
+                            <span className="block truncate text-[12.5px] sm:text-[12px] font-medium text-foreground">
                               {job.title}
                             </span>
-                            <span className="sw-mono block truncate text-[10.5px] text-muted-foreground">
+                            <span className="sw-mono block truncate text-[11.5px] sm:text-[10.5px] text-muted-foreground">
                               {job.location ?? "No location specified"}
                             </span>
                           </span>
-                          <span className="text-[10px] uppercase font-semibold text-muted-foreground shrink-0">
+                          <span className="text-[11px] sm:text-[10px] uppercase font-semibold text-muted-foreground shrink-0">
                             {job.status}
                           </span>
                         </button>
@@ -380,7 +380,7 @@ export default function ContentsPanel({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+                              className="size-7 sm:size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
                               title="Rename survey"
                               onClick={() => {
                                 setEditingJobId(job.id);
@@ -395,7 +395,7 @@ export default function ContentsPanel({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                              className="size-7 sm:size-6 shrink-0 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity"
                               title="Delete survey"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -421,7 +421,7 @@ export default function ContentsPanel({
               <Skeleton className="h-9 w-full rounded-md" />
             </div>
           ) : runs.length === 0 ? (
-            <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+            <p className="mt-1.5 text-[12.5px] sm:text-[11.5px] leading-snug text-muted-foreground">
               No survey has run in this workspace yet.
             </p>
           ) : (
@@ -437,8 +437,8 @@ export default function ContentsPanel({
                     }`}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] font-medium">{run.clientName}</span>
-                      <span className="sw-mono block truncate text-[10.5px] text-muted-foreground">
+                      <span className="block truncate text-[12.5px] sm:text-[12px] font-medium">{run.clientName}</span>
+                      <span className="sw-mono block truncate text-[11.5px] sm:text-[10.5px] text-muted-foreground">
                         {coordText(run.latitude)}, {coordText(run.longitude)}
                       </span>
                     </span>
@@ -481,7 +481,7 @@ function DataBrowser({ provenance }: { provenance: SurveyProvenance | null }) {
     return (
       <section className="sw-block px-3.5 py-3">
         <BlockTitle>EO coverages</BlockTitle>
-        <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+        <p className="mt-1.5 text-[12.5px] sm:text-[11.5px] leading-snug text-muted-foreground">
           No survey has recorded its inputs yet. Run one and every coverage it read appears
           here, named by the worker rather than by the form.
         </p>
@@ -506,20 +506,20 @@ function CoverageGroup({ title, rows }: { title: string; rows: CoverageRow[] }) 
         {rows.map((row) => (
           <li key={row.key} className="border-b border-border/50 pb-1.5 last:border-0 last:pb-0">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[11.5px] font-medium text-foreground">{row.name}</span>
+              <span className="text-[12.5px] sm:text-[11.5px] font-medium text-foreground">{row.name}</span>
               {row.coverage ? (
-                <span className="sw-mono truncate text-[10px] text-muted-foreground" title={row.coverage}>
+                <span className="sw-mono truncate text-[11px] sm:text-[10px] text-muted-foreground" title={row.coverage}>
                   {row.coverage}
                 </span>
               ) : null}
             </div>
             {/* Wrapped, not truncated: a provenance record is the one string on this pane
                 a reader must be able to finish reading. */}
-            <p className="sw-mono mt-0.5 break-words text-[10.5px] leading-snug text-muted-foreground">
+            <p className="sw-mono mt-0.5 break-words text-[11.5px] sm:text-[10.5px] leading-snug text-muted-foreground">
               {row.label}
             </p>
             {row.credit ? (
-              <p className="mt-0.5 text-[10px] text-muted-foreground/80">{row.credit}</p>
+              <p className="mt-0.5 text-[11px] sm:text-[10px] text-muted-foreground/80">{row.credit}</p>
             ) : null}
           </li>
         ))}
@@ -537,8 +537,8 @@ function SnapshotRow({
 }) {
   return (
     <div className="grid grid-cols-[62px_minmax(0,1fr)] items-baseline gap-2">
-      <dt className="text-[10.5px] uppercase tracking-[0.05em] text-muted-foreground">{label}</dt>
-      <dd className="sw-mono truncate text-[11px]" title={value}>
+      <dt className="text-[11.5px] sm:text-[10.5px] uppercase tracking-[0.05em] text-muted-foreground">{label}</dt>
+      <dd className="sw-mono truncate text-[12px] sm:text-[11px]" title={value}>
         {value}
       </dd>
     </div>

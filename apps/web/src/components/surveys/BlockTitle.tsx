@@ -14,10 +14,10 @@ export function BlockTitle({
   count?: ReactNode;
 }) {
   return (
-    <h2 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+    <h2 className="flex items-center gap-2 text-[11px] sm:text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
       <span>{children}</span>
       {count === undefined ? null : (
-        <span className="sw-mono rounded-full bg-muted px-1.5 py-0.5 text-[9.5px] font-semibold text-muted-foreground">
+        <span className="sw-mono rounded-full bg-muted px-1.5 py-0.5 text-[10.5px] sm:text-[9.5px] font-semibold text-muted-foreground">
           {count}
         </span>
       )}

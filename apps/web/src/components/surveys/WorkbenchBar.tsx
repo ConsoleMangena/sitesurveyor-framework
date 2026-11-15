@@ -149,7 +149,7 @@ export function WorkbenchBar({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 shrink-0 gap-1 px-2 text-[11.5px] text-muted-foreground hover:text-foreground"
+              className="h-7 shrink-0 gap-1 px-2 text-[12.5px] sm:text-[11.5px] text-muted-foreground hover:text-foreground"
               onClick={onBack}
               title="Back to this project's Earth Observation"
             >
@@ -174,7 +174,7 @@ export function WorkbenchBar({
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <span className="sw-pill" data-state={pill.state}>
               <i aria-hidden="true" />
-              <span className="font-mono text-[11px]">{pill.text}</span>
+              <span className="font-mono text-[12px] sm:text-[11px]">{pill.text}</span>
             </span>
             <ThemeToggle />
           </div>
@@ -199,7 +199,7 @@ export function WorkbenchBar({
             <div className="flex shrink-0 items-center gap-2">
               <span className="sw-pill" data-state={pill.state}>
                 <i aria-hidden="true" />
-                <span className="font-mono text-[11px]">{pill.text}</span>
+                <span className="font-mono text-[12px] sm:text-[11px]">{pill.text}</span>
               </span>
             </div>
           </div>
@@ -256,7 +256,7 @@ export function WorkbenchBar({
                       aria-pressed={process === dossier}
                       onClick={() => onProcess(dossier)}
                       title={`${CATEGORY_LABELS[dossier].name} — produces ${CATEGORY_LABELS[dossier].noun}`}
-                      className={`h-7 rounded-md border px-2 text-[11.5px] font-medium transition-colors ${
+                      className={`h-7 rounded-md border px-2 text-[12.5px] sm:text-[11.5px] font-medium transition-colors ${
                         process === dossier
                           ? "border-primary/50 bg-primary/10 text-primary"
                           : "border-border bg-background text-muted-foreground hover:text-foreground"
@@ -293,7 +293,7 @@ export function WorkbenchBar({
                       aria-pressed={mapTool === id}
                       onClick={() => onMapTool(id)}
                       title={hint}
-                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2 text-[11.5px] font-medium transition-colors ${
+                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2 text-[12.5px] sm:text-[11.5px] font-medium transition-colors ${
                         mapTool === id
                           ? "border-primary/50 bg-primary/10 text-primary"
                           : "border-border bg-background text-muted-foreground hover:text-foreground"
@@ -372,7 +372,7 @@ function RibbonButton({
       type="button"
       variant={primary ? "default" : "outline"}
       size="sm"
-      className={`h-7 shrink-0 gap-1.5 text-[11.5px] ${
+      className={`h-7 shrink-0 gap-1.5 text-[12.5px] sm:text-[11.5px] ${
         pressed ? "bg-accent/40 font-semibold" : ""
       } ${primary ? "" : "font-medium"}`}
       disabled={disabled}
@@ -403,7 +403,7 @@ function RibbonTabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+      className={`relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] sm:text-[11px] font-medium transition-colors ${
         active
           ? "bg-background font-semibold text-foreground shadow-xs"
           : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
@@ -466,9 +466,9 @@ export function StatusStrip({ view, crs, job, basis, measure }: StatusStripProps
         <span className="font-semibold text-foreground">{view?.coords ?? "—"}</span>
       </div>
       <Sep />
-      <span className="font-mono text-[10.5px]">{crs}</span>
+      <span className="font-mono text-[11.5px] sm:text-[10.5px]">{crs}</span>
       <Sep />
-      <span className="font-mono text-[10.5px]">{view ? `Zoom ${view.zoom} · ${view.scale}` : "Zoom —"}</span>
+      <span className="font-mono text-[11.5px] sm:text-[10.5px]">{view ? `Zoom ${view.zoom} · ${view.scale}` : "Zoom —"}</span>
       <Sep />
       <span role="status" aria-live="polite" className="font-medium text-foreground">
         {job}
@@ -476,10 +476,10 @@ export function StatusStrip({ view, crs, job, basis, measure }: StatusStripProps
       {measure ? (
         <>
           <Sep />
-          <span className="font-mono text-[10.5px] text-foreground" aria-live="polite">{measure}</span>
+          <span className="font-mono text-[11.5px] sm:text-[10.5px] text-foreground" aria-live="polite">{measure}</span>
         </>
       ) : null}
-      <span className="ml-auto font-mono text-[10px] text-muted-foreground/80">{basis}</span>
+      <span className="ml-auto font-mono text-[11px] sm:text-[10px] text-muted-foreground/80">{basis}</span>
     </footer>
   );
 }
