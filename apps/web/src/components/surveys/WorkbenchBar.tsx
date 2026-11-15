@@ -461,29 +461,29 @@ interface StatusStripProps {
 export function StatusStrip({ view, crs, job, basis, measure }: StatusStripProps) {
   return (
     <footer className="sw-status sw-console__status">
-      <div className="flex items-center gap-1.5 font-mono">
-        <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-        <span className="font-semibold text-foreground">{view?.coords ?? "—"}</span>
+      <div className="sw-status__coords flex items-center gap-1.5 font-mono" title={view?.coords ?? undefined}>
+        <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
+        <span className="truncate font-semibold text-foreground">{view?.coords ?? "—"}</span>
       </div>
       <Sep />
-      <span className="font-mono text-[11.5px] sm:text-[10.5px]">{crs}</span>
+      <span className="sw-status__crs font-mono text-[11.5px] sm:text-[10.5px]">{crs}</span>
       <Sep />
-      <span className="font-mono text-[11.5px] sm:text-[10.5px]">{view ? `Zoom ${view.zoom} · ${view.scale}` : "Zoom —"}</span>
+      <span className="sw-status__zoom font-mono text-[11.5px] sm:text-[10.5px]">{view ? `Zoom ${view.zoom} · ${view.scale}` : "Zoom —"}</span>
       <Sep />
-      <span role="status" aria-live="polite" className="font-medium text-foreground">
+      <span role="status" aria-live="polite" className="sw-status__job font-medium text-foreground">
         {job}
       </span>
       {measure ? (
         <>
           <Sep />
-          <span className="font-mono text-[11.5px] sm:text-[10.5px] text-foreground" aria-live="polite">{measure}</span>
+          <span className="sw-status__measure font-mono text-[11.5px] sm:text-[10.5px] text-foreground" aria-live="polite">{measure}</span>
         </>
       ) : null}
-      <span className="ml-auto font-mono text-[11px] sm:text-[10px] text-muted-foreground/80">{basis}</span>
+      <span className="sw-status__basis ml-auto font-mono text-[11px] sm:text-[10px] text-muted-foreground/80" title={basis}>{basis}</span>
     </footer>
   );
 }
 
 function Sep() {
-  return <span className="size-1 rounded-full bg-border" aria-hidden="true" />;
+  return <span className="sw-status__sep size-1 rounded-full bg-border" aria-hidden="true" />;
 }

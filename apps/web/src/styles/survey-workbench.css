@@ -304,6 +304,18 @@
     font-size: 11.5px;
   }
 
+  /* Stacked, the provenance basis never fits beside the camera readout, so it
+     owns a full-width row of its own, left-aligned and truncated, instead of
+     being shoved to the right edge of a wrapped line by its desktop margin. */
+  .sw-status__basis {
+    flex: 1 1 100%;
+    min-width: 0;
+    margin-left: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .sw-pill {
     font-size: 12px;
   }
@@ -840,6 +852,65 @@
   border-top: 1px solid var(--border);
 }
 
+/* Stacked, a wrapping flex line scatters the readout: long coordinates push the
+   queue state onto a second line, orphan the separator dots and shove the
+   provenance basis onto a third. The grid gives every fragment a fixed seat —
+   camera left, zoom right, queue left, CRS right — and lets the two long
+   strings truncate on their own rows instead of breaking the line. Above phone
+   width the flex line still wraps between whole fragments, so it stays. */
+@media (max-width: 640px) {
+  .sw-console__status {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "coords zoom"
+      "job crs"
+      "measure measure"
+      "basis basis";
+    gap: 3px 12px;
+    align-items: baseline;
+    padding: 6px 10px;
+  }
+
+  .sw-console__status .sw-status__sep {
+    display: none;
+  }
+
+  .sw-status__coords {
+    grid-area: coords;
+    min-width: 0;
+  }
+
+  .sw-status__zoom {
+    grid-area: zoom;
+  }
+
+  .sw-status__job {
+    grid-area: job;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sw-status__crs {
+    grid-area: crs;
+  }
+
+  .sw-status__measure {
+    grid-area: measure;
+  }
+
+  .sw-status__basis {
+    grid-area: basis;
+    margin-left: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* ── Panel chrome ── */
 
 .sw-panel__header {
@@ -975,14 +1046,14 @@
 
 /* Stacked, the ribbon reads as two compact strips the way it does on desktop —
    the tab strip and one tool row. Tools keep their full labels and the row
-   swipes sideways instead of wrapping into a tall stack above a small map. */
+   swipes sideways instead of wrapping into a tall stack above a small map.
+   The toolbar dissolves so its groups become rows of the sheet: the tab strip
+   takes a row of its own and the active tab's tools start at the left edge,
+   which keeps the primary command on screen without a swipe. */
 @media (max-width: 980px) {
-  .sw-ribbon__actions,
-  .sw-ribbon__actions [role="toolbar"] {
-    flex-wrap: nowrap;
-  }
-
   .sw-ribbon__actions {
+    flex-wrap: wrap;
+    row-gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -992,9 +1063,25 @@
     display: none;
   }
 
+  .sw-ribbon__actions [role="toolbar"] {
+    display: contents;
+  }
+
   .sw-ribbon__actions > *,
   .sw-ribbon__actions [role="toolbar"] > * {
     flex: 0 0 auto;
+  }
+
+  .sw-ribbon__actions [role="tablist"] {
+    flex: 1 1 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-right: 0;
+    padding-bottom: 2px;
+  }
+
+  .sw-ribbon__actions [role="tablist"]::-webkit-scrollbar {
+    display: none;
   }
 
   /* Panel controls stay compact at every width; the stacked layout shows all
