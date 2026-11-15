@@ -24,7 +24,9 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        # Default peer resolution: recharts needs react-is and typescript-eslint
+        # needs typescript, both peer-only entries that --legacy-peer-deps skips.
+        run: npm ci
 
       - name: Write apps/web/.env
         # Real secrets are used when present. On forks they fall back to inert
@@ -87,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm ci --legacy-peer-deps
+          npm ci
           {
             printf 'VITE_SUPABASE_URL=%s\n' "$VITE_SUPABASE_URL"
             printf 'VITE_SUPABASE_ANON_KEY=%s\n' "$VITE_SUPABASE_ANON_KEY"

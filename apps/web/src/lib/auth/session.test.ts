@@ -7,7 +7,7 @@ const {
   mockUpdateUser,
   mockUpsert,
 } = vi.hoisted(() => ({
-  mockOnAuthStateChange: vi.fn(() => ({
+  mockOnAuthStateChange: vi.fn((..._args: unknown[]) => ({
     data: { subscription: { unsubscribe: vi.fn() } },
   })),
   mockRpc: vi.fn(),

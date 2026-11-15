@@ -8,7 +8,7 @@ let pendingPasswordRecoverySession: Session | null = null;
 
 // Keep recovery events available for pages that mount after Supabase finishes
 // exchanging the URL token during client initialization.
-supabase.auth.onAuthStateChange((event, session) => {
+supabase?.auth?.onAuthStateChange?.((event, session) => {
   if (event === "PASSWORD_RECOVERY" && session) {
     pendingPasswordRecoverySession = session;
   } else if (event === "SIGNED_OUT") {

@@ -81,28 +81,35 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    let isReady = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
     // Subscribe before checking the URL. Supabase may finish its code exchange
     // during initialization and emit PASSWORD_RECOVERY before this effect runs.
     const subscription = onAuthStateChange((event, session) => {
       if (!cancelled && event === "PASSWORD_RECOVERY" && session) {
+        isReady = true;
+        if (timerId) clearTimeout(timerId);
         setReady(true);
       }
     });
 
     if (consumePasswordRecoverySession()) {
+      isReady = true;
       setReady(true);
     }
 
     if (isPasswordRecoveryUrl()) {
       // Auth normally removes code/hash parameters after exchanging them. A
       // parameter that remains means no recovery event established a session.
-      void new Promise<void>((resolve) => setTimeout(resolve, 2500)).then(() => {
-        if (!cancelled) setLinkError(invalidLinkMessage);
-      });
+      timerId = setTimeout(() => {
+        if (!cancelled && !isReady) setLinkError(invalidLinkMessage);
+      }, 2500);
     }
 
     return () => {
       cancelled = true;
+      if (timerId) clearTimeout(timerId);
       subscription.unsubscribe();
     };
   }, []);

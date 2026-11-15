@@ -76,6 +76,24 @@ describe("ResetPasswordPage", () => {
     expect(mockOnAuthStateChange).not.toHaveBeenCalled();
   });
 
+  it("does not show an expired error when recovery succeeds before timeout", async () => {
+    vi.useFakeTimers();
+    mockConsumePasswordRecoverySession.mockReturnValue({
+      user: { id: "user-1" },
+    });
+
+    renderReset("/reset-password?code=valid-code");
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    expect(screen.queryByText(/reset link is invalid or has expired/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
   it("rejects a PKCE code that did not produce a recovery session", async () => {
     vi.useFakeTimers();
     renderReset("/reset-password?code=invalid");
