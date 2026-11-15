@@ -263,7 +263,7 @@ export default function TargetForm({
               </div>
             ))}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="composite-year" className={labelClass}>
                   Composite Year
@@ -340,7 +340,7 @@ export default function TargetForm({
           <Label className={labelClass}>Site Coordinates & Extent</Label>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <div className="space-y-1">
             <Label htmlFor="survey-lat" className={labelClass}>
               Latitude

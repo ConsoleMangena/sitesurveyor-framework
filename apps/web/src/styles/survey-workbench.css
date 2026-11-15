@@ -859,10 +859,49 @@
   padding: 4px 8px;
 }
 
-/* Panel controls stay compact at every width; the stacked tablet layout shows
-   all panels because the desktop collapse affordances cannot undo themselves. */
+/* Stacked, the ribbon reads as two compact strips the way it does on desktop —
+   the tab strip and one tool row. Tools keep their full labels and the row
+   swipes sideways instead of wrapping into a tall stack above a small map. */
 @media (max-width: 980px) {
-  .sw-ribbon__actions [aria-expanded] {
+  .sw-ribbon__actions,
+  .sw-ribbon__actions [role="toolbar"] {
+    flex-wrap: nowrap;
+  }
+
+  .sw-ribbon__actions {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sw-ribbon__actions::-webkit-scrollbar {
     display: none;
+  }
+
+  .sw-ribbon__actions > *,
+  .sw-ribbon__actions [role="toolbar"] > * {
+    flex: 0 0 auto;
+  }
+
+  /* Panel controls stay compact at every width; the stacked layout shows all
+     panels because the desktop collapse affordances cannot undo themselves,
+     and the group that held them would otherwise leave an empty seam. */
+  .sw-ribbon__actions [aria-expanded],
+  .sw-ribbon__actions > .sw-ribbon__group:last-of-type {
+    display: none;
+  }
+}
+
+/* Coarse pointers get real touch targets: the desktop ribbon keeps its 28px
+   rows, but a finger needs more than that to trust the command row. */
+@media (pointer: coarse) {
+  .sw-ribbon button {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  .sw-measure button {
+    width: 32px;
+    height: 32px;
   }
 }
