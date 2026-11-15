@@ -44,6 +44,28 @@
     "sha256": "467d7d5df8"
   },
   {
+    "target": "equipment/blockchain-ledger-wallet.jpg",
+    "commonsFile": "Ledger Nano S - Hard Wallet - Cold Storage for Cryptocurrency 05.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Ledger_Nano_S_-_Hard_Wallet_-_Cold_Storage_for_Cryptocurrency_05.jpg",
+    "author": "Motokoka",
+    "licence": "CC BY-SA 4.0",
+    "original": "2048x1536",
+    "used": "960x720",
+    "bytes": 164896,
+    "sha256": "7ab0059815"
+  },
+  {
+    "target": "equipment/blockchain-wallet-signing.jpg",
+    "commonsFile": "Trezor Safe 7.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Trezor_Safe_7.jpg",
+    "author": "FlippyFlink",
+    "licence": "CC0",
+    "original": "3024x4032",
+    "used": "960x1280",
+    "bytes": 375023,
+    "sha256": "de3d969558"
+  },
+  {
     "target": "equipment/calibration-service.jpg",
     "commonsFile": "Reglage station totale avec reflecteur.jpg",
     "page": "https://commons.wikimedia.org/wiki/File:Reglage_station_totale_avec_reflecteur.jpg",
