@@ -56,46 +56,20 @@ jobs:
           git archive --format=tar.gz --prefix="sitesurveyor-framework-${TAG}/" -o archive.tar.gz "$TAG"
           sha256sum archive.tar.gz
 
-      - name: Resolve the newest published version
-        id: latest
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -sS --fail-with-body \
-            -H "Authorization: Bearer $ZENODO_TOKEN" \
-            "https://zenodo.org/api/deposit/depositions?all_versions=true&size=100" \
-            -o depositions.json
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-
-          wanted = int(os.environ["ZENODO_DEPOSITION_ID"])
-          with open("depositions.json") as handle:
-              rows = json.load(handle)
-
-          # Accept either a concept id or any version id: use whichever the
-          # secret names to find the concept, then take its newest version.
-          matching = [r for r in rows if int(r.get("id", -1)) == wanted]
-          concept = matching[0]["conceptrecid"] if matching else wanted
-          published = [
-              r for r in rows
-              if str(r.get("conceptrecid")) == str(concept) and r.get("submitted")
-          ]
-          if not published:
-              raise SystemExit(f"no published Zenodo record for concept {concept}")
-          latest = max(published, key=lambda r: r["id"])
-          print(f"id={latest['id']}")
-          print(f"concept={concept}")
-          PY
-
       - name: Open a new deposition version
         id: version
         shell: bash
+        env:
+          ID: ${{ secrets.ZENODO_DEPOSITION_ID }}
         run: |
           set -euo pipefail
+          # Opening a new version on any published version of the concept is
+          # valid, so the secret needs no resolution step. Resolving via the
+          # depositions listing proved unreliable: the listing can omit
+          # superseded versions, which silently broke the old lookup.
           curl -sS --fail-with-body -X POST \
             -H "Authorization: Bearer $ZENODO_TOKEN" \
-            "https://zenodo.org/api/deposit/depositions/${{ steps.latest.outputs.id }}/actions/newversion" \
+            "https://zenodo.org/api/deposit/depositions/${ID}/actions/newversion" \
             -o newversion.json
           # The response is the *original* record; the draft is linked from
           # links.latest_draft, not from the response's own id/bucket.
