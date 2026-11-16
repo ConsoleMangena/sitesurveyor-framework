@@ -122,6 +122,13 @@ handing the flow back. Setting the site URL to the web origin in the Supabase da
 enough on its own: GoTrue falls back to the site URL root when a redirect target is not allowlisted,
 which loses the callback entirely.
 
+A recovery link sent outside the app — the Supabase dashboard's "Send recovery email", or any direct
+`resetPasswordForEmail` call — carries no `redirectTo`, so it lands on the site URL root instead of
+`/reset-password`. `components/auth/RecoveryRedirect.tsx` catches that arrival on any route (URL
+markers, the buffered session, or the `PASSWORD_RECOVERY` event) and routes it to `/reset-password`,
+so those links work without a redirect target. Prefer requesting recovery from `/forgot-password`,
+which sets the target explicitly.
+
 ## 5. Security properties
 
 | Threat | Defence |

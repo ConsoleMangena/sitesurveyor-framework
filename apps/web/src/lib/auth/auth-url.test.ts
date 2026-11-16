@@ -5,6 +5,7 @@ import {
   getPasswordRecoveryTokenType,
   hasPkceRecoveryCode,
   isPasswordRecoveryUrl,
+  isRecoveryArrivalUrl,
 } from "./auth-url.ts";
 
 describe("auth URL handling", () => {
@@ -76,5 +77,48 @@ describe("auth URL handling", () => {
         "http://tauri.localhost/reset-password#access_token=abc&type=recovery",
       ),
     ).toBe(false);
+  });
+
+  describe("isRecoveryArrivalUrl", () => {
+    it("recognizes a dashboard recovery link that fell back to the site root", () => {
+      expect(
+        isRecoveryArrivalUrl(
+          "https://sitesurveyor.tech/#access_token=abc&refresh_token=def&type=recovery",
+        ),
+      ).toBe(true);
+    });
+
+    it("recognizes query-string arrivals on any route", () => {
+      expect(
+        isRecoveryArrivalUrl(
+          "https://sitesurveyor.tech/?token_hash=abc&type=recovery",
+        ),
+      ).toBe(true);
+      expect(
+        isRecoveryArrivalUrl("https://sitesurveyor.tech/?type=recovery"),
+      ).toBe(true);
+      expect(
+        isRecoveryArrivalUrl(
+          "https://sitesurveyor.tech/?error=access_denied&type=recovery",
+        ),
+      ).toBe(true);
+    });
+
+    it("ignores an OAuth code, a plain visit and other email types", () => {
+      expect(
+        isRecoveryArrivalUrl("https://sitesurveyor.tech/auth/callback?code=abc"),
+      ).toBe(false);
+      expect(isRecoveryArrivalUrl("https://sitesurveyor.tech/")).toBe(false);
+      expect(
+        isRecoveryArrivalUrl(
+          "https://sitesurveyor.tech/#access_token=abc&type=signup",
+        ),
+      ).toBe(false);
+      expect(
+        isRecoveryArrivalUrl(
+          "https://sitesurveyor.tech/verify-email?token_hash=abc&type=signup",
+        ),
+      ).toBe(false);
+    });
   });
 });

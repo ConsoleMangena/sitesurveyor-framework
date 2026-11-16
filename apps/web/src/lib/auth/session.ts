@@ -16,6 +16,16 @@ supabase?.auth?.onAuthStateChange?.((event, session) => {
   }
 });
 
+/**
+ * True when a recovery session is buffered and nobody has claimed it yet.
+ *
+ * Lets a route redirect a recovery arrival to `/reset-password` without
+ * stealing the session the reset screen needs.
+ */
+export function hasPendingPasswordRecoverySession(): boolean {
+  return pendingPasswordRecoverySession !== null;
+}
+
 export function consumePasswordRecoverySession(): Session | null {
   const session = pendingPasswordRecoverySession;
   pendingPasswordRecoverySession = null;

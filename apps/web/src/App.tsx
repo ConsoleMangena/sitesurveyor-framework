@@ -4,6 +4,7 @@ import SplashScreen from "./components/SplashScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
 import AppErrorPage from "./components/AppErrorPage";
 import SessionExpiredBanner from "./components/SessionExpiredBanner";
+import RecoveryRedirect from "./components/auth/RecoveryRedirect";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
@@ -241,6 +242,7 @@ export default function App() {
       <OfflineStatusBanner />
       <Toaster position="bottom-right" richColors closeButton />
       <BrowserRouter>
+        <RecoveryRedirect />
         <RouteRobots />
         <AssistantProvider>
         <SessionExpiredBanner />

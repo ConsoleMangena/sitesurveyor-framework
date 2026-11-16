@@ -31,6 +31,35 @@ export function isPasswordRecoveryUrl(url: string = window.location.href): boole
 }
 
 /**
+ * True when this URL is a password-recovery arrival on *any* route.
+ *
+ * A recovery link sent outside the app (Supabase dashboard, a direct API
+ * call) carries no `redirectTo`, so GoTrue falls back to the Site URL root
+ * and drops the session or the failure on whatever page lives there. This
+ * reads the implicit fragment arrival, a query-string `type=recovery`, and
+ * token-hash links — but not a bare `?code=`, which an OAuth callback also
+ * carries and `/auth/callback` already handles.
+ */
+export function isRecoveryArrivalUrl(url: string = window.location.href): boolean {
+  const parsed = new URL(url);
+  const params = new URLSearchParams(parsed.search);
+  const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+
+  // The implicit arrival: tokens plus the recovery marker in the fragment.
+  if (fragment.get("type") === "recovery") return true;
+
+  // Token-hash links and GoTrue's error redirects declare `type=recovery` in
+  // the query string; both hold something for `/reset-password` to redeem or
+  // explain. A token hash typed for another flow (signup, email change) is
+  // not ours, and a bare `?code=` is deliberately not matched — an OAuth
+  // callback carries one too, and that route already handles itself.
+  const type = params.get("type");
+  if (type === "recovery") return true;
+  if (!params.has("token_hash")) return false;
+  return type === null || type === "email" || type === "recovery";
+}
+
+/**
  * The one-time token a recovery link carries in the query string.
  *
  * Supabase sends this instead of a code when the mail template links straight
