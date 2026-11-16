@@ -13,7 +13,7 @@
  */
 
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "../supabase/client.ts";
+import { getRecoveryClient, supabase } from "../supabase/client.ts";
 import { authRedirectTo } from "../platform.ts";
 import type { AccountType } from "./provisioning.ts";
 
@@ -106,9 +106,16 @@ export async function signInWithEmail(
   return { session: data.session, user: data.user };
 }
 
-/** Send the "forgot password" link. Always resolves on a valid request. */
+/**
+ * Send the "forgot password" link.
+ *
+ * The link is requested through a client that sends no PKCE challenge, so the
+ * emailed link carries the session in its URL fragment. That link opens in
+ * any browser — a phone, a second device, a browser that never asked for it —
+ * whereas a PKCE link can only be redeemed where the request was made.
+ */
 export async function sendPasswordReset(email: string): Promise<void> {
-  const { error } = await supabase.auth.resetPasswordForEmail(
+  const { error } = await getRecoveryClient().auth.resetPasswordForEmail(
     email.trim().toLowerCase(),
     { redirectTo: buildEmailRedirect("/reset-password") },
   );

@@ -23,5 +23,46 @@ export function isPasswordRecoveryUrl(url: string = window.location.href): boole
   const params = new URLSearchParams(parsed.search);
   const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ""));
 
-  return params.has("code") || fragment.get("type") === "recovery";
+  return (
+    params.has("code") ||
+    params.has("token_hash") ||
+    fragment.get("type") === "recovery"
+  );
+}
+
+/**
+ * The one-time token a recovery link carries in the query string.
+ *
+ * Supabase sends this instead of a code when the mail template links straight
+ * to the app with the token hash. The token is exchanged for a session by the
+ * app itself, so such a link works in any browser.
+ */
+export function getPasswordRecoveryTokenHash(
+  url: string = window.location.href,
+): string | null {
+  const parsed = new URL(url);
+  return new URLSearchParams(parsed.search).get("token_hash");
+}
+
+/**
+ * The verification type a token-hash link declares.
+ *
+ * Supabase's mail templates differ: one links with `type=recovery`, another
+ * with `type=email`. Both are accepted by GoTrue for a recovery token.
+ */
+export function getPasswordRecoveryTokenType(
+  url: string = window.location.href,
+): "recovery" | "email" {
+  const type = new URLSearchParams(new URL(url).search).get("type");
+  return type === "email" ? "email" : "recovery";
+}
+
+/**
+ * True when the URL still carries a PKCE code.
+ *
+ * Supabase removes the code from the URL once it has exchanged it, so a code
+ * that is still there means the exchange never happened.
+ */
+export function hasPkceRecoveryCode(url: string = window.location.href): boolean {
+  return new URLSearchParams(new URL(url).search).has("code");
 }

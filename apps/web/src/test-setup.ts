@@ -1,6 +1,13 @@
-import "@testing-library/jest-dom/vitest";
+import { expect, vi } from "vitest";
+import * as jestDomMatchers from "@testing-library/jest-dom/matchers";
 import { webcrypto } from "node:crypto";
-import { vi } from "vitest";
+
+// The matchers are registered by hand rather than through
+// "@testing-library/jest-dom/vitest": that entry point imports "vitest" as a
+// bare specifier, which only resolves when jest-dom and vitest sit in the
+// same node_modules tree. npm hoists them apart whenever another workspace
+// pins a different vitest, and the whole suite then fails to load.
+expect.extend(jestDomMatchers);
 
 // The auth plat column shows a large decorative SVG animation. Tests exercise
 // the forms, not the artwork, and parsing the full SVG in jsdom on every auth

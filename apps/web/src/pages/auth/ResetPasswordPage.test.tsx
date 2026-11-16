@@ -7,11 +7,13 @@ const {
   mockConsumePasswordRecoverySession,
   mockGetCurrentSession,
   mockOnAuthStateChange,
+  mockRedeemRecoveryTokenHash,
   mockSetPassword,
 } = vi.hoisted(() => ({
   mockConsumePasswordRecoverySession: vi.fn(),
   mockGetCurrentSession: vi.fn(),
   mockOnAuthStateChange: vi.fn(),
+  mockRedeemRecoveryTokenHash: vi.fn(),
   mockSetPassword: vi.fn(),
 }));
 
@@ -19,6 +21,10 @@ vi.mock("../../lib/auth/session.ts", () => ({
   consumePasswordRecoverySession: () => mockConsumePasswordRecoverySession(),
   getCurrentSession: () => mockGetCurrentSession(),
   onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
+}));
+
+vi.mock("../../lib/auth/recovery.ts", () => ({
+  redeemRecoveryTokenHash: (...args: unknown[]) => mockRedeemRecoveryTokenHash(...args),
 }));
 
 vi.mock("../../lib/auth/email-auth.ts", () => ({
@@ -44,6 +50,7 @@ describe("ResetPasswordPage", () => {
     mockOnAuthStateChange.mockReturnValue({ unsubscribe: vi.fn() });
     mockConsumePasswordRecoverySession.mockReturnValue(null);
     mockGetCurrentSession.mockResolvedValue(null);
+    mockRedeemRecoveryTokenHash.mockResolvedValue({ user: { id: "user-1" } });
   });
 
   it("enables recovery when Supabase completed the exchange before mount", () => {
@@ -124,7 +131,37 @@ describe("ResetPasswordPage", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);
     });
-    expect(screen.getByText(/reset link is invalid or has expired/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/can only be completed in the browser that requested it/),
+    ).toBeInTheDocument();
     vi.useRealTimers();
+  });
+
+  it("redeems a token-hash link and enables the form", async () => {
+    renderReset("/reset-password?token_hash=abc123&type=recovery");
+
+    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockRedeemRecoveryTokenHash).toHaveBeenCalledWith("abc123", "recovery");
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+  });
+
+  it("explains a token-hash link that GoTrue rejected", async () => {
+    mockRedeemRecoveryTokenHash.mockRejectedValue(
+      new Error("Email link is invalid or has expired"),
+    );
+
+    renderReset("/reset-password?token_hash=abc123");
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/invalid or has expired/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("New password")).not.toBeInTheDocument();
   });
 });

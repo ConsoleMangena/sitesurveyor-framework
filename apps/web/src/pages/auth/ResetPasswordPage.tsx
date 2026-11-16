@@ -22,8 +22,15 @@ import {
   getCurrentSession,
   onAuthStateChange,
 } from "../../lib/auth/session.ts";
-import { getAuthUrlError, isPasswordRecoveryUrl } from "../../lib/auth/auth-url.ts";
+import {
+  getAuthUrlError,
+  getPasswordRecoveryTokenHash,
+  getPasswordRecoveryTokenType,
+  hasPkceRecoveryCode,
+  isPasswordRecoveryUrl,
+} from "../../lib/auth/auth-url.ts";
 import { formatAuthUserFacingError } from "../../lib/auth/auth-errors.ts";
+import { redeemRecoveryTokenHash } from "../../lib/auth/recovery.ts";
 import { useAuthStore } from "../../lib/auth/auth-store";
 
 const resetSchema = z
@@ -49,11 +56,15 @@ type ResetValues = z.infer<typeof resetSchema>;
 /**
  * Step 2 of password recovery: choose the new password.
  *
- * The emailed link carries a recovery token that `detectSessionInUrl`
- * exchanges for a session as the page loads, so this screen first waits for
- * that session to appear. Without one there is nothing to set a password
- * against, and the honest response is to ask for a fresh link rather than
- * pretending the form worked.
+ * A recovery link arrives in one of three shapes, and all three end here:
+ *
+ * - the session in the URL fragment (`#access_token=…&type=recovery`), which
+ *   `detectSessionInUrl` exchanges while the page loads;
+ * - a PKCE code (`?code=…&flow_id=…`), which is exchanged the same way;
+ * - a token hash (`?token_hash=…`), which this page exchanges itself.
+ *
+ * Without a session there is nothing to set a password against, and the honest
+ * response is to say why rather than pretending the form worked.
  */
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -85,19 +96,23 @@ export default function ResetPasswordPage() {
     let isReady = false;
     let timerId: ReturnType<typeof setTimeout> | null = null;
 
+    const markReady = () => {
+      if (cancelled || isReady) return;
+      isReady = true;
+      if (timerId) clearTimeout(timerId);
+      setReady(true);
+    };
+
     // Subscribe before checking the URL. Supabase may finish its code exchange
     // during initialization and emit PASSWORD_RECOVERY before this effect runs.
     const subscription = onAuthStateChange((event, session) => {
       if (!cancelled && event === "PASSWORD_RECOVERY" && session) {
-        isReady = true;
-        if (timerId) clearTimeout(timerId);
-        setReady(true);
+        markReady();
       }
     });
 
     if (consumePasswordRecoverySession()) {
-      isReady = true;
-      setReady(true);
+      markReady();
     }
 
     // Handle the case where the PKCE exchange completed before this component
@@ -105,17 +120,44 @@ export default function ResetPasswordPage() {
     // the session is now stored. getSession() returns it directly.
     void getCurrentSession().then((session) => {
       if (!cancelled && !isReady && session) {
-        isReady = true;
-        if (timerId) clearTimeout(timerId);
-        setReady(true);
+        markReady();
       }
     });
+
+    // A link that carries the token hash holds nothing to redeem locally: the
+    // token is exchanged for a session here, so it works in any browser.
+    const tokenHash = getPasswordRecoveryTokenHash();
+    if (tokenHash) {
+      void redeemRecoveryTokenHash(tokenHash, getPasswordRecoveryTokenType())
+        .then((session) => {
+          if (cancelled) return;
+          if (session) {
+            markReady();
+          } else {
+            setLinkError(invalidLinkMessage);
+          }
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          setLinkError(formatAuthUserFacingError(error, invalidLinkMessage));
+        });
+      return () => {
+        cancelled = true;
+        if (timerId) clearTimeout(timerId);
+        subscription.unsubscribe();
+      };
+    }
 
     if (isPasswordRecoveryUrl()) {
       // Auth normally removes code/hash parameters after exchanging them. A
       // parameter that remains means no recovery event established a session.
       timerId = setTimeout(() => {
-        if (!cancelled && !isReady) setLinkError(invalidLinkMessage);
+        if (cancelled || isReady) return;
+        setLinkError(
+          hasPkceRecoveryCode()
+            ? "This link can only be completed in the browser that requested it. Open it there, or request a new link below."
+            : invalidLinkMessage,
+        );
       }, 2500);
     }
 

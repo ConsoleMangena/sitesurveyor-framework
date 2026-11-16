@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getAuthUrlError, isPasswordRecoveryUrl } from "./auth-url.ts";
+import {
+  getAuthUrlError,
+  getPasswordRecoveryTokenHash,
+  getPasswordRecoveryTokenType,
+  hasPkceRecoveryCode,
+  isPasswordRecoveryUrl,
+} from "./auth-url.ts";
 
 describe("auth URL handling", () => {
   it("reads OAuth errors returned in the fragment", () => {
@@ -30,5 +36,45 @@ describe("auth URL handling", () => {
     expect(isPasswordRecoveryUrl("http://tauri.localhost/reset-password")).toBe(
       false,
     );
+  });
+
+  it("recognizes a recovery link that carries a token hash", () => {
+    expect(
+      isPasswordRecoveryUrl(
+        "http://tauri.localhost/reset-password?token_hash=abc&type=recovery",
+      ),
+    ).toBe(true);
+    expect(
+      getPasswordRecoveryTokenHash(
+        "http://tauri.localhost/reset-password?token_hash=abc&type=recovery",
+      ),
+    ).toBe("abc");
+    expect(
+      getPasswordRecoveryTokenHash("http://tauri.localhost/reset-password"),
+    ).toBeNull();
+  });
+
+  it("reads the verification type a token-hash link declares", () => {
+    expect(
+      getPasswordRecoveryTokenType(
+        "http://tauri.localhost/reset-password?token_hash=abc&type=email",
+      ),
+    ).toBe("email");
+    expect(
+      getPasswordRecoveryTokenType(
+        "http://tauri.localhost/reset-password?token_hash=abc",
+      ),
+    ).toBe("recovery");
+  });
+
+  it("spots a PKCE code that was never exchanged", () => {
+    expect(
+      hasPkceRecoveryCode("http://tauri.localhost/reset-password?code=abc"),
+    ).toBe(true);
+    expect(
+      hasPkceRecoveryCode(
+        "http://tauri.localhost/reset-password#access_token=abc&type=recovery",
+      ),
+    ).toBe(false);
   });
 });
