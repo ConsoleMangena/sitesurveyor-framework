@@ -64,6 +64,14 @@ The workspace is motivated by surveying, but the data core is not bound to it: a
 must keep a private operational record and later prove what was produced can reuse these
 foundations.
 
+## Live deployment
+
+The reference web app is deployed on [Render](render.yaml) and served at
+**[https://sitesurveyor.tech](https://sitesurveyor.tech)**. It is the maintainer's own instance:
+you are welcome to explore it, but it is not a shared demo and nothing you do there reaches your
+own workspace. For your own data, deploy from this repository (see `render.yaml`) and supply your
+own accounts as described below.
+
 ## What is implemented today
 
 | Area | What you can do |
@@ -120,11 +128,11 @@ Root scripts: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run lint
 Only `VITE_*` values reach the browser, so they must be treated as public: never put service-role
 keys, seed phrases or provider secrets in `apps/web/.env`.
 
-**Bring your own accounts.** This repository does not include a hosted instance to point at: you
+**Bring your own accounts.** The reference deployment runs on Render, but this repository does not
+come with credentials you can borrow: you
 supply your own Supabase project, your own Digital Earth Africa token for the satellite engine, and
 your own provider keys. Nothing here reaches the maintainer's deployment, and the credentials in
-`apps/web/.env` and `apps/engine/.env` are yours alone. The published service at sitesurveyor.tech
-is the maintainer's own deployment and is not a shared demo.
+`apps/web/.env` and `apps/engine/.env` are yours alone.
 
 The desktop shell packages the same web app as a native window. It needs a Rust toolchain and
 the platform build tools. See the [desktop shell guide](apps/desktop/README.md).
