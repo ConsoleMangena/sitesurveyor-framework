@@ -27,39 +27,25 @@ Tatenda Mangena
 
 `Publication` → `Preprint`
 
-## Description (abstract)
+## Description (abstract) — paper record
 
-Zenodo's description field accepts a limited subset of HTML. Paste this as two
-paragraphs, or as one paragraph if you prefer:
+This is the description **as published** on the paper record
+(`10.5281/zenodo.24288095`). Zenodo's description field accepts a limited subset
+of HTML; keep revisions of this block dash-free and in sync with the `main.tex`
+abstract.
 
 ```html
-<p><strong>SiteSurveyor</strong> is an open-source framework for building secure and
-verifiable surveying systems, realised as a multi-tenant workspace that keeps the
-operational record continuous: projects, jobs, quotes, invoices, evidence and
-payments live in a single PostgreSQL database protected by row-level security.</p>
+<p>The field survey workflow is typically scattered across paper field books, spreadsheets, shared drives, and disconnected accounting software. Context is lost at every handoff, and the deliverables produced in the field are rarely tied back to the records they are meant to support. This paper presents <strong>SiteSurveyor</strong>, an open-source reference architecture for secure and verifiable surveying systems.</p><p>Implemented as a multi-tenant workspace, SiteSurveyor maintains a continuous operational record of each project, including jobs, quotes, invoices, evidence, and payments, within a single PostgreSQL database with row-level security. Confidential survey files are kept off-chain. Solana is used only where database guarantees are insufficient: wallet-based authentication, stablecoin settlement, and wallet-signed SHA-256 digests that let third parties verify file integrity without accessing file contents. An AI assistant interacts with workspace records through a typed, allowlisted tool surface, with read-back verification and confirmation for destructive operations, alongside an asynchronous Python worker for screening open earth-observation imagery.</p><p>We present the system design, delineate its threat boundaries, state its cryptographic non-claims, and describe the automated engineering checks that support the claims made here. We then extract three reusable building blocks: a tenant-scoped data core, an evidence-anchoring service, and an allowlisted agent tool surface for building comparable verifiable systems.</p>
+```
 
-<p>Confidential survey files stay off-chain. Solana is used only where database
-guarantees are insufficient: wallet-based sign-in, stablecoin settlement, and
-wallet-signed SHA-256 digests that let a third party confirm a file presented later
-is byte-identical to the one anchored, without accessing its contents. An AI
-assistant operates on workspace records through a typed, allowlisted tool surface
-with read-back write verification and explicit confirmation for destructive
-operations. An asynchronous Python worker screens open Earth-observation imagery
-(Sentinel-2, Copernicus DEM, ALOS PALSAR, Landsat WOFS, ESA WorldCover, CHIRPS)
-into ranked field targets and GeoTIFF, GeoJSON and KMZ deliverables.</p>
+## Description — software record
 
-<p>The stack includes:</p>
-<ul>
-  <li>a React 19 progressive web app, installable on phone and desktop</li>
-  <li>Supabase: PostgreSQL with row-level security, Storage, Auth and edge functions</li>
-  <li>a Tauri desktop shell packaging the same frontend</li>
-  <li>an MCP server exposing the agent and screening surfaces to external hosts</li>
-  <li>an optional self-hosted Node gateway for the agent contract</li>
-</ul>
+Published on the software record (`10.5281/zenodo.24287891`, v0.1.0). New versions
+created by the tag-triggered workflow inherit this description; update it here and
+on the record when the stack changes.
 
-<p>Released under the MIT licence. See the linked paper for the system design, the
-threat model, and an explicit statement of what an anchored digest does and does
-not prove.</p>
+```html
+<p><strong>SiteSurveyor</strong> is an open-source framework for building secure and verifiable surveying systems, realised as a multi-tenant workspace that keeps the operational record continuous: projects, jobs, quotes, invoices, evidence and payments live in a single PostgreSQL database protected by row-level security.</p><p>Confidential survey files stay off-chain. Solana is used only where database guarantees are insufficient: wallet-based sign-in, stablecoin settlement, and wallet-signed SHA-256 digests that let a third party confirm a file presented later is byte-identical to the one anchored, without accessing its contents. An AI assistant operates on workspace records through a typed, allowlisted tool surface with read-back write verification and explicit confirmation for destructive operations. An asynchronous Python worker screens open Earth-observation imagery (Sentinel-2, Copernicus DEM, ALOS PALSAR, Landsat WOFS, ESA WorldCover, CHIRPS) into ranked field targets and GeoTIFF, GeoJSON and KMZ deliverables.</p><p>The stack includes a React 19 progressive web app installable on phone and desktop; Supabase (PostgreSQL with row-level security, Storage, Auth and edge functions); a Tauri desktop shell packaging the same frontend; an MCP server exposing the agent and screening surfaces to external hosts; and an optional self-hosted Node gateway for the agent contract.</p><p>Released under the MIT licence. See the linked paper for the system design, the threat model, and an explicit statement of what an anchored digest does and does not prove.</p>
 ```
 
 ## Fields
