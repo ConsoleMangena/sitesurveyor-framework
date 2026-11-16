@@ -5,34 +5,34 @@
 <h1 align="center">SiteSurveyor</h1>
 
 <p align="center"><strong>A Hybrid On-Chain/Off-Chain Architecture for Secure and Verifiable Surveying Systems</strong><br />
-An open-source reference architecture, by Consolation Mangena (Eineva Labs).<br />
+An open-source reference architecture.<br />
 <a href="https://sitesurveyor.tech">https://sitesurveyor.tech</a> · <a href="paper/main.pdf">Preprint (PDF)</a> · DOI: 10.5281/zenodo.24288094</p>
 
 ## The problem
 
 A survey engagement yields more than coordinates. It produces a quotation, a schedule, a crew
 assignment, field observations, photographs, CAD drawings, cost records, an invoice and ultimately
-payment. In common practice these artifacts are scattered across separate systems — data
-collection, pricing, photo sharing, presenting results, invoicing — linked only by a project
+payment. In common practice these artifacts are scattered across separate systems for data
+collection, pricing, photo sharing, presenting results and invoicing, linked only by a project
 identifier that is routinely re-entered at every boundary.
 
 Two problems follow:
 
-- **Operational** — the state of a job must be reconstructed from multiple partial views, and that
+- **Operational.** The state of a job must be reconstructed from multiple partial views, and that
   reconstruction is often stale.
-- **Evidential** — once a file is delivered to a client or regulator, it is difficult to prove it
+- **Evidential.** Once a file is delivered to a client or regulator, it is difficult to prove it
   is the same file that was produced in the field.
 
 ## What SiteSurveyor is
 
 SiteSurveyor is an open-source, multi-tenant workspace that maintains a **continuous operational
-record** of each project — jobs, quotes, invoices, evidence and payments — in a single PostgreSQL
+record** of each project (jobs, quotes, invoices, evidence and payments) in a single PostgreSQL
 database with row-level security. Instead of buying another tool for each stage, one workspace
 holds the record end to end, and external systems are used only for capabilities the workspace
 cannot provide.
 
 It is **hybrid by default**: confidential survey content stays off-chain in the database, and
-Solana is used only where database guarantees are insufficient —
+Solana is used only where database guarantees are insufficient:
 
 - **wallet-based authentication** (Sign In With Solana alongside email and GitHub),
 - **stablecoin settlement** in USDC, and
@@ -49,11 +49,11 @@ Python worker screens open Earth-observation imagery into ranked field targets a
 Following the paper, the reference architecture contributes:
 
 1. a **tenant-scoped data core** that connects quote, project, job, evidence, cost and payment to a
-   single record, enforced by PostgreSQL row-level security — not only by application code;
+   single record, enforced by PostgreSQL row-level security, not only by application code;
 2. an **evidence-anchoring service** with two modes: hash-only (publishes an attachment identifier
    and a SHA-256 digest) and opt-in full-file mode (AES-256-GCM encrypted chunks under a
    user-held key, where the chain receives only a manifest hash);
-3. an **allowlisted agent tool surface** — a bounded agent, not a better agent loop — with
+3. an **allowlisted agent tool surface**, a bounded agent rather than a better agent loop, with
    schema-validated writes, read-back verification and confirmation for deletes;
 4. a **satellite analysis engine** that turns open Earth-observation products into ranked field
    targets and deliverables the workspace can render; and
@@ -77,7 +77,7 @@ foundations.
 
 The **web app is the shared frontend**. `apps/desktop` is a Tauri (Rust) shell that packages it as a
 native window; `apps/mobile` is still a placeholder for the mobile shell. Commit defaults are **Solana
-devnet** and **PesePay sandbox** — demonstration values, not production settlement.
+devnet** and **PesePay sandbox**, demonstration values, not production settlement.
 
 ## What an anchored digest does and does not establish
 
@@ -90,7 +90,7 @@ devnet** and **PesePay sandbox** — demonstration values, not production settle
 
 The repository states its **non-claims** plainly: it does not certify survey accuracy, it does not
 make a sandbox payment settled, and it does not treat a hash as proof of authorship. Anchoring
-proves that a wallet anchored a digest at a time — nothing more. Review [SECURITY.md](SECURITY.md)
+proves that a wallet anchored a digest at a time and nothing more. Review [SECURITY.md](SECURITY.md)
 before handling real client data.
 
 ## Repository layout
@@ -117,7 +117,7 @@ npm run dev                                # http://localhost:5174
 ```
 
 Root scripts: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run lint`, `npm test`.
-Only `VITE_*` values reach the browser, so they must be treated as public — never put service-role
+Only `VITE_*` values reach the browser, so they must be treated as public: never put service-role
 keys, seed phrases or provider secrets in `apps/web/.env`.
 
 **Bring your own accounts.** This repository does not include a hosted instance to point at: you
@@ -127,7 +127,7 @@ your own provider keys. Nothing here reaches the maintainer's deployment, and th
 is the maintainer's own deployment and is not a shared demo.
 
 The desktop shell packages the same web app as a native window. It needs a Rust toolchain and
-the platform build tools — see the [desktop shell guide](apps/desktop/README.md).
+the platform build tools. See the [desktop shell guide](apps/desktop/README.md).
 
 ```bash
 npm --prefix apps/desktop install
@@ -162,4 +162,4 @@ If you use SiteSurveyor in research, cite the preprint (see [CITATION.cff](CITAT
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
