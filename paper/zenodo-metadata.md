@@ -19,7 +19,7 @@ SiteSurveyor: A Hybrid On-Chain/Off-Chain Architecture for Secure and Verifiable
 ## Authors
 
 ```
-Consolation Mangena (ORCID 0009-0006-2708-914X)
+Consolation Mangena (ORCID 0009-0006-2708-914X, Eineva Labs)
 Tatenda Mangena
 ```
 
