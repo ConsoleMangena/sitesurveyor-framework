@@ -5474,7 +5474,7 @@ export type Database = {
       }
       is_email_already_registered: {
         Args: { candidate_email: string }
-        Returns: boolean
+        Returns: boolean | null
       }
       is_business_workspace: {
         Args: { target_workspace_id: string }

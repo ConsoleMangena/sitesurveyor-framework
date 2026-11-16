@@ -11,6 +11,23 @@ client identity and commercial terms, so the default is private.
 This document states implemented controls and real limitations. It is not a certification, a legal
 opinion, or a substitute for an independent production audit.
 
+## 0. Reporting a vulnerability
+
+| | |
+| --- | --- |
+| Security contact | `security@sitesurveyor.tech` (fallback: `support@sitesurveyor.tech`) |
+| Encryption for reports | HTTPS to the address above |
+| Reporting channel | GitHub private vulnerability reporting on this repository, or the address above |
+| Response target | Acknowledgement within 3 working days, triage and a planned fix within 14 days |
+| Public disclosure | Coordinated with the reporter; the fix ships before the details are published |
+
+**Do not open a public issue** for a suspected vulnerability. Do not include credentials, private
+keys, client data, sensitive coordinates or a weaponised proof of concept in a report: strip
+secrets from logs first and rotate anything that may have been exposed.
+
+Supported versions: the `main` branch and the most recent tagged release. There is no long-term
+support branch; the deployed service is one deployment of the `main` branch.
+
 ## 1. Objectives
 
 Keep plaintext files and operational records out of public chain data · restrict workspace data to
@@ -85,6 +102,16 @@ production rather than assuming every table is covered by a migration in this re
 
 RLS is a necessary layer, not an authorization review. Test cross-workspace read, insert, update,
 delete, storage and function access with non-privileged roles.
+
+**Functions that write across workspaces are closed to users.** The geocode backfill job resolves
+coordinates for every workspace's rows through the service-role client, so it refuses any caller
+that does not present the project's service key; it is a scheduled maintenance job, not an endpoint.
+The pre-auth email existence check is the opposite case — it must stay reachable by `anon` because
+the sign-in pages ask it before the user has an account — so it is rate limited instead: twenty
+calls per client per hour and a project-wide ceiling, enforced by counters in the database rather
+than in an edge function, because the browser calls that RPC directly. Over the limit the function
+returns null and the client proceeds with sign-in; the duplicate-account trigger still refuses a
+second account for the same address.
 
 ## 5. AI trust boundaries
 
@@ -174,6 +201,10 @@ built-in wallet PINs, database passwords or unrestricted admin tokens. Keep real
 source control (`.gitignore` allows only `.env.example`), and re-check generated bundles and logs
 after configuration changes.
 
+Secret scanning runs on every push and pull request, and against the full history weekly, using
+gitleaks. `.gitleaks.toml` allowlists only the public publishable keys and the removed
+local-development mock key, so a real credential added anywhere still fails the check.
+
 ## 10. Browser and PWA
 
 The service worker caches app assets and selected public images; authenticated Supabase REST calls use
@@ -221,6 +252,5 @@ which guarantees the system does not make.
 
 ## Reporting a security concern
 
-Contact the maintainer privately. Do not open a public issue containing credentials, private keys,
-client data, sensitive coordinates or an exploitable proof of concept. Strip secrets from logs before
-sharing and rotate anything that may have been exposed.
+See [Reporting a vulnerability](#0-reporting-a-vulnerability) at the top of this document. Strip
+secrets from logs before sharing and rotate anything that may have been exposed.

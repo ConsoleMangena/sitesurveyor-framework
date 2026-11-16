@@ -2,15 +2,21 @@
  * Edge Function: backfill-geocode
  * --------------------------------
  * Resolves stored coordinates for rows that predate auto-geocoding (or whose
- * save-time lookup failed). Any signed-in user may invoke it; writes go
- * through the service-role client because rows belong to other workspaces.
+ * save-time lookup failed). Writes go through the service-role client because
+ * the rows belong to other workspaces.
+ *
+ * That makes it unsafe to leave open to users: any signed-in account could
+ * rewrite the coordinates of another workspace's listings, and every call
+ * spends requests on a third party's free geocoding API. The caller must
+ * therefore present the project's service key. It is meant to be run by a
+ * scheduler, not by a person.
  *
  * Each run processes at most BATCH_LIMIT rows per table and spaces requests
  * to respect the free geocoding API. Idempotent: rows with coordinates are
  * skipped, so run repeatedly until `{ processed: 0 }`.
  */
 
-import { corsHeaders, getCallerId, adminClient, json } from "../_shared/supabase.ts";
+import { corsHeaders, hasServiceKey, adminClient, json } from "../_shared/supabase.ts";
 
 const GEOCODE_ENDPOINT = "https://geocoding-api.open-meteo.com/v1/search";
 const BATCH_LIMIT = 200;
@@ -48,9 +54,8 @@ Deno.serve(async (req) => {
     return json({ error: "method not allowed" }, 405);
   }
 
-  const callerId = await getCallerId(req);
-  if (!callerId) {
-    return json({ error: "authentication required" }, 401);
+  if (!hasServiceKey(req)) {
+    return json({ error: "service key required" }, 401);
   }
 
   const admin = adminClient();

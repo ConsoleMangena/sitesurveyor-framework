@@ -59,6 +59,12 @@ Root scripts: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run lint
 Only `VITE_*` values reach the browser, so they must be treated as public — never put service-role
 keys, seed phrases or provider secrets in `apps/web/.env`.
 
+**Bring your own accounts.** This repository does not include a hosted instance to point at: you
+supply your own Supabase project, your own Digital Earth Africa token for the satellite engine, and
+your own provider keys. Nothing here reaches the maintainer's deployment, and the credentials in
+`apps/web/.env` and `apps/engine/.env` are yours alone. The published service at sitesurveyor.tech
+is the maintainer's own deployment and is not a shared demo.
+
 The desktop shell packages the same web app as a native window. It needs a Rust toolchain and
 the platform build tools — see the [desktop shell guide](apps/desktop/README.md).
 
@@ -84,6 +90,9 @@ npm run build:desktop      # installers in apps/desktop/src-tauri/target/release
 
 Anchoring proves that a wallet anchored a digest at a time; it does not prove authorship, survey
 accuracy or legal validity. Review [SECURITY.md](SECURITY.md) before handling real client data.
+
+Found a vulnerability? Report it privately as described in [SECURITY.md](SECURITY.md) rather than
+opening a public issue.
 
 ## License
 

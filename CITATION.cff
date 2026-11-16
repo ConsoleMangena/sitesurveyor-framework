@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "SiteSurveyor"
+abstract: >-
+  Survey operations, evidence and settlement in one workspace: a multi-tenant
+  platform for field survey work covering project records, geospatial analysis
+  over Earth-observation coverages, an AI assistant surface, marketplace and
+  transport listings, and wallet-based authentication and settlement.
+authors:
+  - family-names: Mangena
+    given-names: Consolation
+    affiliation: Eineva Labs
+repository-code: "https://github.com/ConsoleMangena/sitesurveyor-framework"
+url: "https://sitesurveyor.tech"
+license: MIT
+version: 0.1.0
+date-released: "2026-11-16"
+keywords:
+  - geospatial
+  - earth observation
+  - survey
+  - supabase
+  - solana

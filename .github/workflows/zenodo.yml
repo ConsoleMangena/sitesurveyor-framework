@@ -1,0 +1,174 @@
+name: Zenodo deposit
+
+# Publishes an archive of a tagged release to Zenodo, which mints the DOI.
+# The DOI is what makes the software citable, so it is minted on release
+# rather than by hand.
+#
+# Two repository secrets are needed once, in Settings → Secrets:
+#   ZENODO_TOKEN          — a Zenodo personal access token with the
+#                            "deposit:write" and "deposit:actions" scopes
+#   ZENODO_DEPOSITION_ID  — the numeric id of any published version of this
+#                            record (the number in its record URL). The
+#                            workflow resolves the newest published version
+#                            from it, so the secret does not change per release.
+#
+# The record has to exist first: create it once at https://zenodo.org/deposit,
+# fill in the metadata, publish it, and copy its id from the record URL. Every
+# release after that adds a new version.
+#
+# The tag push is the trigger rather than the `release` event: the release is
+# created by the release workflow with GITHUB_TOKEN, and GitHub does not start
+# workflows for events caused by that token.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to archive (defaults to the tag that triggered the run)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deposit:
+    name: Deposit to Zenodo
+    runs-on: ubuntu-latest
+    env:
+      ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+      ZENODO_DEPOSITION_ID: ${{ secrets.ZENODO_DEPOSITION_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Build the source archive
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          git archive --format=tar.gz --prefix="sitesurveyor-framework-${TAG}/" -o archive.tar.gz "$TAG"
+          sha256sum archive.tar.gz
+
+      - name: Resolve the newest published version
+        id: latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --fail-with-body \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            "https://zenodo.org/api/deposit/depositions?all_versions=true&size=100" \
+            -o depositions.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+
+          wanted = int(os.environ["ZENODO_DEPOSITION_ID"])
+          with open("depositions.json") as handle:
+              rows = json.load(handle)
+
+          # Accept either a concept id or any version id: use whichever the
+          # secret names to find the concept, then take its newest version.
+          matching = [r for r in rows if int(r.get("id", -1)) == wanted]
+          concept = matching[0]["conceptrecid"] if matching else wanted
+          published = [
+              r for r in rows
+              if str(r.get("conceptrecid")) == str(concept) and r.get("submitted")
+          ]
+          if not published:
+              raise SystemExit(f"no published Zenodo record for concept {concept}")
+          latest = max(published, key=lambda r: r["id"])
+          print(f"id={latest['id']}")
+          print(f"concept={concept}")
+          PY
+
+      - name: Open a new deposition version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --fail-with-body -X POST \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            "https://zenodo.org/api/deposit/depositions/${{ steps.latest.outputs.id }}/actions/newversion" \
+            -o newversion.json
+          # The response is the *original* record; the draft is linked from
+          # links.latest_draft, not from the response's own id/bucket.
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          with open("newversion.json") as handle:
+              data = json.load(handle)
+          draft = data.get("links", {}).get("latest_draft")
+          if not draft:
+              raise SystemExit("Zenodo did not return a latest_draft link")
+          print(f"draft_url={draft}")
+          PY
+
+      - name: Read the draft bucket
+        id: draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --fail-with-body \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            "${{ steps.version.outputs.draft_url }}" \
+            -o draft.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          with open("draft.json") as handle:
+              data = json.load(handle)
+          print(f"id={data['id']}")
+          print(f"bucket={data['links']['bucket']}")
+          PY
+
+      - name: Remove the previous version's files from the draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > file_ids.txt
+          import json
+          with open("draft.json") as handle:
+              data = json.load(handle)
+          for entry in data.get("files", []):
+              print(entry["id"])
+          PY
+          while read -r file_id; do
+            [ -n "$file_id" ] || continue
+            curl -sS --fail-with-body -X DELETE \
+              -H "Authorization: Bearer $ZENODO_TOKEN" \
+              "https://zenodo.org/api/deposit/depositions/${{ steps.draft.outputs.id }}/files/${file_id}" \
+              -o /dev/null
+          done < file_ids.txt
+
+      - name: Upload the archive
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          curl -sS --fail-with-body -X PUT \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            --upload-file archive.tar.gz \
+            "${{ steps.draft.outputs.bucket }}/sitesurveyor-framework-${TAG}.tar.gz" \
+            -o upload.json
+
+      - name: Publish the version
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --fail-with-body -X POST \
+            -H "Authorization: Bearer $ZENODO_TOKEN" \
+            "https://zenodo.org/api/deposit/depositions/${{ steps.draft.outputs.id }}/actions/publish" \
+            -o published.json
+          python3 - <<'PY'
+          import json
+          with open("published.json") as handle:
+              data = json.load(handle)
+          print("DOI:", data.get("doi", "not returned"))
+          print("Record:", data.get("links", {}).get("record_html", "not returned"))
+          PY

@@ -1,0 +1,23 @@
+# Secret-scanning policy for gitleaks.
+#
+# The built-in rules stay enabled; this file only records findings that are
+# known not to be secrets. Each exception is scoped to the value or path that
+# produced it, so a real credential added to the same file still fails the scan.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Supabase publishable keys are designed to be shipped to browsers."
+regexTarget = "line"
+regexes = ['''sb_publishable_[A-Za-z0-9_-]{10,}''']
+
+[[allowlists]]
+description = "Local-development mock AES key from the removed secure-field function; it is the base64 of \"mock-key-for-local-dev-only\"."
+regexTarget = "line"
+regexes = ['''bW9jLWtleS1mb3ItbG9jYWwtZGV2LW9ubHk=''']
+
+[[allowlists]]
+description = "Planning prose that the generic API-key rule mistakes for an assignment."
+targetRules = ["generic-api-key"]
+paths = ['''apps/engine/docs/PLATFORM_PLAN\.md''']

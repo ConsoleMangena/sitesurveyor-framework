@@ -522,6 +522,13 @@ backend = "postgres"
 # check is disabled and the function applies its own per-IP rate limiting.
 verify_jwt = false
 
+[functions.backfill-geocode]
+# Maintenance job that writes coordinates for every workspace's rows, so it is
+# closed to users: the function itself refuses any caller that does not
+# present the project's service key. The JWT check is disabled because the
+# current service key is not a JWT and would be rejected by the gateway.
+verify_jwt = false
+
 [functions.pesepay]
 # Gateway callbacks use the integration key; browser calls still require a user JWT.
 verify_jwt = false

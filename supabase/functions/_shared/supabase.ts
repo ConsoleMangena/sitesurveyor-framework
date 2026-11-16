@@ -64,6 +64,36 @@ export async function getCallerId(req: Request): Promise<string | null> {
   return caller?.id ?? null;
 }
 
+/** Compares two secrets without returning early on the first difference. */
+function sameSecret(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/**
+ * True when the request presents the project's service key.
+ *
+ * A function that writes across every workspace must not be reachable by a
+ * signed-in user, so the gate compares the credential itself with the
+ * configured secret. The token's JWT payload is deliberately not inspected:
+ * an unverified `role: service_role` claim is attacker-controlled and would
+ * let anyone forge a service token. Both key formats are covered because the
+ * runtime exposes whichever one the project is configured with.
+ */
+export function hasServiceKey(req: Request): boolean {
+  const header = req.headers.get("Authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) return false;
+
+  const configured = [
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    Deno.env.get("SUPABASE_SECRET_KEY"),
+  ];
+  return configured.some((key) => Boolean(key) && sameSecret(token, key!));
+}
+
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
