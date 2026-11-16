@@ -4,18 +4,65 @@
 
 <h1 align="center">SiteSurveyor</h1>
 
-<p align="center"><strong>The only workspace a surveyor needs to manage and execute a project.</strong><br />
-An Eineva Labs product and open-source initiative for safer digital surveying.</p>
+<p align="center"><strong>A Hybrid On-Chain/Off-Chain Architecture for Secure and Verifiable Surveying Systems</strong><br />
+An open-source reference architecture, by Consolation Mangena (Eineva Labs).<br />
+<a href="https://sitesurveyor.tech">https://sitesurveyor.tech</a> · <a href="paper/main.pdf">Preprint (PDF)</a> · DOI: 10.5281/zenodo.24288094</p>
 
-Surveying work usually lives in a paper field book, a spreadsheet and three disconnected systems.
-SiteSurveyor keeps it in one continuous record instead: plan the job, price the quote, dispatch the
-crew, collect the evidence, invoice the client — and every record stays attached to the project it
-belongs to.
+## The problem
 
-Sensitive survey content stays off-chain in Supabase. Solana is used only where it adds something:
-wallet sign-in, USDC settlement, and a wallet-signed SHA-256 digest that proves a file has not
-changed. An AI assistant can read and write the same workspace records through an allowlisted tool
-set, so a question can turn into a verified action.
+A survey engagement yields more than coordinates. It produces a quotation, a schedule, a crew
+assignment, field observations, photographs, CAD drawings, cost records, an invoice and ultimately
+payment. In common practice these artifacts are scattered across separate systems — data
+collection, pricing, photo sharing, presenting results, invoicing — linked only by a project
+identifier that is routinely re-entered at every boundary.
+
+Two problems follow:
+
+- **Operational** — the state of a job must be reconstructed from multiple partial views, and that
+  reconstruction is often stale.
+- **Evidential** — once a file is delivered to a client or regulator, it is difficult to prove it
+  is the same file that was produced in the field.
+
+## What SiteSurveyor is
+
+SiteSurveyor is an open-source, multi-tenant workspace that maintains a **continuous operational
+record** of each project — jobs, quotes, invoices, evidence and payments — in a single PostgreSQL
+database with row-level security. Instead of buying another tool for each stage, one workspace
+holds the record end to end, and external systems are used only for capabilities the workspace
+cannot provide.
+
+It is **hybrid by default**: confidential survey content stays off-chain in the database, and
+Solana is used only where database guarantees are insufficient —
+
+- **wallet-based authentication** (Sign In With Solana alongside email and GitHub),
+- **stablecoin settlement** in USDC, and
+- **wallet-signed SHA-256 digests** that let a third party verify a file has not changed without
+  ever seeing its contents.
+
+An AI assistant is treated as an **operational actor**, not a chat window: it calls a typed,
+allowlisted tool surface scoped to the caller's workspace, reads its own writes back before
+reporting success, and requires explicit confirmation for destructive operations. An asynchronous
+Python worker screens open Earth-observation imagery into ranked field targets and deliverables.
+
+## Contributions
+
+Following the paper, the reference architecture contributes:
+
+1. a **tenant-scoped data core** that connects quote, project, job, evidence, cost and payment to a
+   single record, enforced by PostgreSQL row-level security — not only by application code;
+2. an **evidence-anchoring service** with two modes: hash-only (publishes an attachment identifier
+   and a SHA-256 digest) and opt-in full-file mode (AES-256-GCM encrypted chunks under a
+   user-held key, where the chain receives only a manifest hash);
+3. an **allowlisted agent tool surface** — a bounded agent, not a better agent loop — with
+   schema-validated writes, read-back verification and confirmation for deletes;
+4. a **satellite analysis engine** that turns open Earth-observation products into ranked field
+   targets and deliverables the workspace can render; and
+5. an **honest deployment and verification story**, including sandboxed and unimplemented
+   components.
+
+The workspace is motivated by surveying, but the data core is not bound to it: any practice that
+must keep a private operational record and later prove what was produced can reuse these
+foundations.
 
 ## What is implemented today
 
@@ -31,6 +78,20 @@ set, so a question can turn into a verified action.
 The **web app is the shared frontend**. `apps/desktop` is a Tauri (Rust) shell that packages it as a
 native window; `apps/mobile` is still a placeholder for the mobile shell. Commit defaults are **Solana
 devnet** and **PesePay sandbox** — demonstration values, not production settlement.
+
+## What an anchored digest does and does not establish
+
+| Established | Not established |
+| --- | --- |
+| The presented bytes equal the digested bytes | Who produced the bytes |
+| The digest existed on-chain at a slot | That the survey is correct |
+| The wallet paid for and signed the statement | Legal ownership or title |
+| The manifest identifies the chunk set | Confidentiality of the plaintext |
+
+The repository states its **non-claims** plainly: it does not certify survey accuracy, it does not
+make a sandbox payment settled, and it does not treat a hash as proof of authorship. Anchoring
+proves that a wallet anchored a digest at a time — nothing more. Review [SECURITY.md](SECURITY.md)
+before handling real client data.
 
 ## Repository layout
 
@@ -89,11 +150,15 @@ npm run build:desktop      # installers in apps/desktop/src-tauri/target/release
 | [Contributing](CONTRIBUTING.md) | Setup, checks and pull request expectations |
 | [Paper](paper/README.md) | Preprint source, Zenodo deposit metadata and build instructions |
 
-Anchoring proves that a wallet anchored a digest at a time; it does not prove authorship, survey
-accuracy or legal validity. Review [SECURITY.md](SECURITY.md) before handling real client data.
-
 Found a vulnerability? Report it privately as described in [SECURITY.md](SECURITY.md) rather than
 opening a public issue.
+
+## Citing
+
+If you use SiteSurveyor in research, cite the preprint (see [CITATION.cff](CITATION.cff)):
+
+> Mangena, C. (2026). *SiteSurveyor: A Hybrid On-Chain/Off-Chain Architecture for Secure and
+> Verifiable Surveying Systems*. Zenodo. https://doi.org/10.5281/zenodo.24288094
 
 ## License
 
