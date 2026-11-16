@@ -2,7 +2,8 @@ import { Link } from "react-router-dom"
 import { PublicHero } from "../../components/shared/PublicHero.tsx"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
 import { PublicSection } from "../../components/shared/PublicSection.tsx"
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts"
+import { breadcrumbJsonLd } from "../../lib/seo/meta.ts"
 
 const SECTIONS: Array<{
   id: string
@@ -47,7 +48,13 @@ const SECTIONS: Array<{
 ]
 
 export default function TermsPage() {
-  useDocumentTitle("Terms | SiteSurveyor")
+  usePublicMeta("/terms", {
+    jsonLd: (origin) =>
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Terms", path: "/terms" },
+      ]),
+  })
 
   return (
     <PublicPage section="Terms">

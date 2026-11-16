@@ -3,7 +3,8 @@ import { Command, Download, Monitor, Terminal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PublicPage } from "../../components/shared/PublicPage.tsx";
 import { PublicHero } from "../../components/shared/PublicHero.tsx";
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts";
+import { breadcrumbJsonLd } from "../../lib/seo/meta.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 
 const DESKTOP_VERSION = "0.1.0";
@@ -36,7 +37,13 @@ const PLATFORMS: Array<{
 ];
 
 export default function DownloadsPage() {
-  useDocumentTitle("Desktop downloads | SiteSurveyor");
+  usePublicMeta("/downloads", {
+    jsonLd: (origin) =>
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Downloads", path: "/downloads" },
+      ]),
+  });
   const user = useAuthStore((state) => state.user);
 
   return (

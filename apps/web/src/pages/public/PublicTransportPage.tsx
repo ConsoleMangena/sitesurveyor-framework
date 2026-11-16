@@ -52,6 +52,8 @@ import { VEHICLE_TIER_THEME } from "../../components/transport/vehicleTierTheme.
 import { useAssistant } from "../../components/assistant/assistant-context.ts";
 import { NearbyPrompt } from "../../components/shared/NearbyPrompt.tsx";
 import { useDeviceLocation } from "../../lib/geo/useDeviceLocation.ts";
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts";
+import { breadcrumbJsonLd } from "../../lib/seo/meta.ts";
 import { groupByDistance } from "../../lib/geo/distance.ts";
 import {
   calculateHireFare,
@@ -109,6 +111,14 @@ function payloadLabel(kg: number): string {
 export default function PublicTransportPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+
+  usePublicMeta("/transport", {
+    jsonLd: (origin) =>
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Transport", path: "/transport" },
+      ]),
+  });
   const fleetMapRef = useRef<TransportMapHandle>(null);
   const fleetRef = useRef<HTMLDivElement>(null);
 

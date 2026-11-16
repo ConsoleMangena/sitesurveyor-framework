@@ -2,7 +2,8 @@ import { Link } from "react-router-dom"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
 import { PublicHero } from "../../components/shared/PublicHero.tsx"
 import { PublicSection } from "../../components/shared/PublicSection.tsx"
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts"
+import { breadcrumbJsonLd, faqJsonLd } from "../../lib/seo/meta.ts"
 import { ArrowRight, ExternalLink } from "lucide-react"
 
 const TOPICS: Array<{
@@ -135,7 +136,22 @@ const TOPICS: Array<{
 ]
 
 export default function HelpPage() {
-  useDocumentTitle("Help | SiteSurveyor")
+  usePublicMeta("/help", {
+    jsonLd: (origin) => [
+      faqJsonLd(
+        TOPICS.flatMap((topic) =>
+          topic.details.map((detail) => ({
+            question: detail.question,
+            answer: detail.answer,
+          })),
+        ),
+      ),
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Help", path: "/help" },
+      ]),
+    ],
+  })
 
   return (
     <PublicPage section="Help">

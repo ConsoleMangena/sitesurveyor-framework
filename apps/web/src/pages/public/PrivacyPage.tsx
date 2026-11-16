@@ -2,7 +2,8 @@ import { Link } from "react-router-dom"
 import { PublicHero } from "../../components/shared/PublicHero.tsx"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
 import { PublicSection } from "../../components/shared/PublicSection.tsx"
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts"
+import { breadcrumbJsonLd } from "../../lib/seo/meta.ts"
 
 const SECTIONS: Array<{
   id: string
@@ -43,7 +44,13 @@ const CONTROLS = [
 ]
 
 export default function PrivacyPage() {
-  useDocumentTitle("Privacy | SiteSurveyor")
+  usePublicMeta("/privacy", {
+    jsonLd: (origin) =>
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Privacy", path: "/privacy" },
+      ]),
+  })
 
   return (
     <PublicPage section="Privacy">

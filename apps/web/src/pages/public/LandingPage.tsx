@@ -17,9 +17,14 @@ import {
   WalletCards,
 } from "lucide-react";
 import { PublicPage } from "../../components/shared/PublicPage";
-import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { usePublicMeta } from "../../hooks/usePublicMeta";
 import { useAuthStore } from "../../lib/auth/auth-store";
 import { SurveyPhoto } from "../../components/shared/SurveyPhoto.tsx";
+import {
+  breadcrumbJsonLd,
+  organizationJsonLd,
+  websiteJsonLd,
+} from "../../lib/seo/meta.ts";
 
 const CAPABILITIES = [
   {
@@ -82,7 +87,13 @@ const QUICK_START = [
 
 /** The public home. The authenticated workspace lives at `/workspace`. */
 export default function LandingPage() {
-  useDocumentTitle("SiteSurveyor | Plan the work. Prove the survey.");
+  usePublicMeta("/", {
+    jsonLd: (origin) => [
+      organizationJsonLd(origin),
+      websiteJsonLd(origin),
+      breadcrumbJsonLd(origin, [{ name: "Home", path: "/" }]),
+    ],
+  });
   const user = useAuthStore((state) => state.user);
   const workspacePath = user ? "/workspace" : "/signup";
 

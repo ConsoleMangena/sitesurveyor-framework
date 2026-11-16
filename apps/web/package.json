@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/generate-seo.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
@@ -93,6 +93,7 @@
     "globals": "^17.4.0",
     "jsdom": "^29.1.1",
     "rollup": "^4.62.2",
+    "sharp": "^0.35.5",
     "supabase": "^2.98.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",

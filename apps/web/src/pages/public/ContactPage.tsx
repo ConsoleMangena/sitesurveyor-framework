@@ -5,7 +5,8 @@ import { PublicPage } from "../../components/shared/PublicPage.tsx"
 import { PublicHero } from "../../components/shared/PublicHero.tsx"
 import { PublicSection } from "../../components/shared/PublicSection.tsx"
 import { useAssistant } from "../../components/assistant/assistant-context.ts"
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts"
+import { breadcrumbJsonLd } from "../../lib/seo/meta.ts"
 
 const CONTACT_EMAIL = "support@sitesurveyor.tech"
 
@@ -20,7 +21,13 @@ const SUBJECT_OPTIONS = [
 type SubjectValue = (typeof SUBJECT_OPTIONS)[number]["value"]
 
 export default function ContactPage() {
-  useDocumentTitle("Contact | SiteSurveyor")
+  usePublicMeta("/contact", {
+    jsonLd: (origin) =>
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Contact", path: "/contact" },
+      ]),
+  })
 
   const { openAssistant } = useAssistant()
   const [subject, setSubject] = useState<SubjectValue>("support")

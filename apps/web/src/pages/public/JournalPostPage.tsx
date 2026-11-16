@@ -2,18 +2,44 @@ import { Link, Navigate, useParams } from "react-router-dom"
 import { ArrowLeft, Info } from "lucide-react"
 import { PublicPage } from "../../components/shared/PublicPage.tsx"
 import { SurveyPhoto } from "../../components/shared/SurveyPhoto.tsx"
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts"
 import { journalPhoto } from "../../lib/content/journalPhotos.ts"
 import {
   getJournalEntry,
   journalFormatDate,
   journalReadingMinutes,
 } from "../../lib/content/journal.ts"
+import { articleJsonLd, breadcrumbJsonLd } from "../../lib/seo/meta.ts"
 
 export default function JournalPostPage() {
   const { slug } = useParams<{ slug: string }>()
   const entry = slug ? getJournalEntry(slug) : undefined
-  useDocumentTitle(entry ? `${entry.title} | SiteSurveyor Blogs` : "Blogs | SiteSurveyor")
+
+  usePublicMeta(entry ? `/journal/${entry.slug}` : "/journal", {
+    title: entry ? `${entry.title} | SiteSurveyor Blogs` : "Blogs | SiteSurveyor",
+    description:
+      entry?.summary ??
+      "Product decisions, our evidence model, and practical engineering notes for connected surveying work.",
+    image: entry ? `/og/${entry.slug}.jpg` : undefined,
+    jsonLd: (origin) =>
+      entry
+        ? [
+            articleJsonLd({
+              origin,
+              title: entry.title,
+              description: entry.summary,
+              path: `/journal/${entry.slug}`,
+              image: `/og/${entry.slug}.jpg`,
+              datePublished: entry.date,
+            }),
+            breadcrumbJsonLd(origin, [
+              { name: "Home", path: "/" },
+              { name: "Blogs", path: "/journal" },
+              { name: entry.title, path: `/journal/${entry.slug}` },
+            ]),
+          ]
+        : undefined,
+  })
 
   if (!entry) {
     return <Navigate to="/journal" replace />

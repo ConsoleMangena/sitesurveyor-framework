@@ -4,18 +4,33 @@ import { PublicPage } from "../../components/shared/PublicPage.tsx"
 import { PublicHero } from "../../components/shared/PublicHero.tsx"
 import { PublicSection } from "../../components/shared/PublicSection.tsx"
 import { SurveyPhoto } from "../../components/shared/SurveyPhoto.tsx"
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts"
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts"
 import { journalPhoto } from "../../lib/content/journalPhotos.ts"
 import {
   JOURNAL_ENTRIES,
   journalFormatDate,
   journalReadingMinutes,
 } from "../../lib/content/journal.ts"
+import { breadcrumbJsonLd, itemListJsonLd } from "../../lib/seo/meta.ts"
 
 export default function JournalPage() {
-  useDocumentTitle("Blogs | SiteSurveyor")
-
   const entries = [...JOURNAL_ENTRIES].sort((a, b) => b.date.localeCompare(a.date))
+
+  usePublicMeta("/journal", {
+    jsonLd: (origin) => [
+      itemListJsonLd(
+        origin,
+        entries.map((entry) => ({
+          name: entry.title,
+          path: `/journal/${entry.slug}`,
+        })),
+      ),
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Blogs", path: "/journal" },
+      ]),
+    ],
+  })
 
   return (
     <PublicPage section="Blogs">

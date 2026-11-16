@@ -18,6 +18,13 @@ import AuthCallbackPage from "./pages/auth/AuthCallbackPage";
 import AccountSecurityPage from "./pages/auth/AccountSecurityPage";
 import OnboardingPage from "./pages/auth/OnboardingPage";
 import { AssistantProvider } from "./components/assistant/AssistantProvider.tsx";
+import { useNoIndexAppRoutes } from "./hooks/useNoIndexAppRoutes.ts";
+
+/** Keeps the signed-in routes out of the search index. */
+function RouteRobots() {
+  useNoIndexAppRoutes();
+  return null;
+}
 
 const PublicMarketPage = lazy(() => import("./pages/public/PublicMarketPage"));
 const PublicTransportPage = lazy(() => import("./pages/public/PublicTransportPage"));
@@ -234,6 +241,7 @@ export default function App() {
       <OfflineStatusBanner />
       <Toaster position="bottom-right" richColors closeButton />
       <BrowserRouter>
+        <RouteRobots />
         <AssistantProvider>
         <SessionExpiredBanner />
         <Routes>

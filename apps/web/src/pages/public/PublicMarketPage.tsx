@@ -22,7 +22,8 @@ import {
 import { PublicHeader } from "../../components/shared/PublicHeader.tsx";
 import { cn } from "../../lib/utils.ts";
 import { useAsyncAction } from "../../hooks/useAsyncAction.ts";
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts";
+import { breadcrumbJsonLd } from "../../lib/seo/meta.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 import { signOut } from "../../lib/auth/session.ts";
 import {
@@ -192,9 +193,14 @@ export default function PublicMarketPage() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const market = useSolanaMarketFeed();
-  useDocumentTitle(
-    "Surveyor's Market: instruments, surveyors, jobs and training | SiteSurveyor",
-  );
+  usePublicMeta("/market", {
+    title: "Surveyor's Market: instruments, surveyors, jobs and training | SiteSurveyor",
+    jsonLd: (origin) =>
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "Market", path: "/market" },
+      ]),
+  });
   // Demo rows seeded by the sample workspace look exactly like real supply;
   // they are badged here so a visitor never waits on a demo seller.
   const sampleKeys = useSampleMarketItemKeys();

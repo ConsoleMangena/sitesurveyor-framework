@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { PublicPage } from "../../components/shared/PublicPage.tsx";
 import { PublicHero } from "../../components/shared/PublicHero.tsx";
-import { useDocumentTitle } from "../../hooks/useDocumentTitle.ts";
+import { usePublicMeta } from "../../hooks/usePublicMeta.ts";
+import { breadcrumbJsonLd } from "../../lib/seo/meta.ts";
 import { useAuthStore } from "../../lib/auth/auth-store.ts";
 
 const APP_VERSION = "2.0";
@@ -97,7 +98,13 @@ const LAYOUT = [
 ];
 
 export default function AboutPage() {
-  useDocumentTitle("About | SiteSurveyor");
+  usePublicMeta("/about", {
+    jsonLd: (origin) =>
+      breadcrumbJsonLd(origin, [
+        { name: "Home", path: "/" },
+        { name: "About", path: "/about" },
+      ]),
+  });
   const user = useAuthStore((state) => state.user);
 
   return (
