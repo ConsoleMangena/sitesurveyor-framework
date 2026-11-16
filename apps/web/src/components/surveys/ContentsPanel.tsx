@@ -121,7 +121,7 @@ export default function ContentsPanel({
           type="button"
           variant="ghost"
           size="icon"
-          className="ml-auto size-7"
+          className="sw-panel__collapse ml-auto size-7"
           aria-expanded="true"
           onClick={onCollapse}
           title="Collapse contents"

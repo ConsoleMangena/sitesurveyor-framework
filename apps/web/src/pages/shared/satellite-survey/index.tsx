@@ -1208,7 +1208,7 @@ function SurveyWorkbench({
               type="button"
               variant="ghost"
               size="icon"
-              className="ml-auto size-7"
+              className="sw-panel__collapse ml-auto size-7"
               aria-expanded="true"
               onClick={() => togglePanel("right")}
               title="Collapse analysis"
