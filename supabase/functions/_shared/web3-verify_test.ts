@@ -18,10 +18,10 @@ import {
   Web3VerificationError,
 } from "./web3-verify.ts";
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { secp256k1 } from "https://esm.sh/@noble/curves@1.9.7/secp256k1";
-import { ed25519 } from "https://esm.sh/@noble/curves@1.9.7/ed25519";
-import { keccak_256 } from "https://esm.sh/@noble/hashes@1.8.0/sha3";
-import { base58 } from "https://esm.sh/@scure/base@2.4.0";
+import { secp256k1 } from "npm:@noble/curves@1.9.7/secp256k1";
+import { ed25519 } from "npm:@noble/curves@1.9.7/ed25519";
+import { keccak_256 } from "npm:@noble/hashes@1.8.0/sha3";
+import { base58 } from "npm:@scure/base@2.4.0";
 
 const encoder = new TextEncoder();
 

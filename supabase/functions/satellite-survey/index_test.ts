@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { start, validate } from "./index.ts";
 
 const WORKSPACE = "aaaaaaaa-0000-4000-8000-000000000001";

@@ -18,10 +18,10 @@
  * the signature, and the address the caller claims to control.
  */
 
-import { secp256k1 } from "https://esm.sh/@noble/curves@1.9.7/secp256k1";
-import { keccak_256 } from "https://esm.sh/@noble/hashes@1.8.0/sha3";
-import { ed25519 } from "https://esm.sh/@noble/curves@1.9.7/ed25519";
-import { base58 } from "https://esm.sh/@scure/base@2.4.0";
+import { secp256k1 } from "npm:@noble/curves@1.9.7/secp256k1";
+import { keccak_256 } from "npm:@noble/hashes@1.8.0/sha3";
+import { ed25519 } from "npm:@noble/curves@1.9.7/ed25519";
+import { base58 } from "npm:@scure/base@2.4.0";
 
 /** Thrown when a signature cannot be proven to belong to the claimed address. */
 export class Web3VerificationError extends Error {
@@ -142,8 +142,8 @@ export function recoverEthereumAddress(message: string, signature: string): stri
 
   const digest = hashEthereumPersonalMessage(message);
 
-  // esm.sh's generated `.d.ts` for `@noble/curves@1.9.7` omits
-  // `recoverPublicKey` from `CurveFnWithCreate`, but the runtime export is the
+  // The published types for `@noble/curves@1.9.7` do not describe
+  // `recoverPublicKey` on `CurveFnWithCreate`, but the runtime export is the
   // documented `recoverPublicKey(signature, msgHash, opts)` — assert the exact
   // shape we rely on here so a future version change fails loudly instead of
   // silently returning garbage.

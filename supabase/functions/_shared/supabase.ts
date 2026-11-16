@@ -7,7 +7,7 @@
  *   Authorization bearer token.
  */
 
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 export function adminClient(): SupabaseClient {
   const url = Deno.env.get("SUPABASE_URL");

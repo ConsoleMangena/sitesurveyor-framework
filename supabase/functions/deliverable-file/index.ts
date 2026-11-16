@@ -9,7 +9,7 @@
 // with. Nothing about the object itself is exposed unless the caller's token
 // would already have been allowed to read the row through the app.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCaller, json } from "../_shared/supabase.ts";
 
 const BUCKET = "survey-deliverables";
