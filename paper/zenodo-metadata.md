@@ -20,7 +20,6 @@ SiteSurveyor: A Hybrid On-Chain/Off-Chain Architecture for Secure and Verifiable
 
 ```
 Consolation Mangena (ORCID 0009-0006-2708-914X, Eineva Labs)
-Tatenda Mangena
 ```
 
 ## Resource type
@@ -30,7 +29,7 @@ Tatenda Mangena
 ## Description (abstract) — paper record
 
 This is the description **as published** on the paper record
-(`10.5281/zenodo.24288095`). Zenodo's description field accepts a limited subset
+(`10.5281/zenodo.24288094`, concept DOI). Zenodo's description field accepts a limited subset
 of HTML; keep revisions of this block dash-free and in sync with the `main.tex`
 abstract.
 
@@ -108,11 +107,14 @@ DOI stays stable and the version DOI changes.
 | Record | Concept DOI | First version DOI |
 | --- | --- | --- |
 | Software | `10.5281/zenodo.24287890` | `10.5281/zenodo.24287891` (v0.1.0) |
-| Paper | `10.5281/zenodo.24288094` | `10.5281/zenodo.24288095` |
+| Paper | `10.5281/zenodo.24288094` | `10.5281/zenodo.24290209` (v3, current) |
 
 The software record's related identifiers already carry *is documented by* the
 paper DOI, and the paper carries *is supplement to* the software concept DOI.
-The header DOI in `main.tex` is `10.5281/zenodo.24288095`.
+The header in `main.tex` prints the paper **concept DOI**
+(`10.5281/zenodo.24288094`), so future revisions need no header change.
+History: v1 `24288095` (two authors), v2 `24290109` (author correction),
+v3 `24290209` (current; header switched to the concept DOI).
 
 ## Versioning policy
 

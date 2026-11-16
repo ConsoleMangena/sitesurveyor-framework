@@ -56,7 +56,14 @@ is no separate account-approval step to wait for.
 | Record | DOI |
 | --- | --- |
 | Software (concept DOI, always newest version) | [10.5281/zenodo.24287890](https://doi.org/10.5281/zenodo.24287890) |
-| Paper (this manuscript) | [10.5281/zenodo.24288095](https://doi.org/10.5281/zenodo.24288095) |
+| Paper (concept DOI, always newest version) | [10.5281/zenodo.24288094](https://doi.org/10.5281/zenodo.24288094) |
+| Paper v3 (current manuscript, sole author, header prints the concept DOI) | [10.5281/zenodo.24290209](https://doi.org/10.5281/zenodo.24290209) |
+
+Paper v1 (`10.5281/zenodo.24288095`) listed two authors and is superseded;
+v2 (`10.5281/zenodo.24290109`) corrected the author list but still printed the
+v1 DOI in the header. Both remain online because version DOIs are permanent.
+The header now prints the **concept DOI**, so future revisions need no header
+change.
 
 ## Relationship to the rest of the repository
 
