@@ -72,6 +72,22 @@ you are welcome to explore it, but it is not a shared demo and nothing you do th
 own workspace. For your own data, deploy from this repository (see `render.yaml`) and supply your
 own accounts as described below.
 
+## Download
+
+Prebuilt files are attached to every [GitHub release](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest)
+(releases are cut from `v*` tags):
+
+| File | What it is |
+| --- | --- |
+| [Web app (zip)](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest/download/sitesurveyor-web.zip) | The built React bundle (`dist/`), ready to host on any static server |
+| [Windows installer (.exe)](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest/download/SiteSurveyor_2.0.0_x64-setup.exe) | NSIS installer for the Tauri desktop shell (64-bit Windows) |
+| [Windows installer (.msi)](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest/download/SiteSurveyor_2.0.0_x64_en-US.msi) | MSI installer for the Tauri desktop shell (64-bit Windows) |
+
+The direct links above resolve to the assets of the current release; the [releases page](https://github.com/ConsoleMangena/sitesurveyor-framework/releases)
+lists every version. Installers are currently built for Windows only; macOS and Linux users can
+run the desktop shell from source (see below). The desktop shell is a wrapper around the web app,
+so either surface uses the same workspace and the same account.
+
 ## What is implemented today
 
 | Area | What you can do |
@@ -84,7 +100,9 @@ own accounts as described below.
 | Workspaces | Personal and business workspaces with row-level security, plus platform administration views |
 
 The **web app is the shared frontend**. `apps/desktop` is a Tauri (Rust) shell that packages it as a
-native window; `apps/mobile` is still a placeholder for the mobile shell. Commit defaults are **Solana
+native window (download a Windows installer from [Releases](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest)
+or build it yourself);
+`apps/mobile` is still a placeholder for the mobile shell. Commit defaults are **Solana
 devnet** and **PesePay sandbox**, demonstration values, not production settlement.
 
 ## What an anchored digest does and does not establish
@@ -134,7 +152,9 @@ supply your own Supabase project, your own Digital Earth Africa token for the sa
 your own provider keys. Nothing here reaches the maintainer's deployment, and the credentials in
 `apps/web/.env` and `apps/engine/.env` are yours alone.
 
-The desktop shell packages the same web app as a native window. It needs a Rust toolchain and
+The desktop shell packages the same web app as a native window. Either download an installer from
+the [latest release](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest) or
+build it yourself: it needs a Rust toolchain and
 the platform build tools. See the [desktop shell guide](apps/desktop/README.md).
 
 ```bash
