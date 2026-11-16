@@ -87,6 +87,7 @@ npm run build:desktop      # installers in apps/desktop/src-tauri/target/release
 | [Desktop shell guide](apps/desktop/README.md) | Tauri shell: toolchain, dev loop, installers |
 | [Engine guide](apps/engine/README.md) | Satellite analysis worker and MCP server |
 | [Contributing](CONTRIBUTING.md) | Setup, checks and pull request expectations |
+| [Paper](paper/README.md) | Preprint source, arXiv metadata and build instructions |
 
 Anchoring proves that a wallet anchored a digest at a time; it does not prove authorship, survey
 accuracy or legal validity. Review [SECURITY.md](SECURITY.md) before handling real client data.

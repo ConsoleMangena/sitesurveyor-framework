@@ -1,0 +1,12 @@
+# LaTeX build artefacts. The PDF is generated, never committed: arXiv compiles
+# from source, and a checked-in PDF goes stale without anyone noticing.
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+main.pdf
