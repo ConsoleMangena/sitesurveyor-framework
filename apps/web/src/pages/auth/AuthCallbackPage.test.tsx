@@ -49,6 +49,7 @@ function renderCallback(search = "") {
         <Route path="/signup" element={<div>Sign up screen</div>} />
         <Route path="/login" element={<div>Sign in screen</div>} />
         <Route path="/workspace" element={<div>App workspace</div>} />
+        <Route path="/onboarding" element={<div>Onboarding screen</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -166,6 +167,23 @@ describe("AuthCallbackPage", () => {
     expect(
       screen.getByRole("link", { name: /finish setting up/i }),
     ).toHaveAttribute("href", "/signup");
+  });
+
+  it("sends a provider signup that owes the survey to onboarding, not an error", async () => {
+    mockEnsureAccountProvisioned.mockRejectedValue(
+      new ProvisioningError(
+        "ONBOARDING_REQUIRED",
+        "Tell us a little about yourself to finish setting up this account.",
+      ),
+    );
+
+    renderCallback();
+
+    expect(await screen.findByText("Onboarding screen")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Sign-in could not be completed" }),
+    ).toBeNull();
+    expect(screen.queryByText(/Tell us a little about yourself/)).toBeNull();
   });
 
   it("still reports genuine provisioning failures", async () => {

@@ -48,6 +48,7 @@ function lazyPublic(element: React.ReactNode) {
 }
 import {
   getCurrentAppUserWithDiagnostics,
+  type AppUserContext,
   type AppUserLoadDiagnostics,
 } from "./lib/auth/app-user.ts";
 import {
@@ -55,6 +56,8 @@ import {
   loadStoredSession,
   onAuthStateChange,
 } from "./lib/auth/session.ts";
+import { isProviderSignup } from "./lib/auth/provisioning.ts";
+import PendingOnboardingRedirect from "./components/PendingOnboardingRedirect";
 import { isOnline } from "./lib/supabase/client.ts";
 import { installBodyPointerEventsGuard } from "./lib/ui/body-pointer-events.ts";
 
@@ -107,24 +110,59 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+/**
+ * True when the signed-in session is a provider signup (Google/GitHub) that
+ * has not completed the onboarding survey yet.
+ *
+ * The signup trigger deliberately leaves these accounts without a workspace
+ * and without `auth_signup_account_type`, so `mapAppUserToUiUser` returns
+ * null for them by design. That state needs the onboarding form, not the
+ * generic "workspace not ready" error. The profile row is the authority (the
+ * metadata mirror can lag), and a failed profile fetch stays a network
+ * problem — flagging it here would route a connection error into the survey.
+ */
+function isPendingProviderOnboarding(
+  context: AppUserContext,
+  diagnostics: AppUserLoadDiagnostics,
+): boolean {
+  if (diagnostics.profileFetchFailed || !context.profile) return false;
+  if (!context.session?.user) return false;
+  return (
+    isProviderSignup(context.session.user) &&
+    !context.profile.auth_signup_account_type
+  );
+}
+
 /** Four attempts with waits 0 / 400ms / 1s / 2s between rounds (handles trigger lag). */
 async function mapUserWithRetries(): Promise<{
   user: ReturnType<typeof mapAppUserToUiUser>;
   diagnostics: AppUserLoadDiagnostics;
+  context: AppUserContext;
 }> {
   const delaysBeforeRetryMs = [400, 1000, 2000];
-  let lastDiagnostics: AppUserLoadDiagnostics = {
-    profileFetchFailed: false,
-    defaultWorkspaceFetchFailed: false,
-    workspacesFetchFailed: false,
+  let lastResult: {
+    context: AppUserContext;
+    diagnostics: AppUserLoadDiagnostics;
+  } = {
+    context: {
+      session: null,
+      profile: null,
+      defaultWorkspace: null,
+      workspaces: [],
+    },
+    diagnostics: {
+      profileFetchFailed: false,
+      defaultWorkspaceFetchFailed: false,
+      workspacesFetchFailed: false,
+    },
   };
 
   // When offline, don't waste time retrying network calls.
   if (!isOnline()) {
     const { context, diagnostics } = await getCurrentAppUserWithDiagnostics();
-    lastDiagnostics = diagnostics;
+    lastResult = { context, diagnostics };
     const mapped = mapAppUserToUiUser(context);
-    return { user: mapped, diagnostics };
+    return { user: mapped, diagnostics, context };
   }
 
   const attempts = 1 + delaysBeforeRetryMs.length;
@@ -135,18 +173,22 @@ async function mapUserWithRetries(): Promise<{
     }
 
     const { context, diagnostics } = await getCurrentAppUserWithDiagnostics();
-    lastDiagnostics = diagnostics;
+    lastResult = { context, diagnostics };
     const mapped = mapAppUserToUiUser(context);
     if (mapped) {
-      return { user: mapped, diagnostics };
+      return { user: mapped, diagnostics, context };
     }
   }
 
-  return { user: null, diagnostics: lastDiagnostics };
+  return {
+    user: null,
+    diagnostics: lastResult.diagnostics,
+    context: lastResult.context,
+  };
 }
 
 export default function App() {
-  const { setUser, setLoading, setAuthLoading, setError, setSessionExpired } =
+  const { setUser, setLoading, setAuthLoading, setError, setSessionExpired, setPendingOnboarding } =
     useAuthStore();
   const isLoading = useAuthStore((s) => s.isLoading);
   const user = useAuthStore((s) => s.user);
@@ -164,7 +206,11 @@ export default function App() {
         return;
       }
 
-      const { user: mappedUser, diagnostics } = await withTimeout(
+      const {
+        user: mappedUser,
+        diagnostics,
+        context,
+      } = await withTimeout(
         mapUserWithRetries(),
         10000,
         "Workspace loading",
@@ -172,11 +218,21 @@ export default function App() {
       if (mappedUser) {
         saveCachedUser(mappedUser);
         setUser(mappedUser);
+        setPendingOnboarding(false);
       } else {
         const cached = loadCachedUser();
         if (cached && cached.id === session.user.id) {
           setUser(cached);
+          setPendingOnboarding(false);
+        } else if (isPendingProviderOnboarding(context, diagnostics)) {
+          // A Google/GitHub signup that still owes the onboarding survey: not
+          // an error. Route it to the survey (PendingOnboardingRedirect) and
+          // keep the session; the survey allocates the workspace on submit.
+          setError(null);
+          setUser(null);
+          setPendingOnboarding(true);
         } else {
+          setPendingOnboarding(false);
           setError(workspaceNotReadyMessage(diagnostics));
           setUser(null);
         }
@@ -191,7 +247,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [setUser, setLoading, setError]);
+  }, [setUser, setLoading, setError, setPendingOnboarding]);
 
   useEffect(() => {
     // A modal that closes can leave <body> with pointer events disabled, which
@@ -213,6 +269,7 @@ export default function App() {
         }
         clearCachedUser();
         setSessionExpired(true);
+        setPendingOnboarding(false);
         return;
       }
       if (event === "SIGNED_IN" || event === "USER_UPDATED") {
@@ -230,7 +287,7 @@ export default function App() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [syncUser, setSessionExpired, setAuthLoading]);
+  }, [syncUser, setSessionExpired, setAuthLoading, setPendingOnboarding]);
 
   if (isLoading) {
     return <SplashScreen hold />;
@@ -243,6 +300,7 @@ export default function App() {
       <Toaster position="bottom-right" richColors closeButton />
       <BrowserRouter>
         <RecoveryRedirect />
+        <PendingOnboardingRedirect />
         <RouteRobots />
         <AssistantProvider>
         <SessionExpiredBanner />
@@ -283,7 +341,7 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           {/* OAuth + email-link landing point; provisioning runs inside. */}
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route element={<ProtectedRoute />}>
+          <Route element={<ProtectedRoute allowPendingOnboarding />}>
             <Route path="/onboarding" element={<OnboardingPage />} />
           </Route>
           <Route

@@ -82,6 +82,7 @@ export default function AuthCallbackPage() {
               // survey: send them to it. The survey allocates the dashboard
               // (personal or business) on submit.
               if (err.blocker === "ONBOARDING_REQUIRED") {
+                setAuthLoading(false);
                 navigate("/onboarding", { replace: true });
                 return;
               }
