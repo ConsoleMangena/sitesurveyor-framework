@@ -1,7 +1,7 @@
 \documentclass[11pt,a4paper]{article}
 
 % Standard packages only: this file compiles with a stock TeX Live, with
-% `tectonic main.tex`, or on arXiv, and it needs no shell escape.
+% `tectonic main.tex`, or with latexmk, and it needs no shell escape.
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
@@ -419,9 +419,10 @@ The implementation is released under the MIT licence at
 \url{https://github.com/ConsoleMangena/sitesurveyor-framework}. Releases are archived
 on Zenodo, which mints a version DOI under a stable concept DOI, and the repository
 carries citation metadata so that a release can be cited without consulting this
-paper. The repository does not ship a shared hosted instance: an adopter supplies
-their own database project, Earth-observation token and provider keys, and the
-documentation states which configuration values are public.
+paper. The manuscript itself is deposited on Zenodo as a preprint and carries its own
+DOI, linked to the software record. The repository does not ship a shared hosted
+instance: an adopter supplies their own database project, Earth-observation token and
+provider keys, and the documentation states which configuration values are public.
 \end{sloppypar}
 
 Building the paper requires only a standard \LaTeX{} installation; the source and

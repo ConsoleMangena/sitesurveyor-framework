@@ -8,14 +8,13 @@ LaTeX build never touches the JS toolchain.
 | --- | --- |
 | `main.tex` | The paper. Self-contained: the architecture figure is TikZ, so there are no external images |
 | `references.bib` | Bibliography stub for `\bibliography{references}` |
-| `arxiv-metadata.md` | Values to paste into the arXiv submission form, plus the post-submission DOI steps |
+| `zenodo-metadata.md` | Values for the Zenodo deposit form, file list, related identifiers and publishing order |
 | `Makefile` | `make` builds with `tectonic`, falling back to `latexmk` |
 
 ## Build
 
 Any standard TeX installation works; the paper uses only `article`, `geometry`,
-`booktabs`, `amsmath`, `graphicx`, `microtype`, `tikz` and `hyperref`. No shell
-escape and no exotic fonts, because arXiv compiles the source in a sandbox.
+`booktabs`, `amsmath`, `graphicx`, `microtype`, `tikz` and `hyperref`.
 
 ```bash
 # fastest: self-contained engine, downloads what it needs on first run
@@ -29,17 +28,21 @@ pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
 ```
 
 Output is `main.pdf`. Build artefacts are ignored by `paper/.gitignore`; the PDF is
-not committed, because arXiv builds from source and the repository should not carry
-a binary that silently goes stale.
+not committed, because it is a generated binary that would silently go stale.
 
-## Submitting
+## Publishing
 
-1. Build `main.tex` locally and read the PDF once. Check that every `\ref` resolved
-   and that the bibliography printed.
-2. Copy title, abstract and categories from `arxiv-metadata.md` into the arXiv form.
-3. Upload `main.tex` and `references.bib`. arXiv compiles the source.
-4. Record the arXiv identifier in `arxiv-metadata.md` and in the Zenodo record's
-   related identifiers, so the paper and the archived software point at each other.
+The manuscript is deposited on Zenodo as a **Publication → Preprint** record, with
+a DOI minted on publish. Zenodo does not gate publication on endorsement, so there
+is no separate account-approval step to wait for.
+
+1. Build `main.pdf` and read it once. Check that every `\ref` resolved and that the
+   bibliography printed.
+2. Follow `zenodo-metadata.md` for the form values, the files to upload and the
+   related identifiers.
+3. Publish the software release first if it is not already published, so the paper
+   can link to its concept DOI from the start.
+4. Record the paper DOI in this file once it exists.
 
 ## Relationship to the rest of the repository
 
