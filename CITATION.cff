@@ -22,3 +22,13 @@ keywords:
   - survey
   - supabase
   - solana
+preferred-citation:
+  type: article
+  title: "SiteSurveyor: A Hybrid On-Chain/Off-Chain Architecture for Secure and Verifiable Surveying Systems"
+  authors:
+    - family-names: Mangena
+      given-names: Consolation
+    - family-names: Mangena
+      given-names: Tatenda
+  year: 2026
+  doi: 10.5281/zenodo.24288095

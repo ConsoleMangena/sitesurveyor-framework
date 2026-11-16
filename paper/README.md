@@ -51,6 +51,13 @@ is no separate account-approval step to wait for.
    can link to its concept DOI from the start.
 4. Record the paper DOI in this file once it exists.
 
+## Published DOIs
+
+| Record | DOI |
+| --- | --- |
+| Software (concept DOI, always newest version) | [10.5281/zenodo.24287890](https://doi.org/10.5281/zenodo.24287890) |
+| Paper (this manuscript) | [10.5281/zenodo.24288095](https://doi.org/10.5281/zenodo.24288095) |
+
 ## Relationship to the rest of the repository
 
 `CITATION.cff` **stays at the repository root**. GitHub and Zenodo both look for it

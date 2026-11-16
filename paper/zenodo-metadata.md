@@ -19,11 +19,9 @@ SiteSurveyor: A Hybrid On-Chain/Off-Chain Architecture for Secure and Verifiable
 ## Authors
 
 ```
-Consolation Mangena (Eineva Labs)
+Consolation Mangena (ORCID 0009-0006-2708-914X)
+Tatenda Mangena
 ```
-
-Add an ORCID if you have one; it makes the author unambiguous and is worth the
-two minutes.
 
 ## Resource type
 
@@ -35,26 +33,33 @@ Zenodo's description field accepts a limited subset of HTML. Paste this as two
 paragraphs, or as one paragraph if you prefer:
 
 ```html
-<p>Field survey work is usually split across a paper field book, a spreadsheet, a
-file share and several disconnected business systems. Every hand-off loses context,
-and evidence gathered in the field is rarely bound to the record it is supposed to
-support. This paper describes SiteSurveyor, an open-source framework for developing
-secure surveying systems, realised as a multi-tenant workspace that keeps the
-operational record -- project, job, quote, invoice, evidence and payment --
-continuous, while keeping confidential survey content off-chain.</p>
+<p><strong>SiteSurveyor</strong> is an open-source framework for building secure and
+verifiable surveying systems, realised as a multi-tenant workspace that keeps the
+operational record continuous: projects, jobs, quotes, invoices, evidence and
+payments live in a single PostgreSQL database protected by row-level security.</p>
 
-<p>The system combines a React/TypeScript progressive web app, a PostgreSQL backend
-with row-level security, and a small set of edge functions. Solana is used only where
-it adds a property the database cannot supply: wallet-based sign-in, stablecoin
-settlement, and a wallet-signed digest that lets a third party confirm that a file
-presented later is byte-identical to the one that was anchored. An AI agent operates
-the same records through an allowlisted tool surface, with read-back verification of
-writes and explicit confirmation before destructive actions. We report the design,
-the security boundaries, and the engineering evidence behind the current release,
-and we are explicit about what a file digest does not prove. The framework's
-reusable components -- a tenant-scoped PostgreSQL data core, an evidence-anchoring
-service, and an allowlisted agent tool surface -- are described so that further
-secure surveying systems can be built on the same foundations.</p>
+<p>Confidential survey files stay off-chain. Solana is used only where database
+guarantees are insufficient: wallet-based sign-in, stablecoin settlement, and
+wallet-signed SHA-256 digests that let a third party confirm a file presented later
+is byte-identical to the one anchored, without accessing its contents. An AI
+assistant operates on workspace records through a typed, allowlisted tool surface
+with read-back write verification and explicit confirmation for destructive
+operations. An asynchronous Python worker screens open Earth-observation imagery
+(Sentinel-2, Copernicus DEM, ALOS PALSAR, Landsat WOFS, ESA WorldCover, CHIRPS)
+into ranked field targets and GeoTIFF, GeoJSON and KMZ deliverables.</p>
+
+<p>The stack includes:</p>
+<ul>
+  <li>a React 19 progressive web app, installable on phone and desktop</li>
+  <li>Supabase: PostgreSQL with row-level security, Storage, Auth and edge functions</li>
+  <li>a Tauri desktop shell packaging the same frontend</li>
+  <li>an MCP server exposing the agent and screening surfaces to external hosts</li>
+  <li>an optional self-hosted Node gateway for the agent contract</li>
+</ul>
+
+<p>Released under the MIT licence. See the linked paper for the system design, the
+threat model, and an explicit statement of what an anchored digest does and does
+not prove.</p>
 ```
 
 ## Fields
@@ -111,6 +116,17 @@ Zenodo mints a DOI immediately on publish and does not gate publication on
 endorsement or moderation, so the paper is citable as soon as you finish the form.
 A later revision is published as a **new version** of the same record: the concept
 DOI stays stable and the version DOI changes.
+
+## Published DOIs (filled 2026-11-16)
+
+| Record | Concept DOI | First version DOI |
+| --- | --- | --- |
+| Software | `10.5281/zenodo.24287890` | `10.5281/zenodo.24287891` (v0.1.0) |
+| Paper | `10.5281/zenodo.24288094` | `10.5281/zenodo.24288095` |
+
+The software record's related identifiers already carry *is documented by* the
+paper DOI, and the paper carries *is supplement to* the software concept DOI.
+The header DOI in `main.tex` is `10.5281/zenodo.24288095`.
 
 ## Versioning policy
 
