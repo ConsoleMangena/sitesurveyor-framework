@@ -6,26 +6,33 @@ LaTeX build never touches the JS toolchain.
 
 | File | Purpose |
 | --- | --- |
-| `main.tex` | The paper. Self-contained: the architecture figure is TikZ, so there are no external images |
-| `references.bib` | Bibliography stub for `\bibliography{references}` |
+| `main.tex` | The paper. Two-column layout with a hand-set front page (logo, title block, full-width abstract). The architecture figure is TikZ; the only external asset is the logo under `assets/`. The bibliography is an inline `thebibliography` block, so the document needs no BibTeX run |
+| `references.bib` | Unused legacy BibTeX stub from the earlier `\bibliography{references}` setup. `main.tex` now carries its bibliography inline; keep this file only if the paper is moved back to BibTeX |
 | `zenodo-metadata.md` | Values for the Zenodo deposit form, file list, related identifiers and publishing order |
 | `Makefile` | `make` builds with `tectonic`, falling back to `latexmk` |
+| `assets/logo.png` | The project mark, set above the title on the front page. Copied from `apps/web/public/logo.png`; refresh it from there if the logo changes |
+| `related/` | Open-access related-work reading pile with gap notes (`related/README.md`) — not part of the deposit |
 
 ## Build
 
 Any standard TeX installation works; the paper uses only `article`, `geometry`,
-`booktabs`, `amsmath`, `graphicx`, `microtype`, `tikz` and `hyperref`.
+`booktabs`, `array`, `amsmath`, `graphicx`, `microtype`, `tikz` and `hyperref`.
+There is no BibTeX step: the bibliography is inline in `main.tex`.
 
 ```bash
 # fastest: self-contained engine, downloads what it needs on first run
-tectonic main.tex
+cd paper && tectonic main.tex
 
 # or a normal TeX Live / MiKTeX install
-latexmk -pdf main.tex
+cd paper && latexmk -pdf main.tex
 
 # or by hand
-pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+cd paper && pdflatex main.tex && pdflatex main.tex
 ```
+
+`tectonic` resolves its bundle cache on first run, so it needs network access once;
+after that the build is offline. The logo is read from `assets/logo.png` relative to
+the build directory, which is why the commands above `cd paper` first.
 
 Output is `main.pdf`. Build artefacts are ignored by `paper/.gitignore`; the PDF is
 not committed, because it is a generated binary that would silently go stale.
@@ -36,8 +43,8 @@ The manuscript is deposited on Zenodo as a **Publication → Preprint** record, 
 a DOI minted on publish. Zenodo does not gate publication on endorsement, so there
 is no separate account-approval step to wait for.
 
-1. Build `main.pdf` and read it once. Check that every `\ref` resolved and that the
-   bibliography printed.
+1. Build `main.pdf` and read it once. Check that every `\ref` resolved (no `??`
+   in the output) and that the bibliography printed after the conclusion.
 2. Follow `zenodo-metadata.md` for the form values, the files to upload and the
    related identifiers.
 3. Publish the software release first if it is not already published, so the paper

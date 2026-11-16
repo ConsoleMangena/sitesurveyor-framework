@@ -7,12 +7,13 @@ manuscript, and the two are linked through related identifiers so either DOI lea
 to the other.
 
 Copy these values into the deposit form. Keep this file in sync with `main.tex`
-and `references.bib` when the paper changes.
+when the paper changes; the bibliography is inline in `main.tex`, so there is no
+separate `.bib` file to update.
 
 ## Title
 
 ```
-SiteSurveyor: A Hybrid On-Chain/Off-Chain Workspace for Survey Operations, Evidence Provenance, and Settlement
+SiteSurveyor: A Hybrid On-Chain/Off-Chain Architecture for Secure and Verifiable Surveying Systems
 ```
 
 ## Authors
@@ -37,9 +38,10 @@ paragraphs, or as one paragraph if you prefer:
 <p>Field survey work is usually split across a paper field book, a spreadsheet, a
 file share and several disconnected business systems. Every hand-off loses context,
 and evidence gathered in the field is rarely bound to the record it is supposed to
-support. This paper describes SiteSurveyor, an open-source, multi-tenant workspace
-that keeps the operational record -- project, job, quote, invoice, evidence and
-payment -- continuous, while keeping confidential survey content off-chain.</p>
+support. This paper describes SiteSurveyor, an open-source framework for developing
+secure surveying systems, realised as a multi-tenant workspace that keeps the
+operational record -- project, job, quote, invoice, evidence and payment --
+continuous, while keeping confidential survey content off-chain.</p>
 
 <p>The system combines a React/TypeScript progressive web app, a PostgreSQL backend
 with row-level security, and a small set of edge functions. Solana is used only where
@@ -49,7 +51,10 @@ presented later is byte-identical to the one that was anchored. An AI agent oper
 the same records through an allowlisted tool surface, with read-back verification of
 writes and explicit confirmation before destructive actions. We report the design,
 the security boundaries, and the engineering evidence behind the current release,
-and we are explicit about what a file digest does not prove.</p>
+and we are explicit about what a file digest does not prove. The framework's
+reusable components -- a tenant-scoped PostgreSQL data core, an evidence-anchoring
+service, and an allowlisted agent tool surface -- are described so that further
+secure surveying systems can be built on the same foundations.</p>
 ```
 
 ## Fields
@@ -68,12 +73,12 @@ and we are explicit about what a file digest does not prove.</p>
 | File | Why |
 | --- | --- |
 | `main.pdf` | The readable manuscript |
-| `paper-source.zip` | `main.tex`, `references.bib`, `Makefile` — lets a reader rebuild the PDF exactly |
+| `paper-source.zip` | `main.tex`, `Makefile`, `assets/logo.png` — lets a reader rebuild the PDF exactly |
 
 Build the archive from the repository root so the paths are stable:
 
 ```bash
-cd paper && zip -r ../paper-source.zip main.tex references.bib Makefile && cd ..
+cd paper && zip -r ../paper-source.zip main.tex Makefile assets && cd ..
 ```
 
 Zenodo stores files up to 50 GB per record, so size is not a constraint here.
@@ -106,3 +111,31 @@ Zenodo mints a DOI immediately on publish and does not gate publication on
 endorsement or moderation, so the paper is citable as soon as you finish the form.
 A later revision is published as a **new version** of the same record: the concept
 DOI stays stable and the version DOI changes.
+
+## Versioning policy
+
+The paper grows with the framework. Publish revisions as **new versions of this
+same record** — never as separate records — so the concept DOI keeps resolving to
+the newest manuscript and every old citation stays valid.
+
+**How the DOIs work:**
+
+| DOI | Behaviour |
+| --- | --- |
+| Concept DOI (`10.5281/zenodo.NNNNNNN`) | Always resolves to the newest version. Cite this one. |
+| Version DOI (`10.5281/zenodo.MMMMMMM`) | Pinpoints one revision. Use it only when a claim must be tied to an exact manuscript. |
+
+**When to mint a new version:**
+
+| Change | Action |
+| --- | --- |
+| Typo, wording, reference fix | Update the files only; do not mint a version for trivia |
+| New component, changed security boundary, changed test strategy, new evidence | New version — same rule as `paper/README.md`: paper changes ride along with the material code change |
+| Genuinely new framework capability | New version, and revisit the abstract and the Version field |
+
+**Keep the two records' versions honest:** the paper's Version field should name
+the software release it describes (for example, paper v2 describes `v0.3.x`). The
+software record versions automatically from `v*` git tags via the tag-triggered
+workflow; the paper versions only when the manuscript meaningfully changes. The
+related identifiers below use the software's concept DOI precisely so this link
+survives every release on either side.

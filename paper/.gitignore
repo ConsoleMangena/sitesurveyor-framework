@@ -1,5 +1,5 @@
-# LaTeX build artefacts. The PDF is generated, never committed: arXiv compiles
-# from source, and a checked-in PDF goes stale without anyone noticing.
+# LaTeX build artefacts. The PDF is generated, never committed: Zenodo and any
+# later venue compile from source, and a checked-in PDF goes stale unnoticed.
 *.aux
 *.bbl
 *.blg
@@ -10,3 +10,6 @@
 *.synctex.gz
 *.toc
 main.pdf
+
+# Page previews rendered for visual verification
+.preview/

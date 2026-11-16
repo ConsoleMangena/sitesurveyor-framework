@@ -1,12 +1,15 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[10pt,a4paper,twocolumn]{article}
 
-% Standard packages only: this file compiles with a stock TeX Live, with
-% `tectonic main.tex`, or with latexmk, and it needs no shell escape.
+% Standard packages only: compiles cleanly with stock TeX Live, Tectonic,
+% or latexmk without shell escape. The layout uses two columns, with wide
+% figures and tables spanning both columns via figure*/table* and full-width
+% front matter typeset in a savebox.
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.9in]{geometry}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage{microtype}
@@ -14,79 +17,184 @@
 \usetikzlibrary{arrows.meta,positioning}
 \usepackage[colorlinks=true,allcolors=blue]{hyperref}
 
-\title{\textbf{SiteSurveyor}: A Hybrid On-Chain/Off-Chain Workspace\\
-for Survey Operations, Evidence Provenance, and Settlement}
+\setlength{\columnsep}{6mm}
 
-\author{Consolation Mangena\\
-Eineva Labs\\
-\href{https://sitesurveyor.tech}{sitesurveyor.tech}}
-
-\date{November 2026}
+% Prevent hyphenation inside section headings across narrow columns.
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}
+  {-3.5ex \@plus -1ex \@minus -.2ex}
+  {2.3ex \@plus.2ex}
+  {\normalfont\Large\bfseries\hyphenpenalty=10000\exhyphenpenalty=10000}}
+\makeatother
 
 \begin{document}
-\maketitle
 
-\begin{abstract}
-Field survey work is usually split across a paper field book, a spreadsheet, a file
-share and several disconnected business systems. Every hand-off loses context, and
-evidence gathered in the field is rarely bound to the record it is supposed to
-support. This paper describes \textbf{SiteSurveyor}, an open-source, multi-tenant
-workspace that keeps the operational record --- project, job, quote, invoice,
-evidence and payment --- continuous, while keeping confidential survey content
-off-chain. The system combines a React/TypeScript progressive web app, a PostgreSQL
-backend with row-level security, and a small set of edge functions. Solana is used
-only where it adds a property the database cannot supply: wallet-based sign-in,
-stablecoin settlement, and a wallet-signed digest that lets a third party confirm
-that a file presented later is byte-identical to the one that was anchored. An AI
-agent operates the same records through an allowlisted tool surface, with read-back
-verification of writes and explicit confirmation before destructive actions. We
-report the design, the security boundaries, and the engineering evidence behind the
-current release, and we are explicit about what a file digest does \emph{not} prove.
-\end{abstract}
+% Full-width front matter typeset into a savebox before \twocolumn so
+% multi-line blocks and rules span both columns cleanly.
+\newsavebox{\frontmatterbox}
+\begin{lrbox}{\frontmatterbox}
+  \begin{minipage}{\textwidth}
+    \noindent
+    {\small\textbf{SiteSurveyor Preprint} \textbar\ November 2026}\hfill
+      {\footnotesize\fbox{Preprint}\;\fbox{Open access}}\par
+    \vskip 0.35em
+    \noindent
+    {\footnotesize DOI: 10.5281/zenodo.XXXXXXXX (reserved on publication)}\hfill
+      {\footnotesize\href{https://sitesurveyor.tech}{https://sitesurveyor.tech}}\par
+    \vskip 0.65em
+    \hrule height 0.6pt
+    \vskip 1.1em
+    \begin{center}
+      \includegraphics[height=2.4cm]{assets/logo.png}\par\vskip 0.8em
+      {\Large\bfseries SiteSurveyor: A Hybrid On-Chain/Off-Chain Architecture\\[0.3em]
+       for Secure and Verifiable Surveying Systems\par}
+      \vskip 0.85em
+      {\large Consolation Mangena, Tatenda Mangena\par}
+    \end{center}
+    \vskip 1.0em
+    \noindent\rule{\textwidth}{0.4pt}
+    \vskip 0.75em
+    {\small
+    \noindent\textbf{Abstract.}\enspace
+    The field survey workflow is typically scattered across paper field books, spreadsheets,
+    shared drives, and disconnected accounting software. Context is lost at every handoff, and
+    the deliverables produced in the field are rarely tied back to the records they are meant
+    to support. This paper presents \textbf{SiteSurveyor}, an open-source reference architecture
+    for secure and verifiable surveying systems. Implemented as a multi-tenant workspace,
+    SiteSurveyor maintains a continuous operational record of each project, including jobs,
+    quotes, invoices, evidence, and payments, within a single PostgreSQL database with row-level
+    security. Confidential survey files are kept off-chain in that database. Solana is used only
+    where database guarantees are insufficient: wallet-based authentication, stablecoin
+    settlement, and wallet-signed SHA-256 digests that let third parties verify file integrity
+    without accessing file contents. An AI assistant interacts with workspace records through a
+    typed, allowlisted tool surface, with read-back verification and confirmation for
+    destructive operations, alongside an asynchronous Python worker for screening open
+    earth-observation imagery. We present the system design, delineate its threat boundaries,
+    state its cryptographic non-claims, and describe the automated engineering checks that
+    support the claims made here. We then extract three reusable building blocks: a
+    tenant-scoped data core, an evidence-anchoring service, and an allowlisted agent tool
+    surface for building comparable verifiable systems.
+    \par
+    \vskip 0.75em
+    \noindent\textbf{Keywords.}\enspace surveying; geospatial; earth observation;
+    software provenance; row-level security; Solana; AI agents.
+    \par}
+    \vskip 0.75em
+    \noindent\rule{\textwidth}{0.6pt}
+  \end{minipage}
+\end{lrbox}
+\twocolumn[\usebox{\frontmatterbox}\vspace{2.0em}]
 
 \section{Introduction}
 
-A survey engagement produces more than coordinates. It produces a quote, a schedule,
-a crew assignment, field observations, photographs, CAD drawings, cost records, an
-invoice and, eventually, a payment. In common practice these artefacts live in
-different tools: a field book or a phone note for observations, a spreadsheet for
-pricing, a shared drive for photographs, and an accounting package for the invoice.
-The project identifier is the only thing that connects them, and it is re-entered by
-hand at every boundary.
+A survey engagement yields more than just coordinates. It produces a quotation, a schedule,
+a crew assignment, field observations, photographs, CAD drawings, cost records, an invoice,
+and ultimately payment. In common practice, these artifacts are scattered across separate
+systems for data collection, pricing, photo sharing, presenting results, and invoicing.
+They are only linked by a project identifier, and that identifier is routinely re-entered at
+each boundary.
 
-Two problems follow. The first is \emph{operational}: the state of a job is
-reconstructed from several partial views, and the reconstruction is frequently
-stale. The second is \emph{evidential}: a file handed to a client or a regulator
-later cannot easily be shown to be the file that was produced in the field. Both
-problems are usually addressed by buying more software, which adds further
-boundaries rather than removing them.
+Two problems follow. The first is \emph{operational}: the state of a job must be
+reconstructed from multiple partial views, and that reconstruction is often stale. The
+second is \emph{evidential}: once a file is delivered to a client or regulator, it is difficult
+to prove that it is the same file that was produced in the field. Both problems are often
+addressed by purchasing additional software, which preserves the established boundaries
+rather than eliminating them.
 
-SiteSurveyor takes the opposite approach: one workspace holds the continuous record,
-and external systems are used only for properties the workspace itself cannot
-provide. The contributions described here are:
+SiteSurveyor does the opposite: one workspace contains the continuous record, and external
+systems are only used for capabilities that the workspace itself cannot provide. The
+contributions are:
 
 \begin{enumerate}
-  \item a data model that binds quote, project, job, evidence, cost and payment to a
-        single tenant-scoped record, enforced by PostgreSQL row-level security
-        rather than by application code alone;
-  \item an evidence-integrity mechanism with two modes --- a hash-only anchor that
-        publishes nothing but an attachment identifier and a SHA-256 digest, and an
-        opt-in encrypted full-file mode whose ciphertext never leaves storage;
-  \item an AI agent that is treated as an \emph{operational} actor: it calls a typed,
-        allowlisted tool surface, reads its own writes back before reporting success,
-        and requires explicit confirmation for destructive operations;
-  \item a satellite analysis engine that turns open Earth-observation products into
-        ranked field targets and deliverables the workspace can render;
-  \item a deployment and verification story that is honest about its limits,
-        including which components remain sandboxed or unimplemented.
+  \item a data model that connects quote, project, job, evidence, cost, and payment to a
+        single tenant-scoped record, enforced by PostgreSQL row-level security (not only by
+        application code);
+  \item an evidence-integrity mechanism with two modes: a hash-only anchor that publishes
+        only an attachment identifier and a SHA-256 digest, and an opt-in full-file mode
+        with encrypted data that never leaves storage;
+  \item an AI agent treated as an \emph{operational} actor: it calls a typed, allowlisted tool
+        surface, reads its own writes back before reporting success, and requires explicit
+        confirmation for destructive operations;
+  \item a satellite analysis engine that transforms open earth-observation products into
+        ranked field targets and deliverables the workspace can render; and
+  \item an honest deployment and verification story, including sandboxed and unimplemented
+        components.
 \end{enumerate}
 
-The remainder of the paper describes the requirements (Section~\ref{sec:req}), the
-architecture (Section~\ref{sec:arch}), the data and identity model
-(Section~\ref{sec:data}), the agent (Section~\ref{sec:agent}), evidence anchoring
-(Section~\ref{sec:evidence}), the security model (Section~\ref{sec:security}), the
-Earth-observation engine (Section~\ref{sec:eo}), the engineering evidence
-(Section~\ref{sec:eval}), and the limitations (Section~\ref{sec:limits}).
+The components are intentionally separable. Although the workspace is motivated by the
+surveying domain, the data core (the multi-tenant record, anchoring service, and agent tool
+surface) does not depend on it: any practice that must maintain a private operational record
+and later prove what was produced can reuse these foundations. The paper therefore reads in
+two ways: as the design of one working system, and as a reference architecture for building
+further secure surveying systems on the same basis.
+
+The rest of the paper outlines the requirements (Section~\ref{sec:req}), related work
+(Section~\ref{sec:related}), the architecture
+(Section~\ref{sec:arch}), data and identity (Section~\ref{sec:data}), the agent
+(Section~\ref{sec:agent}), evidence anchoring (Section~\ref{sec:evidence}), the security
+model (Section~\ref{sec:security}), the earth-observation engine (Section~\ref{sec:eo}),
+the engineering evidence and limitations (Sections~\ref{sec:eval} and~\ref{sec:limits}), and
+availability and reproducibility (Section~\ref{sec:availability}).
+
+\section{Related work}
+\label{sec:related}
+
+Three bodies of work sit closest to SiteSurveyor, and each is used for a different
+purpose: the land-administration literature to position the problem, the systems-security
+literature to shape the evidence, and the tool-using-agent literature to define the
+alternative the agent design rejects.
+
+\paragraph{Blockchain in land administration.}
+Zein and Twinomurinzi \cite{zein2023} review blockchain deployments in land registration
+across low-income countries and find that interest outpaces implementation: pilots exist,
+but adoption is limited by institutional resistance and scarce local skills. Their survey
+also shows where the field's attention has gone. The systems described target the
+\emph{registry}: ownership records, transfers and titles. Sladi\'c et al.~\cite{sladic2021}
+build a national-case architecture for Serbian property transactions, and Torun
+\cite{torun2018} proposes a hierarchical chain for resolving boundary conflicts between
+successive cadastral surveys. All of these anchor \emph{transactions about land}. None
+addresses the operational workflow that produces the underlying evidence: the quote, the
+crew assignment, the field photographs, the deliverable and the invoice. SiteSurveyor
+occupies that gap deliberately. It anchors field evidence at the moment of production,
+inside the same workspace that runs the commercial workflow, rather than anchoring
+ownership records after the fact.
+
+\paragraph{Storing records on-chain versus anchoring digests.}
+BACP-LRS \cite{boumezbeur2025} is representative of the store-everything-on-chain genre:
+land records are replicated to IPFS, Ethereum smart contracts log transactions and enforce
+access control, and the authors argue the combination is secure and feasible. The design
+takes the opposite position on the central trade-off. Putting record content on a chain or
+a content-addressed store maximises verifiability for outsiders but publishes or exposes
+the very material, namely coordinates, valuations and client documents, that a surveying practice
+is contractually obliged to keep confidential (Section~\ref{sec:req}). SiteSurveyor
+therefore publishes nothing but an attachment identifier and a SHA-256 digest, and keeps
+plaintext, even encrypted plaintext, under the user's own key in storage the operator does
+not index. The residual limitation is stated rather than hidden: a third party can verify
+that bytes existed at a slot, not read them, and recovery depends on key custody
+(Section~\ref{sec:evidence}).
+
+\paragraph{Verifiable logs and signing systems.}
+Certificate Transparency \cite{rfc6962} established the pattern of a public, append-only,
+auditably consistent log that lets a relying party verify an event later without trusting
+the operator. Sigstore deployments study what it takes for practitioners actually to adopt
+such mechanisms \cite{sigstore2025}, finding that usability dominates cryptographic
+elegance. SiteSurveyor borrows the verify-later posture but not the infrastructure: it
+anchors to an existing public ledger rather than operating its own log, accepts the weaker
+inclusion guarantee of a Memo instruction instead of a Merkle inclusion proof, and treats
+wallet signing as the user-facing experience precisely because prior work shows that
+adoption collapses when the signing step is foreign to the practitioner's workflow.
+
+\paragraph{Tool-using language-model agents.}
+ReAct \cite{react2022} interleaves chain-of-thought reasoning with actions against an
+environment, and Toolformer \cite{toolformer2023} trains models to decide when to call
+external APIs. Both optimise for capability: the agent should reach for as many tools as
+it can use. SiteSurveyor's agent inverts the objective. Because the agent writes to a
+shared production database, the design optimises for restraint: an allowlisted tool
+surface, workspace-scoped reads and writes, read-back verification before success is
+reported, and explicit confirmation for destructive operations
+(Section~\ref{sec:agent}). The contribution is not a better agent loop but a bounded one:
+the interesting question for an operational agent is not what the model can do, but what
+it is allowed to do unsupervised.
 
 \section{Requirements}
 \label{sec:req}
@@ -102,7 +210,7 @@ practices.
   \item[Continuity.] A record created in one stage must remain attached to the same
         project in every later stage, including after a device change.
   \item[Verifiability.] It must be possible to show, later and to a third party, that
-        a presented file is the file that was recorded --- without revealing the file
+        a presented file is the file that was recorded, without revealing the file
         to that third party.
   \item[Field use.] The interface has to work on a phone in daylight, survive poor
         connectivity, and remain keyboard-operable in the office.
@@ -122,26 +230,28 @@ window. The architecture is
 \emph{hybrid by default}: operational and confidential data stay in the database,
 and the chain carries only explicit transactions and a minimal digest statement.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
 \begin{tikzpicture}[
   font=\footnotesize,
-  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
-              minimum height=9mm, minimum width=3.1cm},
-  ext/.style={draw, dashed, rounded corners=2pt, align=center, inner sep=4pt,
-              minimum height=9mm, minimum width=3.1cm},
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
+              minimum height=10mm, minimum width=3.5cm},
+  ext/.style={draw, dashed, rounded corners=2pt, align=center, inner sep=5pt,
+              minimum height=10mm, minimum width=3.5cm},
   ar/.style={-{Latex[length=1.6mm]}, thin}
 ]
   \node[box] (ui) at (0,0) {React 19 PWA\\wallet adapter\\SHA-256 in browser};
-  \node[box] (db) at (4.4,0) {PostgreSQL + RLS\\Storage\\Auth};
-  \node[box] (fn) at (8.8,0) {Edge functions\\agent, payments,\\anchoring RPC};
+  \node[box] (db) at (5.6,0) {PostgreSQL + RLS\\Storage\\Auth};
+  \node[box] (fn) at (11.2,0) {Edge functions\\agent, payments,\\anchoring RPC};
 
-  \node[ext] (sol) at (0,-2.2) {Solana\\Memo + USDC};
-  \node[ext] (nim) at (4.4,-2.2) {Model provider};
-  \node[ext] (fiat) at (8.8,-2.2) {Fiat gateway\\(sandbox)};
+  \node[ext] (sol) at (0,-2.3) {Solana\\Memo + USDC};
+  \node[ext] (nim) at (5.6,-2.3) {Model provider};
+  \node[ext] (fiat) at (11.2,-2.3) {Fiat gateway\\(sandbox)};
 
   \draw[ar] (ui) -- node[above]{\scriptsize JWT} (db);
-  \draw[ar] (ui) -- node[above]{\scriptsize tools} (fn);
+  % Routed above the top row so the label does not sit on top of the
+  % PostgreSQL box the straight line would pass through.
+  \draw[ar] (ui.north) to[bend left=20] node[above]{\scriptsize tools} (fn.north);
   \draw[ar] (fn) -- (db);
   \draw[ar] (ui) -- node[left]{\scriptsize signed memo} (sol);
   \draw[ar] (fn) -- (nim);
@@ -151,9 +261,9 @@ and the chain carries only explicit transactions and a minimal digest statement.
 except as explicitly supplied context; the chain receives only an attachment
 identifier and a digest, or a user-signed transfer.}
 \label{fig:arch}
-\end{figure}
+\end{figure*}
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \caption{Deployed components and responsibilities.}
 \label{tab:components}
@@ -162,7 +272,7 @@ identifier and a digest, or a user-signed transfer.}
 \toprule
 Component & Responsibility \\
 \midrule
-Web app & Workspaces, projects, jobs, files, finance, market, Earth-observation views \\
+Web app & Workspaces, projects, jobs, files, finance, service market, Earth-observation views \\
 Desktop shell & Tauri v2 window over the same bundle; off-origin navigation is handed to the system browser \\
 Edge functions & Agent endpoint, RPC proxy, fiat operations, wallet nonces, anchoring metadata, job dispatch \\
 Satellite engine & Python worker that claims survey runs, runs raster pipelines and publishes deliverables \\
@@ -170,13 +280,16 @@ MCP server & The same screening surface exposed over the Model Context Protocol 
 AI gateway & Optional self-hosted alternate host for the agent contract \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-Three deployment shapes are supported from the same source: a static host that
-publishes the built bundle, a multi-stage container image served by Nginx, and the
-optional Node gateway that additionally serves the agent endpoint. Build-time
-variables become browser configuration, which is why no server secret may be supplied
-through them; the repository documents this boundary and a secret scan enforces it.
+Alongside operational management and Earth-observation views, the web application
+also exposes a service marketplace surface (currently populated with labelled
+demonstration listings, as noted in Section~\ref{sec:limits}). Three deployment
+shapes are supported from the same source: a static host that publishes the built
+bundle, a multi-stage container image served by Nginx, and the optional Node
+gateway that additionally serves the agent endpoint. Build-time variables become
+browser configuration, which is why no server secret may be supplied through them;
+the repository documents this boundary and a secret scan enforces it.
 
 \section{Data, identity and tenancy}
 \label{sec:data}
@@ -245,12 +358,15 @@ computes a lowercase hex SHA-256 \cite{fips180} with the Web Crypto API. Verific
 re-downloads the object, recomputes the digest and compares it with the recorded
 value.
 
-Two anchoring modes are implemented. In \emph{hash-only} mode --- the default ---
+Two anchoring modes are implemented. In \emph{hash-only} mode (the default),
 only the attachment identifier and digest are written to a Solana Memo instruction:
 
 \begin{verbatim}
-ssv1:<attachment-id>:sha256:<file-hash>
-ssv2:<attachment-id>:sha256:<file-hash>:<manifest-hash>:<chunk-count>
+ssv1:<attachment-id>
+        :sha256:<file-hash>
+ssv2:<attachment-id>
+        :sha256:<file-hash>
+        :<manifest-hash>:<chunk-count>
 \end{verbatim}
 
 Because the identifier is an opaque UUID, a reader can associate the proof with an
@@ -269,7 +385,7 @@ signature, slot and fee make the anchor auditable. A digest proves byte equivale
 at a point in time. It does not prove authorship, ownership, survey accuracy or legal
 validity, and the product copy says so wherever an anchor is shown.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \caption{What an anchored digest does and does not establish.}
 \label{tab:proves}
@@ -284,10 +400,92 @@ The wallet paid for and signed the statement & Legal ownership or title \\
 The manifest identifies the chunk set & Confidentiality of the plaintext \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \section{Security model}
 \label{sec:security}
+
+\paragraph{Attack surface.}
+The architecture assumes an attacker who can register an account, reach any
+client-side code path, submit arbitrary files, and send arbitrary requests to the
+edge functions with a valid token. It does not assume a compromised database, a
+compromised wallet, or a hostile operator. Table~\ref{tab:attacks} states, per attack
+class, the control that is implemented and what remains exposed; the residual column
+is the part a deployment is expected to address at the infrastructure layer.
+
+\begin{table*}[t]
+\centering
+\caption{Attack classes, the control implemented in the architecture, and the residual
+risk a deployment still carries.}
+\label{tab:attacks}
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.22\textwidth}
+  >{\raggedright\arraybackslash}p{0.35\textwidth}
+  >{\raggedright\arraybackslash}p{0.35\textwidth}@{}}
+\toprule
+Attack & Control in place & Residual risk \\
+\midrule
+Script injection at the app origin &
+  Strict CSP, no third-party scripts, React escaping of rendered text &
+  Script injected inside a dependency's own bundle is not caught by CSP \\
+
+Forgery and token theft &
+  Bearer token in the \texttt{Authorization} header, never an ambient cookie &
+  Tokens sit in browser storage, readable by any script that achieves XSS \\
+
+Cross-tenant access &
+  80 tables with row-level security, 107 policies; privileged work in
+  \texttt{SECURITY DEFINER} RPCs &
+  A new table shipped without RLS escapes this control \\
+
+Traversal and link guessing &
+  Sanitised names, opaque storage paths, short-lived signed URLs &
+  A leaked signed URL works until it expires (one hour by default) \\
+
+SSRF through a proxy function &
+  Paths must match \texttt{workspace/run/filename} and resolve to a row RLS lets
+  the caller read &
+  A future proxy that accepts a URL instead of an object path reopens this \\
+
+Malicious or oversized uploads &
+  Private bucket by default, bucket names constrained by trigger &
+  No antivirus, no magic-number sniffing, no server-side size cap \\
+
+Steganographic and polyglot files &
+  Bytes are opaque: never executed, never parsed at the application origin, and
+  always accompanied by their digest &
+  Hidden content is not detected. Digest integrity is not content safety, and
+  capture metadata is not stripped \\
+
+Signature replay &
+  Single-use, expiring challenges bound to origin and address &
+  A user signing an unrelated message elsewhere is outside this boundary \\
+
+Prompt injection via records or tool output &
+  Allowlisted tools scoped to the caller's workspace, writes read back before
+  success is reported, deletes need confirmation &
+  Document text still reaches the model as content: it can bias tone and tool
+  choice, not permissions \\
+
+Abuse of the endpoints &
+  Per-key rate limits on the auth, chat and data functions &
+  In-memory and per isolate, so best effort against a distributed caller \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Steganography, stated plainly.}
+A system that accepts survey photographs, drone imagery and client-supplied
+documents cannot promise to detect hidden payloads. Reliable steganalysis needs the
+original carrier or a statistical baseline the platform does not have, and
+re-encoding every upload would destroy the very byte-identity the anchoring mechanism
+exists to prove. The design response is therefore not detection but containment:
+bytes are opaque, served from a separate storage origin, never parsed by the
+application origin, and always accompanied by their digest so the file cannot be
+altered after the fact without the change being visible. A deployment that needs more
+should add scanning at ingest, re-encode where the evidence contract allows it and
+record that re-encoding in the manifest, and treat any file that leaves the workspace
+as untrusted input at its destination.
 
 \paragraph{Data classification.}
 Table~\ref{tab:classification} is maintained as part of the design, and new tools must
@@ -299,8 +497,10 @@ it states where each class of data is allowed to appear.
 \caption{Data classification by store. ``Supplied'' means only when a user explicitly
 includes it in a request.}
 \label{tab:classification}
-\footnotesize
-\begin{tabular}{@{}p{0.27\linewidth}cccp{0.30\linewidth}@{}}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.30\columnwidth}cccc@{}}
 \toprule
 Data & Postgres & Storage & AI & Chain \\
 \midrule
@@ -311,7 +511,7 @@ File digest and id & yes & no & supplied only & yes, on anchor \\
 Conversations and memory & yes & no & prompt/history & no \\
 Payment records & yes & no & supplied only & transfers only \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \paragraph{Privileged functions are closed.}
@@ -325,7 +525,7 @@ credentials.
 
 \paragraph{Enumeration.}
 The pre-authentication email check needs to answer ``is this address already
-registered''. Left uncapped it is an enumeration oracle, so the lookup is rate-limited
+registered?''. Left uncapped it is an enumeration oracle, so the lookup is rate-limited
 in the database rather than in the client, where a limit could be bypassed.
 
 \paragraph{Secrets.}
@@ -337,24 +537,24 @@ values that are public by design, such as publishable API keys.
 \paragraph{Non-claims.}
 The repository states plainly what the system does not do: it does not certify
 accuracy, it does not make a sandbox payment settled, and it does not treat a hash as
-proof of authorship. Reviewers of a deployment are given a checklist covering row
-level security, storage policies, function authorisation, cluster consistency and
+proof of authorship. Reviewers of a deployment are given a checklist covering
+row-level security, storage policies, function authorisation, cluster consistency and
 payment reconciliation.
 
 \section{Earth-observation engine}
 \label{sec:eo}
 
 Survey screening is a Python worker rather than a browser feature. It ingests
-multi-sensor open data --- Sentinel-2 surface reflectance \cite{drusch2012}, a 30\,m
+multi-sensor open data (Sentinel-2 surface reflectance \cite{drusch2012}, a 30\,m
 Copernicus digital elevation model, ALOS PALSAR radar, Landsat water observations
-\cite{mueller2016}, ESA WorldCover and CHIRPS rainfall \cite{funk2015} --- onto a common
-30\,m grid in UTM~35S, and runs four category pipelines: groundwater potential with
-candidate borehole sites, mineral prospectivity with ranked targets, soil capability
-with erosion risk, and multi-hazard risk with safest buildable sites. Weights come from
-an analytic hierarchy process \cite{saaty1980} over the available indices, and
-deliverables are published as GeoTIFF, GeoJSON, CSV, KMZ and a PMTiles archive for the
-map workbench. Imagery is acquired from the Digital Earth Africa open data cube
-\cite{dea}.
+\cite{mueller2016}, ESA WorldCover and CHIRPS rainfall \cite{funk2015}) onto a common
+30\,m metric grid (configured as UTM~35S for the Southern African reference deployment),
+and runs four category pipelines: groundwater potential with candidate borehole sites,
+mineral prospectivity with ranked targets, soil capability with erosion risk, and
+multi-hazard risk with safest buildable sites. Weights come from an analytic hierarchy
+process \cite{saaty1980} over the available indices, and deliverables are published as
+GeoTIFF, GeoJSON, CSV, KMZ and a PMTiles archive for the map workbench. Imagery is
+acquired from the Digital Earth Africa open data cube \cite{dea}.
 
 The worker claims rows with \texttt{FOR UPDATE SKIP LOCKED}, so several workers can
 run safely, and it never touches authentication, sessions or wallets. The same
@@ -391,6 +591,8 @@ such rather than implied by a demo.
 \section{Limitations and threats to validity}
 \label{sec:limits}
 
+Several architectural and operational boundaries bound the claims of this work:
+
 \begin{itemize}
   \item \textbf{A digest is not provenance.} The anchor binds bytes to a wallet and a
         slot. Identity behind the wallet, authorship and correctness remain social and
@@ -425,8 +627,8 @@ instance: an adopter supplies their own database project, Earth-observation toke
 provider keys, and the documentation states which configuration values are public.
 \end{sloppypar}
 
-Building the paper requires only a standard \LaTeX{} installation; the source and
-bibliography are in the \texttt{paper/} directory of the repository.
+Building the paper requires only a standard \LaTeX{} installation; the source, the
+bibliography and the logo asset are in the \texttt{paper/} directory of the repository.
 
 \section{Conclusion}
 
@@ -439,7 +641,133 @@ than as an oracle, and it states its limitations where a user will read them. Th
 next steps are external evaluation of the screening against field data and a
 practitioner study of the workspace itself.
 
-\bibliographystyle{plain}
-\bibliography{references}
+\begin{thebibliography}{22}
+
+\bibitem{boumezbeur2025}
+Insaf Boumezbeur, Abdelhalim Benoughidene, Imane Harkat, Farah Boutouatou,
+  Dounia Keddari, and Karim Zarour.
+\newblock BACP-LRS: Blockchain and IPFS-based Land Record System.
+\newblock \emph{Acta Informatica Pragensia}, 14(1):42--62, 2025.
+
+\bibitem{dea}
+Digital Earth Africa.
+\newblock \emph{Digital Earth Africa Open Data Cube Documentation}.
+\newblock \url{https://docs.digitalearthafrica.org}.
+
+\bibitem{drusch2012}
+M.~Drusch, U.~Del~Bello, S.~Carlier, O.~Colin, V.~Fernandez, F.~Gascon,
+  B.~Hoersch, C.~Isola, P.~Laberinti, P.~Martimort, A.~Meygret, F.~Spoto,
+  O.~Sy, F.~Marchese, and P.~Bargellini.
+\newblock Sentinel-2: ESA's Optical High-Resolution Mission for GMES Operational Services.
+\newblock \emph{Remote Sensing of Environment}, 120:25--36, 2012.
+
+\bibitem{sp800-38d}
+Morris Dworkin.
+\newblock \emph{Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC}.
+\newblock NIST Special Publication 800-38D, National Institute of Standards and Technology, 2007.
+
+\bibitem{funk2015}
+Chris Funk, Pete Peterson, Martin Landsfeld, Diego Pedreros, James Verdin,
+  Shraddhanand Shukla, Gregory Husak, James Rowland, Laura Harrison, Andrew Hoell,
+  and Joel Michaelsen.
+\newblock The climate hazards infrared precipitation with stations---a new environmental record for monitoring extremes.
+\newblock \emph{Scientific Data}, 2:150066, 2015.
+
+\bibitem{mcp}
+Model Context Protocol Contributors.
+\newblock \emph{Model Context Protocol Specification}.
+\newblock \url{https://modelcontextprotocol.io}.
+
+\bibitem{rfc8018}
+Kathleen Moriarty, Burt Kaliski, and Andreas Rusch.
+\newblock \emph{PKCS \#5: Password-Based Cryptography Specification Version 2.1}.
+\newblock IETF RFC 8018, 2017.
+
+\bibitem{mueller2016}
+Norman Mueller, Adam Lewis, Dale Roberts, Stephen Ring, R.~Melrose, J.~Sixsmith,
+  Leo Lymburner, A.~McIntyre, P.~Tan, S.~Curnow, and A.~Ip.
+\newblock Water observations from space: Mapping surface water from 25 years of Landsat imagery across Australia.
+\newblock \emph{Remote Sensing of Environment}, 174:341--352, 2016.
+
+\bibitem{fips180}
+National Institute of Standards and Technology (NIST).
+\newblock \emph{Secure Hash Standard (SHS)}.
+\newblock Federal Information Processing Standards Publication 180-4, 2015.
+
+\bibitem{pg-rls}
+PostgreSQL Global Development Group.
+\newblock \emph{PostgreSQL Documentation: Row Security Policies}.
+\newblock \url{https://www.postgresql.org/docs/current/ddl-rowsecurity.html}.
+
+\bibitem{react2022}
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan,
+  and Yuan Cao.
+\newblock ReAct: Synergizing Reasoning and Acting in Language Models.
+\newblock In \emph{International Conference on Learning Representations (ICLR)}, 2023.
+\newblock arXiv:2210.03629.
+
+\bibitem{rfc6962}
+Ben Laurie, Adam Langley, and Emilia Kasper.
+\newblock \emph{Certificate Transparency}.
+\newblock IETF RFC 6962, 2013.
+
+\bibitem{saaty1980}
+Thomas~L. Saaty.
+\newblock \emph{The Analytic Hierarchy Process: Planning, Priority Setting, Resource Allocation}.
+\newblock McGraw-Hill, New York, 1980.
+
+\bibitem{sigstore2025}
+Kelechi G. Kalu, Sofia Okorafor, Tanmay Singla, Sophie Chen,
+  Santiago Torres-Arias, and James C. Davis.
+\newblock Why Johnny Adopts Identity-Based Software Signing: A Usability Case Study of
+  Sigstore.
+\newblock arXiv:2503.00271, 2025.
+
+\bibitem{sladic2021}
+Goran Sladi\'c, Branko Milosavljevi\'c, Sini\v{s}a Nikoli\'c, Dubravka Sladi\'c,
+  and Aleksandra Radulovi\'c.
+\newblock A Blockchain Solution for Securing Real Property Transactions: A Case Study for
+  Serbia.
+\newblock \emph{ISPRS International Journal of Geo-Information}, 10(1):35, 2021.
+
+\bibitem{supabase}
+Supabase Inc.
+\newblock \emph{Supabase Documentation}.
+\newblock \url{https://supabase.com/docs}.
+
+\bibitem{tauri}
+Tauri Programme within The Commons Conservancy.
+\newblock \emph{Tauri v2 Documentation}.
+\newblock \url{https://v2.tauri.app}.
+
+\bibitem{toolformer2023}
+Timo Schick, Jane Dwivedi-Yu, Roberto Dess\'i, Roberta Raileanu, Maria Lomeli,
+  Luke Zettlemoyer, Nicola Cancedda, and Thomas Scialom.
+\newblock Toolformer: Language Models Can Teach Themselves to Use Tools.
+\newblock In \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2023.
+\newblock arXiv:2302.04761.
+
+\bibitem{torun2018}
+Abdulvahit Torun.
+\newblock Geodata Enabled Hierarchical Blockchain Architecture for Resolving Boundary
+  Conflicts in Cadastre Surveys and Land Registration.
+\newblock In \emph{Proceedings of the FIG Congress 2018}, Istanbul, Turkey, 2018.
+
+\bibitem{walletstandard}
+Wallet Standard Contributors.
+\newblock \emph{Wallet Standard and Sign In With Solana Specification}.
+\newblock \url{https://github.com/wallet-standard/wallet-standard}.
+
+\bibitem{zein2023}
+Reyan M. Zein and Hossana Twinomurinzi.
+\newblock Blockchain Technology in Land Registration: A Systematic Literature Review.
+\newblock \emph{JeDEM -- Journal of eDemocracy and Open Government}, 15(2):1--36, 2023.
+
+\bibitem{yakovenko2017}
+Anatoly Yakovenko.
+\newblock \emph{Solana: A new architecture for a high performance blockchain}.
+\newblock Whitepaper, 2017.
+
+\end{thebibliography}
 
 \end{document}

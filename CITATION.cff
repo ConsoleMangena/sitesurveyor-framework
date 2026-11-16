@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "SiteSurveyor"
+title: "SiteSurveyor Framework"
 abstract: >-
   Survey operations, evidence and settlement in one workspace: a multi-tenant
   platform for field survey work covering project records, geospatial analysis
