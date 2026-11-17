@@ -11,12 +11,14 @@ LaTeX build never touches the JS toolchain.
 | `zenodo-metadata.md` | Values for the Zenodo deposit form, file list, related identifiers and publishing order |
 | `Makefile` | `make` builds with `tectonic`, falling back to `latexmk` |
 | `assets/logo.png` | The project mark, set above the title on the front page. Copied from `apps/web/public/logo.png`; refresh it from there if the logo changes |
+| `assets/eo-*.png`, `assets/tour-*.png` | Figure assets for the earth-observation section and the guided walkthrough. Every screenshot is rendered offline: the tour shots come from the fixture harness in `apps/web/.tour-harness/` (production web bundle, no live database, wallet or tile host), and the EO figures from the seeded specimen run of `apps/engine/scripts/provision_gravity.py`. Regenerate the tour shots with that harness; never edit the PNGs by hand |
 | `related/` | Open-access related-work reading pile with gap notes (`related/README.md`) — not part of the deposit |
 
 ## Build
 
 Any standard TeX installation works; the paper uses only `article`, `geometry`,
-`booktabs`, `array`, `amsmath`, `graphicx`, `microtype`, `tikz` and `hyperref`.
+`booktabs`, `array`, `amsmath`, `graphicx`, `float` (the walkthrough figures are
+pinned with `[H]`), `microtype`, `tikz` and `hyperref`.
 There is no BibTeX step: the bibliography is inline in `main.tex`.
 
 ```bash

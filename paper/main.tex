@@ -12,6 +12,7 @@
 \usepackage{array}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{float}
 \usepackage{microtype}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
@@ -66,10 +67,13 @@
     security. Confidential survey files are kept off-chain in that database. Solana is used only
     where database guarantees are insufficient: wallet-based authentication, stablecoin
     settlement, and wallet-signed SHA-256 digests that let third parties verify file integrity
-    without accessing file contents. An AI assistant interacts with workspace records through a
+    without accessing file contents. Every anchoring attempt is recorded in an append-only
+    operation ledger enforced by database triggers, so failures are preserved alongside
+    successes. An AI assistant interacts with workspace records through a
     typed, allowlisted tool surface, with read-back verification and confirmation for
     destructive operations, alongside an asynchronous Python worker for screening open
-    earth-observation imagery. We present the system design, delineate its threat boundaries,
+    earth-observation imagery. We present the system design, map the cybersecurity risks
+    of surveying practice onto the controls that address them,
     state its cryptographic non-claims, and describe the automated engineering checks that
     support the claims made here. We then extract three reusable building blocks: a
     tenant-scoped data core, an evidence-anchoring service, and an allowlisted agent tool
@@ -111,7 +115,8 @@ contributions are:
         application code);
   \item an evidence-integrity mechanism with two modes: a hash-only anchor that publishes
         only an attachment identifier and a SHA-256 digest, and an opt-in full-file mode
-        with encrypted data that never leaves storage;
+        with encrypted data that never leaves storage, both recorded in an append-only
+        operation ledger that database triggers make tamper-evident;
   \item an AI agent treated as an \emph{operational} actor: it calls a typed, allowlisted tool
         surface, reads its own writes back before reporting success, and requires explicit
         confirmation for destructive operations;
@@ -133,6 +138,7 @@ The rest of the paper outlines the requirements (Section~\ref{sec:req}), related
 (Section~\ref{sec:arch}), data and identity (Section~\ref{sec:data}), the agent
 (Section~\ref{sec:agent}), evidence anchoring (Section~\ref{sec:evidence}), the security
 model (Section~\ref{sec:security}), the earth-observation engine (Section~\ref{sec:eo}),
+a guided walkthrough of the interface (Section~\ref{sec:tour}),
 the engineering evidence and limitations (Sections~\ref{sec:eval} and~\ref{sec:limits}), and
 availability and reproducibility (Section~\ref{sec:availability}).
 
@@ -142,7 +148,48 @@ availability and reproducibility (Section~\ref{sec:availability}).
 Three bodies of work sit closest to SiteSurveyor, and each is used for a different
 purpose: the land-administration literature to position the problem, the systems-security
 literature to shape the evidence, and the tool-using-agent literature to define the
-alternative the agent design rejects.
+alternative the agent design rejects. Table~\ref{tab:related} summarises the comparison
+developed below.
+
+\begin{table*}[t]
+\centering
+\caption{Positioning against the closest prior systems. ``Content'' is where the
+confidential record itself lives; ``verification'' is what an outsider can check
+without trusting the operator.}
+\label{tab:related}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.20\textwidth}
+  >{\raggedright\arraybackslash}p{0.17\textwidth}
+  >{\raggedright\arraybackslash}p{0.17\textwidth}
+  >{\raggedright\arraybackslash}p{0.20\textwidth}
+  >{\raggedright\arraybackslash}p{0.16\textwidth}@{}}
+\toprule
+System & Anchored object & Content & Outsider verification & Workflow scope \\
+\midrule
+Land-registry chains \cite{zein2023,sladic2021,torun2018} &
+  Ownership transactions, titles, boundary decisions &
+  On-chain or in the registry &
+  Chain replay of registered events &
+  Registry only; field evidence out of scope \\
+BACP-LRS \cite{boumezbeur2025} &
+  Whole land records &
+  IPFS, access controlled by Ethereum contracts &
+  Re-fetch content from the content-addressed store &
+  Registry only \\
+Certificate Transparency / Sigstore \cite{rfc6962,sigstore2025} &
+  Log entries and signing events &
+  Public log &
+  Merkle inclusion and consistency proofs &
+  Software supply chain \\
+SiteSurveyor &
+  File digest at the moment of production &
+  Off-chain, tenant-scoped storage &
+  Wallet-signed memo on a public ledger; no inclusion proof &
+  Quote to payment, including evidence \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \paragraph{Blockchain in land administration.}
 Zein and Twinomurinzi \cite{zein2023} review blockchain deployments in land registration
@@ -327,12 +374,48 @@ newline-delimited JSON (\texttt{status}, \texttt{tool}, \texttt{delta},
 contract, and an MCP server mirrors the tool surface so an external MCP host can use
 it \cite{mcp}.
 
-The controls that make this safe are structural rather than prompt-based:
+The controls that make this safe are structural rather than prompt-based
+(Figure~\ref{fig:agentpath}):
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  g/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
+            minimum width=2.1cm, minimum height=9mm},
+  sink/.style={draw, dashed, rounded corners=2pt, align=center, inner sep=4pt},
+  ar/.style={-{Latex[length=1.4mm]}, thin},
+  rej/.style={-{Latex[length=1.2mm]}, thin, dashed}
+]
+  \node[g] (a) {authenticate\\\& scope};
+  \node[g, right=4mm of a] (b) {allowlist\\model + table};
+  \node[g, right=4mm of b] (c) {validate +\\stamp workspace};
+  \node[g, right=4mm of c] (d) {execute\\(caller JWT, RLS)};
+  \node[g, right=4mm of d] (e) {read back\\+ verify};
+  \node[g, right=4mm of e] (f) {confirm deletes,\\report};
+  \node[sink, below=8mm of d] (r) {reject: error event to the model; no write, no success claim};
+  \draw[ar] (a) -- (b);
+  \draw[ar] (b) -- (c);
+  \draw[ar] (c) -- (d);
+  \draw[ar] (d) -- (e);
+  \draw[ar] (e) -- (f);
+  \draw[rej] (b) -- (r);
+  \draw[rej] (c) -- (r);
+  \draw[rej] (e) -- (r);
+  \draw[rej] (f) -- (r);
+\end{tikzpicture}
+\caption{The agent write path. Each guard is checked in code, not requested in a
+prompt: a failure at any stage returns an error event instead of a write or a
+success claim, and a permanent delete additionally requires an explicit
+confirmation flag. Reads follow the same path without the write stages.}
+\label{fig:agentpath}
+\end{figure*}
 
 \begin{itemize}
   \item models are restricted by a shared allowlist, so a request cannot select an
         arbitrary provider model;
-  \item reads and writes are restricted to allowlisted tables, and the live schema is
+  \item reads and writes are restricted to allowlisted tables (22 readable and
+        5 writable in the workspace surface), and the live schema is
         supplied so the model uses real columns;
   \item write payloads are validated against the schema, and new business records are
         stamped with the resolved workspace rather than a model-supplied one;
@@ -344,6 +427,11 @@ The controls that make this safe are structural rather than prompt-based:
   \item conversation history is bounded with summarisation and optional structured
         memory.
 \end{itemize}
+
+The allowlist is per surface, not global. An anonymous public-market concierge runs
+the same agent core against the published market views only: it has the read-only
+tool trio, no workspace tables and no write tools, so an unauthenticated caller
+cannot reach tenant data through the agent even in principle.
 
 CAD operations are deliberately read-only in the tool surface: the agent can inspect
 drawings, layers and entity counts, but geometry changes are emitted as command blocks
@@ -359,15 +447,20 @@ re-downloads the object, recomputes the digest and compares it with the recorded
 value.
 
 Two anchoring modes are implemented. In \emph{hash-only} mode (the default),
-only the attachment identifier and digest are written to a Solana Memo instruction:
+only the attachment identifier and digest are written to a Solana Memo instruction.
+The memo grammar is versioned and self-describing (the \texttt{ssv2} statement is a
+single line, wrapped here for width):
 
 \begin{verbatim}
-ssv1:<attachment-id>
-        :sha256:<file-hash>
-ssv2:<attachment-id>
-        :sha256:<file-hash>
-        :<manifest-hash>:<chunk-count>
+ssv1:<id>:sha256:<digest>
+ssv2:<id>:sha256:<digest>
+    :<manifest>:<chunks>
 \end{verbatim}
+
+\noindent Here \texttt{<id>} is the 36-character attachment UUID and each digest is
+64 lowercase hex characters, so a complete statement is 113 bytes in \texttt{ssv1}
+and about 180 bytes in \texttt{ssv2}: small enough to travel as one Memo instruction
+whose fee payer is the signing wallet, creating no program state.
 
 Because the identifier is an opaque UUID, a reader can associate the proof with an
 attachment without learning anything about its contents or its owner. In the opt-in
@@ -384,6 +477,109 @@ Transactions are signed and fee-paid by the connected wallet, and the recorded
 signature, slot and fee make the anchor auditable. A digest proves byte equivalence
 at a point in time. It does not prove authorship, ownership, survey accuracy or legal
 validity, and the product copy says so wherever an anchor is shown.
+
+\paragraph{An append-only operation ledger.}
+Every anchoring attempt, successful or not, is a row in an operations table that
+moves through an explicit lifecycle: \texttt{preparing}, \texttt{uploading},
+\texttt{ready}, \texttt{submitting}, \texttt{submitted}, \texttt{confirming},
+\texttt{anchored}, with \texttt{failed} and \texttt{cancelled} as the terminal
+alternatives (Figure~\ref{fig:lifecycle}). The lifecycle is enforced in the database, not in the client: a
+trigger forbids deleting an operation that reached the chain, forbids resetting it
+to any pre-submission state other than \texttt{failed}, and forbids reassigning its
+workspace, attachment or creator. Chunk records are immutable once written and
+cannot be removed while an on-chain anchor covers them, so the manifest cannot be
+quietly repointed at different bytes. A unique index on the transaction signature
+prevents one transaction from being counted as two anchors. Verification status
+(\texttt{unverified}, \texttt{verified}, \texttt{mismatch}) is tracked separately
+from the lifecycle, and failed attempts retain their error message. The table is
+therefore a ledger of failures as well as successes: an anchor that failed
+verification is recorded as a mismatch, not hidden.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize, node distance=3.4mm,
+  st/.style={draw, rounded corners=1.5pt, align=center, inner sep=2.5pt, minimum width=2.0cm},
+  fl/.style={st, dashed},
+  ar/.style={-{Latex[length=1.2mm]}, thin},
+  er/.style={-{Latex[length=1.2mm]}, thin, dashed}
+]
+  \node[st] (p) {preparing};
+  \node[st, below=of p] (u) {uploading};
+  \node[st, below=of u] (r) {ready};
+  \node[st, below=of r] (s) {submitting};
+  \node[st, below=of s] (t) {submitted};
+  \node[st, below=of t] (c) {confirming};
+  \node[st, below=of c] (a) {anchored};
+  \node[fl, right=8mm of s] (f) {failed /\\cancelled};
+  \draw[ar] (p) -- (u);
+  \draw[ar] (u) -- (r);
+  \draw[ar] (r) -- (s);
+  \draw[ar] (s) -- (t);
+  \draw[ar] (t) -- (c);
+  \draw[ar] (c) -- (a);
+  \draw[er] (u.east) -- (f.west);
+  \draw[er] (t.east) -- (f.west);
+  \draw[er] (c.east) -- (f.west);
+\end{tikzpicture}
+\caption{Anchoring lifecycle enforced by database triggers. Dashed transitions mark
+failure or abort; before submission any state may fail or be cancelled. Once an
+operation is \texttt{submitted}, \texttt{confirming} or \texttt{anchored}, only
+\texttt{failed} remains reachable, and the row can never be deleted or reassigned.}
+\label{fig:lifecycle}
+\end{figure}
+
+\paragraph{Verifying without the workspace.}
+A third party needs no account and no access to the operator's database
+(Figure~\ref{fig:verify}):
+
+\begin{enumerate}
+  \item Obtain the transaction signature from the file holder and fetch the
+        transaction from any Solana RPC node or explorer. The wallet signature and
+        slot establish who made the statement and when.
+  \item Parse the memo and read the attachment identifier and digest.
+  \item Obtain the file bytes from the holder, recompute SHA-256, and compare with
+        the digest in the memo. Equality proves the presented file is the anchored
+        file.
+  \item For \texttt{ssv2}, additionally request the manifest, check its hash and
+        chunk count against the memo, and, if the plaintext is wanted, decrypt with
+        the holder's passphrase and re-hash each chunk against the manifest.
+\end{enumerate}
+
+\noindent The verifier trusts the public ledger, not the operator. The holder can
+of course refuse to hand over the file; in that case existence at a slot remains
+provable, but byte equivalence cannot be checked. This is the deliberate trade-off
+of confidentiality over public readability (Section~\ref{sec:related}).
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  ar/.style={-{Latex[length=1.2mm]}, thin},
+  ll/.style={dashed, thin}
+]
+  \node (V) at (0,0) {Verifier};
+  \node (H) at (3.1,0) {File holder};
+  \node (L) at (6.2,0) {Public ledger};
+  \draw[ll] (0,-0.35) -- (0,-6.5);
+  \draw[ll] (3.1,-0.35) -- (3.1,-6.5);
+  \draw[ll] (6.2,-0.35) -- (6.2,-6.5);
+  \draw[ar] (0,-0.9) -- node[above]{\tiny 1: signature + bytes} (3.1,-0.9);
+  \draw[ar] (0,-1.8) -- node[above]{\tiny 2: fetch tx(signature)} (6.2,-1.8);
+  \draw[ar] (6.2,-2.7) -- node[above]{\tiny 3: memo, signer, slot} (0,-2.7);
+  \draw[ar] (0,-3.5) -- ++(0.8,0) -- ++(0,-0.55) -- ++(-0.8,0);
+  \node[anchor=west, font=\tiny] at (0.95,-3.75) {4: re-hash, compare};
+  \draw[ar] (0,-4.6) -- node[above]{\tiny 5: manifest (ssv2)} (3.1,-4.6);
+  \draw[ar] (3.1,-5.4) -- node[above]{\tiny 6: manifest + digests} (0,-5.4);
+  \draw[ar] (0,-6.0) -- ++(0.8,0) -- ++(0,-0.45) -- ++(-0.8,0);
+  \node[anchor=west, font=\tiny] at (0.95,-6.2) {7: check manifest};
+\end{tikzpicture}
+\caption{Third-party verification. The verifier needs only the transaction
+signature and the presented bytes: no workspace account, and no operator
+cooperation beyond the holder handing over the file. Step~4 decides byte
+equivalence; steps~5--7 extend the check to the encrypted chunk set.}
+\label{fig:verify}
+\end{figure}
 
 \begin{table*}[t]
 \centering
@@ -405,12 +601,98 @@ The manifest identifies the chunk set & Confidentiality of the plaintext \\
 \section{Security model}
 \label{sec:security}
 
+\paragraph{Risks as the practice experiences them.}
+A surveying practice is not a generic web tenant. Its assets are evidence of physical
+work, its clients are identifiable from the data itself, and its staff work from
+vehicles and sites on shared and personal devices. Table~\ref{tab:risks} names the
+risk types that follow from that situation and maps each to the control in this
+architecture and the residual a deployment still carries. The taxonomy explains the
+design decisions: content stays off-chain because a breach of client coordinates is
+a commercial injury, the agent is bounded because it writes to the same record a
+dispute would rely on, and sandbox state is labelled because a forged settlement
+confirmation is a familiar fraud in this trade.
+
+\begin{table*}[t]
+\centering
+\caption{Cybersecurity risks as a surveying practice experiences them: the scenario,
+the architectural response, and the residual. Table~\ref{tab:attacks} restates the
+same risks at the implementation level.}
+\label{tab:risks}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.15\textwidth}
+  >{\raggedright\arraybackslash}p{0.26\textwidth}
+  >{\raggedright\arraybackslash}p{0.31\textwidth}
+  >{\raggedright\arraybackslash}p{0.20\textwidth}@{}}
+\toprule
+Risk type & Scenario in practice & Architectural response & Residual \\
+\midrule
+Evidence tampering and deliverable disputes &
+  A client or counterparty edits a delivered drawing or coordinate sheet and denies
+  the original; records are altered after a dispute arises &
+  Digest anchored at production; append-only operation ledger; immutable chunk
+  records; any party can re-verify bytes against the memo &
+  Byte identity, not authorship or survey correctness; tampering before anchoring
+  is not covered \\
+Client confidentiality breach &
+  Coordinates, valuations and client identities leak through shared drives, mail
+  attachments or phishing &
+  Tenant-scoped RLS; private buckets and short-lived signed URLs; chain carries only
+  identifier and digest; classification bounds AI context &
+  Token theft via XSS; a leaked signed URL works until expiry \\
+Ransomware and record loss &
+  A small practice keeps one shared drive; field books and photographs are encrypted
+  or lost with a device &
+  Continuous record in managed Postgres and object storage; versions and soft delete;
+  encrypted chunk copies redundant to the original &
+  Backup and restore posture is a deployment duty; a lost passphrase costs the
+  chunk copies \\
+Invoice and settlement fraud &
+  Redirected invoices, forged payment confirmations, business-email compromise &
+  Payment state machine; USDC transfers verifiable by signature and slot; sandbox
+  and pending states labelled, never shown as settled &
+  The fiat sandbox is not settlement; off-chain social engineering stays outside
+  the boundary \\
+Insider and cross-tenant exposure &
+  Subcontractors or departing staff read other clients' jobs; one firm's data appears
+  on another firm's screen &
+  Workspace-membership RLS on operational tables; agent scoped to the caller's
+  workspace; privileged RPCs gated by service key &
+  A new table shipped without a policy; misuse by a legitimate member \\
+Lost or stolen field devices &
+  A phone or laptop with cached sessions and photographs is taken from a vehicle
+  or site &
+  Cached session is presentation only; every operation re-authorised server-side;
+  signed URLs expire &
+  Bytes already cached on the device; device encryption is the owner's duty \\
+Metadata leakage &
+  EXIF GPS and serial numbers in photographs reveal client sites and equipment when
+  files are shared &
+  Bytes are opaque and digested, so stripping metadata is detectable; files reach
+  the model only when explicitly supplied &
+  The platform does not strip metadata; sharing an original still leaks it \\
+AI-mediated manipulation &
+  A client-supplied document carries prompt injection; the model is steered to
+  exfiltrate or delete records &
+  Allowlisted tools and models; workspace stamped server-side; read-back
+  verification; deletes confirmed; CAD read-only &
+  Document text can still bias tone and tool choice, not permissions \\
+Spoofed positioning or imagery &
+  GNSS spoofing or a hijacked drone feed produces plausible but false field data &
+  No control claimed: anchoring binds bytes, not truth; the engine screens open
+  earth-observation products, not sensor feeds &
+  Out of scope; ground-truth evaluation is named as future work \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
 \paragraph{Attack surface.}
 The architecture assumes an attacker who can register an account, reach any
 client-side code path, submit arbitrary files, and send arbitrary requests to the
 edge functions with a valid token. It does not assume a compromised database, a
-compromised wallet, or a hostile operator. Table~\ref{tab:attacks} states, per attack
-class, the control that is implemented and what remains exposed; the residual column
+compromised wallet, or a hostile operator. Table~\ref{tab:attacks} is the
+implementation-level view of Table~\ref{tab:risks}: it states, per attack class, the
+control that is implemented and what remains exposed; the residual column
 is the part a deployment is expected to address at the infrastructure layer.
 
 \begin{table*}[t]
@@ -460,6 +742,12 @@ Steganographic and polyglot files &
 Signature replay &
   Single-use, expiring challenges bound to origin and address &
   A user signing an unrelated message elsewhere is outside this boundary \\
+
+Anchor ledger tampering &
+  Triggers forbid deleting or resetting a chain-reached operation, reassigning its
+  ownership, or editing chunk rows; transaction signatures are unique &
+  Direct database access bypasses triggers; a hostile operator is outside the
+  boundary \\
 
 Prompt injection via records or tool output &
   Allowlisted tools scoped to the caller's workspace, writes read back before
@@ -554,17 +842,374 @@ mineral prospectivity with ranked targets, soil capability with erosion risk, an
 multi-hazard risk with safest buildable sites. Weights come from an analytic hierarchy
 process \cite{saaty1980} over the available indices, and deliverables are published as
 GeoTIFF, GeoJSON, CSV, KMZ and a PMTiles archive for the map workbench. Imagery is
-acquired from the Digital Earth Africa open data cube \cite{dea}.
+acquired from the Digital Earth Africa open data cube \cite{dea}. This section
+describes the mineral pipeline in detail, because it is the one whose outputs a
+surveyor acts on in the field, and shows the workbench as it renders a completed run
+(Figs.~\ref{fig:eo-workbench}--\ref{fig:eo-publish}).
 
-The worker claims rows with \texttt{FOR UPDATE SKIP LOCKED}, so several workers can
-run safely, and it never touches authentication, sessions or wallets. The same
-pipelines are exposed over the Model Context Protocol, which is what allows an MCP
-host to run the identical screening outside the platform.
+\subsection{Acquisition, grid and provenance}
+
+Each input raster is fetched only when missing or stale. A sidecar file beside every
+cached raster records which source produced it, and the optical cache additionally
+records a composite signature (sensor, year, compositing rule); a run whose selected
+sources differ from the cache is refused rather than silently served the previous
+selection. Caches are keyed per area of interest, so two clients surveying different
+ground never share a tile of evidence.
+
+Every category run emits a provenance record: model identity, a fingerprint per input
+raster, the optical scenes used, the grid and target block, the score basis, and a
+claim ceiling. The score basis is stated as \texttt{aoi\_relative\_weighted\_index}:
+scores are percentiles within the surveyed area, not grades, tonnages or comparable
+absolute quantities, and the workbench and every map footnote repeat that sentence
+(Fig.~\ref{fig:eo-map}). Gravimetry is treated separately: a gravity raster enters the
+overlay only if it declares itself a measured survey. A modelled or unverified grid is
+withheld and the weighted index renormalises over the remaining weight, provided at
+least 0.6 of the model weight survives; the specimen run in
+Fig.~\ref{fig:eo-publish} shows exactly this case, with the synthetic Bouguer
+calibration field listed as ``modelled field, not a measurement; excluded from
+scoring''.
+
+\subsection{Mineral prospectivity pipeline}
+
+The mineral pipeline composes eight evidence layers before any score is printed.
+
+\paragraph{Structure.} Lineaments are extracted from ALOS HV backscatter and
+hillshade edges of the DEM: edge segments are thresholded, gap-bridged and kept only
+if at least 600\,m long, then converted to a density surface with a 17-pixel kernel.
+Intersection nodes are counted where two segments cross at an angle difference of at
+least $20^\circ$, the geometry most associated with dilational jog and vein hosting.
+
+\paragraph{Alteration.} Three normalized-difference ratios are computed from
+Sentinel-2 bands: iron oxide $(R_{red}-R_{blue})/(R_{red}+R_{blue})$, hydroxyl/clay
+$(R_{SWIR1}-R_{SWIR2})/(R_{SWIR1}+R_{SWIR2})$, and ferrous/mafic
+$(R_{SWIR1}-R_{NIR})/(R_{SWIR1}+R_{NIR})$. Because vegetation masks alteration in
+partially covered ground, each ratio is detrended against NDVI with a quadratic
+regression and the residual (observed minus predicted) is kept, not the raw ratio.
+The fit samples at most 50\,000 pixels evenly spaced through NDVI order, so the same
+scene yields the same residual on every run; where fewer than 100 pixels are jointly
+observed the layer is returned as no-data rather than passed through undetrended.
+Fig.~\ref{fig:eo-evidence} shows the resulting evidence layers for the specimen area.
+
+\paragraph{Terrain and cover.} Slope and local relief describe erosional exposure,
+and a landform model converts them into expected overburden thickness and a
+recommended first test-hole depth with a rig class. These are DEM estimates to first
+ground, not ore depth, and the map caption says so.
+
+\paragraph{Endowment.} A distance-decay context layer $\exp(-d/15\,\mathrm{km})$ to a
+known district centre is applied only when the area lies within 50\,km of it;
+elsewhere the layer is no-data and its weight is renormalised away, so a survey far
+from any known field is not penalised for lacking one.
+
+\paragraph{Overlay and classification.} Each layer is robustly normalised by
+clipping at its 2nd and 98th percentiles, then combined with the AHP weights of
+Table~\ref{tab:eo-weights}. The weighted mean is classified with Jenks natural breaks
+($k=5$) over valid cells, excluding water and built-up land cover from both the fit
+and the map. Classes are therefore relative to this area's own evidence distribution.
+
+\paragraph{Targets.} Candidate targets are cells in the top two classes, at least
+500\,m apart, at most eight, kept 25 pixels inside the survey border, with a small
+proximity tie-break toward the client's coordinate cell. Each target carries its
+score, dominant and secondary commodity, cover estimate and test-hole recommendation
+(Fig.~\ref{fig:eo-targets}).
+
+\paragraph{Commodity screen.} Nine mineral systems (gold, base metals, nickel--PGM,
+chromium, iron ore, lithium pegmatite, manganese, bauxite and rare earths) are
+re-weighted per deposit style and scored over the same evidence. A system counts as
+\emph{indicated} only when its top decile reaches the moderate band (55/100)
+\emph{and} its index varies by at least 15 points across the area: a flat high
+surface is not a target. The dominant-system map colours each cell by its strongest
+system above threshold, and systems the dataset cannot screen (for example
+kimberlite diamonds, which need magnetics) are listed as unscreenable with the
+observation they would require, rather than omitted
+(Fig.~\ref{fig:eo-workbench}).
+
+\begin{table}[t]
+\centering
+\caption{AHP weights of the mineral overlay. The gravity term is withheld unless the
+raster declares a measured survey; the index renormalises over the remaining weight.}
+\label{tab:eo-weights}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lr}
+\toprule
+Evidence layer & Weight \\
+\midrule
+Lineament density & 0.24 \\
+Lineament intersections & 0.17 \\
+Iron oxide residual & 0.12 \\
+Hydroxyl/clay residual & 0.12 \\
+Ferrous/mafic residual & 0.12 \\
+Gravity horizontal gradient & 0.10 \\
+Relative relief & 0.07 \\
+Endowment context & 0.06 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{assets/eo-mineral-evidence.png}
+\caption{Evidence layers of the mineral pipeline on the specimen area: lineament and
+intersection density, the three vegetation-detrended alteration residuals, relative
+relief and endowment context. The alteration bump visible in the hydroxyl and ferrous
+residuals is the synthetic alteration halo of the specimen, not a measured anomaly.}
+\label{fig:eo-evidence}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{assets/eo-mineral-prospectivity.png}
+\caption{Engine mineral systems map of the specimen run: dominant system per cell
+above threshold, ranked field targets with cover and first test-hole depth, UTM grid,
+scale and north arrow. The footnote states the claim ceiling: percentiles within the
+survey area, not grades or tonnages, and DEM cover estimates to first ground.}
+\label{fig:eo-map}
+\end{figure*}
+
+\subsection{Publication and the map workbench}
+
+The worker claims queue rows with \texttt{FOR UPDATE SKIP LOCKED}, so several workers
+can run safely, and it never touches authentication, sessions or wallets. On
+completion it uploads every file the run actually produced (existence is the only
+test, so a skipped category advertises no download) and writes scores, targets and
+deliverable rows in a single remote call. Raster deliverables include a north-up
+EPSG:4326 GeoTIFF for draping and a single-file PMTiles archive; the workbench reads
+the archive as byte ranges through an edge function that re-proves the caller's
+workspace on every slice, so no long-lived signed link to the archive exists.
+
+The workbench renders the completed run in three registers. The analysis panel
+(Fig.~\ref{fig:eo-workbench}) shows the indicator score with its class, the commodity
+screen with each system's top decile and owned area, and the classified drape over
+the map with target markers. The attribute dock
+(Fig.~\ref{fig:eo-targets}) lists the ranked targets with coordinates, scores and
+distance from the client cell. The publish ribbon and data panel
+(Fig.~\ref{fig:eo-publish}) expose the deliverable set (PDF map sheet, KMZ, GeoJSON,
+GeoTIFF, dossier JSON, commodity CSV, gravity rasters) beside the provenance ledger
+of chosen and engine-pinned sources. The same pipelines are exposed over the Model
+Context Protocol, which is what allows an MCP host to run the identical screening
+outside the platform.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{assets/eo-workbench-analysis.png}
+\caption{Earth-observation workbench, analysis view, on the specimen run: indicator
+score 42.9/100 (very high), the nine-system commodity screen with top deciles and
+owned areas, and the classified raster draped on the map with ranked target markers.
+Specimen data; basemap tiles omitted, so the drape sits on a neutral ground.}
+\label{fig:eo-workbench}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{assets/eo-workbench-targets.png}
+\caption{Attribute dock of the same run: ranked candidate targets with score,
+distance from the client cell and WGS84 coordinates, the rows a field crew would
+load into a GPS. Specimen data.}
+\label{fig:eo-targets}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{assets/eo-workbench-publish.png}
+\caption{Publish ribbon and provenance panel: the deliverable set written by this
+run, and the ledger of chosen sources (Copernicus DEM, ESA WorldCover, Sentinel-2
+annual composite) against engine-pinned inputs (radar backscatter, gravimetry). The
+gravimetry entry declares itself a modelled calibration field excluded from scoring.
+Specimen data.}
+\label{fig:eo-publish}
+\end{figure*}
+
+\subsection{Specimen reproduction of the figures}
+
+Figs.~\ref{fig:eo-evidence}--\ref{fig:eo-publish} were produced offline as follows. A seeded
+generator synthesises the input rasters (DEM, land cover, Sentinel-2 bands, ALOS
+backscatter) for an area centred on the Gweru greenstone belt, Zimbabwe, with source
+sidecars matching the platform's active selections; the unmodified engine then runs
+the full mineral pipeline and tile build on them. The dashboard screenshots render
+the real workbench components and repository parsing against a fixture transport
+that serves exactly the rows and files the worker publishes; no live database,
+wallet or tile host is contacted, and basemap imagery is omitted for licensing
+clarity. The figures therefore demonstrate the pipeline and its interface end to
+end, on synthetic ground truth that is labelled as such in every caption and in the
+engine's own map titles. They are not an accuracy evaluation: no claim is made that
+the specimen scores predict mineralisation.
 
 This component analyses imagery; it does not store evidence. Anchoring and Earth
 observation are deliberately separate features, because conflating ``we can compute a
 map'' with ``we can prove a file'' would overstate both.
 
+\onecolumn
+\section{Guided walkthrough of the working system}
+\label{sec:tour}
+
+The preceding sections describe mechanisms; this section walks the interface a
+surveyor actually touches, in the order a first working day would use it. Every
+screenshot is the production web bundle rendered offline against a fixture
+transport: a seeded dummy workspace (``Moyo Geomatics'', a sole-practitioner
+account held by ``Tendai Moyo'') supplies projects, files, anchor operations, chat
+history, listings and billing rows, and the real repositories, parsers and
+components run against them unchanged. No live database, wallet, payment gateway
+or tile host is contacted. Names, hashes, transaction signatures, slots and
+amounts are synthetic; the devnet signatures shown are placeholders and do not
+resolve on chain. The walkthrough is therefore a guide to behaviour, not a record
+of a live deployment.
+
+\subsection{Signing in}
+
+Figure~\ref{fig:tour-signin} shows the entry surface: email and password, or the
+GitHub and Google OAuth buttons. Wallet-based sign-in sits alongside these in the
+full flow, and a wallet account that arrives without a name, email or account
+type is routed to a finish-setup step rather than admitted silently
+(Section~\ref{sec:data}). The session, not the URL, decides which workspace shell
+loads; a personal account and a business account see different navigation for the
+same underlying tables.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-signin.png}
+  \caption{Sign-in surface of the production bundle, rendered offline. Password
+  and OAuth entry points; the isometric panel is the application's own animated
+  brand graphic. Specimen session: no credentials are transmitted.}
+  \label{fig:tour-signin}
+\end{figure}
+
+\subsection{The dashboard as a day plan}
+
+The personal dashboard (Fig.~\ref{fig:tour-dashboard}) opens on the day, not on a
+data dump: four headline numbers (active projects, outstanding billing, quotes
+awaiting a client decision, days to the next instrument calibration), then
+today's schedule with start and end times, an equipment snapshot whose badges
+carry calibration and deployment state, and the recent-project table. The storage
+meter on the right reads the same usage figure the database trigger enforces, so
+the number a surveyor sees and the number that refuses an upload cannot drift
+apart. Billings and invoices roll up beneath for the financial half of the
+practice.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-dashboard.png}
+  \caption{Personal dashboard on the dummy workspace: day plan, equipment
+  calibration state, project and invoice roll-ups, and the workspace storage
+  meter. All rows are fixtures.}
+  \label{fig:tour-dashboard}
+\end{figure}
+
+\subsection{File manager and the storage quota}
+
+The file manager (Fig.~\ref{fig:tour-files}) lists deliverables with folder, type
+and tag filters and a trash view. Each row carries its anchoring state inline:
+no badge while unanchored, a confirming spinner while a transaction settles, a
+truncated signature once anchored, and an explicit failure badge otherwise. The
+header states the quota position (here 7.6 MB of 1024 MB); when the trigger
+refuses further uploads the same surface pauses new uploads while keeping
+existing files previewable, downloadable and shareable, rather than hiding the
+reason behind a generic retry message.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-files.png}
+  \caption{File manager with per-file anchoring badges: unanchored, confirming,
+  anchored (truncated devnet signature) and failed. The quota meter reads the
+  same usage the database trigger enforces. Fixture rows.}
+  \label{fig:tour-files}
+\end{figure}
+
+\subsection{Reading the anchor ledger}
+
+Opening a file's actions menu and choosing ``File details'' reveals the ledger
+(Fig.~\ref{fig:tour-anchors}): every anchor attempt for that file, newest first,
+with mode, cluster, signing wallet, fee in lamports, slot and an explorer link.
+The specimen file shows both outcomes at once --- a settled hash anchor with a
+Verify action, and beneath it an earlier failed attempt kept with its reason and
+a Retry action. Failures are never deleted or overwritten
+(Section~\ref{sec:evidence}); a corrupt or expired attempt stays in the record
+because the record, not the success rate, is the product.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-anchors.png}
+  \caption{File-details dialog for one deliverable: the ledger keeps both the
+  successful anchor (fee, slot, explorer link, Verify) and an earlier failed
+  attempt with its reason and a Retry action. Signatures and slots are synthetic
+  placeholders.}
+  \label{fig:tour-anchors}
+\end{figure}
+
+\subsection{The assistant in bounded practice}
+
+The assistant (Fig.~\ref{fig:tour-assistant}) answers from workspace rows, not
+from improvisation: asked which files still need anchoring, it enumerates the
+ledger state file by file and offers a clarifying question with quick-reply
+options instead of guessing intent. Its summary of the mineral screen carries the
+specimen score of Section~\ref{sec:eo} with the percentile caveat attached, and a
+handoff button deep-links the exact run, job and project in the satellite
+workbench. Tool activity streams live during a turn; the persisted history keeps
+prose and structured blocks, and every metered operation debits the workspace
+credit account shown in the header.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-assistant.png}
+  \caption{Assistant conversation on fixture history: a clarifying question with
+  quick replies, a ledger-grounded answer, and a workbench handoff button that
+  deep-links the exact survey run. The 42.9/100 score is the specimen run of
+  Section~\ref{sec:eo}, not an accuracy claim.}
+  \label{fig:tour-assistant}
+\end{figure}
+
+\subsection{Marketplace: browse, inspect, request}
+
+The marketplace (Fig.~\ref{fig:tour-marketplace}) browses global listings from
+peer workspaces with category chips, condition badges and an ``In Use'' badge for
+deployed assets. Opening a listing (Fig.~\ref{fig:tour-market-detail}) shows the
+hero photograph, the hire price per day or sale price once, specification badges,
+the seller card, and the Request Hire or Request Purchase action beside the cart.
+A deployed asset cannot be requested: the dialog substitutes a disabled
+``Currently In Use'' state, so the interface never offers a hire the asset's own
+status forbids. Requests move through the same pending--accepted--paid state
+machine as other payments, and nothing is charged by browsing.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-marketplace.png}
+  \caption{Marketplace browse view on three fixture listings from peer
+  workspaces. Photographs: total station by Syced (CC0); GNSS rover by
+  SweetCanadianMullet (CC BY 4.0); UAV by Maritime Asia Heritage Survey
+  (CC BY-SA 4.0), all via Wikimedia Commons.}
+  \label{fig:tour-marketplace}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-market-detail.png}
+  \caption{Listing detail: hero photograph, hire price per day, specification
+  badges, seller card and the Request Hire / cart actions. Photograph: Syced,
+  CC0, via Wikimedia Commons.}
+  \label{fig:tour-market-detail}
+\end{figure}
+
+\subsection{Credits, packages and the payment ledger}
+
+The credits section (Fig.~\ref{fig:tour-credits}) closes the loop: available
+balance (96), lifetime purchases (100) and the append-only ledger that explains
+the difference --- a +100 card purchase and a $-4$ debit for the specimen screening
+run. Packages are priced per credit so a surveyor can compare tiers, and each
+offers pay-from-balance or pay-by-card; storage packages are a separate kind with
+their own expiry, because compute credit and stored bytes are different
+obligations. Checkout runs through the payment state machine of
+Section~\ref{sec:security}; the capture initiates no payment.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{assets/tour-credits.png}
+  \caption{Credits section: available balance, lifetime purchases, two credit
+  packages with per-credit pricing, balance-versus-card checkout, and the
+  append-only credit ledger (+100 purchase, $-4$ specimen screening). No payment is
+  initiated in the capture.}
+  \label{fig:tour-credits}
+\end{figure}
+
+\twocolumn
 \section{Engineering evidence}
 \label{sec:eval}
 
@@ -574,8 +1219,8 @@ than by demonstration alone:
 \begin{itemize}
   \item TypeScript project checks and a strict lint pass over the web application;
   \item more than 850 automated TypeScript tests and 124 edge-function tests,
-        including the service-key gate, the payment state machine and the anchoring
-        state machine;
+        including the service-key gate, agent workspace scoping, the payment state
+        machine and the anchoring state machine;
   \item a production build, which also generates the sitemap and copies the security
         contact file;
   \item deterministic evaluation scripts for the agent: tool-shape consistency,
@@ -597,6 +1242,10 @@ Several architectural and operational boundaries bound the claims of this work:
   \item \textbf{A digest is not provenance.} The anchor binds bytes to a wallet and a
         slot. Identity behind the wallet, authorship and correctness remain social and
         legal questions.
+  \item \textbf{On-chain statements are immutable.} A malformed or corrupted memo
+        cannot be repaired in place. The ledger records the failure or mismatch and
+        re-anchoring is the only remedy; immutability protects evidence and preserves
+        mistakes alike.
   \item \textbf{Model behaviour is bounded, not proved.} Allowlists, schema validation
         and read-back verification reduce the failure surface; they do not guarantee
         that every agent statement is true, which is why writes are verified and
