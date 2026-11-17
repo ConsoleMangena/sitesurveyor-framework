@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ArrowUpRight, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { X } from "lucide-react";
 import { MarketAssistantBot } from "./MarketAssistantBot.tsx";
 import {
   Dialog,
@@ -15,14 +14,12 @@ import "../../styles/market-assistant.css";
 interface MarketConciergeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  showWorkspaceLink?: boolean;
 }
 
 /** A compact assistant that stays connected to its bottom-right launcher. */
 export function MarketConciergeDialog({
   open,
   onOpenChange,
-  showWorkspaceLink = false,
 }: MarketConciergeDialogProps) {
   const launcherRef = useRef<HTMLButtonElement>(null);
 
@@ -54,18 +51,8 @@ export function MarketConciergeDialog({
       >
         <DialogTitle className="sr-only">SiteSurveyor AI assistant</DialogTitle>
         <DialogDescription className="sr-only">
-          Search marketplace listings, professionals, jobs, firms and training, or open your workspace assistant.
+          Search marketplace listings, professionals, jobs, firms and training.
         </DialogDescription>
-        {showWorkspaceLink ? (
-          <Link
-            to="/workspace?view=assistant"
-            className="market-assistant-workspace-link"
-            onClick={() => onOpenChange(false)}
-          >
-            Open workspace AI
-            <ArrowUpRight className="size-3.5" aria-hidden="true" />
-          </Link>
-        ) : null}
         <DialogClose className="market-assistant-close" aria-label="Dismiss assistant">
           <X className="size-4" aria-hidden="true" />
         </DialogClose>

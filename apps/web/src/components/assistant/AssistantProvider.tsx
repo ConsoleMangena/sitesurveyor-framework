@@ -1,24 +1,26 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { MarketConciergeDialog } from "../market/MarketConciergeDialog.tsx";
-import { useAuthStore } from "../../lib/auth/auth-store.ts";
+import { isAppOnlyPath } from "../../lib/seo/routes.ts";
 import { AssistantContext } from "./assistant-context.ts";
 
-/** One persistent launcher for every public, auth and workspace route. */
+/**
+ * One persistent launcher for the public pages. The signed-in surfaces
+ * (workspace, onboarding, account, auth) have their own assistant view and
+ * must not show the public concierge, so the launcher is mounted only where
+ * the route table marks the page public.
+ */
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const user = useAuthStore((state) => state.user);
   const value = useMemo(() => ({ openAssistant: () => setOpen(true) }), []);
 
   return (
     <AssistantContext.Provider value={value}>
       {children}
-      <MarketConciergeDialog
-        open={open}
-        onOpenChange={setOpen}
-        showWorkspaceLink={Boolean(user && pathname.startsWith("/workspace"))}
-      />
+      {isAppOnlyPath(pathname) ? null : (
+        <MarketConciergeDialog open={open} onOpenChange={setOpen} />
+      )}
     </AssistantContext.Provider>
   );
 }

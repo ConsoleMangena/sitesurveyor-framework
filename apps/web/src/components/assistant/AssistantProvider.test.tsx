@@ -21,7 +21,7 @@ function RouteControls() {
 }
 
 describe("AssistantProvider", () => {
-  it("keeps one chatbot available when navigating between public and workspace routes", async () => {
+  it("mounts the concierge on public pages and removes it inside the workspace", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -37,7 +37,22 @@ describe("AssistantProvider", () => {
     expect(screen.getAllByRole("button", { name: "Open SiteSurveyor assistant" })).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Go to workspace" }));
     expect(screen.getByRole("heading", { name: "Workspace" })).toBeInTheDocument();
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Open SiteSurveyor assistant" })).toHaveLength(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open SiteSurveyor assistant" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the concierge off the other signed-in surfaces", () => {
+    render(
+      <MemoryRouter initialEntries={["/account/security"]}>
+        <AssistantProvider>
+          <Routes>
+            <Route path="/account/security" element={<h1>Account</h1>} />
+          </Routes>
+        </AssistantProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open SiteSurveyor assistant" })).not.toBeInTheDocument();
   });
 });

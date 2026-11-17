@@ -142,27 +142,6 @@
   color: var(--muted-foreground);
 }
 
-.market-assistant-workspace-link {
-  position: absolute;
-  top: 18px;
-  left: 18px;
-  z-index: 2;
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 5px;
-  border-radius: 8px;
-  background: var(--card);
-  padding: 8px 10px;
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.market-assistant-workspace-link:hover { text-decoration: underline; text-underline-offset: 3px; }
-.market-assistant-dialog:has(.market-assistant-workspace-link) .market-assistant-chat > header { padding-top: 62px; }
-
 .market-assistant-chat {
   display: flex;
   width: 100%;
@@ -297,20 +276,6 @@ body:has([data-slot="dialog-content"][data-state="open"]:not(.market-assistant-d
     height: auto;
     max-height: none;
     border-radius: 18px;
-  }
-
-  /* The workspace link keeps its own row, but a short window cannot afford
-     the full 62px lead-in: it would leave the conversation a 70px slot. */
-  .market-assistant-workspace-link {
-    top: 8px;
-    left: 12px;
-    min-height: 26px;
-    padding: 3px 8px;
-    font-size: 11px;
-  }
-
-  .market-assistant-dialog:has(.market-assistant-workspace-link) .market-assistant-chat > header {
-    padding-top: 38px;
   }
 
   .market-assistant-chat > header {
