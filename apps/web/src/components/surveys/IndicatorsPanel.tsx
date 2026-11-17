@@ -66,7 +66,7 @@ function Indicator({
   const band = bandFor(score);
   const color = CATEGORY_COLORS[category];
   return (
-    <article className="rounded-lg border border-input bg-card px-2.5 py-2">
+    <article className="min-w-0 rounded-lg border border-input bg-card px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="sw-accent-swatch" style={{ background: color }} aria-hidden="true" />

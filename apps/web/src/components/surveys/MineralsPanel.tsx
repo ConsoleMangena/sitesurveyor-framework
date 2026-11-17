@@ -64,7 +64,7 @@ function CommodityRow({ item }: { item: SurveyCommodity }) {
   const band = bandFor(item.areaTopDecile);
   return (
     <article
-      className={`rounded-lg border border-input bg-card px-2.5 py-2 ${
+      className={`min-w-0 rounded-lg border border-input bg-card px-2.5 py-2 ${
         item.indicated ? "" : "opacity-75"
       }`}
     >
