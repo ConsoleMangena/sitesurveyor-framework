@@ -74,16 +74,17 @@ own accounts as described below.
 
 ## Download
 
+Users can grab the desktop app from the website's
+[desktop page](https://sitesurveyor.tech/downloads), which always points at the newest release.
 Prebuilt files are attached to every [GitHub release](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest)
 (releases are cut from `v*` tags):
 
 | File | What it is |
 | --- | --- |
 | [Web app (zip)](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest/download/sitesurveyor-web.zip) | The built React bundle (`dist/`), ready to host on any static server |
-| [Windows installer (.exe)](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest/download/SiteSurveyor_2.0.0_x64-setup.exe) | NSIS installer for the Tauri desktop shell (64-bit Windows) |
-| [Windows installer (.msi)](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest/download/SiteSurveyor_2.0.0_x64_en-US.msi) | MSI installer for the Tauri desktop shell (64-bit Windows) |
+| [Windows installers (.exe / .msi)](https://github.com/ConsoleMangena/sitesurveyor-framework/releases/latest) | NSIS and MSI installers for the Tauri desktop shell (64-bit Windows). Installer filenames carry the app version, so take them from the release page rather than a deep link that goes stale on the next tag |
 
-The direct links above resolve to the assets of the current release; the [releases page](https://github.com/ConsoleMangena/sitesurveyor-framework/releases)
+The direct link above resolves to the asset of the current release; the [releases page](https://github.com/ConsoleMangena/sitesurveyor-framework/releases)
 lists every version. Installers are currently built for Windows only; macOS and Linux users can
 run the desktop shell from source (see below). The desktop shell is a wrapper around the web app,
 so either surface uses the same workspace and the same account.
