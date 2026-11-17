@@ -102,19 +102,22 @@ endorsement or moderation, so the paper is citable as soon as you finish the for
 A later revision is published as a **new version** of the same record: the concept
 DOI stays stable and the version DOI changes.
 
-## Published DOIs (filled 2026-11-16)
+## Published DOIs (filled 2026-11-16, updated 2026-11-17)
 
 | Record | Concept DOI | First version DOI |
 | --- | --- | --- |
 | Software | `10.5281/zenodo.24287890` | `10.5281/zenodo.24287891` (v0.1.0) |
-| Paper | `10.5281/zenodo.24288094` | `10.5281/zenodo.24290209` (v3, current) |
+| Paper | `10.5281/zenodo.24288094` | `10.5281/zenodo.24288095` (v1) |
 
-The software record's related identifiers already carry *is documented by* the
+The newest paper version is **v4, `10.5281/zenodo.24301833`** (published
+2026-11-17): the risk mapping, the append-only operation ledger, the
+earth-observation pipeline detail and the guided walkthrough. The software
+record's related identifiers already carry *is documented by* the
 paper DOI, and the paper carries *is supplement to* the software concept DOI.
 The header in `main.tex` prints the paper **concept DOI**
 (`10.5281/zenodo.24288094`), so future revisions need no header change.
 History: v1 `24288095` (two authors), v2 `24290109` (author correction),
-v3 `24290209` (current; header switched to the concept DOI).
+v3 `24290209` (header switched to the concept DOI), v4 `24301833` (current).
 
 ## Versioning policy
 
