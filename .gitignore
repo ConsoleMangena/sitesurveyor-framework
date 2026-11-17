@@ -52,6 +52,9 @@ apps/engine/worker.lock
 coverage/
 apps/web/coverage/
 
+# Tour screenshot harness (headless Chrome scratch profile)
+apps/web/.tour-harness/chrome-profile/
+
 # OS files
 .DS_Store
 Thumbs.db
