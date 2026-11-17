@@ -38,6 +38,9 @@ ai-gateway/.env
 /supabase/.branches/
 supabase/bundle_apply_in_dashboard.sql
 
+# Paper deposit artifacts (generated; see paper/zenodo-metadata.md)
+/paper-source.zip
+
 # Python engine (apps/engine)
 __pycache__/
 *.py[cod]
