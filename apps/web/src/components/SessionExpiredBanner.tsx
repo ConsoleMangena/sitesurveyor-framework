@@ -9,13 +9,14 @@ export default function SessionExpiredBanner() {
   if (!sessionExpired) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-4000 px-3 pt-[max(8px,env(safe-area-inset-top))]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-4000 px-3 pb-[max(8px,env(safe-area-inset-bottom))]">
       <div className="pointer-events-auto mx-auto max-w-md">
         <ErrorNotice
           tone="warning"
           title="Session expired"
           icon={<Clock size={16} />}
           onDismiss={dismiss}
+          className="py-2 shadow-lg"
           action={
             <a
               href="/login"

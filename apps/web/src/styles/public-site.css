@@ -104,6 +104,16 @@
     transform: scaleX(1);
   }
 
+  /* Blogs and About stay in the footer and the mobile disclosure; keeping
+     them out of the desktop row leaves room for the account chip and the
+     page tools so a long account name can never scatter the links. */
+  .public-site-header-left .public-site-nav-link[href="/journal"],
+  .public-site-header-left .public-site-nav-link[href="/about"] { display: none; }
+
+  /* Signed-in headers already offer the workspace through the account menu,
+     so the duplicate call-to-action yields its space to the links. */
+  .public-site-header[data-account="true"] .public-header-cta { display: none; }
+
   .public-header-cta {
     display: inline-flex;
     min-height: 2.5rem;
@@ -204,8 +214,8 @@
   @media (max-width: 76rem) {
     .public-site-nav { gap: 1.125rem; }
     .public-site-header-left { gap: 1.75rem; }
-    .public-site-nav-link[href="/journal"],
-    .public-site-nav-link[href="/about"] { display: none; }
+    .public-site-header-left .public-site-nav-link[href="/transport"],
+    .public-site-header-left .public-site-nav-link[href="/downloads"] { display: none; }
   }
 
   @media (max-width: 56rem) {

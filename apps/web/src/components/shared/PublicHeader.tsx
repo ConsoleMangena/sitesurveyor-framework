@@ -33,7 +33,7 @@ export function PublicHeader({ section, actions, account }: PublicHeaderProps) {
   }, [navigationOpen]);
 
   return (
-    <header className="public-site-header">
+    <header className="public-site-header" data-account={user && account ? "true" : undefined}>
       <div className="public-site-header-inner">
         <div className="public-site-header-left">
           <Link to="/" aria-label="SiteSurveyor home" className="web3-brand">
