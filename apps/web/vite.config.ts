@@ -44,8 +44,10 @@ export default defineConfig({
         // The auth bridge pages (public/auth/desktop-*.html) are reached with a
         // `?code=` query string, which a precached URL does not match, so the
         // SPA navigation fallback would otherwise serve index.html and swallow
-        // the callback. Let those navigations go to the network.
-        navigateFallbackDenylist: [/^\/auth\/desktop-/],
+        // the callback. PDFs are above the precache size cap, so the fallback
+        // would serve index.html into the paper viewer iframe instead of the
+        // file. Let both kinds of navigation go to the network.
+        navigateFallbackDenylist: [/^\/auth\/desktop-/, /\.pdf$/],
         globPatterns: [
           '**/*.{js,css,html,ico,png,svg,json,woff2,webmanifest}',
         ],
