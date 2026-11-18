@@ -159,7 +159,7 @@ function storageBucket(bucket: string) {
     update: async (p: string, _f: unknown) => ({ data: { path: p }, error: null }),
     remove: async (_ps: string[]) => ({ data: [], error: null }),
     list: async (_p: string) => ({ data: [], error: null }),
-    download: async (p: string) => ({ data: new Blob(), error: null }),
+    download: async (_p: string) => ({ data: new Blob(), error: null }),
     bucket,
   }
 }
