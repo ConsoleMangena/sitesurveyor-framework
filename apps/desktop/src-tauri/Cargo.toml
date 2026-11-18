@@ -1,6 +1,6 @@
 [package]
 name = "sitesurveyor-desktop"
-version = "0.1.0"
+version = "2.0.0"
 description = "SiteSurveyor desktop shell (Tauri)"
 authors = ["SiteSurveyor"]
 edition = "2021"
