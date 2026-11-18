@@ -6,13 +6,9 @@ import {
   ClipboardCheck,
   CloudOff,
   Download,
-  FileCheck2,
   FileText,
   FolderKanban,
-  LayoutDashboard,
-  ReceiptText,
   Scale,
-  Settings2,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
@@ -122,40 +118,25 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="public-product-preview" aria-label="Illustration of the SiteSurveyor project workspace">
+          <div className="public-product-preview" aria-label="Screenshot of the SiteSurveyor workspace dashboard with sample data">
             <div className="public-product-window">
               <div className="public-product-toolbar">
                 <div className="public-product-dots" aria-hidden="true"><span /><span /><span /></div>
-                <span>SiteSurveyor / Project workspace</span>
+                <span>SiteSurveyor / Workspace</span>
                 <span>v2 · Open source</span>
               </div>
               <div className="public-product-body">
-                <div className="public-product-sidebar" aria-hidden="true">
-                  <div className="public-product-workspace">Survey workspace</div>
-                  <div className="public-product-nav active"><LayoutDashboard className="size-3.5" />Overview</div>
-                  <div className="public-product-nav"><FolderKanban className="size-3.5" />Projects & jobs</div>
-                  <div className="public-product-nav"><FileCheck2 className="size-3.5" />Evidence</div>
-                  <div className="public-product-nav"><ReceiptText className="size-3.5" />Invoices</div>
-                  <div className="public-product-nav"><Settings2 className="size-3.5" />Settings</div>
-                </div>
-                <div className="public-product-main">
-                  <div className="public-product-heading">
-                    <h2>Project workspace</h2>
-                    <span>One continuous record</span>
-                  </div>
-                  <div className="public-product-stats">
-                    <div className="public-product-stat"><small>01 / Plan</small><strong>Quote & project</strong></div>
-                    <div className="public-product-stat"><small>02 / Prove</small><strong>Field evidence</strong></div>
-                    <div className="public-product-stat"><small>03 / Settle</small><strong>Invoice & payment</strong></div>
-                  </div>
-                  <div className="public-product-record">
-                    <div className="public-product-record-head"><span>Job record</span><span>Connected workflow</span></div>
-                    <div className="public-product-row"><span>Scope and quotation</span><span>Project plan</span><span className="public-product-status">Ready</span></div>
-                    <div className="public-product-row"><span>Crew and site files</span><span>Field delivery</span><span>Attached</span></div>
-                    <div className="public-product-row"><span>Evidence and invoice</span><span>Settlement</span><span>Traceable</span></div>
-                  </div>
-                  <p className="public-product-note">Illustrative product view · Your records and results come from your workspace.</p>
-                </div>
+                <img
+                  className="public-product-shot"
+                  src="/images/workspace-preview.png"
+                  alt="SiteSurveyor workspace dashboard: today's schedule, equipment calibration state, project and invoice roll-ups and the storage meter, shown with sample data."
+                  width={1680}
+                  height={1048}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                />
+                <p className="public-product-note">Sample workspace data · Your records and results come from your own workspace.</p>
               </div>
             </div>
           </div>
@@ -258,6 +239,7 @@ export default function LandingPage() {
           <p className="public-home-section-copy">Plan the work, preserve the evidence, and carry one record through to payment.</p>
           <div className="public-home-hero-actions">
             <Link to={workspacePath} className="public-home-primary">{user ? "Open workspace" : "Create your workspace"}<ArrowRight className="size-4" aria-hidden="true" /></Link>
+            <Link to="/paper" className="public-home-secondary">Read the paper</Link>
             <Link to="/market" className="public-home-secondary">Browse marketplace</Link>
           </div>
         </div>

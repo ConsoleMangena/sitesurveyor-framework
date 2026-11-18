@@ -3,6 +3,7 @@ import { CreditCard, Settings, Store, User } from "lucide-react";
 import { AccountMenu, AccountMenuAvatar, AccountMenuItem } from "@/components/account-menu";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth/auth-store";
+import { isDesktopShell } from "@/lib/platform";
 import type { UiUser, WorkspaceView } from "@/features/workspace/types";
 
 interface ProfileDropdownProps {
@@ -57,7 +58,9 @@ export function ProfileDropdown({
           onClick={() => onChangeView("settings")}
         />
       ) : null}
-      <AccountMenuItem icon={Store} label="Public Market" to="/market" />
+      {!isDesktopShell() && (
+        <AccountMenuItem icon={Store} label="Public Market" to="/market" />
+      )}
     </AccountMenu>
   );
 }

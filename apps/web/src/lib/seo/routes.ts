@@ -74,6 +74,15 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     changefreq: "weekly",
   },
   {
+    path: "/paper",
+    title: "Research paper | SiteSurveyor",
+    description:
+      "The SiteSurveyor preprint: a hybrid on-chain/off-chain architecture for secure and verifiable surveying systems, with the readable PDF and DOI.",
+    image: "/og/site.jpg",
+    priority: 0.6,
+    changefreq: "monthly",
+  },
+  {
     path: "/about",
     title: "About | SiteSurveyor",
     description:

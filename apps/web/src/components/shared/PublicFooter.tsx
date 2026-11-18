@@ -13,6 +13,7 @@ const FOOTER_GROUPS = [
     label: "Resources",
     links: [
       { to: "/journal", label: "Blogs" },
+      { to: "/paper", label: "Paper" },
       { to: "/help", label: "Help" },
       { to: "/contact", label: "Contact" },
     ],

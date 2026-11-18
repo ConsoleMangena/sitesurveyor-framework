@@ -5,6 +5,7 @@ import AuthBackground from "../AuthBackground";
 import BlocksAnimation from "./BlocksAnimation";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import { cn } from "@/lib/utils";
+import { isDesktopShell } from "@/lib/platform";
 
 export interface AuthShellProps {
   /** Page heading rendered above the working column. */
@@ -53,11 +54,13 @@ export default function AuthShell({
 
         <section className="auth-side">
           <header className="auth-side-bar">
-            <Link to="/market" className="auth-escape">
-              <Store className="size-4" aria-hidden="true" />
-              <span className="auth-escape-full">Surveyor's Market</span>
-              <span className="auth-escape-short">Market</span>
-            </Link>
+            {!isDesktopShell() && (
+              <Link to="/market" className="auth-escape">
+                <Store className="size-4" aria-hidden="true" />
+                <span className="auth-escape-full">Surveyor's Market</span>
+                <span className="auth-escape-short">Market</span>
+              </Link>
+            )}
             <ThemeToggle />
           </header>
 

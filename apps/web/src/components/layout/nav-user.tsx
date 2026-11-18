@@ -22,6 +22,7 @@ import {
 import { getWorkspaceShellAccountLabel } from "@/features/workspace/account";
 import { signOut as signOutSession } from "@/lib/auth/session";
 import { useAuthStore } from "@/lib/auth/auth-store";
+import { isDesktopShell } from "@/lib/platform";
 import type { UiUser } from "@/features/workspace/types";
 
 type NavUserProps = {
@@ -103,14 +104,16 @@ export function NavUser({ user, onProfile, onLogout }: NavUserProps) {
                   <BadgeCheck className="size-4 shrink-0 text-muted-foreground" />
                   <span>Edit profile</span>
                 </button>
-                <Link
-                  to="/market"
-                  onClick={handleMarket}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-accent text-start transition-colors"
-                >
-                  <Store className="size-4 shrink-0 text-muted-foreground" />
-                  <span>Surveyor's Market</span>
-                </Link>
+                {!isDesktopShell() && (
+                  <Link
+                    to="/market"
+                    onClick={handleMarket}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-accent text-start transition-colors"
+                  >
+                    <Store className="size-4 shrink-0 text-muted-foreground" />
+                    <span>Surveyor's Market</span>
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -181,12 +184,14 @@ export function NavUser({ user, onProfile, onLogout }: NavUserProps) {
                 label="Edit profile"
                 onClick={handleProfile}
               />
-              <AccountMenuItem
-                icon={Store}
-                label="Surveyor's Market"
-                to="/market"
-                onClick={handleMarket}
-              />
+              {!isDesktopShell() && (
+                <AccountMenuItem
+                  icon={Store}
+                  label="Surveyor's Market"
+                  to="/market"
+                  onClick={handleMarket}
+                />
+              )}
               <AccountMenuItem
                 icon={Info}
                 label="About"

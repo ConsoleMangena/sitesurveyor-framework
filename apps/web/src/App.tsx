@@ -6,6 +6,7 @@ import AppErrorPage from "./components/AppErrorPage";
 import SessionExpiredBanner from "./components/SessionExpiredBanner";
 import RecoveryRedirect from "./components/auth/RecoveryRedirect";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { PublicWebOnly } from "./components/shared/PublicWebOnly";
 import WorkspaceRouter from "./components/WorkspaceRouter";
 import GlobalLoader from "./components/GlobalLoader";
 import OfflineStatusBanner from "./components/OfflineStatusBanner";
@@ -38,12 +39,16 @@ const HelpPage = lazy(() => import("./pages/public/HelpPage"));
 const ContactPage = lazy(() => import("./pages/public/ContactPage"));
 const PrivacyPage = lazy(() => import("./pages/public/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/public/TermsPage"));
+const PaperPage = lazy(() => import("./pages/public/PaperPage"));
 
+/** Public routes are browser-only; the desktop shell stays in the workspace. */
 function lazyPublic(element: React.ReactNode) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background" />}>
-      {element}
-    </Suspense>
+    <PublicWebOnly>
+      <Suspense fallback={<div className="min-h-screen bg-background" />}>
+        {element}
+      </Suspense>
+    </PublicWebOnly>
   );
 }
 import {
@@ -373,6 +378,7 @@ export default function App() {
           <Route path="/contact" element={lazyPublic(<ContactPage />)} />
           <Route path="/privacy" element={lazyPublic(<PrivacyPage />)} />
           <Route path="/terms" element={lazyPublic(<TermsPage />)} />
+          <Route path="/paper" element={lazyPublic(<PaperPage />)} />
           <Route
             path="/"
             element={lazyPublic(<LandingPage />)}

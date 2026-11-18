@@ -17,6 +17,7 @@ import type {
 } from "./marketFeed.ts";
 import { MarketDetailDialog } from "./MarketDetailDialog.tsx";
 import PublicMarketGlobe from "./PublicMarketGlobe.tsx";
+import { isDesktopShell } from "@/lib/platform";
 
 /** Dashboard embed of the public-market globe: live pins, tap for details,
  *  full registry one click away. */
@@ -48,6 +49,9 @@ export default function MarketGlobeCard({ onNavigate }: { onNavigate?: (view: st
     selectedId?.kind === "firm" ? findIn(data?.firms ?? []) : null;
   const selectedEvent =
     selectedId?.kind === "event" ? findIn(data?.events ?? []) : null;
+
+  // The public market is a browser surface; the desktop shell stays in the workspace.
+  if (isDesktopShell()) return null;
 
   return (
     <section aria-label="Open surveying market" className="flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
