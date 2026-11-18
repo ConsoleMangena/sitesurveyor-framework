@@ -201,7 +201,7 @@
   .public-site-footer-bottom { display: flex; width: min(100% - 3rem, 76rem); margin: 0 auto; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--border); padding: 1.25rem 0; color: var(--muted-foreground); font-size: 0.6875rem; }
   .public-site-footer-bottom strong { color: var(--foreground); font-weight: 500; }
 
-  @media (max-width: 70rem) {
+  @media (max-width: 76rem) {
     .public-site-nav { gap: 1.125rem; }
     .public-site-header-left { gap: 1.75rem; }
     .public-site-nav-link[href="/journal"],

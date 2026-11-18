@@ -6,6 +6,7 @@ const PUBLIC_LINKS = [
   { to: "/transport", label: "Transport", title: "Runs and routes for what you hire or buy" },
   { to: "/downloads", label: "Desktop", title: "Installers for the native desktop app" },
   { to: "/journal", label: "Blogs", title: "Working notes on the product and the trade" },
+  { to: "/paper", label: "Paper", title: "The preprint manuscript and its Zenodo DOI" },
   { to: "/help", label: "Help", title: "How the workspace works, from sign-in to settlement" },
   { to: "/about", label: "About", title: "What SiteSurveyor is and how the project fits together" },
 ];
