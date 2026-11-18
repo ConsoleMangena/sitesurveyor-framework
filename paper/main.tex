@@ -51,33 +51,37 @@
        for Secure and Verifiable Surveying Systems\par}
       \vskip 0.85em
       {\large Consolation Mangena\par}
+      \vskip 0.4em
+      {\small Eineva Labs\par}
+      \vskip 0.25em
+      {\footnotesize ORCID: \href{https://orcid.org/0009-0006-2708-914X}{0009-0006-2708-914X}\par}
     \end{center}
     \vskip 1.0em
     \noindent\rule{\textwidth}{0.4pt}
     \vskip 0.75em
     {\small
     \noindent\textbf{Abstract.}\enspace
-    The field survey workflow is typically scattered across paper field books, spreadsheets,
-    shared drives, and disconnected accounting software. Context is lost at every handoff, and
-    the deliverables produced in the field are rarely tied back to the records they are meant
-    to support. This paper presents \textbf{SiteSurveyor}, an open-source reference architecture
-    for secure and verifiable surveying systems. Implemented as a multi-tenant workspace,
-    SiteSurveyor maintains a continuous operational record of each project, including jobs,
-    quotes, invoices, evidence, and payments, within a single PostgreSQL database with row-level
-    security. Confidential survey files are kept off-chain in that database. Solana is used only
-    where database guarantees are insufficient: wallet-based authentication, stablecoin
-    settlement, and wallet-signed SHA-256 digests that let third parties verify file integrity
-    without accessing file contents. Every anchoring attempt is recorded in an append-only
-    operation ledger enforced by database triggers, so failures are preserved alongside
-    successes. An AI assistant interacts with workspace records through a
-    typed, allowlisted tool surface, with read-back verification and confirmation for
-    destructive operations, alongside an asynchronous Python worker for screening open
-    earth-observation imagery. We present the system design, map the cybersecurity risks
-    of surveying practice onto the controls that address them,
-    state its cryptographic non-claims, and describe the automated engineering checks that
-    support the claims made here. We then extract three reusable building blocks: a
-    tenant-scoped data core, an evidence-anchoring service, and an allowlisted agent tool
-    surface for building comparable verifiable systems.
+    A field survey leaves a trail: a quote, a crew schedule, observations, photographs,
+    CAD drawings, an invoice, a payment. In most practices that trail is broken across
+    paper field books, spreadsheets, shared drives and separate accounting software, so
+    the deliverable handed to a client can no longer be tied to the record it came from.
+    I built \textbf{SiteSurveyor} to close that gap. It is an open-source reference
+    architecture, released as a multi-tenant workspace where projects, jobs, quotes,
+    invoices, evidence and payments share one PostgreSQL database guarded by row-level
+    security. Confidential files stay off-chain. Solana is used only where the database
+    cannot give the guarantee on its own: wallet sign-in, stablecoin settlement, and
+    wallet-signed SHA-256 digests that let a third party confirm a file is byte-identical
+    to the one anchored, without seeing its contents. Every anchoring attempt, success or
+    failure, lands in an append-only ledger that database triggers protect from edits. An
+    AI assistant works the same records through a typed, allowlisted tool surface, reads
+    back what it wrote, and asks before deleting anything; a separate Python worker
+    screens open earth-observation imagery into ranked field targets. This paper gives
+    the design, maps the cybersecurity risks of surveying practice onto the controls that
+    answer them, states plainly what an anchored digest does not prove, and lists the
+    automated checks (over 850 TypeScript tests and 124 edge-function tests) that hold
+    those claims to account. Three pieces are meant to be lifted out and reused: the
+    tenant-scoped data core, the evidence-anchoring service, and the allowlisted agent
+    tool surface.
     \par
     \vskip 0.75em
     \noindent\textbf{Keywords.}\enspace surveying; geospatial; earth observation;
@@ -122,8 +126,8 @@ contributions are:
         confirmation for destructive operations;
   \item a satellite analysis engine that transforms open earth-observation products into
         ranked field targets and deliverables the workspace can render; and
-  \item an honest deployment and verification story, including sandboxed and unimplemented
-        components.
+  \item a deployment and verification account that names the sandboxed and
+        unimplemented parts instead of hiding them.
 \end{enumerate}
 
 The components are intentionally separable. Although the workspace is motivated by the
@@ -133,14 +137,16 @@ and later prove what was produced can reuse these foundations. The paper therefo
 two ways: as the design of one working system, and as a reference architecture for building
 further secure surveying systems on the same basis.
 
-The rest of the paper outlines the requirements (Section~\ref{sec:req}), related work
-(Section~\ref{sec:related}), the architecture
-(Section~\ref{sec:arch}), data and identity (Section~\ref{sec:data}), the agent
-(Section~\ref{sec:agent}), evidence anchoring (Section~\ref{sec:evidence}), the security
-model (Section~\ref{sec:security}), the earth-observation engine (Section~\ref{sec:eo}),
-a guided walkthrough of the interface (Section~\ref{sec:tour}),
-the engineering evidence and limitations (Sections~\ref{sec:eval} and~\ref{sec:limits}), and
-availability and reproducibility (Section~\ref{sec:availability}).
+The paper follows the order I would explain the system to a colleague: what the
+practice needs (Section~\ref{sec:req}), what already exists (Section~\ref{sec:related}),
+the architecture (Section~\ref{sec:arch}) and the data and identity model
+(Section~\ref{sec:data}), then the two actors that touch the record, the agent
+(Section~\ref{sec:agent}) and the anchoring service (Section~\ref{sec:evidence}). The
+security model (Section~\ref{sec:security}) and the earth-observation engine
+(Section~\ref{sec:eo}) follow. Section~\ref{sec:tour} walks the working interface on
+dummy data, Sections~\ref{sec:eval} and~\ref{sec:limits} give the engineering evidence
+and the limits of the claims, and Section~\ref{sec:availability} covers availability
+and reproducibility.
 
 \section{Related work}
 \label{sec:related}
@@ -202,7 +208,7 @@ build a national-case architecture for Serbian property transactions, and Torun
 successive cadastral surveys. All of these anchor \emph{transactions about land}. None
 addresses the operational workflow that produces the underlying evidence: the quote, the
 crew assignment, the field photographs, the deliverable and the invoice. SiteSurveyor
-occupies that gap deliberately. It anchors field evidence at the moment of production,
+occupies that gap by design. It anchors field evidence at the moment of production,
 inside the same workspace that runs the commercial workflow, rather than anchoring
 ownership records after the fact.
 
@@ -246,8 +252,7 @@ it is allowed to do unsupervised.
 \section{Requirements}
 \label{sec:req}
 
-The design is driven by five constraints observed in small and mid-sized surveying
-practices.
+Five constraints, observed in small and mid-sized surveying practices, drive the design.
 
 \begin{description}
   \item[Confidentiality.] Client identities, coordinates, valuations and drawings are
@@ -433,7 +438,7 @@ the same agent core against the published market views only: it has the read-onl
 tool trio, no workspace tables and no write tools, so an unauthenticated caller
 cannot reach tenant data through the agent even in principle.
 
-CAD operations are deliberately read-only in the tool surface: the agent can inspect
+CAD operations are read-only by design in the tool surface: the agent can inspect
 drawings, layers and entity counts, but geometry changes are emitted as command blocks
 that the user executes in the project workspace, with an extra confirmation for
 erasing. This keeps a generative component away from the authoritative drawing.
@@ -834,8 +839,9 @@ payment reconciliation.
 
 Survey screening is a Python worker rather than a browser feature. It ingests
 multi-sensor open data (Sentinel-2 surface reflectance \cite{drusch2012}, a 30\,m
-Copernicus digital elevation model, ALOS PALSAR radar, Landsat water observations
-\cite{mueller2016}, ESA WorldCover and CHIRPS rainfall \cite{funk2015}) onto a common
+Copernicus digital elevation model \cite{copernicusdem}, ALOS PALSAR radar \cite{jaxapalsar},
+Landsat water observations \cite{mueller2016}, ESA WorldCover \cite{zanaga2021} and CHIRPS
+rainfall \cite{funk2015}) onto a common
 30\,m metric grid (configured as UTM~35S for the Southern African reference deployment),
 and runs four category pipelines: groundwater potential with candidate borehole sites,
 mineral prospectivity with ranked targets, soil capability with erosion risk, and
@@ -903,7 +909,7 @@ from any known field is not penalised for lacking one.
 \paragraph{Overlay and classification.} Each layer is robustly normalised by
 clipping at its 2nd and 98th percentiles, then combined with the AHP weights of
 Table~\ref{tab:eo-weights}. The weighted mean is classified with Jenks natural breaks
-($k=5$) over valid cells, excluding water and built-up land cover from both the fit
+\cite{jenks1967} ($k=5$) over valid cells, excluding water and built-up land cover from both the fit
 and the map. Classes are therefore relative to this area's own evidence distribution.
 
 \paragraph{Targets.} Candidate targets are cells in the top two classes, at least
@@ -1032,37 +1038,38 @@ wallet or tile host is contacted, and basemap imagery is omitted for licensing
 clarity. The figures therefore demonstrate the pipeline and its interface end to
 end, on synthetic ground truth that is labelled as such in every caption and in the
 engine's own map titles. They are not an accuracy evaluation: no claim is made that
-the specimen scores predict mineralisation.
+the specimen scores predict mineralisation. Both the seeded generator
+(\texttt{apps/engine/scripts/provision\_gravity.py}) and the screenshot harness
+(\texttt{apps/web/.tour-harness/}) are in the repository, so every figure here can be
+regenerated offline; the engine itself runs the same pipeline over the same open
+products on real ground.
 
 This component analyses imagery; it does not store evidence. Anchoring and Earth
-observation are deliberately separate features, because conflating ``we can compute a
+observation are kept separate, because conflating ``we can compute a
 map'' with ``we can prove a file'' would overstate both.
 
 \onecolumn
 \section{Guided walkthrough of the working system}
 \label{sec:tour}
 
-The preceding sections describe mechanisms; this section walks the interface a
-surveyor actually touches, in the order a first working day would use it. Every
-screenshot is the production web bundle rendered offline against a fixture
-transport: a seeded dummy workspace (``Moyo Geomatics'', a sole-practitioner
-account held by ``Tendai Moyo'') supplies projects, files, anchor operations, chat
-history, listings and billing rows, and the real repositories, parsers and
-components run against them unchanged. No live database, wallet, payment gateway
-or tile host is contacted. Names, hashes, transaction signatures, slots and
-amounts are synthetic; the devnet signatures shown are placeholders and do not
-resolve on chain. The walkthrough is therefore a guide to behaviour, not a record
-of a live deployment.
+Everything above is mechanism. This section is the interface, walked in the order a
+first working day would use it. The screenshots are the production web bundle rendered
+offline against a fixture transport. A seeded dummy workspace, ``Moyo Geomatics'', a
+sole-practitioner account held by ``Tendai Moyo'', supplies the projects, files, anchor
+operations, chat history, listings and billing rows; the real repositories, parsers and
+components run against them unchanged. Nothing live is contacted: no database, no
+wallet, no payment gateway, no tile host. Names, hashes, transaction signatures, slots
+and amounts are synthetic, and the devnet signatures shown are placeholders that do not
+resolve on chain. Read this as a guide to behaviour, not a record of a live deployment.
 
 \subsection{Signing in}
 
-Figure~\ref{fig:tour-signin} shows the entry surface: email and password, or the
-GitHub and Google OAuth buttons. Wallet-based sign-in sits alongside these in the
-full flow, and a wallet account that arrives without a name, email or account
-type is routed to a finish-setup step rather than admitted silently
-(Section~\ref{sec:data}). The session, not the URL, decides which workspace shell
-loads; a personal account and a business account see different navigation for the
-same underlying tables.
+The entry surface (Fig.~\ref{fig:tour-signin}) offers email and password, or GitHub and
+Google OAuth. Wallet sign-in sits alongside these in the full flow. A wallet account
+that arrives without a name, email or account type is not admitted silently; it is
+routed to a finish-setup step (Section~\ref{sec:data}). Which workspace shell loads is
+decided by the session, not the URL, so a personal account and a business account see
+different navigation over the same underlying tables.
 
 \begin{figure}[H]
   \centering
@@ -1075,15 +1082,14 @@ same underlying tables.
 
 \subsection{The dashboard as a day plan}
 
-The personal dashboard (Fig.~\ref{fig:tour-dashboard}) opens on the day, not on a
-data dump: four headline numbers (active projects, outstanding billing, quotes
-awaiting a client decision, days to the next instrument calibration), then
-today's schedule with start and end times, an equipment snapshot whose badges
-carry calibration and deployment state, and the recent-project table. The storage
-meter on the right reads the same usage figure the database trigger enforces, so
-the number a surveyor sees and the number that refuses an upload cannot drift
-apart. Billings and invoices roll up beneath for the financial half of the
-practice.
+The personal dashboard (Fig.~\ref{fig:tour-dashboard}) opens on the day rather than on a
+data dump. Four headline numbers come first: active projects, outstanding billing,
+quotes awaiting a client decision, and days to the next instrument calibration. Below
+them sit today's schedule with start and end times, an equipment snapshot whose badges
+carry calibration and deployment state, and the recent-project table. The storage meter
+on the right reads the same usage figure the database trigger enforces, so the number a
+surveyor sees and the number that refuses an upload cannot drift apart. Billings and
+invoices roll up beneath for the financial half of the practice.
 
 \begin{figure}[H]
   \centering
@@ -1096,14 +1102,13 @@ practice.
 
 \subsection{File manager and the storage quota}
 
-The file manager (Fig.~\ref{fig:tour-files}) lists deliverables with folder, type
-and tag filters and a trash view. Each row carries its anchoring state inline:
-no badge while unanchored, a confirming spinner while a transaction settles, a
-truncated signature once anchored, and an explicit failure badge otherwise. The
-header states the quota position (here 7.6 MB of 1024 MB); when the trigger
-refuses further uploads the same surface pauses new uploads while keeping
-existing files previewable, downloadable and shareable, rather than hiding the
-reason behind a generic retry message.
+The file manager (Fig.~\ref{fig:tour-files}) lists deliverables with folder, type and
+tag filters and a trash view. Anchoring state is inline on each row: no badge while
+unanchored, a confirming spinner while a transaction settles, a truncated signature
+once anchored, an explicit failure badge otherwise. The header states the quota
+position, here 7.6 MB of 1024 MB. When the trigger refuses further uploads, the same
+surface pauses new uploads but keeps existing files previewable, downloadable and
+shareable. The reason stays visible instead of hiding behind a generic retry message.
 
 \begin{figure}[H]
   \centering
@@ -1116,14 +1121,14 @@ reason behind a generic retry message.
 
 \subsection{Reading the anchor ledger}
 
-Opening a file's actions menu and choosing ``File details'' reveals the ledger
-(Fig.~\ref{fig:tour-anchors}): every anchor attempt for that file, newest first,
-with mode, cluster, signing wallet, fee in lamports, slot and an explorer link.
-The specimen file shows both outcomes at once --- a settled hash anchor with a
-Verify action, and beneath it an earlier failed attempt kept with its reason and
-a Retry action. Failures are never deleted or overwritten
-(Section~\ref{sec:evidence}); a corrupt or expired attempt stays in the record
-because the record, not the success rate, is the product.
+Open a file's actions menu and choose ``File details'' to reach the ledger
+(Fig.~\ref{fig:tour-anchors}): every anchor attempt for that file, newest first, with
+mode, cluster, signing wallet, fee in lamports, slot and an explorer link. The specimen
+file shows both outcomes at once. A settled hash anchor carries a Verify action;
+beneath it an earlier failed attempt is kept with its reason and a Retry action.
+Failures are never deleted or overwritten (Section~\ref{sec:evidence}). A corrupt or
+expired attempt stays in the record, because the record, not the success rate, is the
+product.
 
 \begin{figure}[H]
   \centering
@@ -1137,15 +1142,14 @@ because the record, not the success rate, is the product.
 
 \subsection{The assistant in bounded practice}
 
-The assistant (Fig.~\ref{fig:tour-assistant}) answers from workspace rows, not
-from improvisation: asked which files still need anchoring, it enumerates the
-ledger state file by file and offers a clarifying question with quick-reply
-options instead of guessing intent. Its summary of the mineral screen carries the
-specimen score of Section~\ref{sec:eo} with the percentile caveat attached, and a
-handoff button deep-links the exact run, job and project in the satellite
-workbench. Tool activity streams live during a turn; the persisted history keeps
-prose and structured blocks, and every metered operation debits the workspace
-credit account shown in the header.
+The assistant (Fig.~\ref{fig:tour-assistant}) answers from workspace rows, not from
+improvisation. Asked which files still need anchoring, it enumerates the ledger state
+file by file and offers a clarifying question with quick-reply options instead of
+guessing intent. Its summary of the mineral screen carries the specimen score of
+Section~\ref{sec:eo} with the percentile caveat attached, and a handoff button
+deep-links the exact run, job and project in the satellite workbench. Tool activity
+streams live during a turn. The persisted history keeps prose and structured blocks,
+and every metered operation debits the workspace credit account shown in the header.
 
 \begin{figure}[H]
   \centering
@@ -1159,15 +1163,15 @@ credit account shown in the header.
 
 \subsection{Marketplace: browse, inspect, request}
 
-The marketplace (Fig.~\ref{fig:tour-marketplace}) browses global listings from
-peer workspaces with category chips, condition badges and an ``In Use'' badge for
-deployed assets. Opening a listing (Fig.~\ref{fig:tour-market-detail}) shows the
-hero photograph, the hire price per day or sale price once, specification badges,
-the seller card, and the Request Hire or Request Purchase action beside the cart.
-A deployed asset cannot be requested: the dialog substitutes a disabled
-``Currently In Use'' state, so the interface never offers a hire the asset's own
-status forbids. Requests move through the same pending--accepted--paid state
-machine as other payments, and nothing is charged by browsing.
+The marketplace (Fig.~\ref{fig:tour-marketplace}) browses global listings from peer
+workspaces, with category chips, condition badges and an ``In Use'' badge for deployed
+assets. Opening a listing (Fig.~\ref{fig:tour-market-detail}) shows the hero
+photograph, the hire price per day or sale price once, specification badges, the seller
+card, and the Request Hire or Request Purchase action beside the cart. A deployed asset
+cannot be requested: the dialog substitutes a disabled ``Currently In Use'' state, so
+the interface never offers a hire the asset's own status forbids. Requests move through
+the same pending--accepted--paid state machine as other payments. Browsing charges
+nothing.
 
 \begin{figure}[H]
   \centering
@@ -1190,14 +1194,13 @@ machine as other payments, and nothing is charged by browsing.
 
 \subsection{Credits, packages and the payment ledger}
 
-The credits section (Fig.~\ref{fig:tour-credits}) closes the loop: available
-balance (96), lifetime purchases (100) and the append-only ledger that explains
-the difference --- a +100 card purchase and a $-4$ debit for the specimen screening
-run. Packages are priced per credit so a surveyor can compare tiers, and each
-offers pay-from-balance or pay-by-card; storage packages are a separate kind with
-their own expiry, because compute credit and stored bytes are different
-obligations. Checkout runs through the payment state machine of
-Section~\ref{sec:security}; the capture initiates no payment.
+The credits section (Fig.~\ref{fig:tour-credits}) closes the loop. Available balance is
+96, lifetime purchases 100, and the append-only ledger explains the difference: a +100
+card purchase and a $-4$ debit for the specimen screening run. Packages are priced per
+credit so a surveyor can compare tiers, and each offers pay-from-balance or pay-by-card.
+Storage packages are a separate kind with their own expiry, because compute credit and
+stored bytes are different obligations. Checkout runs through the payment state machine
+of Section~\ref{sec:security}; the capture initiates no payment.
 
 \begin{figure}[H]
   \centering
@@ -1209,12 +1212,23 @@ Section~\ref{sec:security}; the capture initiates no payment.
   \label{fig:tour-credits}
 \end{figure}
 
+\subsection{What the walkthrough does not show}
+
+The fixtures stop at the edges of the offline transport, and those edges are worth
+naming. No wallet is connected, so nothing is signed or broadcast; the devnet
+signatures in the figures are placeholders. No fiat or stablecoin payment is initiated
+and the gateway stays in sandbox. The business-account and mobile shells are not
+exercised here, and the product labels the mobile shell a placeholder
+(Section~\ref{sec:limits}). Basemap tiles are omitted throughout for licensing clarity.
+What the walkthrough does show is the behaviour of the real components against
+real-shaped rows. That is the claim this section makes, and no more.
+
 \twocolumn
 \section{Engineering evidence}
 \label{sec:eval}
 
-The claim that the described system exists is supported by continuous checks rather
-than by demonstration alone:
+I trust the checks more than the demo. The system described above is held to account
+by continuous engineering checks:
 
 \begin{itemize}
   \item TypeScript project checks and a strict lint pass over the web application;
@@ -1230,13 +1244,13 @@ than by demonstration alone:
 
 These are engineering checks, not a user study. No claim is made here about
 productivity, accuracy of the geospatial screening against ground truth, or usability
-measured with practitioners; those are the obvious next evaluations and are named as
-such rather than implied by a demo.
+measured with practitioners; those are the obvious next evaluations, and I name them as
+future work rather than let a demo imply them.
 
 \section{Limitations and threats to validity}
 \label{sec:limits}
 
-Several architectural and operational boundaries bound the claims of this work:
+Each claim above stops somewhere. These are the stopping points:
 
 \begin{itemize}
   \item \textbf{A digest is not provenance.} The anchor binds bytes to a wallet and a
@@ -1270,7 +1284,7 @@ The implementation is released under the MIT licence at
 \url{https://github.com/ConsoleMangena/sitesurveyor-framework}. Releases are archived
 on Zenodo, which mints a version DOI under a stable concept DOI, and the repository
 carries citation metadata so that a release can be cited without consulting this
-paper. The manuscript itself is deposited on Zenodo as a preprint and carries its own
+paper. The manuscript describes the v2.0 release line of the code. The manuscript itself is deposited on Zenodo as a preprint and carries its own
 DOI, linked to the software record. The repository does not ship a shared hosted
 instance: an adopter supplies their own database project, Earth-observation token and
 provider keys, and the documentation states which configuration values are public.
@@ -1281,16 +1295,33 @@ the figure assets are in the \texttt{paper/} directory of the repository.
 
 \section{Conclusion}
 
-Survey operations are not short of software; they are short of continuity. Keeping
+Survey practices are not short of software. They are short of continuity. Keeping
 the operational record in one tenant-scoped workspace removes the re-entry boundaries
 that lose context, and reserving the chain for wallet identity, settlement and a
 minimal digest keeps confidential content where it belongs. The same architecture
-treats an AI agent as an actor with a narrow tool contract and verified writes rather
-than as an oracle, and it states its limitations where a user will read them. The
-next steps are external evaluation of the screening against field data and a
-practitioner study of the workspace itself.
+treats an AI agent as an actor with a narrow tool contract and verified writes, not as
+an oracle, and it puts its limitations where a user will actually read them. I have
+tried to make the claims match the checks. What remains is the evaluation I cannot do
+alone: the screening against field data, and a practitioner study of the workspace
+itself.
 
-\begin{thebibliography}{22}
+\section*{Declarations}
+
+\paragraph{Funding.} The author declares no external funding for this work.
+
+\paragraph{Competing interests.} The author is the sole developer and maintainer of
+SiteSurveyor, the software described here, and so has a direct interest in its
+adoption. The limitations and cryptographic non-claims above are stated with that
+interest in mind.
+
+\paragraph{Ethics.} No human participants were involved. Every identity, coordinate,
+hash, signature and amount shown in the figures is synthetic, and no live client data
+was used.
+
+\paragraph{Licence.} The manuscript is released under CC BY 4.0; the software under
+the MIT licence.
+
+\begin{thebibliography}{26}
 
 \bibitem{boumezbeur2025}
 Insaf Boumezbeur, Abdelhalim Benoughidene, Imane Harkat, Farah Boutouatou,
@@ -1321,6 +1352,29 @@ Chris Funk, Pete Peterson, Martin Landsfeld, Diego Pedreros, James Verdin,
   and Joel Michaelsen.
 \newblock The climate hazards infrared precipitation with stations---a new environmental record for monitoring extremes.
 \newblock \emph{Scientific Data}, 2:150066, 2015.
+
+\bibitem{copernicusdem}
+European Space Agency.
+\newblock \emph{Copernicus DEM GLO-30: Global 30 metre Digital Elevation Model}.
+\newblock Copernicus Space Data, 2021.
+\newblock \url{https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model}.
+
+\bibitem{jaxapalsar}
+Japan Aerospace Exploration Agency.
+\newblock \emph{ALOS PALSAR: Phased Array type L-band Synthetic Aperture Radar}.
+\newblock JAXA Earth Observation Research Center.
+\newblock \url{https://www.eorc.jaxa.jp/ALOS/en/palsar_fnf/fnf_index.htm}.
+
+\bibitem{zanaga2021}
+Daniele Zanaga, Ruben Van De Kerchove, Wanda De Keersmaecker, et~al.
+\newblock ESA WorldCover 10 m 2020 v100.
+\newblock Zenodo, 2021.
+\newblock \url{https://doi.org/10.5281/zenodo.5571936}.
+
+\bibitem{jenks1967}
+George~F. Jenks.
+\newblock The Data Model Concept in Statistical Mapping.
+\newblock \emph{International Yearbook of Cartography}, 7:186--190, 1967.
 
 \bibitem{mcp}
 Model Context Protocol Contributors.

@@ -34,7 +34,7 @@ of HTML; keep revisions of this block dash-free and in sync with the `main.tex`
 abstract.
 
 ```html
-<p>The field survey workflow is typically scattered across paper field books, spreadsheets, shared drives, and disconnected accounting software. Context is lost at every handoff, and the deliverables produced in the field are rarely tied back to the records they are meant to support. This paper presents <strong>SiteSurveyor</strong>, an open-source reference architecture for secure and verifiable surveying systems.</p><p>Implemented as a multi-tenant workspace, SiteSurveyor maintains a continuous operational record of each project, including jobs, quotes, invoices, evidence, and payments, within a single PostgreSQL database with row-level security. Confidential survey files are kept off-chain. Solana is used only where database guarantees are insufficient: wallet-based authentication, stablecoin settlement, and wallet-signed SHA-256 digests that let third parties verify file integrity without accessing file contents. Every anchoring attempt is recorded in an append-only operation ledger enforced by database triggers, so failures are preserved alongside successes. An AI assistant interacts with workspace records through a typed, allowlisted tool surface, with read-back verification and confirmation for destructive operations, alongside an asynchronous Python worker for screening open earth-observation imagery.</p><p>We present the system design, map the cybersecurity risks of surveying practice onto the controls that address them, state its cryptographic non-claims, and describe the automated engineering checks that support the claims made here. We then extract three reusable building blocks: a tenant-scoped data core, an evidence-anchoring service, and an allowlisted agent tool surface for building comparable verifiable systems.</p>
+<p>A field survey leaves a trail: a quote, a crew schedule, observations, photographs, CAD drawings, an invoice, a payment. In most practices that trail is broken across paper field books, spreadsheets, shared drives and separate accounting software, so the deliverable handed to a client can no longer be tied to the record it came from. I built <strong>SiteSurveyor</strong> to close that gap. It is an open-source reference architecture, released as a multi-tenant workspace where projects, jobs, quotes, invoices, evidence and payments share one PostgreSQL database guarded by row-level security.</p><p>Confidential files stay off-chain. Solana is used only where the database cannot give the guarantee on its own: wallet sign-in, stablecoin settlement, and wallet-signed SHA-256 digests that let a third party confirm a file is byte-identical to the one anchored, without seeing its contents. Every anchoring attempt, success or failure, lands in an append-only ledger that database triggers protect from edits. An AI assistant works the same records through a typed, allowlisted tool surface, reads back what it wrote, and asks before deleting anything; a separate Python worker screens open earth-observation imagery into ranked field targets.</p><p>This paper gives the design, maps the cybersecurity risks of surveying practice onto the controls that answer them, states plainly what an anchored digest does not prove, and lists the automated checks (over 850 TypeScript tests and 124 edge-function tests) that hold those claims to account. Three pieces are meant to be lifted out and reused: the tenant-scoped data core, the evidence-anchoring service, and the allowlisted agent tool surface.</p>
 ```
 
 ## Description — software record
@@ -102,22 +102,24 @@ endorsement or moderation, so the paper is citable as soon as you finish the for
 A later revision is published as a **new version** of the same record: the concept
 DOI stays stable and the version DOI changes.
 
-## Published DOIs (filled 2026-11-16, updated 2026-11-17)
+## Published DOIs (filled 2026-11-16, updated 2026-11-18)
 
 | Record | Concept DOI | First version DOI |
 | --- | --- | --- |
 | Software | `10.5281/zenodo.24287890` | `10.5281/zenodo.24287891` (v0.1.0) |
 | Paper | `10.5281/zenodo.24288094` | `10.5281/zenodo.24288095` (v1) |
 
-The newest paper version is **v4, `10.5281/zenodo.24301833`** (published
-2026-11-17): the risk mapping, the append-only operation ledger, the
-earth-observation pipeline detail and the guided walkthrough. The software
+The newest paper version is **v5, `10.5281/zenodo.24350648`** (published
+2026-11-18): the sole-author front matter with affiliation and ORCID, the
+Declarations section, the expanded earth-observation mineral-exploration
+methodology, the guided walkthrough and the humanised prose. The software
 record's related identifiers already carry *is documented by* the
 paper DOI, and the paper carries *is supplement to* the software concept DOI.
 The header in `main.tex` prints the paper **concept DOI**
 (`10.5281/zenodo.24288094`), so future revisions need no header change.
 History: v1 `24288095` (two authors), v2 `24290109` (author correction),
-v3 `24290209` (header switched to the concept DOI), v4 `24301833` (current).
+v3 `24290209` (header switched to the concept DOI), v4 `24301833` (risk mapping,
+ledger, EO detail, walkthrough), v5 `24350648` (current).
 
 ## Versioning policy
 

@@ -59,14 +59,16 @@ is no separate account-approval step to wait for.
 | --- | --- |
 | Software (concept DOI, always newest version) | [10.5281/zenodo.24287890](https://doi.org/10.5281/zenodo.24287890) |
 | Paper (concept DOI, always newest version) | [10.5281/zenodo.24288094](https://doi.org/10.5281/zenodo.24288094) |
-| Paper v4 (current manuscript, adds the risk mapping, the operation ledger, the EO pipeline detail and the guided walkthrough) | [10.5281/zenodo.24301833](https://doi.org/10.5281/zenodo.24301833) |
+| Paper v5 (current manuscript, sole-author front matter, declarations, EO mineral-exploration detail and the guided walkthrough) | [10.5281/zenodo.24350648](https://doi.org/10.5281/zenodo.24350648) |
+| Paper v4 (adds the risk mapping, the operation ledger, the EO pipeline detail and the guided walkthrough) | [10.5281/zenodo.24301833](https://doi.org/10.5281/zenodo.24301833) |
 
 Paper v1 (`10.5281/zenodo.24288095`) listed two authors and is superseded;
 v2 (`10.5281/zenodo.24290109`) corrected the author list but still printed the
 v1 DOI in the header; v3 (`10.5281/zenodo.24290209`) was the sole-author revision
-that switched the header to the concept DOI. All remain online because version
-DOIs are permanent. The header prints the **concept DOI**, so future revisions
-need no header change.
+that switched the header to the concept DOI; v4 (`10.5281/zenodo.24301833`) added
+the risk mapping, ledger, EO detail and walkthrough. All remain online because
+version DOIs are permanent. The header prints the **concept DOI**, so future
+revisions need no header change.
 
 ## Relationship to the rest of the repository
 
@@ -75,7 +77,7 @@ there: GitHub renders the "Cite this repository" button from it, and Zenodo read
 when it archives a release. Moving it into `paper/` would break both, so this folder
 holds the manuscript only.
 
-The paper describes the `v0.1.x` line. If the system changes materially — a new
-component, a different trust boundary, a changed test strategy — update the paper in
-the same pull request as the code, or state clearly in the paper which release it
-describes.
+The paper describes the `v2.0.x` line. If the system changes materially (a new
+component, a different trust boundary, a changed test strategy), update the paper
+in the same pull request as the code, or state clearly in the paper which release
+it describes.
