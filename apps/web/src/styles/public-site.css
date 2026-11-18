@@ -104,11 +104,60 @@
     transform: scaleX(1);
   }
 
-  /* Blogs and About stay in the footer and the mobile disclosure; keeping
-     them out of the desktop row leaves room for the account chip and the
-     page tools so a long account name can never scatter the links. */
-  .public-site-header-left .public-site-nav-link[href="/journal"],
-  .public-site-header-left .public-site-nav-link[href="/about"] { display: none; }
+  /* The bar keeps only the primary destinations; everything else lives in the
+     More dropdown so the row stays short enough for the account chip and the
+     page tools at every width. */
+  .public-nav-more { position: relative; }
+
+  .public-nav-more-toggle {
+    gap: 0.375rem;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .public-nav-more-toggle svg { width: 1rem; height: 1rem; transition: transform 150ms ease; }
+  .public-nav-more-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+  .public-nav-more-menu {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    right: 0;
+    z-index: 60;
+    display: grid;
+    gap: 0.125rem;
+    min-width: 11rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--card);
+    padding: 0.375rem;
+    box-shadow: 0 12px 24px rgb(15 23 42 / 12%);
+  }
+
+  .public-nav-more-menu[hidden] { display: none; }
+
+  .public-nav-more-link {
+    display: flex;
+    min-height: 2.25rem;
+    align-items: center;
+    border-radius: 0.5rem;
+    padding: 0 0.625rem;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color 150ms ease, background 150ms ease;
+  }
+
+  .public-nav-more-link:hover { background: var(--accent); color: var(--foreground); }
+
+  .public-nav-more-link[aria-current="page"] {
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    color: var(--primary);
+    font-weight: 600;
+  }
 
   /* Signed-in headers already offer the workspace through the account menu,
      so the duplicate call-to-action yields its space to the links. */
@@ -214,8 +263,6 @@
   @media (max-width: 76rem) {
     .public-site-nav { gap: 1.125rem; }
     .public-site-header-left { gap: 1.75rem; }
-    .public-site-header-left .public-site-nav-link[href="/transport"],
-    .public-site-header-left .public-site-nav-link[href="/downloads"] { display: none; }
   }
 
   @media (max-width: 56rem) {

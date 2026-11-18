@@ -21,5 +21,9 @@ node capture.mjs        # headless Chrome; writes paper/assets/tour-*.png
 ```
 
 `probe.mjs` opens a single page with console/network logging for debugging a
-step that fails to render. `chrome-profile/` is throwaway headless-Chrome
-state and is git-ignored.
+step that fails to render. `capture-nav-check.mjs` re-runs `capture.mjs`'s
+server against the public header at 1280/1000/900px plus the More dropdown and
+the mobile disclosure, writing `nav-check-*.png` here so header layout changes
+can be eyeballed without touching the paper's `tour-*.png`.
+`chrome-profile/` and `nav-check-profile/` are throwaway headless-Chrome state
+and are git-ignored.

@@ -57,6 +57,8 @@ apps/web/coverage/
 
 # Tour screenshot harness (headless Chrome scratch profile)
 apps/web/.tour-harness/chrome-profile/
+apps/web/.tour-harness/nav-check-profile/
+apps/web/.tour-harness/nav-check-*.png
 
 # OS files
 .DS_Store

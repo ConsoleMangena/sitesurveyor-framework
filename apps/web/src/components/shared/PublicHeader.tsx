@@ -69,7 +69,7 @@ export function PublicHeader({ section, actions, account }: PublicHeaderProps) {
         </div>
       </div>
       <div id="public-navigation" className="public-mobile-navigation" hidden={!navigationOpen}>
-        <PublicNavLinks onNavigate={() => setNavigationOpen(false)} />
+        <PublicNavLinks flat onNavigate={() => setNavigationOpen(false)} />
         <button type="button" onClick={() => { setNavigationOpen(false); openAssistant(); }}>
           Ask SiteSurveyor AI
         </button>

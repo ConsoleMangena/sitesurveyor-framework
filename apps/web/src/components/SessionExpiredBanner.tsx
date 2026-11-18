@@ -1,6 +1,6 @@
-import { Clock } from "lucide-react";
+import { Clock, X } from "lucide-react";
 import { useAuthStore } from "../lib/auth/auth-store";
-import ErrorNotice from "./errors/ErrorNotice.tsx";
+import { Alert } from "./ui/alert";
 
 export default function SessionExpiredBanner() {
   const sessionExpired = useAuthStore((s) => s.sessionExpired);
@@ -9,26 +9,31 @@ export default function SessionExpiredBanner() {
   if (!sessionExpired) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-4000 px-3 pb-[max(8px,env(safe-area-inset-bottom))]">
-      <div className="pointer-events-auto mx-auto max-w-md">
-        <ErrorNotice
-          tone="warning"
-          title="Session expired"
-          icon={<Clock size={16} />}
-          onDismiss={dismiss}
-          className="py-2 shadow-lg"
-          action={
-            <a
-              href="/login"
-              className="text-sm font-medium underline underline-offset-4 hover:text-foreground"
-            >
-              Sign in again
-            </a>
-          }
+    <div className="pointer-events-none fixed inset-0 z-4000 flex items-center justify-center px-3">
+      <Alert
+        variant="warning"
+        aria-live="assertive"
+        className="pointer-events-auto flex w-auto max-w-full items-center gap-2 rounded-full px-3 py-1.5 shadow-lg"
+      >
+        <span aria-hidden="true" className="shrink-0">
+          <Clock size={14} />
+        </span>
+        <span className="font-medium">Session expired</span>
+        <a
+          href="/login"
+          className="underline underline-offset-4 hover:text-foreground"
         >
-          Sign in to continue where you left off.
-        </ErrorNotice>
-      </div>
+          Sign in again
+        </a>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Dismiss"
+          className="grid size-5 shrink-0 place-items-center rounded-full hover:bg-current/10"
+        >
+          <X size={12} aria-hidden="true" />
+        </button>
+      </Alert>
     </div>
   );
 }

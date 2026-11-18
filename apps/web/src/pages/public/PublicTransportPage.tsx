@@ -423,7 +423,7 @@ export default function PublicTransportPage() {
                 aria-label={`Open account menu (${user.name})`}
               >
                 <AccountMenuAvatar user={user} className="size-6" />
-                <span className="max-w-[132px] truncate text-xs font-semibold max-sm:hidden">{user.name}</span>
+                <span className="max-w-[clamp(6rem,16vw,14rem)] truncate text-xs font-semibold max-sm:hidden">{user.name}</span>
                 <IconChevronDown className="size-3 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
               </Button>
             }
